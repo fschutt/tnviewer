@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AAA-XML-Preferences zu XLSX Konvertierungs-Tool</title>
+  </head>
+  <body>
+    <h1>AAA-XML-Preferences zu XLSX Konvertierungs-Tool</h1>
+    
+    <h2>Über dieses Tool</h2>
+    <p>Dieses Tool kann .conf (XML) - Dateien in .XLSX-Dateien konvertieren. Es werden keine Daten über das Internet gesendet, die Anwendung läuft nur lokal.</p>
+    <p style='color:red;'>Bitte den Ad-Blocker ausschalten, da manchmal benötigte .wasm-Dateien von Ad-Blockern blockiert werden!</p>
+    
+    <h2>Anleitung</h2>
+    <ol>
+        <li>.conf Datei über den Button unten auswählen</li>
+        <li>Download-Datei (XLSX-Format) speichern unter</li>
+        <li>Formatierung in LibreOffice anpassen: Alle Zellen markieren, dann Rechtsklick -> Zellen formatieren -> Ausrichtung -> Automatischer Zeilenumbruch anhaken</li>
+        <li>Datei als .ods speichern</li>
+    </ol>
+    
+    <br />
+    <label for="input" style='font-weight:bold;'>.conf-Datei auswählen:</label><br/>
+    <input type="file" id="input" accept=".conf"></input>
+    
+    <script type="module">
+      import init, {xml_to_xlsx} from "./pkg/aaa_preferences_xlsx.js";
+
+      const downloadURL = (data, fileName) => {
+        const a = document.createElement('a')
+        a.href = data
+        a.download = fileName
+        document.body.appendChild(a)
+        a.style.display = 'none'
+        a.click()
+        a.remove()
+      }
+
+      const downloadBlob = (data, fileName, mimeType) => {
+
+        const blob = new Blob([data], {
+            type: mimeType
+        })
+
+        const url = window.URL.createObjectURL(blob)
+
+        downloadURL(url, fileName)
+
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+      }
+
+      init()
+        .then(() => { 
+        
+            document.querySelector('input').addEventListener('change', function() {
+
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var arrayBuffer = this.result;
+                    var array = new Uint8Array(arrayBuffer);
+                    var xlsx = xml_to_xlsx(array);
+                    downloadBlob(xlsx, "Konvertiert.xlsx", 'application/octet-stream');
+                }
+                
+                reader.readAsArrayBuffer(this.files[0]);
+
+            }, false);
+        
+            // xml_to_xlsx()
+        });
+    </script>
+  </body>
+</html>
