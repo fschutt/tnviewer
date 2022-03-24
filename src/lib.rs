@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub fn xml_to_xlsx(bytes: Vec<u8>) -> Vec<u8> {
+pub fn xml_to_xlsx(bytes: Vec<u8>, inline: bool) -> Vec<u8> {
     let mut text_decoder = chardetng::EncodingDetector::new();
     let _ = text_decoder.feed(&bytes[..], true);
     let text_decoder = text_decoder.guess(None, true);
@@ -9,7 +9,7 @@ pub fn xml_to_xlsx(bytes: Vec<u8>) -> Vec<u8> {
     let mut decoded = String::with_capacity(bytes.len() * 2);
     let _ = text_decoder.decode_to_string(&bytes[..], &mut decoded, true);
     let datensaetze = parse_xml(&decoded);
-    let xlsx = datensaetze_zu_xlsx(&datensaetze);
+    let xlsx = datensaetze_zu_xlsx(&datensaetze, inline);
     return xlsx;
 }
 
@@ -121,7 +121,7 @@ fn parse_xml(xml: &str) -> Vec<Datensatz> {
     datensaetze
 }
 
-fn datensaetze_zu_xlsx(datensaetze: &[Datensatz]) -> Vec<u8> {
+fn datensaetze_zu_xlsx(datensaetze: &[Datensatz], inline: bool) -> Vec<u8> {
     
     use simple_excel_writer::*;
     
@@ -143,6 +143,18 @@ fn datensaetze_zu_xlsx(datensaetze: &[Datensatz]) -> Vec<u8> {
         sw.append_row(row!["<name>", "<!-- ... -->", "<value>","<enabled>", "<restriction>", "<class>"])?;
         
         for d in datensaetze {
+            if inline {
+                sw.append_row(row![
+                    d.name.clone(), 
+                    d.beschreibung.clone(), 
+                    d.wert.clone(), 
+                    d.enabled.clone(), 
+                    d.restriction.join(" \r\n"), 
+                    d.class.clone()
+                ])?;
+                continue;
+            }
+            
             let datensatz_beschreibung_lines = d.beschreibung.lines().collect::<Vec<_>>();
             let restriction_len = d.restriction.len();
             let datensatz_beschreibung_lines_len = datensatz_beschreibung_lines.len();
