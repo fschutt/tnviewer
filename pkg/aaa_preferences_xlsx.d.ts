@@ -2,15 +2,16 @@
 /* eslint-disable */
 /**
 * @param {Uint8Array} bytes
+* @param {boolean} inline
 * @returns {Uint8Array}
 */
-export function xml_to_xlsx(bytes: Uint8Array): Uint8Array;
+export function xml_to_xlsx(bytes: Uint8Array, inline: boolean): Uint8Array;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly xml_to_xlsx: (a: number, b: number, c: number) => void;
+  readonly xml_to_xlsx: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
   readonly __wbindgen_export_0: (a: number) => number;
   readonly __wbindgen_export_1: (a: number, b: number) => void;
