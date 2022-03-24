@@ -23,6 +23,9 @@
     <label for="input" style='font-weight:bold;'>.conf-Datei auswählen:</label><br/>
     <input type="file" id="input" accept=".conf"></input>
     
+    <label for="opt1" style='font-weight:bold;'>Ausgabe in einer Zeile</label>
+    <input type="checkbox" checked="true" id="opt1"></input>
+    
     <script type="module">
       import init, {xml_to_xlsx} from "./pkg/aaa_preferences_xlsx.js";
 
@@ -58,7 +61,7 @@
                 reader.onload = function() {
                     var arrayBuffer = this.result;
                     var array = new Uint8Array(arrayBuffer);
-                    var xlsx = xml_to_xlsx(array);
+                    var xlsx = xml_to_xlsx(array, document.getElementById("opt1").checked);
                     downloadBlob(xlsx, "Konvertiert.xlsx", 'application/octet-stream');
                 }
                 
