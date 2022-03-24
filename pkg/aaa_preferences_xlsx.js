@@ -31,14 +31,15 @@ function getArrayU8FromWasm0(ptr, len) {
 }
 /**
 * @param {Uint8Array} bytes
+* @param {boolean} inline
 * @returns {Uint8Array}
 */
-export function xml_to_xlsx(bytes) {
+export function xml_to_xlsx(bytes, inline) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         var ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export_0);
         var len0 = WASM_VECTOR_LEN;
-        wasm.xml_to_xlsx(retptr, ptr0, len0);
+        wasm.xml_to_xlsx(retptr, ptr0, len0, inline);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
         var v1 = getArrayU8FromWasm0(r0, r1).slice();
@@ -102,4 +103,3 @@ async function init(input) {
 }
 
 export default init;
-
