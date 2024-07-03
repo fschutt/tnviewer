@@ -1146,16 +1146,14 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 }
 
 pub fn render_main(_rpc_data: &UiData) -> String {
-    let mb_token = include_str!("../MAPBOX_TOKEN.txt");
     let map = format!("
-        <div id='__application-main-container' style='display:flex;flex-grow:1;'>
-            <input type='hidden' id='mapboxtoken' style='display:none;' value='{mb_token}'></input>
-            <div id='map' style='position:relative;width:100%;height:100%;'></div>
-            <div id='__application_main-overlay-container' style='position:absolute;height:100%;width:100%;'>
-                <div id='project' style='background:white;height:100%;'>
-                    <h4>PROJEKT</h4>
+        <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;'>
+            <div id='map' style='position:absolute;width:100%;height:100%;'></div>
+            <div id='__application_main-overlay-container' style='position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
+                <div id='project' style='background:white;padding:20px;'>
+                    <h4 style='font-size:20px;'>PROJEKT</h4>
                 </div>
-                <div id='__application-daten-laden'>
+                <div id='__application-daten-laden' style='display:flex;flex-grow:1;justify-content:center;align-items:center;'>
                     <button>XML Datei laden</button>
                 </div>
             </div>

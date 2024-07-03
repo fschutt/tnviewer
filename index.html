@@ -3,12 +3,14 @@
   <head>
     <meta charset="utf-8">
     <title>Tatsächliche Nutzung Viewer / Editor</title>
+    <link rel="stylesheet" href="./js/leaflet/leaflet.css">
+    <script src="./js/leaflet/leaflet.js"></script>
     <link rel="stylesheet" href="main.css">
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
     <script type="module">
       import init, {ui_render_entire_screen} from "./pkg/tnviewer.js";
+
+      var map = null;
 
       init()
         .then(() => { 
@@ -32,13 +34,12 @@
             if (!mapcontainer) {
               return;
             }
-            if (mapcontainer.innerHTML.length == 0) {
-              mapboxgl.accessToken = id.value;
-              var map = new mapboxgl.Map({
-                  container: 'map',
-                  center: [-74.5, 40],
-                  zoom: 9
-              });
+            if (!map) {
+              map = L.map('map').setView([51.505, -0.09], 13);
+
+              L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              }).addTo(map);
             }
           }
 
