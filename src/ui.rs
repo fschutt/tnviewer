@@ -30,14 +30,14 @@ pub enum PopoverState {
     ContextMenu(ContextMenuData),
     Info,
     ExportPdf,
-    CreateNewGrundbuch,
-    GrundbuchMetaAendern {
+    CreateNewProjekt,
+    ProjektMetaAendern {
         grundbuch_von: String,
         amtsgericht: String,
         blatt: String,
     },
-    GrundbuchSuchenDialog,
-    GrundbuchUploadDialog(usize),
+    ProjektSuchenDialog,
+    ProjektUploadDialog(usize),
     Configuration(ConfigurationView),
     Help,
 }
@@ -133,7 +133,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
 
     let pc = match &rpc_data.popover_state {
         None => return String::new(),
-        Some(PopoverState::GrundbuchUploadDialog(i)) => {
+        Some(PopoverState::ProjektUploadDialog(i)) => {
             /*
             let commit_title = if rpc_data.commit_title.is_empty() {
                 String::new()
@@ -197,13 +197,13 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             </div>
             ")
         }
-        Some(PopoverState::GrundbuchSuchenDialog) => {
+        Some(PopoverState::ProjektSuchenDialog) => {
             format!("
             <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:1000px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
                 
                 {close_button}
 
-                <h2 style='font-size:24px;font-family:sans-serif;'>Grundbuchblatt suchen</h2>
+                <h2 style='font-size:24px;font-family:sans-serif;'>Projektblatt suchen</h2>
                 
                 <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
                     <form onsubmit='grundbuchSuchen(event)' action=''>
@@ -219,13 +219,13 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             </div>
             ")
         }
-        Some(PopoverState::CreateNewGrundbuch) => {
+        Some(PopoverState::CreateNewProjekt) => {
             format!("
             <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
                 
                 {close_button}
 
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Grundbuchblatt anlegen</h2>
+                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Projektblatt anlegen</h2>
                 
                 <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
                     <form onsubmit='grundbuchAnlegen(event)' action=''>
@@ -234,7 +234,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                         <input type='text' id='__application_grundbuch_anlegen_amtsgericht' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;'></input>
                     </div>
                     <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Grundbuch von</label>
+                        <label style='font-size:20px;font-style:italic;'>Projekt von</label>
                         <input type='text' id='__application_grundbuch_anlegen_grundbuch_von' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;'></input>
                     </div>
                     <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
@@ -248,13 +248,13 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             </div>
             ")
         },
-        Some(PopoverState::GrundbuchMetaAendern { amtsgericht, grundbuch_von, blatt }) => {
+        Some(PopoverState::ProjektMetaAendern { amtsgericht, grundbuch_von, blatt }) => {
             format!("
             <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
                 
                 {close_button}
 
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Grundbuchblatt anlegen</h2>
+                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Projektblatt anlegen</h2>
                 
                 <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
                     <form onsubmit='grundbuchMetaAendernFinished(event)' action=''>
@@ -263,7 +263,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                         <input type='text' id='__application_grundbuch_anlegen_amtsgericht' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;' value='{amtsgericht}'></input>
                     </div>
                     <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Grundbuch von</label>
+                        <label style='font-size:20px;font-style:italic;'>Projekt von</label>
                         <input type='text' id='__application_grundbuch_anlegen_grundbuch_von' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;' value='{grundbuch_von}'></input>
                     </div>
                     <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
@@ -292,7 +292,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                         <label style='font-size:20px;font-style:italic;'>Exportiere:</label>
                         
                         <select id='__application_export-pdf-was-exportieren' style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:pointer;'>
-                            <option value='offen'>Offenes Grundbuch</option>
+                            <option value='offen'>Offenes Projekt</option>
                             <option value='alle-offen-digitalisiert'>Alle offenen, digitalisierten Grundbücher</option>
                             <option value='alle-offen'>Alle offenen Grundbücher</option>
                             <option value='alle-original'>Alle Original-PDFs</option>
@@ -344,7 +344,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                 
                 {close_button}
 
-                <h2 style='font-size:24px;font-family:sans-serif;'>Digitales Grundbuch Version {version}</h2>
+                <h2 style='font-size:24px;font-family:sans-serif;'>Digitales Projekt Version {version}</h2>
                 
                 <div style='padding:5px 0px;display:flex;flex-grow:1;min-height:750px;'>
                     <iframe width='auto' height='auto' src='data:text/html;base64,{license_base64}' style='min-width:100%;min-height:100%;'></iframe>                       
@@ -793,7 +793,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                     <img class='icon' src='data:image/png;base64,{icon_open_base64}'>
                 </div>
                 <div>
-                    <p>Grundbuch</p>
+                    <p>Projekt</p>
                     <p>laden</p>
                 </div>
             </label>
@@ -810,26 +810,10 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                     </div>
                     <div>
                         <p>Neues</p>
-                        <p>Grundbuch</p>
+                        <p>Projekt</p>
                     </div>
                 </label>
             </div>
-        ")
-    };
-
-    let grundbuch_suchen = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.search_grundbuch(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon' src='data:image/png;base64,{icon_search_base64}'>
-                </div>
-                <div>
-                    <p>Grundbuch</p>
-                    <p>suchen</p>
-                </div>
-            </label>
-        </div>
         ")
     };
 
@@ -964,7 +948,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
     let icon_reload = base64::encode(&RELOAD_PNG);
 
-    let neu_laden = {
+    let daten_importieren = {
         format!("
         <div class='__application-ribbon-section-content'>
             <label onmouseup='reloadGrundbuch(event)' class='__application-ribbon-action-vertical-large'>
@@ -972,8 +956,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_reload}'>
                 </div>
                 <div>
-                    <p>Grundbuch</p>
-                    <p>neu laden</p>
+                    <p>NAS-Daten</p>
+                    <p>importieren</p>
                 </div>
             </label>
         </div>   
@@ -989,7 +973,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 </div>
                 <div>
                     <p>Änderungen</p>
-                    <p>übernehmen</p>
+                    <p>speichern</p>
                 </div>
             </label>
         </div>
@@ -1050,8 +1034,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 "
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);' class='active'>START</p>
-                <p onmouseup='selectTab(1);'>ÜBERPRÜFUNG</p>
-                <p onmouseup='selectTab(2);'>LEFIS</p>
+                <p onmouseup='selectTab(1);'>KORREKTUR</p>
+                <p onmouseup='selectTab(2);'>EXPORT</p>
             </div>
             <div class='__application-ribbon-body'>
                 <div class='__application-ribbon-section 1'>
@@ -1061,7 +1045,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 
                         {neues_grundbuch}
                         
-                        {grundbuch_suchen}
                     </div>
                 </div>
             
@@ -1076,7 +1059,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
-                        {neu_laden}
+                        {daten_importieren}
                     </div>
                 </div>
 
@@ -1110,8 +1093,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 "
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);'>START</p>
-                <p onmouseup='selectTab(1);' class='active'>ÜBERPRÜFUNG</p>
-                <p onmouseup='selectTab(2);'>LEFIS</p>
+                <p onmouseup='selectTab(1);' class='active'>KORREKTUR</p>
+                <p onmouseup='selectTab(2);'>EXPORT</p>
             </div>
             <div class='__application-ribbon-body'>
                 <div class='__application-ribbon-section 4'>
@@ -1138,8 +1121,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 "
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);'>START</p>
-                <p onmouseup='selectTab(1);'>ÜBERPRÜFUNG</p>
-                <p onmouseup='selectTab(2);' class='active'>LEFIS</p>
+                <p onmouseup='selectTab(1);'>KORREKTUR</p>
+                <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
             </div>
             <div class='__application-ribbon-body'>
 
@@ -1163,7 +1146,22 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 }
 
 pub fn render_main(_rpc_data: &UiData) -> String {
-    normalize_for_js(String::new()) // TODO
+    let mb_token = include_str!("../MAPBOX_TOKEN.txt");
+    let map = format!("
+        <div id='__application-main-container' style='display:flex;flex-grow:1;'>
+            <input type='hidden' id='mapboxtoken' style='display:none;' value='{mb_token}'></input>
+            <div id='map' style='position:relative;width:100%;height:100%;'></div>
+            <div id='__application_main-overlay-container' style='position:absolute;height:100%;width:100%;'>
+                <div id='project' style='background:white;height:100%;'>
+                    <h4>PROJEKT</h4>
+                </div>
+                <div id='__application-daten-laden'>
+                    <button>XML Datei laden</button>
+                </div>
+            </div>
+        </div>
+    ");
+    normalize_for_js(map) // TODO
 }
 
 pub fn normalize_for_js(s: String) -> String {

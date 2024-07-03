@@ -6,10 +6,10 @@
 </head>
 <body>
     <p>
-Das Programm "Grundbuchdigitalisierung", "Digitales Grundbuch" oder kurz "dgb" ist ein Programm, um die Grundbuch-
+Das Programm "Projektdigitalisierung", "Digitales Projekt" oder kurz "dgb" ist ein Programm, um die Projekt-
 PDF-Dateien massenweise in maschinenlesbare Form zu digitalisieren. Die Daten sind dann im JSON-Format verfügbar 
 und können z.B. in eine Datenbank eingepflegt werden. Das Programm selbst beschäftigt sich nur mit dem 
-Digitalisieren und Prüfen der Grundbuch-Daten, zum Hochladen in LEFIS kann das Tool "LEFIS-Upload" verwendet 
+Digitalisieren und Prüfen der Projekt-Daten, zum Hochladen in LEFIS kann das Tool "LEFIS-Upload" verwendet 
 werden.</p>
 
 <h3>Übersicht der Funktionen</h3>
@@ -17,11 +17,11 @@ werden.</p>
 <p>Nach dem Starten sind die meisten Funktionen sichtbar, aber 
 ausgegraut, da zunächst mindestens eine PDF-Datei geöffnet 
 werden muss. In der oberen Leiste können mit Klick auf "PDF 
-laden" eine oder mehrere Grundbuch-PDF-Dateien geladen 
+laden" eine oder mehrere Projekt-PDF-Dateien geladen 
 werden.</p>
 
 <img style='max-width:100%;' src="data:image/png;base64,$$DATA_IMG_1$$"></img>
-<i>A3: Grundbuchblatt öffnen</i>
+<i>A3: Projektblatt öffnen</i>
 
 <p>Die Funktionen gliedern sich in vier Bereiche:</p>
 <ol>
@@ -32,9 +32,9 @@ werden.</p>
 </ol>
 
 <p>
-Für jede .pdf-Datei entsteht bei der Bearbeitung eine .gbx-Datei, welche den abdigitalisierten Inhalt des Grundbuchs 
+Für jede .pdf-Datei entsteht bei der Bearbeitung eine .gbx-Datei, welche den abdigitalisierten Inhalt des Projekts 
 enthält. Wenn diese Datei nicht vorhanden ist, fängt das Programm nach dem Öffnen der PDF-Datei (siehe Abb. A3) 
-damit an, das Grundbuch zunächst vollautomatisch auszuwerten. Da die vollautomatische Analyse aber nicht perfekt 
+damit an, das Projekt zunächst vollautomatisch auszuwerten. Da die vollautomatische Analyse aber nicht perfekt 
 ist, müssen die Daten danach noch einmal manuell überprüft werden.
 </p>
 
@@ -88,10 +88,10 @@ Zeilenumbrüche zu erraten, was allerdings oft misslingt.
 </p>
 
 <p>
-Mit einem Klick auf "Grundbuch neu analysieren" (vgl. Abb. A6, 
-hier: oben rechts (3)") kann das gesamte Grundbuch neu geladen werden: <i><strong>
+Mit einem Klick auf "Projekt neu analysieren" (vgl. Abb. A6, 
+hier: oben rechts (3)") kann das gesamte Projekt neu geladen werden: <i><strong>
 Achtung: Es gehen hierbei alle manuell eingegebenen 
-Daten verloren, da das gesamte Grundbuch neu analysiert wird, d.h. die Zeilen / Spalten neu eingegeben 
+Daten verloren, da das gesamte Projekt neu analysiert wird, d.h. die Zeilen / Spalten neu eingegeben 
 werden.</strong></i>
 </p>
 
@@ -99,7 +99,7 @@ werden.</strong></i>
 
 <p>
 Nachdem die Zellen automatisch gefüllt wurden, muss das nun 
-digitale Grundbuch auf Fehler überprüft werden (vgl. Abb. A7). 
+digitale Projekt auf Fehler überprüft werden (vgl. Abb. A7). 
 Gegebenenfalls müssen neue Rechte angelegt (grün), gerötet 
 (gelb) oder gelöscht (rot) werden. Auf der rechten Seite sieht 
 man die Analyse, wie sie in LEFIS übernommen werden wird.
@@ -118,12 +118,12 @@ man die Analyse, wie sie in LEFIS übernommen werden wird.
 
 <p>
 Ebenso kann mit TAB (nächste Zelle) und SHIFT + TAB 
-(vorherige Zelle) in den Zeilen des Grundbuchs navigiert 
+(vorherige Zelle) in den Zeilen des Projekts navigiert 
 werden.
 </p>
 
 <p>
-Die Eingabemaske für das Grundbuch ist relativ selbsterklärend, da sie 1:1 den bestehenden Formularen entspricht - 
+Die Eingabemaske für das Projekt ist relativ selbsterklärend, da sie 1:1 den bestehenden Formularen entspricht - 
 die einzige Ausnahme hier ist das Bestandsverzeichnis: "Flst." steht für ein reguläres Flurstück und "Recht" für einen 
 Herrschvermerk.
 </p>
@@ -152,15 +152,15 @@ Rechteck in die Zwischenablage kopiert (siehe Abb. A8).
 
 <p>
 Nachdem die Informationen digitalisiert und ausgelesen wurden, kann es trotz alledem vorkommen, dass sich Fehler 
-eingeschlichen haben. Um diese Fehler zu erkennen, muss das Grundbuch nach der Digitalisierung und Analyse noch 
+eingeschlichen haben. Um diese Fehler zu erkennen, muss das Projekt nach der Digitalisierung und Analyse noch 
 einmal mit dem Original verglichen werden. Ebenso müssen verfahrensbezogene Nebenbeteiligten-IDs (Stamm- / 
 Unternummern) vergeben werden, um die Nebenbeteiligten in LEFIS einzupflegen.
 </p>
 
 <p>
-<i>Für die folgenden Schritte sollten zunächst alle Grundbuchblätter des Verfahrens geöffnet werden.</i> Um eine Liste der 
-Grundbuchblätter in einem Verfahren zu erhalten, folgen Sie bitte der Anleitung im Artikel LefisUpload-
-AlleGrundbuchblätterImVerfahrenInListeAusgeben.
+<i>Für die folgenden Schritte sollten zunächst alle Projektblätter des Verfahrens geöffnet werden.</i> Um eine Liste der 
+Projektblätter in einem Verfahren zu erhalten, folgen Sie bitte der Anleitung im Artikel LefisUpload-
+AlleProjektblätterImVerfahrenInListeAusgeben.
 </p>
 
 <h4>Überprüfen der Nebenbeteiligten</h4>
@@ -196,7 +196,7 @@ eingetragen werden.
     </li>
     
     <li><p>RECHT : die Rechte, bei dem der Nebenbeteiligte auftaucht</p></li>
-    <li><p>NAME (GRUNDBUCH) : Name (Text) des Nebenbeteiligten im Grundbuch</p></li>
+    <li><p>NAME (GRUNDBUCH) : Name (Text) des Nebenbeteiligten im Projekt</p></li>
     <li>
         <p>ANREDE : LEFIS-Attribut: wird beim Hochladen in LEFIS berücksichtigt.</p>
         <ul>
@@ -223,7 +223,7 @@ mehrmals mit verschiedenen Schreibweisen vorhanden ist.
 </p>
 
 <p>
-Fehler kann man hier schnell erkennen, das zugehörige Recht in der Spalte RECHT finden, das Grundbuch öffnen und 
+Fehler kann man hier schnell erkennen, das zugehörige Recht in der Spalte RECHT finden, das Projekt öffnen und 
 den Fehler überprüfen / korrigieren.
 </p>
 
@@ -249,8 +249,8 @@ Abschnitt) vergeben werden.
 <i>A11: Nebenbeteiligte / Rechtsinhaber löschen und neu importieren</i>
 
 <p>
-Wenn das Grundbuch keine Fehler aufweist und alle 
-Rechtsinhaber im Grundbuch eine Ordnungsnummer haben, 
+Wenn das Projekt keine Fehler aufweist und alle 
+Rechtsinhaber im Projekt eine Ordnungsnummer haben, 
 ändert sich die Farbe des Häkchens in der Spalte der offenen 
 Dateien von hellgrün auf dunkelgrün. Falls noch Fehler in der 
 Datei vorhanden sind, wird anstelle dessen ein gelbes Warn-
@@ -263,8 +263,8 @@ angezeigt.
 
 <p>
 Um Rötungen zu überprüfen, ist es am besten, sich das gesamte Verfahren noch einmal auszudrucken und - auf Papier 
-- mit dem Original-Grundbuch zu vergleichen. Mit der Funktion "Export als PDF" können alle momentan geladenen 
-Grundbuchblätter in ein PDF ausgegeben werden, sodass man nicht jedes Grundbuchblatt einzeln drucken muss.
+- mit dem Original-Projekt zu vergleichen. Mit der Funktion "Export als PDF" können alle momentan geladenen 
+Projektblätter in ein PDF ausgegeben werden, sodass man nicht jedes Projektblatt einzeln drucken muss.
 </p>
 
 <h4>Überprüfen von Teilbelastungen</h4>
@@ -297,7 +297,7 @@ Fehler in eine .html-Datei auszugeben.
 <h4>Überprüfen von Abteilung 1 / Legitimation</h4>
 
 <p>
-Die Abteilung 1 ist wichtig, um später Eigentümer über das Grundbuch zu legitimieren. Mit der Funktion "alle Abt. 1 
+Die Abteilung 1 ist wichtig, um später Eigentümer über das Projekt zu legitimieren. Mit der Funktion "alle Abt. 1 
 speichern unter" werden alle Einträge der geladenen Dateien in eine .tsv-Tabelle ausgegeben.
 </p>
 
@@ -305,7 +305,7 @@ speichern unter" werden alle Einträge der geladenen Dateien in eine .tsv-Tabell
 
 <p>
 Wenn alle Daten bereinigt, geprüft und Ordnungsnummern zugewiesen sind, kann das Endergebnis aller 
-Grundbuchblätter in eine ".lefis"-JSON-Datei ausgegeben werden. Diese Datei enthält nicht mehr die Original-Daten, 
+Projektblätter in eine ".lefis"-JSON-Datei ausgegeben werden. Diese Datei enthält nicht mehr die Original-Daten, 
 sondern nur noch ein Abbild der ausgelesenen und ausgewerteten Informationen und kann vom Programm LEFIS-
 Upload in die DHK eingespielt oder von anderen externen Programmen übernommen werden.
 </p>
