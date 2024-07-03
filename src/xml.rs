@@ -26,18 +26,34 @@ pub struct XmlNode {
     pub text: Option<String>,
 }
 
-pub fn get_all_nodes_in_subtree<'a>(
+pub fn get_all_nodes_in_subtree<'a>(xml: &'a [XmlNode], node_type_searched: &'static str) -> Vec<&'a XmlNode> {
+    get_all_nodes_in_subtree_comparator(
+        xml, 
+        |node| node.node_type.as_str() == node_type_searched,
+    )
+}
+
+pub fn get_all_nodes_in_subtree_comparator<'a, F: Fn(&XmlNode) -> bool>(
+    xml: &'a [XmlNode], 
+    search_fn: F,
+) -> Vec<&'a XmlNode> {
+    let mut nodes = Vec::new();
+    get_all_nodes_in_subtree_comparator_internal(xml, &search_fn, &mut nodes);
+    nodes
+}
+
+pub fn get_all_nodes_in_subtree_comparator_internal<'a, F: Fn(&XmlNode) -> bool>(
     xml: &'a [XmlNode],
-    node_type_searched: &'static str,
+    search_fn: &F,
     target: &mut Vec<&'a XmlNode>,
 ) {
     let mut found_nodes = xml
         .iter()
-        .filter(|node| node.node_type.as_str() == node_type_searched)
+        .filter(|node| (search_fn)(node))
         .collect::<Vec<_>>();
 
     for xml_node in xml.iter() {
-        get_all_nodes_in_subtree(&xml_node.children, node_type_searched, &mut found_nodes);
+        get_all_nodes_in_subtree_comparator_internal(&xml_node.children, search_fn, &mut found_nodes);
     }
 
     target.extend(found_nodes.into_iter());
