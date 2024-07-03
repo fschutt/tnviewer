@@ -1147,10 +1147,10 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 
 pub fn render_main(_rpc_data: &UiData) -> String {
     let map = format!("
-        <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;'>
-            <div id='map' style='position:absolute;width:100%;height:100%;'></div>
-            <div id='__application_main-overlay-container' style='z-index:9999;position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
-                <div id='project' style='background:white;padding:20px;width:500px;'>
+        <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
+            <div id='map' style='position:absolute;width:100%;height:100%;z-index:0;'></div>
+            <div id='__application_main-overlay-container' style='z-index:9999;pointer-events:none;position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
+                <div id='project' style='background:white;padding:20px;width:500px;margin-bottom:40px;box-shadow:0px 0px 10px black;border-radius:3px;'>
                     <h4 style='font-size:20px;'>PROJEKT</h4>
                 </div>
                 <div id='__application-daten-laden' style='display:flex;flex-grow:1;justify-content:center;align-items:center;'>
