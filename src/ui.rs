@@ -11,6 +11,12 @@ pub struct UiData {
 }
 
 impl UiData {
+
+    pub fn from_string(s: &str) -> UiData {
+        serde_json::from_str::<UiData>(s)
+        .unwrap_or_default()
+    }
+
     pub fn is_context_menu_open(&self) -> bool {
         match self.popover_state {
             Some(PopoverState::ContextMenu(_)) => true,
@@ -1156,7 +1162,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     normalize_for_js(ribbon_body)
 }
 
-pub fn render_main(rpc_data: &UiData) -> String {
+pub fn render_main(_rpc_data: &UiData) -> String {
     normalize_for_js(String::new()) // TODO
 }
 
