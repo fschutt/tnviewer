@@ -21,17 +21,20 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.76
+      - name: Install cargo-license
+        shell: bash
+        run: cargo install cargo-license && cargo license > licenses.html
       - name: Add target
         shell: bash
         run: rustup target add wasm32-unknown-unknown
       - name: Check wasm32
         shell: bash
         run: cargo check --release --target wasm32-unknown-unknown
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: tnviewer_bg.wasm
-          path: target/wasm32-unknown-unknown/release/tnviewer.wasm
-          retention-days: 10
+      #- name: Upload Artifacts
+      #   uses: actions/upload-artifact@v3
+      #  with:
+      #    name: tnviewer_bg.wasm
+      #    path: target/wasm32-unknown-unknown/release/tnviewer.wasm
+      #    retention-days: 10
 
 # release: wasm-pack build && git commit

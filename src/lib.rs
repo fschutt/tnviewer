@@ -1,16 +1,23 @@
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-pub fn xml_to_xlsx(bytes: Vec<u8>, inline: bool) -> Vec<u8> {
+pub mod xml;
+pub mod ui;
+
+pub fn get_string_from_js_bytes(bytes: &[u8]) -> String {
     let mut text_decoder = chardetng::EncodingDetector::new();
     let _ = text_decoder.feed(&bytes[..], true);
     let text_decoder = text_decoder.guess(None, true);
     let mut text_decoder = text_decoder.new_decoder();
     let mut decoded = String::with_capacity(bytes.len() * 2);
     let _ = text_decoder.decode_to_string(&bytes[..], &mut decoded, true);
+    decoded
+}
+
+#[wasm_bindgen]
+pub fn xml_to_xlsx(bytes: Vec<u8>, inline: bool) -> Vec<u8> {
+    let decoded = get_string_from_js_bytes(&bytes);
     let datensaetze = parse_xml(&decoded);
-    let xlsx = datensaetze_zu_xlsx(&datensaetze, inline);
-    return xlsx;
+    datensaetze_zu_xlsx(&datensaetze, inline)
 }
 
 #[derive(Debug, Default, Clone)]
@@ -160,7 +167,6 @@ fn datensaetze_zu_xlsx(datensaetze: &[Datensatz], inline: bool) -> Vec<u8> {
             let datensatz_beschreibung_lines_len = datensatz_beschreibung_lines.len();
             let max = datensatz_beschreibung_lines_len.max(restriction_len);
             
-            let row_start = row;
             row += 1;
             sw.append_row(row![
                 d.name.clone(), 
