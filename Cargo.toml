@@ -1,11 +1,12 @@
 [package]
-name = "aaa-preferences-xlsx"
+name = "tnviewer"
 description = "A sample project with wasm-pack"
 version = "0.1.0"
 authors = []
 license = "MIT/Apache-2.0"
 repository = "https://github.com/fschutt/aaa-preferences-xlsx"
 edition = "2021"
+publish = false
 
 [lib]
 crate-type = ["cdylib"]

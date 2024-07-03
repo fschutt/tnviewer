@@ -3,17 +3,6 @@
 version = 3
 
 [[package]]
-name = "aaa-preferences-xlsx"
-version = "0.1.0"
-dependencies = [
- "chardetng",
- "encoding_rs",
- "quick-xml",
- "simple_excel_writer",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -186,6 +175,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tnviewer"
+version = "0.1.0"
+dependencies = [
+ "chardetng",
+ "encoding_rs",
+ "quick-xml",
+ "simple_excel_writer",
+ "wasm-bindgen",
 ]
 
 [[package]]

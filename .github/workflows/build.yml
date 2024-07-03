@@ -1,0 +1,37 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+    tags: [ "[0-9]+.[0-9]+.[0-9]+*" ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+          description: 'Make release'
+jobs:
+  check:
+    name: Build on wasm32
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.76
+      - name: Add target
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown
+      - name: Check wasm32
+        shell: bash
+        run: cargo check --release --target wasm32-unknown-unknown
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: tnviewer_bg.wasm
+          path: target/wasm32-unknown-unknown/release/tnviewer.wasm
+          retention-days: 10
+
+# release: wasm-pack build && git commit
