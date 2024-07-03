@@ -108,7 +108,8 @@ pub fn parse_xml_string(xml: &str) -> Result<Vec<XmlNode>, XmlParseError> {
                 end: Close(_, close_value),
                 ..
             } => {
-                if let Some(last) = get_item(&current_hierarchy, &mut root_node) {
+                let i = get_item(&current_hierarchy, &mut root_node);
+                if let Some(last) = i {
                     if last.node_type != close_value.as_str() {
                         return Err(MalformedHierarchy(
                             close_value.to_string(),
@@ -151,7 +152,10 @@ pub fn parse_xml_string(xml: &str) -> Result<Vec<XmlNode>, XmlParseError> {
 fn get_item<'a>(hierarchy: &[usize], root_node: &'a mut XmlNode) -> Option<&'a mut XmlNode> {
     let mut hierarchy = hierarchy.to_vec();
     hierarchy.reverse();
-    let item = hierarchy.pop()?;
+    let item = match hierarchy.pop() {
+        Some(s) => s,
+        None => return Some(root_node),
+    };
     let node = root_node.children.get_mut(item)?;
     get_item_internal(&mut hierarchy, node)
 }
@@ -160,7 +164,10 @@ fn get_item_internal<'a>(hierarchy: &mut Vec<usize>, root_node: &'a mut XmlNode)
     if hierarchy.is_empty() {
         return Some(root_node);
     }
-    let cur_item = hierarchy.pop()?;
+    let cur_item = match hierarchy.pop() {
+        Some(s) => s,
+        None => return Some(root_node),
+    };
     let node = root_node.children.get_mut(cur_item)?;
     get_item_internal(hierarchy, node)
 }

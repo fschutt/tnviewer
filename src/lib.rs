@@ -3,6 +3,7 @@ use crate::ui::UiData;
 
 pub mod xml;
 pub mod ui;
+pub mod nas;
 
 #[wasm_bindgen]
 pub fn ui_render_entire_screen(bytes: Vec<u8>) -> String {
