@@ -37,4 +37,4 @@ jobs:
       #    path: target/wasm32-unknown-unknown/release/tnviewer.wasm
       #    retention-days: 10
 
-# release: wasm-pack build --no-pack --no-typescript --release && rm pkg/.gitignore
+# release: wasm-pack build --target web --no-pack --no-typescript --release && rm pkg/.gitignore
