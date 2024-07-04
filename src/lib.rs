@@ -13,6 +13,24 @@ pub fn ui_render_entire_screen(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn ui_render_ribbon(decoded: String) -> String {
+    let uidata = UiData::from_string(&decoded);
+    crate::ui::render_ribbon(&uidata)
+}
+
+#[wasm_bindgen]
+pub fn ui_render_popover_content(decoded: String) -> String {
+    let uidata = UiData::from_string(&decoded);
+    crate::ui::render_popover_content(&uidata)
+}
+
+#[wasm_bindgen]
+pub fn ui_render_project_content(decoded: String) -> String {
+    let _uidata = UiData::from_string(&decoded);
+    String::new() // TODO
+}
+
+#[wasm_bindgen]
 pub fn load_nas_xml(s: String) -> String {
     let xml = match crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck"]) {
         Ok(o) => o,

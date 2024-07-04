@@ -12,7 +12,10 @@
       import init, {
         ui_render_entire_screen, 
         load_nas_xml, 
-        get_geojson_fuer_ebene
+        get_geojson_fuer_ebene,
+        ui_render_ribbon,
+        ui_render_popover_content,
+        ui_render_project_content
       } from "./pkg/tnviewer.js";
 
       var map = null; // Leaflet object
@@ -120,9 +123,31 @@
         }
       }
 
+    function replaceRibbon() {
+      var d = document.getElementById("__application-ribbon");
+      if (d)
+         d.innerHTML = ui_render_ribbon(JSON.stringify(uidata));
+    }
+
+    function replacePopOver() {
+      let d = document.getElementById("__application_popover");
+      if (d)
+         d.innerHTML = ui_render_popover_content(JSON.stringify(uidata));
+    }
+
+    function replaceProjectContent() {
+      let d = document.getElementById("__application_project_content");
+      if (d)
+         d.innerHTML = ui_render_project_content(JSON.stringify(uidata));
+    }
+
+    window.replacePopOver = replacePopOver;
+    window.replaceProjectContent = replaceProjectContent;
+    window.replaceRibbon = replaceRibbon;
+
     window.replaceDataNasXML = replaceDataNasXML;
     window.initializeOrUpdateMap = initializeOrUpdateMap;
-    
+
     init()
       .then(() => { 
         document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));

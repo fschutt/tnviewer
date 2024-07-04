@@ -204,6 +204,75 @@ export function ui_render_entire_screen(decoded) {
 }
 
 /**
+* @param {string} decoded
+* @returns {string}
+*/
+export function ui_render_ribbon(decoded) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.ui_render_ribbon(retptr, ptr0, len0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+* @param {string} decoded
+* @returns {string}
+*/
+export function ui_render_popover_content(decoded) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.ui_render_popover_content(retptr, ptr0, len0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+* @param {string} decoded
+* @returns {string}
+*/
+export function ui_render_project_content(decoded) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.ui_render_project_content(retptr, ptr0, len0);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
 * @param {string} s
 * @returns {string}
 */

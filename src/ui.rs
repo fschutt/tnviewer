@@ -121,6 +121,10 @@ pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
 pub fn render_popover_content(rpc_data: &UiData) -> String {
     const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
 
+    if rpc_data.popover_state.is_none() {
+        return String::new();
+    }
+    
     let application_popover_color = if !rpc_data.is_context_menu_open() {
         "rgba(0, 0, 0, 0.5)"
     } else {
@@ -954,7 +958,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let daten_importieren = {
         format!("
         <div class='__application-ribbon-section-content'>
-            <label onmouseup='reloadGrundbuch(event)' class='__application-ribbon-action-vertical-large'>
+            <label onmouseup='replaceDataNasXML(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_reload}'>
                 </div>
@@ -1153,11 +1157,8 @@ pub fn render_main(_rpc_data: &UiData) -> String {
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
             <div id='map' style='position:absolute;width:100%;height:100%;z-index:0;'></div>
             <div id='__application_main-overlay-container' style='z-index:9999;pointer-events:none;position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
-                <div id='project' style='background:white;padding:20px;width:500px;margin-bottom:40px;box-shadow:0px 0px 10px black;border-radius:3px;'>
+                <div id='__application_project_content' style='background:white;padding:20px;width:500px;margin-bottom:40px;box-shadow:0px 0px 10px black;border-radius:3px;'>
                     <h4 style='font-size:20px;'>PROJEKT</h4>
-                </div>
-                <div id='__application-daten-laden' style='display:flex;flex-grow:1;justify-content:center;align-items:center;'>
-                    <button onclick='replaceDataNasXML();' id='__application-daten-laden-test-button' style='padding:10px;background:#007cff;color:white;border-radius:5px;cursor:pointer;pointer-events:all;'>XML Datei laden</button>
                 </div>
             </div>
         </div>
