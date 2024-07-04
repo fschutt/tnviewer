@@ -34,21 +34,21 @@
           AX_Flurstueck: {
             fillColor: "#ffadbe",
             outlineColor: "#000000",
-            outlineThickness: "1",
+            outlineThickness: 1,
             outlineDash: null,
             outlineOverprint: false,
           },
           AX_Gebaeude: {
             fillColor: "#bdbdbd",
             outlineColor: "#000000",
-            outlineThickness: "1",
+            outlineThickness: 1,
             outlineDash: null,
             outlineOverprint: false,
           },
           AX_Landwirtschaft: {
             fillColor: "#fff596",
             outlineColor: "#000000",
-            outlineThickness: "1",
+            outlineThickness: 1,
             outlineDash: null,
             outlineOverprint: false,
           },
@@ -82,6 +82,7 @@
 
               // remove old LeafLet layers
               for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
+                layers.removeLayer(layer_obj);
                 layer_obj.remove();
               }
               geojson_layers = [];
@@ -92,7 +93,7 @@
                   "color": layer_style.outlineColor,
                   "fillColor": layer_style.fillColor,
                   "weight": layer_style.outlineThickness,
-                  "opacity": 0.0
+                  "opacity": 1.0
                 });
                 myLayer.addTo(map);
                 layers.addOverlay(myLayer, layer_name);
