@@ -68,7 +68,7 @@
 
               var converted = load_nas_xml(readerEvent.target.result);
               projectdata = JSON.parse(converted);
-              initializeOrUpdateMap();
+              // initializeOrUpdateMap();
 
               // remove old LeafLet layers
               for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
