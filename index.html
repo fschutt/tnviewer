@@ -117,9 +117,10 @@
             DOP: wms,
           };
           layers = L.control.layers(basemaps);
+          layers.expand();
           layers.addTo(map);
           L.control.zoom({ position:'bottomright' }).addTo(map);
-          basemaps.OSM.addTo(map);
+          basemaps.DOP.addTo(map);
         }
       }
 
