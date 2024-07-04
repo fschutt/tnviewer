@@ -32,23 +32,23 @@
         },
         style: {
           AX_Flurstueck: {
-            fillColor: "#aaccbb",
-            outlineColor: "#ccbbaa",
-            outlineThickness: "2",
+            fillColor: "#ffadbe",
+            outlineColor: "#000000",
+            outlineThickness: "1",
             outlineDash: null,
             outlineOverprint: false,
           },
           AX_Gebaeude: {
-            fillColor: "#aaccbb",
-            outlineColor: "#ccbbaa",
-            outlineThickness: "2",
+            fillColor: "#bdbdbd",
+            outlineColor: "#000000",
+            outlineThickness: "1",
             outlineDash: null,
             outlineOverprint: false,
           },
           AX_Landwirtschaft: {
-            fillColor: "#aaccbb",
-            outlineColor: "#ccbbaa",
-            outlineThickness: "2",
+            fillColor: "#fff596",
+            outlineColor: "#000000",
+            outlineThickness: "1",
             outlineDash: null,
             outlineOverprint: false,
           },
@@ -121,7 +121,7 @@
           };
           layers = L.control.layers(basemaps);
           layers.addTo(map);
-          L.control.zoom({ position:'topright' }).addTo(map);
+          L.control.zoom({ position:'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
         }
       }
