@@ -24,10 +24,45 @@
         data_loaded: false,
       };
       var configuration = {
-        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
-        dop_layers: "bebb_dop20c"
+        map: {
+          basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
+          dop_layers: "bebb_dop20c"
+        },
+        style: {
+          AX_Flurstueck: {
+            fillColor: "#aaccbb",
+            outlineColor: "#ccbbaa",
+            outlineThickness: "2",
+            outlineDash: null,
+            outlineOverprint: false,
+          },
+          AX_Gebaeude: {
+            fillColor: "#aaccbb",
+            outlineColor: "#ccbbaa",
+            outlineThickness: "2",
+            outlineDash: null,
+            outlineOverprint: false,
+          },
+          AX_Landwirtschaft: {
+            fillColor: "#aaccbb",
+            outlineColor: "#ccbbaa",
+            outlineThickness: "2",
+            outlineDash: null,
+            outlineOverprint: false,
+          },
+        }
       }; // default config object
+
+      /*
+      
+        var overlays = {
+            "Marker": marker,
+            "Roads": roadsLayer
+        };
+
+        L.control.layers(baseLayers, overlays).addTo(map);
+      */
 
       function replaceDataNasXML() {
         var input = document.createElement('input');
@@ -49,11 +84,17 @@
                 layer_obj.remove();
               }
               geojson_layers = [];
-              for (var layer_name in projectdata.ebenen) {
+              for (var layer_name in configuration.style.keys()) {
                 var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
-                var myLayer = L.geoJSON();
-                myLayer.addData(geojson);
-                myLayer.addTo(map)
+                var layer_style = configuration.style[layer_name];
+                var myLayer = L.geoJSON(geojson, {
+                  "color": layer_style.outlineColor,
+                  "fillColor": layer_style.fillColor,
+                  "weight": layer_style.outlineThickness,
+                  "opacity": 0.0
+                });
+                L.control.addOverlay(myLayer, layer_name);
+                myLayer.addTo(map);
                 geojson_layers.push(myLayer);
               }
             }
@@ -76,11 +117,6 @@
           };
           L.control.layers(basemaps).addTo(map);
           basemaps.OSM.addTo(map);
-          /*
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }).addTo(map);
-          */
         }
       }
 
