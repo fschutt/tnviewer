@@ -8,18 +8,12 @@
     <link rel="stylesheet" href="main.css">
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
+
       import init, {
         ui_render_entire_screen, 
         load_nas_xml, 
         get_geojson_fuer_ebene
       } from "./pkg/tnviewer.js";
-
-      window.wasmInit = init;
-      window.ui_render_entire_screen = ui_render_entire_screen;
-      window.load_nas_xml = load_nas_xml;
-      window.get_geojson_fuer_ebene = get_geojson_fuer_ebene;
-    </script>
-    <script type="text/javascript">
 
       var map = null; // Leaflet object
       var geojson_layers = [];
@@ -61,7 +55,7 @@
         }
       }; // default config object
 
-    function replaceDataNasXML() {
+      function replaceDataNasXML() {
         var input = document.createElement('input');
         input.type = 'file';
         input.accept = ".xml";
@@ -126,7 +120,10 @@
         }
       }
 
-    wasmInit()
+    window.replaceDataNasXML = replaceDataNasXML;
+    window.initializeOrUpdateMap = initializeOrUpdateMap;
+    
+    init()
       .then(() => { 
         document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));
         initializeOrUpdateMap(); // add leaflet map
