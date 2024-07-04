@@ -12,6 +12,16 @@ pub fn ui_render_entire_screen(bytes: Vec<u8>) -> String {
     crate::ui::render_entire_screen(&uidata)
 }
 
+#[wasm_bindgen]
+pub fn load_nas_xml(bytes: Vec<u8>) -> String {
+    let decoded = get_string_from_js_bytes(&bytes);
+    let xml = crate::nas::parse_nas_xml(&decoded, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck"]);
+    match crate::nas::transform_nas_xml_to_lat_lon(&xml) {
+        Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
+        Err(e) => e,
+    }
+}
+
 /* 
 fn datensaetze_zu_xlsx(datensaetze: &[Datensatz], inline: bool) -> Vec<u8> {
     

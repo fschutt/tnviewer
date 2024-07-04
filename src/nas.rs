@@ -161,14 +161,14 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasXMLFil
     }
 }
 
-fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, String> {
+pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, String> {
     use proj4rs::Proj;
 
     fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
         SvgLine {
             points: line.points.iter().filter_map(|p| {
-                let point3d = (p.x, p.y, 0.0);
-                let e = proj4rs::transform::transform(source, target, point3d).ok()?;
+                let mut point3d = (p.x, p.y, 0.0_f64);
+                proj4rs::transform::transform(source, target, &mut point3d).ok()?;
                 Some(SvgPoint {
                     x: point3d.0.to_degrees(), 
                     y: point3d.1.to_degrees()
