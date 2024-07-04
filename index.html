@@ -55,16 +55,6 @@
         }
       }; // default config object
 
-      /*
-      
-        var overlays = {
-            "Marker": marker,
-            "Roads": roadsLayer
-        };
-
-        L.control.layers(baseLayers, overlays).addTo(map);
-      */
-
       function replaceDataNasXML() {
         var input = document.createElement('input');
         input.type = 'file';
@@ -107,14 +97,20 @@
     function initializeOrUpdateMap() {
         if (map == null || map == undefined || !map) {
           map = L.map('map', {
-            zoomControl: false
+            zoomControl: false,
+            maxNativeZoom: 25,
+            maxZoom: 25,
           });
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              maxNativeZoom: 25,
+              maxZoom: 25  
           });
           var wms = L.tileLayer.wms(configuration.dop_source, {
-              layers: configuration.dop_layers
+              layers: configuration.dop_layers,
+              maxNativeZoom: 25,
+              maxZoom: 25
           });
           var basemaps = {
             OSM: basemap,
