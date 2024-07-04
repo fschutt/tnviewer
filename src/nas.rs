@@ -4,7 +4,7 @@ use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct NasSVGFile {
+pub struct NasXMLFile {
     pub objekte: BTreeMap<String, TaggedPolygon>,
     pub crs: String,
 }
@@ -33,19 +33,19 @@ pub struct SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> NasSVGFile {
+pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> NasXMLFile {
     let s = match crate::xml::parse_xml_string(s) {
         Ok(o) => o,
         Err(e) => {
             println!("ERROR {e:?}");
-            return NasSVGFile::default();
+            return NasXMLFile::default();
         },
     };
 
     xml_nodes_to_nas_svg_file(s, whitelist)
 }
 
-fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasSVGFile {
+fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasXMLFile {
 
     // CRS parsen
 
@@ -65,7 +65,7 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasSVGFil
     }
     let crs = match crs {
         Some(s) => s,
-        None => return NasSVGFile::default(), // no CRS found
+        None => return NasXMLFile::default(), // no CRS found
     };
     let crs = crs.replace("urn:adv:crs:", "");
 
@@ -155,10 +155,55 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasSVGFil
         objekte.insert(key, tp);
     }
 
-    NasSVGFile {
+    NasXMLFile {
         crs: crs,
         objekte,
     }
+}
+
+fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, String> {
+    use proj4rs::Proj;
+
+    fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
+        SvgLine {
+            points: line.points.iter().filter_map(|p| {
+                let point3d = (p.x, p.y, 0.0);
+                let e = proj4rs::transform::transform(source, target, point3d).ok()?;
+                Some(SvgPoint {
+                    x: point3d.0.to_degrees(), 
+                    y: point3d.1.to_degrees()
+                })
+            }).collect()
+        }
+    }
+
+    let mut known_strings = BTreeMap::new();
+    for i in 0..60 {
+        known_strings.insert(format!("ETRS89_UTM{i}"), format!("+proj=utm +ellps=GRS80 +units=m +no_defs +zone={i}"));
+    }
+
+    let source_proj_string = known_strings
+    .get(&input.crs)
+    .ok_or_else(|| format!("Unknown CRS {}", input.crs))?;
+    let source_proj = Proj::from_proj_string(source_proj_string.as_str()).map_err(|e| format!("{e}"))?;
+    let latlon_proj_string = "+proj=lonlat +ellps=GRS80 +no_defs";
+    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("{e}"))?;
+
+    let objekte = input.objekte.iter()
+    .map(|(k, v)| {
+        (k.clone(), TaggedPolygon {
+            attributes: v.attributes.clone(),
+            poly: SvgPolygon {
+                outer_rings: v.poly.outer_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+                inner_rings: v.poly.inner_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+            }
+        })
+    }).collect();
+
+    Ok(NasXMLFile {
+        objekte,
+        crs: "LONLAT_GRS80".to_string(),
+    })
 }
 
 #[test]

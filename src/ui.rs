@@ -114,6 +114,9 @@ pub fn render_popover(rpc_data: &UiData) -> String {
     normalize_for_js(popover)
 }
 
+pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
+    base64::encode(input)
+}
 
 pub fn render_popover_content(rpc_data: &UiData) -> String {
     const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
@@ -124,7 +127,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
         "transparent"
     };
 
-    let icon_close_base64 = base64::encode(ICON_CLOSE);
+    let icon_close_base64 = base64_encode(ICON_CLOSE);
 
     let close_button = format!("
     <div style='position:absolute;top:50px;z-index:9999;right:-25px;background:white;border-radius:10px;box-shadow: 0px 0px 10px #cccccc88;cursor:pointer;' onmouseup='closePopOver()'>
@@ -352,7 +355,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                                 
             </div>
             ",version = env!("CARGO_PKG_VERSION"),
-            license_base64 = base64::encode(include_bytes!("../licenses.html")))
+            license_base64 = base64_encode(include_bytes!("../licenses.html")))
         }
         Some(PopoverState::Help) => {
             static DOKU: &str = include_str!("../doc/Handbuch.html");
@@ -366,15 +369,15 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             static IMG_7: &[u8] = include_bytes!("../doc/IMG_7.png");
             static IMG_8: &[u8] = include_bytes!("../doc/IMG_8.png");
 
-            let base64_dok = base64::encode(
-                DOKU.replace("$$DATA_IMG_1$$", &base64::encode(IMG_1))
-                    .replace("$$DATA_IMG_2$$", &base64::encode(IMG_2))
-                    .replace("$$DATA_IMG_3$$", &base64::encode(IMG_3))
-                    .replace("$$DATA_IMG_4$$", &base64::encode(IMG_4))
-                    .replace("$$DATA_IMG_5$$", &base64::encode(IMG_5))
-                    .replace("$$DATA_IMG_6$$", &base64::encode(IMG_6))
-                    .replace("$$DATA_IMG_7$$", &base64::encode(IMG_7))
-                    .replace("$$DATA_IMG_8$$", &base64::encode(IMG_8)),
+            let base64_dok = base64_encode(
+                DOKU.replace("$$DATA_IMG_1$$", &base64_encode(IMG_1))
+                    .replace("$$DATA_IMG_2$$", &base64_encode(IMG_2))
+                    .replace("$$DATA_IMG_3$$", &base64_encode(IMG_3))
+                    .replace("$$DATA_IMG_4$$", &base64_encode(IMG_4))
+                    .replace("$$DATA_IMG_5$$", &base64_encode(IMG_5))
+                    .replace("$$DATA_IMG_6$$", &base64_encode(IMG_6))
+                    .replace("$$DATA_IMG_7$$", &base64_encode(IMG_7))
+                    .replace("$$DATA_IMG_8$$", &base64_encode(IMG_8)),
             );
 
             format!("
@@ -394,19 +397,19 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
 
             static IMG_SETTINGS: &[u8] =
                 include_bytes!("./img/icons8-settings-system-daydream-96.png");
-            let img_settings = base64::encode(IMG_SETTINGS);
+            let img_settings = base64_encode(IMG_SETTINGS);
 
             static IMG_REGEX: &[u8] = include_bytes!("./img/icons8-select-96.png");
-            let img_regex = base64::encode(IMG_REGEX);
+            let img_regex = base64_encode(IMG_REGEX);
 
             static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-96.png");
-            let img_clean = base64::encode(IMG_CLEAN);
+            let img_clean = base64_encode(IMG_CLEAN);
 
             static IMG_ABK: &[u8] = include_bytes!("./img/icons8-shortcut-96.png");
-            let img_abk = base64::encode(IMG_ABK);
+            let img_abk = base64_encode(IMG_ABK);
 
             static IMG_FX: &[u8] = include_bytes!("./img/icons8-formula-fx-96.png");
-            let img_fx = base64::encode(IMG_FX);
+            let img_fx = base64_encode(IMG_FX);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
             let active_regex = if *cw == RegEx { " active" } else { "" };
@@ -705,25 +708,25 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     } else {
         ""
     };
-    let icon_open_base64 = base64::encode(ICON_GRUNDBUCH_OEFFNEN);
-    let icon_neu_base64 = base64::encode(ICON_NEU);
-    let icon_back_base64 = base64::encode(ICON_ZURUECK);
-    let icon_forward_base64 = base64::encode(ICON_VORWAERTS);
-    let icon_settings_base64 = base64::encode(ICON_EINSTELLUNGEN);
-    let icon_help_base64 = base64::encode(ICON_HELP);
-    let icon_info_base64 = base64::encode(ICON_INFO);
-    let icon_download_base64 = base64::encode(ICON_DOWNLOAD);
-    let icon_delete_base64 = base64::encode(ICON_DELETE);
-    let icon_export_pdf = base64::encode(ICON_PDF);
-    let icon_rechte_speichern = base64::encode(ICON_RECHTE_AUSGEBEN);
-    let icon_fehler_speichern = base64::encode(ICON_FEHLER_AUSGEBEN);
-    let icon_export_teilbelastungen = base64::encode(ICON_TEILBELASTUNGEN_AUSGEBEN);
-    let icon_export_abt1 = base64::encode(ICON_ABT1_AUSGEBEN);
-    let icon_search_base64 = base64::encode(ICON_SEARCH);
-    let icon_upload_lefis = base64::encode(ICON_UPLOAD);
-    let icon_export_csv = base64::encode(ICON_EXPORT_CSV);
-    let icon_export_lefis = base64::encode(ICON_EXPORT_LEFIS);
-    let icon_hvm = base64::encode(ICON_HVM);
+    let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
+    let icon_neu_base64 = base64_encode(ICON_NEU);
+    let icon_back_base64 = base64_encode(ICON_ZURUECK);
+    let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
+    let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
+    let icon_help_base64 = base64_encode(ICON_HELP);
+    let icon_info_base64 = base64_encode(ICON_INFO);
+    let icon_download_base64 = base64_encode(ICON_DOWNLOAD);
+    let icon_delete_base64 = base64_encode(ICON_DELETE);
+    let icon_export_pdf = base64_encode(ICON_PDF);
+    let icon_rechte_speichern = base64_encode(ICON_RECHTE_AUSGEBEN);
+    let icon_fehler_speichern = base64_encode(ICON_FEHLER_AUSGEBEN);
+    let icon_export_teilbelastungen = base64_encode(ICON_TEILBELASTUNGEN_AUSGEBEN);
+    let icon_export_abt1 = base64_encode(ICON_ABT1_AUSGEBEN);
+    let icon_search_base64 = base64_encode(ICON_SEARCH);
+    let icon_upload_lefis = base64_encode(ICON_UPLOAD);
+    let icon_export_csv = base64_encode(ICON_EXPORT_CSV);
+    let icon_export_lefis = base64_encode(ICON_EXPORT_LEFIS);
+    let icon_hvm = base64_encode(ICON_HVM);
 
     let nebenbet = {
         format!("
@@ -946,7 +949,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     };
 
     static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
-    let icon_reload = base64::encode(&RELOAD_PNG);
+    let icon_reload = base64_encode(&RELOAD_PNG);
 
     let daten_importieren = {
         format!("
