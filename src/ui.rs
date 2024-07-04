@@ -1157,7 +1157,7 @@ pub fn render_main(_rpc_data: &UiData) -> String {
                     <h4 style='font-size:20px;'>PROJEKT</h4>
                 </div>
                 <div id='__application-daten-laden' style='display:flex;flex-grow:1;justify-content:center;align-items:center;'>
-                    <button style='padding:10px;background:#007cff;color:white;border-radius:5px;cursor:pointer;' onclick='replaceDataNasXML(event);'>XML Datei laden</button>
+                    <button id='__application-daten-laden-test-button' style='padding:10px;background:#007cff;color:white;border-radius:5px;cursor:pointer;pointer-events:all;'>XML Datei laden</button>
                 </div>
             </div>
         </div>

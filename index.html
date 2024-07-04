@@ -10,10 +10,16 @@
     <script type="module">
       import init, {ui_render_entire_screen, load_nas_xml} from "./pkg/tnviewer.js";
 
-      var map = null;
-      var projectdata = null;
+      var map = null; // Leaflet object
+      var projectdata = null; // project data
+      var uidata = { // UI State
+        popover_state: null,
+        tab: null, 
+        data_loaded: false,
+      };
+      var configuration = null; // default config object
 
-      function replaceDataNasXML(event) {
+      function replaceDataNasXML() {
         var input = document.createElement('input');
         input.type = 'file';
         input.accept = ".xml";
@@ -25,29 +31,16 @@
             reader.onload = readerEvent => {
               var content = readerEvent.target.result;
               var array = new Uint8Array(content);
-              init()
-              .then(() => { 
-                    var converted = load_nas_xml(array);
-                    projectdata = JSON.parse(converted);
-                    console.log(projectdata);
-              })
+              var converted = load_nas_xml(array);
+              projectdata = JSON.parse(converted);
+              console.log(projectdata);
+              alert("ok!");
             }
         }
-
         input.click();
     }
 
-    init()
-      .then(() => { 
-        var uidata = {
-          popover_state: null,
-          tab: null, 
-          data_loaded: false,
-        };
-        var array = new Uint8Array();
-        document.body.innerHTML = ui_render_entire_screen(array);
-
-        function initializeOrUpdateMap() {
+    function initializeOrUpdateMap() {
           var id = document.getElementById("mapboxtoken");
           if (!id) {
             return;
@@ -59,22 +52,21 @@
           if (!mapcontainer) {
             return;
           }
-          if (map == null) {
-            map = L.map('map').setView([51.505, -0.09], 13);
-
+          if (map == null || map == undefined || !map) {
+            map = L.map('map').setView([53.2467, 13.6045], 10);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
           }
         }
 
-        map = L.map('map').setView([53.2467, 13.6045], 10);
-
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // setInterval(initializeOrUpdateMap, 100);
+    init()
+      .then(() => { 
+        var array = new Uint8Array();
+        document.body.innerHTML = ui_render_entire_screen(array);
+        initializeOrUpdateMap(); // add leaflet map
+        replaceDataNasXML(); // test
+        document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
       });
     </script>
   </head>
