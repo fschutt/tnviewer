@@ -17,6 +17,7 @@
 
       var map = null; // Leaflet object
       var geojson_layers = [];
+      var layers = null;
       var projectdata = null; // project data
       var uidata = { // UI State
         popover_state: null,
@@ -93,7 +94,7 @@
                   "weight": layer_style.outlineThickness,
                   "opacity": 0.0
                 });
-                L.control.addOverlay(myLayer, layer_name);
+                layers.addOverlay(myLayer, layer_name);
                 myLayer.addTo(map);
                 geojson_layers.push(myLayer);
               }
@@ -118,7 +119,8 @@
             OSM: basemap,
             DOP: wms,
           };
-          L.control.layers(basemaps).addTo(map);
+          layers = L.control.layers(basemaps);
+          layers.addTo(map);
           L.control.zoom({ position:'topright' }).addTo(map);
           basemaps.OSM.addTo(map);
         }
