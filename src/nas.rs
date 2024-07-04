@@ -186,7 +186,7 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
     .get(&input.crs)
     .ok_or_else(|| format!("Unknown CRS {:?} (known: {:?})", input.crs, known_strings.keys().cloned().collect::<Vec<_>>()))?;
     let source_proj = Proj::from_proj_string(source_proj_string.as_str()).map_err(|e| format!("source_proj_string: {e}: {source_proj_string:?}"))?;
-    let latlon_proj_string = "+proj=lonlat +ellps=WGS84 +datum=WGS84 +no_defs";
+    let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
     let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
 
     let objekte = input.objekte.iter()
@@ -209,5 +209,6 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
 #[test]
 fn test_parse_nas() {
     let s = parse_nas_xml(include_str!("../test.xml"), &["AX_Gebaeude", "AX_Landwirtschaft"]);
-    println!("{}", s.crs);
+    let q = transform_nas_xml_to_lat_lon(&s);
+    println!("{:#?}", q);
 }
