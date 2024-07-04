@@ -1,3 +1,4 @@
+use nas::NasXMLFile;
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
 
@@ -13,11 +14,23 @@ pub fn ui_render_entire_screen(decoded: String) -> String {
 
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String) -> String {
-    let xml = crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck"]);
+    let xml = match crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck"]) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
     match crate::nas::transform_nas_xml_to_lat_lon(&xml) {
         Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
         Err(e) => e,
     }
+}
+
+#[wasm_bindgen]
+pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    xml.get_geojson_ebene(&layer)
 }
 
 /* 

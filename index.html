@@ -8,9 +8,15 @@
     <link rel="stylesheet" href="main.css">
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
-      import init, {ui_render_entire_screen, load_nas_xml} from "./pkg/tnviewer.js";
+
+      import init, {
+        ui_render_entire_screen, 
+        load_nas_xml, 
+        get_geojson_fuer_ebene
+      } from "./pkg/tnviewer.js";
 
       var map = null; // Leaflet object
+      var geojson_layers = null;
       var projectdata = null; // project data
       var uidata = { // UI State
         popover_state: null,
@@ -29,9 +35,25 @@
             var reader = new FileReader();
             reader.readAsText(file,'UTF-8');
             reader.onload = readerEvent => {
+
               var converted = load_nas_xml(readerEvent.target.result);
               projectdata = JSON.parse(converted);
-              console.log(projectdata);
+              initializeOrUpdateMap();
+
+              // remove old LeafLet layers
+              for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
+                layer_obj.remove();
+              }
+              geojson_layers = [];
+              for (var layer_name in projectdata.ebenen) {
+                var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
+                var myLayer = L.geoJSON();
+                myLayer.addData(geojson);
+                myLayer.addTo(map)
+                geojson_layers.push(myLayer);
+                console.log(geojson);
+              }
+
               alert("ok!");
             }
         }

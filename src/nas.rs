@@ -5,8 +5,50 @@ use crate::xml::get_all_nodes_in_subtree;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NasXMLFile {
-    pub objekte: BTreeMap<String, TaggedPolygon>,
+    pub ebenen: BTreeMap<String, Vec<TaggedPolygon>>,
     pub crs: String,
+}
+
+impl NasXMLFile {
+    /// Returns GeoJSON für die Ebene
+    pub fn get_geojson_ebene(&self, layer: &str) -> String {
+
+        fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
+            format!(
+                "[{src}{comma}{holes}]", 
+                src = convert_svgline_to_string(p),
+                comma = if holes.trim().is_empty() { "" } else { "," },
+                holes = holes,
+            )
+        }
+
+        fn convert_svgline_to_string(q: &SvgLine) -> String {
+            format!("[{}]", q.points.iter().map(|s| format!("[{}, {}]", s.x, s.y)).collect::<Vec<_>>().join(","))
+        }
+
+        let objekte = match self.ebenen.get(layer) {
+            Some(o) => o,
+            None => return String::new(),
+        };
+
+        let geom = objekte.iter().filter_map(|poly| {
+            let holes = if poly.poly.inner_rings.is_empty() {
+                poly.poly.inner_rings.iter().map(convert_svgline_to_string).collect::<Vec<_>>().join(",")
+            } else {
+                String::new()
+            };
+            if poly.poly.outer_rings.len() > 1 {
+                let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                Some(format!("{{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }}"))
+            } else if let Some(p) = poly.poly.outer_rings.get(0) {
+                let poly = convert_poly_to_string(p, &holes);
+                Some(format!("{{ \"type\": \"Polygon\", \"coordinates\": {poly} }}"))
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>().join(",");
+        format!("{{ \"type\": \"GeometryCollection\", \"geometries\": [{geom}] }}")
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -33,19 +75,15 @@ pub struct SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> NasXMLFile {
+pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> Result<NasXMLFile, String> {
     let s = match crate::xml::parse_xml_string(s) {
         Ok(o) => o,
-        Err(e) => {
-            println!("ERROR {e:?}");
-            return NasXMLFile::default();
-        },
+        Err(e) => { return Err(format!("XML parse error: {e:?}")); },
     };
-
     xml_nodes_to_nas_svg_file(s, whitelist)
 }
 
-fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasXMLFile {
+fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> Result<NasXMLFile, String> {
 
     // CRS parsen
 
@@ -65,9 +103,25 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasXMLFil
     }
     let crs = match crs {
         Some(s) => s,
-        None => return NasXMLFile::default(), // no CRS found
+        None => return Err(format!("kein Koordinatenreferenzsystem gefunden (AA_Koordinatenreferenzsystemangaben = standard)")), // no CRS found
     };
     let crs = crs.replace("urn:adv:crs:", "");
+
+    let crs = match get_proj_string(&crs) {
+        Some(s) => s,
+        None => return Err(format!("Unbekanntes CRS: {crs}")),
+    };
+
+    /*
+        "Polygon", "coordinates": [
+          [[-5,-5],[5,-5],[0,5],[-5,-5]],
+          [[-4,-4],[4,-4],[0,4],[-4,-4]]
+        ]},
+        { "type": "MultiPolygon", "coordinates": [[
+          [[-7,-7],[7,-7],[0,7],[-7,-7]],
+          [[-6,-6],[6,-6],[0,6],[-6,-6]]
+        ]
+    */
 
     // Objekte parsen
     let whitelist = std::collections::BTreeSet::from_iter(whitelist.iter().cloned());
@@ -152,13 +206,23 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> NasXMLFil
             attributes,
         };
 
-        objekte.insert(key, tp);
+        objekte.entry(key).or_insert_with(|| Vec::new()).push(tp);
     }
 
-    NasXMLFile {
+    Ok(NasXMLFile {
         crs: crs,
-        objekte,
+        ebenen: objekte,
+    })
+}
+
+fn get_proj_string(input: &str) -> Option<String> {
+
+    let mut known_strings = BTreeMap::new();
+    for i in 0..60 {
+        known_strings.insert(format!("ETRS89_UTM{i}"), format!("+proj=utm +ellps=GRS80 +units=m +no_defs +zone={i}"));
     }
+
+    known_strings.get(input).cloned()
 }
 
 pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, String> {
@@ -177,38 +241,32 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
         }
     }
 
-    let mut known_strings = BTreeMap::new();
-    for i in 0..60 {
-        known_strings.insert(format!("ETRS89_UTM{i}"), format!("+proj=utm +ellps=GRS80 +units=m +no_defs +zone={i}"));
-    }
-
-    let source_proj_string = known_strings
-    .get(&input.crs)
-    .ok_or_else(|| format!("Unknown CRS {:?} (known: {:?})", input.crs, known_strings.keys().cloned().collect::<Vec<_>>()))?;
-    let source_proj = Proj::from_proj_string(source_proj_string.as_str()).map_err(|e| format!("source_proj_string: {e}: {source_proj_string:?}"))?;
+    let source_proj = Proj::from_proj_string(&input.crs).map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
     let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
     let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
 
-    let objekte = input.objekte.iter()
+    let objekte = input.ebenen.iter()
     .map(|(k, v)| {
-        (k.clone(), TaggedPolygon {
-            attributes: v.attributes.clone(),
-            poly: SvgPolygon {
-                outer_rings: v.poly.outer_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
-                inner_rings: v.poly.inner_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+        (k.clone(), v.iter().map(|v| {
+            TaggedPolygon {
+                attributes: v.attributes.clone(),
+                poly: SvgPolygon {
+                    outer_rings: v.poly.outer_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+                    inner_rings: v.poly.inner_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+                }
             }
-        })
+        }).collect())
     }).collect();
 
     Ok(NasXMLFile {
-        objekte,
-        crs: "LONLAT_GRS80".to_string(),
+        ebenen: objekte,
+        crs: latlon_proj_string.to_string(),
     })
 }
 
 #[test]
 fn test_parse_nas() {
-    let s = parse_nas_xml(include_str!("../test.xml"), &["AX_Gebaeude", "AX_Landwirtschaft"]);
-    let q = transform_nas_xml_to_lat_lon(&s);
+    let s = parse_nas_xml(include_str!("../test.xml"), &["AX_Gebaeude", "AX_Landwirtschaft"]).unwrap();
+    let q = transform_nas_xml_to_lat_lon(&s).unwrap();
     println!("{:#?}", q);
 }
