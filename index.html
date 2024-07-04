@@ -41,31 +41,19 @@
     }
 
     function initializeOrUpdateMap() {
-          var id = document.getElementById("mapboxtoken");
-          if (!id) {
-            return;
-          }
-          if (id.value.length == 0) {
-            return;
-          }
-          var mapcontainer = document.getElementById("map");
-          if (!mapcontainer) {
-            return;
-          }
-          if (map == null || map == undefined || !map) {
-            map = L.map('map').setView([53.2467, 13.6045], 10);
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-          }
+        if (map == null || map == undefined || !map) {
+          map = L.map('map').setView([53.2467, 13.6045], 10);
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }).addTo(map);
         }
+      }
 
     init()
       .then(() => { 
         var array = new Uint8Array();
         document.body.innerHTML = ui_render_entire_screen(array);
         initializeOrUpdateMap(); // add leaflet map
-        replaceDataNasXML(); // test
         document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
       });
     </script>
