@@ -1,4 +1,4 @@
-import init, {load_nas_xml} from "./pkg/tnviewer.js";
+import init, {load_nas_xml} from "../pkg/tnviewer.js";
 
 var projectdata = null;
 
