@@ -23,7 +23,11 @@
         tab: null, 
         data_loaded: false,
       };
-      var configuration = null; // default config object
+      var configuration = {
+        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
+        dop_layers: "bebb_dop20c"
+      }; // default config object
 
       function replaceDataNasXML() {
         var input = document.createElement('input');
@@ -51,10 +55,7 @@
                 myLayer.addData(geojson);
                 myLayer.addTo(map)
                 geojson_layers.push(myLayer);
-                console.log(geojson);
               }
-
-              alert("ok!");
             }
         }
         input.click();
@@ -63,9 +64,23 @@
     function initializeOrUpdateMap() {
         if (map == null || map == undefined || !map) {
           map = L.map('map').setView([53.2467, 13.6045], 10);
+          var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          });
+          var wms = L.tileLayer.wms(configuration.dop_source, {
+              layers: configuration.dop_layers
+          });
+          var basemaps = {
+            OSM: basemap,
+            DOP: wms,
+          };
+          L.control.layers(basemaps).addTo(map);
+          basemaps.OSM.addTo(map);
+          /*
           L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           }).addTo(map);
+          */
         }
       }
 
