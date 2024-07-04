@@ -84,7 +84,7 @@
                 layer_obj.remove();
               }
               geojson_layers = [];
-              for (var layer_name in configuration.style.keys()) {
+              for (var layer_name in configuration.style) {
                 var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
                 var layer_style = configuration.style[layer_name];
                 var myLayer = L.geoJSON(geojson, {
@@ -104,7 +104,10 @@
 
     function initializeOrUpdateMap() {
         if (map == null || map == undefined || !map) {
-          map = L.map('map').setView([53.2467, 13.6045], 10);
+          map = L.map('map', {
+            zoomControl: false
+          });
+          map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           });
@@ -116,6 +119,7 @@
             DOP: wms,
           };
           L.control.layers(basemaps).addTo(map);
+          L.control.zoom({ position:'topright' }).addTo(map);
           basemaps.OSM.addTo(map);
         }
       }
