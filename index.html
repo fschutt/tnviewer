@@ -99,6 +99,8 @@
         if (map == null || map == undefined || !map) {
           map = L.map('map', {
             zoomControl: false,
+            maxNativeZoom: 25,
+            maxZoom: 25,
           });
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -114,7 +116,7 @@
           layers = L.control.layers(basemaps);
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          basemaps.OSM.addTo(map);
+          basemaps.DOP.addTo(map);
         }
       }
 
