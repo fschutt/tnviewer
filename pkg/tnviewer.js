@@ -180,22 +180,16 @@ export function add_nadgrid(key, view) {
     }
 }
 
-function passArray8ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 1, 1) >>> 0;
-    getUint8Memory0().set(arg, ptr / 1);
-    WASM_VECTOR_LEN = arg.length;
-    return ptr;
-}
 /**
-* @param {Uint8Array} bytes
+* @param {string} decoded
 * @returns {string}
 */
-export function ui_render_entire_screen(bytes) {
+export function ui_render_entire_screen(decoded) {
     let deferred2_0;
     let deferred2_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export_0);
+        const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
         wasm.ui_render_entire_screen(retptr, ptr0, len0);
         var r0 = getInt32Memory0()[retptr / 4 + 0];

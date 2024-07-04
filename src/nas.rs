@@ -185,9 +185,9 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
     let source_proj_string = known_strings
     .get(&input.crs)
     .ok_or_else(|| format!("Unknown CRS {:?} (known: {:?})", input.crs, known_strings.keys().cloned().collect::<Vec<_>>()))?;
-    let source_proj = Proj::from_proj_string(source_proj_string.as_str()).map_err(|e| format!("{e}"))?;
+    let source_proj = Proj::from_proj_string(source_proj_string.as_str()).map_err(|e| format!("source_proj_string: {e}: {source_proj_string:?}"))?;
     let latlon_proj_string = "+proj=lonlat +ellps=GRS80 +no_defs";
-    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("{e}"))?;
+    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
 
     let objekte = input.objekte.iter()
     .map(|(k, v)| {

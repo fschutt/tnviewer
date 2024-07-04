@@ -6,8 +6,7 @@ pub mod ui;
 pub mod nas;
 
 #[wasm_bindgen]
-pub fn ui_render_entire_screen(bytes: Vec<u8>) -> String {
-    let decoded = get_string_from_js_bytes(&bytes);
+pub fn ui_render_entire_screen(decoded: String) -> String {
     let uidata = UiData::from_string(&decoded);
     crate::ui::render_entire_screen(&uidata)
 }

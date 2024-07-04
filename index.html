@@ -49,8 +49,7 @@
 
     init()
       .then(() => { 
-        var array = new Uint8Array();
-        document.body.innerHTML = ui_render_entire_screen(array);
+        document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));
         initializeOrUpdateMap(); // add leaflet map
         document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
       });
