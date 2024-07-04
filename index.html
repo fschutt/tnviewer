@@ -100,13 +100,11 @@
           map = L.map('map', {
             zoomControl: false,
             maxNativeZoom: 25,
-            maxZoom: 25,
+            maxZoom: 25
           });
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-              maxNativeZoom: 25,
-              maxZoom: 25  
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
           });
           var wms = L.tileLayer.wms(configuration.dop_source, {
               layers: configuration.dop_layers,
@@ -118,8 +116,8 @@
           layers = L.control.layers(basemaps);
           layers.expand();
           layers.addTo(map);
-          L.control.zoom({ position:'bottomright' }).addTo(map);
-          basemaps.DOP.addTo(map);
+          L.control.zoom({ position: 'bottomright' }).addTo(map);
+          basemaps.OSM.addTo(map);
         }
       }
 
@@ -127,7 +125,7 @@
       .then(() => { 
         document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));
         initializeOrUpdateMap(); // add leaflet map
-        document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
+        // document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
       });
     </script>
   </head>
