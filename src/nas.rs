@@ -209,5 +209,5 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
 #[test]
 fn test_parse_nas() {
     let s = parse_nas_xml(include_str!("../test.xml"), &["AX_Gebaeude", "AX_Landwirtschaft"]);
-    println!("{s:#?}");
+    println!("{}", s.crs);
 }

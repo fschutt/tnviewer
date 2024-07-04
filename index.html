@@ -29,9 +29,7 @@
             var reader = new FileReader();
             reader.readAsText(file,'UTF-8');
             reader.onload = readerEvent => {
-              var content = readerEvent.target.result;
-              var array = new Uint8Array(content);
-              var converted = load_nas_xml(array);
+              var converted = load_nas_xml(readerEvent.target.result);
               projectdata = JSON.parse(converted);
               console.log(projectdata);
               alert("ok!");

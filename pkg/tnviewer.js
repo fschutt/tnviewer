@@ -210,15 +210,15 @@ export function ui_render_entire_screen(bytes) {
 }
 
 /**
-* @param {Uint8Array} bytes
+* @param {string} s
 * @returns {string}
 */
-export function load_nas_xml(bytes) {
+export function load_nas_xml(s) {
     let deferred2_0;
     let deferred2_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export_0);
+        const ptr0 = passStringToWasm0(s, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
         wasm.load_nas_xml(retptr, ptr0, len0);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
