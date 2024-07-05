@@ -202,7 +202,7 @@
       input.accept = ".json";
 
       input.onchange = e => { 
-        if (files_read.length < 1) {
+        if (e.target.files.length < 1) {
           return;
         }
         var file = e.target.files[0];
