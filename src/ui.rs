@@ -1,6 +1,6 @@
 use serde_derive::{Serialize, Deserialize};
 
-use crate::csv::CsvDataType;
+use crate::csv::{CsvDataType, Status};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
@@ -896,15 +896,19 @@ pub fn render_project_content(csv: CsvDataType) -> String {
         <div class='csv-datensatz' style='background: #3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'>{flst_id}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'>{nutzungsart}</p>
-            <input type='text' placeholder='Notiz...' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
+            <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
             <select style='font-size:16px;' onchange='changeStatus(event);' data-id='{flst_id}'>
-                <option value='bleibt'>Bleibt</option>
-                <option value='aenderung-keine-benachrichtigung'>Änderung (keine Benachrichtigung)</option>
-                <option value='aenderung-mit-benachrichtigung'>Änderung (mit Benachrichtigung)</option>
+                <option value='bleibt' {selected_bleibt}>Bleibt</option>
+                <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
+                <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
             </select>
         </div>", 
-        nutzungsart = v.iter().map(|q| q.nutzung.clone()).collect::<Vec<_>>().join(","),
+        nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
         flst_id = k,
+        notiz_value = v.get(0).map(|s| s.nutzung.clone()).unwrap_or_default(),
+        selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
+        selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
+        selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
     )
     }).collect::<Vec<_>>().join("");
 
