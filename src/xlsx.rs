@@ -9,13 +9,13 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     let mut sheet = wb.create_sheet("Preferences");
 
     // ID
-    sheet.add_column(Column { width: 50.0 });
+    sheet.add_column(Column { width: 30.0 });
     // Status
-    sheet.add_column(Column { width: 50.0 });
+    sheet.add_column(Column { width: 30.0 });
     // Notiz
-    sheet.add_column(Column { width: 100.0 });
+    sheet.add_column(Column { width: 60.0 });
     // Eigentümer
-    sheet.add_column(Column { width: 100.0 });
+    sheet.add_column(Column { width: 60.0 });
 
         let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
             let sw = sheet_writer;
