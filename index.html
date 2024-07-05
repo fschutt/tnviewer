@@ -9,96 +9,96 @@
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
 
-      import init, {
-        ui_render_entire_screen, 
-        load_nas_xml, 
-        get_geojson_fuer_ebene,
-        ui_render_ribbon,
-        ui_render_popover_content,
-        ui_render_project_content,
-        parse_csv_dataset_to_json
-      } from "./pkg/tnviewer.js";
+    import init, {
+      ui_render_entire_screen, 
+      load_nas_xml, 
+      get_geojson_fuer_ebene,
+      ui_render_ribbon,
+      ui_render_popover_content,
+      ui_render_project_content,
+      parse_csv_dataset_to_json
+    } from "./pkg/tnviewer.js";
 
-      var map = null; // Leaflet object
-      var geojson_layers = [];
-      var layers = null;
-      var projectdata = null; // project XML NAS data
-      var csv_data = null; // project CSV data
-      var uidata = { // UI State
-        popover_state: null,
-        tab: null, 
-        data_loaded: false,
-      };
-      var configuration = {
-        map: {
-          basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-          dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
-          dop_layers: "bebb_dop20c"
+    var map = null; // Leaflet object
+    var geojson_layers = [];
+    var layers = null;
+    var projectdata = null; // project XML NAS data
+    var csv_data = null; // project CSV data
+    var uidata = { // UI State
+      popover_state: null,
+      tab: null, 
+      data_loaded: false,
+    };
+    var configuration = {
+      map: {
+        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
+        dop_layers: "bebb_dop20c"
+      },
+      style: {
+        AX_Flurstueck: {
+          fillColor: "#ffadbe",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
         },
-        style: {
-          AX_Flurstueck: {
-            fillColor: "#ffadbe",
-            outlineColor: "#000000",
-            outlineThickness: 1,
-            outlineDash: null,
-            outlineOverprint: false,
-          },
-          AX_Gebaeude: {
-            fillColor: "#bdbdbd",
-            outlineColor: "#000000",
-            outlineThickness: 1,
-            outlineDash: null,
-            outlineOverprint: false,
-          },
-          AX_Landwirtschaft: {
-            fillColor: "#fff596",
-            outlineColor: "#000000",
-            outlineThickness: 1,
-            outlineDash: null,
-            outlineOverprint: false,
-          },
-        }
-      }; // default config object
+        AX_Gebaeude: {
+          fillColor: "#bdbdbd",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Landwirtschaft: {
+          fillColor: "#fff596",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+      }
+    }; // default config object
 
-      function replaceDataNasXML() {
-        var input = document.createElement('input');
-        input.type = 'file';
-        input.accept = ".xml";
+    function replaceDataNasXML() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = ".xml";
 
-        input.onchange = e => { 
-            var file = e.target.files[0]; 
-            var reader = new FileReader();
-            reader.readAsText(file,'UTF-8');
-            reader.onload = readerEvent => {
+      input.onchange = e => { 
+          var file = e.target.files[0]; 
+          var reader = new FileReader();
+          reader.readAsText(file,'UTF-8');
+          reader.onload = readerEvent => {
 
-              var converted = load_nas_xml(readerEvent.target.result);
-              projectdata = JSON.parse(converted);
-              // initializeOrUpdateMap();
+            var converted = load_nas_xml(readerEvent.target.result);
+            projectdata = JSON.parse(converted);
+            // initializeOrUpdateMap();
 
-              // remove old LeafLet layers
-              for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
-                layers.removeLayer(layer_obj);
-                layer_obj.remove();
-              }
-              geojson_layers = [];
-              for (var layer_name in configuration.style) {
-                var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
-                var layer_style = configuration.style[layer_name];
-                var myLayer = L.geoJSON(geojson, {
-                  "color": layer_style.outlineColor,
-                  "fillColor": layer_style.fillColor,
-                  "weight": layer_style.outlineThickness,
-                  "opacity": 1.0,
-                  "fillOpacity": 1.0
-                });
-                myLayer.addTo(map);
-                layers.addOverlay(myLayer, layer_name);
-                geojson_layers.push(myLayer);
-              }
+            // remove old LeafLet layers
+            for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
+              layers.removeLayer(layer_obj);
+              layer_obj.remove();
             }
-        }
-        input.click();
-    }
+            geojson_layers = [];
+            for (var layer_name in configuration.style) {
+              var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
+              var layer_style = configuration.style[layer_name];
+              var myLayer = L.geoJSON(geojson, {
+                "color": layer_style.outlineColor,
+                "fillColor": layer_style.fillColor,
+                "weight": layer_style.outlineThickness,
+                "opacity": 1.0,
+                "fillOpacity": 1.0
+              });
+              myLayer.addTo(map);
+              layers.addOverlay(myLayer, layer_name);
+              geojson_layers.push(myLayer);
+            }
+          }
+      }
+      input.click();
+  }
 
     function newProjectFromCSV() {
       var input = document.createElement('input');
@@ -134,6 +134,24 @@
         }
       }
       input.click();
+    }
+
+    function changeStatus(event, id) {
+      var newstatus = event.target.value;
+      if (csv_data && csv_data[id]) {
+        for (var i = 0; i < csv_data[id].length; i++) {
+          csv_data[i].status = newstatus;
+        }
+      }
+    }
+
+    function changeNotiz(event, id) {
+      var newnotiz = event.target.value;
+      if (csv_data && csv_data[id]) {
+        for (var i = 0; i < csv_data[id].length; i++) {
+          csv_data[i].notiz = newnotiz;
+        }
+      }
     }
 
     const downloadURL = (data, fileName) => {
@@ -280,9 +298,11 @@
         if (!csv_data) {
           return;
         }
-        console.log("export excel!");
+        alert("export excel!");
     }
 
+    window.changeStatus = changeStatus;
+    window.changeNotiz = changeNotiz;
     window.activateConfigurationView = activateConfigurationView;
     window.selectTab = selectTab;
     window.closePopOver = closePopOver;
