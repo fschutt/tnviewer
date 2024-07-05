@@ -896,7 +896,7 @@ pub fn render_project_content(csv: CsvDataType) -> String {
         <div class='csv-datensatz' style='background: #3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'>{flst_id}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'>{nutzungsart}</p>
-            <input type='text' placeholder='Notiz...' ontextinput='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
+            <input type='text' placeholder='Notiz...' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
             <select style='font-size:16px;' onchange='changeStatus(event);' data-id='{flst_id}'>
                 <option value='bleibt'>Bleibt</option>
                 <option value='aenderung-keine-benachrichtigung'>Änderung (keine Benachrichtigung)</option>
