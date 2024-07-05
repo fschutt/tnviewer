@@ -105,10 +105,31 @@
       if (!projectdata || projectdata == null) {
         alert("Keine Daten geladen");
       }
-      console.log(id);
-      console.log(projectdata);
+
+      var found = searchFlst(id, projectdata);
+      if (found) {
+        alert(found.ebene);
+        // zoom to flst
+      } else {
+        alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
+      }
     }
 
+    function searchFlst(id, projectdata) {
+      for (var ebene_id in projectdata.ebenen) {
+        var ebene = projectdata.ebenen[ebene_id];
+        for (var i = 0; i < ebene.length; i++) {
+          var flst = ebene[i];
+          if (flst.attributes["id"] && flst.attributes["id"] == id) {
+            return {
+              flst: flst,
+              ebene: ebene_id,
+            };
+          }
+        }
+      }
+      return null;
+    }
     function newProjectFromCSV() {
       var input = document.createElement('input');
       input.type = 'file';
@@ -325,7 +346,7 @@
     window.replaceProjectContent = replaceProjectContent;
     window.replaceRibbon = replaceRibbon;
     window.focusFlst = focusFlst;
-    
+
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
         create_project: function(event) { newProjectFromCSV(); },
