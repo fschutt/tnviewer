@@ -264,10 +264,10 @@
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
           });
-          console.log(window.configuration.dop_source);
-          console.log(window.configuration.dop_layers);
-          var wms = L.tileLayer.wms(window.configuration.dop_source, {
-              layers: window.configuration.dop_layers
+          console.log(window.configuration.map.dop_source);
+          console.log(window.configuration.map.dop_layers);
+          var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
+              layers: window.configuration.map.dop_layers
           });
           var basemaps = {
             OSM: basemap,
