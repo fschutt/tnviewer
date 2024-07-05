@@ -23,7 +23,7 @@
     var geojson_layers = [];
     var layers = null;
     var projectdata = null; // project XML NAS data
-    var csv_data = null; // project CSV data
+    window.csv_data = null; // project CSV data
     var uidata = { // UI State
       popover_state: null,
       tab: null, 
@@ -110,7 +110,7 @@
         if (e.target.files.length < 1) {
           return;
         }
-        csv_data = {};
+        window.csv_data = {};
         for (var i = 0; i < e.target.files.length; i++) {
           var file = e.target.files[i];
           var reader = new FileReader();
@@ -127,7 +127,7 @@
             var json = JSON.parse(converted);
             console.log(json);
             for (var property in json) {
-              csv_data[property] = json[property];
+              window.csv_data[property] = json[property];
             }
             replaceProjectContent();
           }
@@ -140,24 +140,24 @@
       var newstatus = event.target.value;
       var id = event.target.dataset.id;
       console.log("Ändere " + id + " = " + newstatus);
-      if (csv_data && csv_data[id]) {
-        for (var i = 0; i < csv_data[id].length; i++) {
-          csv_data[i].status = newstatus;
+      if (window.csv_data && window.csv_data[id]) {
+        for (var i = 0; i < window.csv_data[id].length; i++) {
+          window.csv_data[i].status = newstatus;
         }
       }
-      console.log(csv_data[id]);
+      console.log(window.csv_data[id]);
     }
 
     function changeNotiz(event) {
       var newnotiz = event.target.value;
       var id = event.target.dataset.id;
       console.log("Ändere " + id + " = " + newnotiz);
-      if (csv_data && csv_data[id]) {
-        for (var i = 0; i < csv_data[id].length; i++) {
-          csv_data[i].notiz = newnotiz;
+      if (window.csv_data && window.csv_data[id]) {
+        for (var i = 0; i < window.csv_data[id].length; i++) {
+          window.csv_data[i].notiz = newnotiz;
         }
       }
-      console.log(csv_data[id]);
+      console.log(window.csv_data[id]);
     }
 
     const downloadURL = (data, fileName) => {
@@ -184,9 +184,9 @@
     }
 
     function saveProjectDataToFile() {
-      if (csv_data && csv_data != null) {
+      if (window.csv_data && window.csv_data != null) {
         var json_obj = {
-          csv: csv_data,
+          csv: window.csv_data,
         };
         var json = JSON.stringify(json_obj);
         var json_bytes = new TextEncoder().encode(json);
@@ -210,7 +210,7 @@
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
           var json = JSON.parse(readerEvent.target.result);
-          csv_data = json.csv;
+          window.csv_data = json.csv;
           replaceProjectContent();
         }
       }
@@ -315,7 +315,6 @@
     window.replacePopOver = replacePopOver;
     window.replaceProjectContent = replaceProjectContent;
     window.replaceRibbon = replaceRibbon;
-    window.csv_data = csv_data;
 
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
