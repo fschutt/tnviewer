@@ -17,7 +17,8 @@
       ui_render_popover_content,
       ui_render_project_content,
       parse_csv_dataset_to_json,
-      get_fit_bounds
+      get_fit_bounds,
+      export_xlsx
     } from "./pkg/tnviewer.js";
 
     var map = null; // Leaflet object
@@ -341,7 +342,8 @@
         if (!csv_data) {
           return;
         }
-        alert("export excel!");
+        var xlsx = export_xlsx(JSON.stringify(csv_data));
+        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
     }
 
     window.changeStatus = changeStatus;
