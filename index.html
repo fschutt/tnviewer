@@ -149,10 +149,12 @@
         for (var i = 0; i < e.target.files.length; i++) {
           var file = e.target.files[i];
           var reader = new FileReader();
-          reader.readAsText(file,'UTF-8');
+          reader.readAsArrayBuffer(file);
           reader.onload = readerEvent => {
+            var arrayBuffer = this.result;
+            var array = new Uint8Array(arrayBuffer);
             var converted = parse_csv_dataset_to_json(
-              readerEvent.target.result,
+              array,
               "Flurstueck",
               "Nutzung",
               "Eigentuemer",

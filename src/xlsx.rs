@@ -12,8 +12,6 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     sheet.add_column(Column { width: 30.0 });
     // Status
     sheet.add_column(Column { width: 30.0 });
-    // Notiz
-    sheet.add_column(Column { width: 60.0 });
     // Eigentümer
     sheet.add_column(Column { width: 60.0 });
 
@@ -31,15 +29,13 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
                 eigentuemer.sort();
                 eigentuemer.dedup();
                 let eig = eigentuemer.join("; ");
-                let s = match status {
-                    crate::csv::Status::Bleibt => "bleibt",
-                    crate::csv::Status::AenderungKeineBenachrichtigung => "Nutzungfl. ändern (keine Benachrichtigung)",
-                    crate::csv::Status::AenderungMitBenachrichtigung => "Änderung mit Benachrichtigung",
-                };
                 sw.append_row(row![
-                    flst_id.to_string(), 
-                    s.to_string(),
-                    notiz.to_string(),
+                    flst_id.to_string(),
+                    match status {
+                        crate::csv::Status::Bleibt => "bleibt".to_string(),
+                        crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
+                        crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (keine Benachrichtigung)",
+                    },
                     eig.to_string()
                 ])?;
             }

@@ -67,13 +67,14 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
 
 #[wasm_bindgen]
 pub fn parse_csv_dataset_to_json(
-    csv: String, 
+    csv: Vec<u8>, 
     id_col: String, 
     nutzung_col: String, 
     eigentuemer_col: String, 
     delimiter: String,
     ignore_firstline: String
 ) -> String {
+    let csv = decode(csv);
     let csv_daten = match crate::csv::parse_csv(
         &csv, 
         &id_col, 
@@ -97,4 +98,14 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
     };
 
     crate::xlsx::generate_report(&data)
+}
+
+pub fn decode(bytes: Vec<u8>) -> String {
+    let mut text_decoder = chardetng::EncodingDetector::new();
+    let _ = text_decoder.feed(&bytes[..], true);
+    let text_decoder = text_decoder.guess(None, true);
+    let mut text_decoder = text_decoder.new_decoder();
+    let mut decoded = String::with_capacity(bytes.len() * 2);
+    let _ = text_decoder.decode_to_string(&bytes[..], &mut decoded, true);
+    decoded
 }

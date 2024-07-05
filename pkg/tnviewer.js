@@ -347,8 +347,14 @@ export function get_geojson_fuer_ebene(json, layer) {
     }
 }
 
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8Memory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
 /**
-* @param {string} csv
+* @param {Uint8Array} csv
 * @param {string} id_col
 * @param {string} nutzung_col
 * @param {string} eigentuemer_col
@@ -361,7 +367,7 @@ export function parse_csv_dataset_to_json(csv, id_col, nutzung_col, eigentuemer_
     let deferred7_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr0 = passArray8ToWasm0(csv, wasm.__wbindgen_export_0);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(id_col, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len1 = WASM_VECTOR_LEN;
