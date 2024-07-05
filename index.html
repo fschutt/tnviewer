@@ -125,8 +125,9 @@
               "true"
             );
             var json = JSON.parse(converted);
-            for (var property in object) {
-              csv_data[property] = object[property];
+            console.log(json);
+            for (var property in json) {
+              csv_data[property] = json[property];
             }
             replaceProjectContent();
           }
