@@ -612,8 +612,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                         <img class='icon' src='data:image/png;base64,{icon_neu_base64}'>
                     </div>
                     <div>
-                        <p>Neues</p>
                         <p>Projekt</p>
+                        <p>aus CSV</p>
                     </div>
                 </label>
             </div>
@@ -671,7 +671,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let daten_importieren = {
         format!("
         <div class='__application-ribbon-section-content'>
-            <label onmouseup='replaceDataNasXML(event)' class='__application-ribbon-action-vertical-large'>
+            <label onmouseup='tab_functions.import_data(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_reload}'>
                 </div>

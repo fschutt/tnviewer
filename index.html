@@ -228,6 +228,13 @@
       let d = document.getElementById("__application_popover");
       if (d)
          d.innerHTML = ui_render_popover_content(JSON.stringify(uidata));
+
+      let q = document.getElementById("__application_main-overlay-container");
+      if (q && uidata.popover_state == null) {
+        q.style.display = "none";
+      } else {
+        q.style.display = "flex";
+      }
     }
 
     function replaceProjectContent() {
