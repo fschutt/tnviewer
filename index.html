@@ -114,7 +114,6 @@
         let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found.flst)));
         console.log(bounds);
         map.fitBounds(bounds);
-        alert(found.ebene);
       } else {
         alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
       }
@@ -265,11 +264,15 @@
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
+              maxNativeZoom: 25,
+              maxZoom: 25,
           });
           console.log(window.configuration.map.dop_source);
           console.log(window.configuration.map.dop_layers);
           var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
-              layers: window.configuration.map.dop_layers
+              layers: window.configuration.map.dop_layers,
+              maxNativeZoom: 25,
+              maxZoom: 25,
           });
           var basemaps = {
             OSM: basemap,
