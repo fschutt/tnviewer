@@ -116,7 +116,14 @@
           var reader = new FileReader();
           reader.readAsText(file,'UTF-8');
           reader.onload = readerEvent => {
-            var converted = parse_csv_dataset_to_json(readerEvent.target.result);
+            var converted = parse_csv_dataset_to_json(
+              readerEvent.target.result,
+              "id",
+              "nutzungsart",
+              "eigentuemer",
+              "|",
+              "true"
+            );
             var json = JSON.parse(converted);
             for (var property in object) {
               csv_data[property] = object[property];
@@ -152,7 +159,7 @@
     }
 
     function saveProjectDataToFile() {
-      if (project && project != null) {
+      if (csv_data && csv_data != null) {
         var json_obj = {
           csv: csv_data,
         };
@@ -217,6 +224,7 @@
     }
 
     function replacePopOver() {
+      console.log("replace popover");
       let d = document.getElementById("__application_popover");
       if (d)
          d.innerHTML = ui_render_popover_content(JSON.stringify(uidata));
@@ -251,13 +259,20 @@
     }
 
     function openConfiguration() {
-      uidata.popover_state = { "Configuration": "Allgemein" };
+      uidata.popover_state = { "Configuration": "allgemein" };
       replacePopOver();
     }
 
     function activateConfigurationView(event, id) {
       uidata.popover_state = { "Configuration": id };
       replacePopOver();
+    }
+
+    function exportExcel() {
+        if (!csv_data) {
+          return;
+        }
+        console.log("export excel!");
     }
 
     window.activateConfigurationView = activateConfigurationView;
@@ -278,7 +293,7 @@
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
         export_pdf: function(event) { },
-        export_excel: function(event) { },
+        export_excel: function(event) { exportExcel(); },
         export_david: function(event) { },
     };
     window.tab_functions = tab_functions;
