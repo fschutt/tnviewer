@@ -905,7 +905,7 @@ pub fn render_project_content(csv: CsvDataType) -> String {
         </div>", 
         nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
         flst_id = k,
-        notiz_value = v.get(0).map(|s| s.nutzung.clone()).unwrap_or_default(),
+        notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
