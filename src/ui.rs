@@ -892,7 +892,8 @@ pub fn render_main(_rpc_data: &UiData) -> String {
 
 pub fn render_project_content(csv: CsvDataType) -> String {
     let s = csv.iter().map(|(k, v)| {
-        format!("<div class='csv-datensatz' style='background: #3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;'>
+        format!("
+        <div class='csv-datensatz' style='background: #3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'>{flst_id}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' onchange='changeNotiz(event, `{flst_id}`);' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
@@ -907,7 +908,7 @@ pub fn render_project_content(csv: CsvDataType) -> String {
     )
     }).collect::<Vec<_>>().join("");
 
-    normalize_for_js(format!("<div class='csv-scrollbox' style='overflow-x:hidden;overflow-y:scroll;'{s}></div>"))
+    normalize_for_js(format!("<div class='csv-scrollbox' style='overflow-x:hidden;overflow-y:scroll;'>{s}</div>"))
 }
 
 pub fn normalize_for_js(s: String) -> String {
