@@ -107,7 +107,7 @@
       input.accept = ".csv";
 
       input.onchange = e => { 
-        if (files_read.length < 1) {
+        if (e.target.files.length < 1) {
           return;
         }
         csv_data = {};
