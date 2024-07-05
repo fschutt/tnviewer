@@ -139,21 +139,25 @@
     function changeStatus(event) {
       var newstatus = event.target.value;
       var id = event.target.dataset.id;
+      console.log("Ändere " + id + " = " + newstatus);
       if (csv_data && csv_data[id]) {
         for (var i = 0; i < csv_data[id].length; i++) {
           csv_data[i].status = newstatus;
         }
       }
+      console.log(csv_data[id]);
     }
 
     function changeNotiz(event) {
       var newnotiz = event.target.value;
       var id = event.target.dataset.id;
+      console.log("Ändere " + id + " = " + newnotiz);
       if (csv_data && csv_data[id]) {
         for (var i = 0; i < csv_data[id].length; i++) {
           csv_data[i].notiz = newnotiz;
         }
       }
+      console.log(csv_data[id]);
     }
 
     const downloadURL = (data, fileName) => {
