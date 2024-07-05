@@ -109,7 +109,7 @@
 
       var found = searchFlst(id, projectdata);
       if (found) {
-        let bounds = JSON.decode(get_fit_bounds(JSON.stringify(found)));
+        let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found)));
         console.log(bounds);
         map.fitBounds(bounds);
         alert(found.ebene);
