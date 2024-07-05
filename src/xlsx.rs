@@ -11,11 +11,11 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     // ID
     sheet.add_column(Column { width: 50.0 });
     // Status
-    sheet.add_column(Column { width: 500.0 });
+    sheet.add_column(Column { width: 50.0 });
     // Notiz
-    sheet.add_column(Column { width: 500.0 });
+    sheet.add_column(Column { width: 100.0 });
     // Eigentümer
-    sheet.add_column(Column { width: 20.0 });
+    sheet.add_column(Column { width: 100.0 });
 
         let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
             let sw = sheet_writer;
