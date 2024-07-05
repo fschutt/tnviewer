@@ -186,7 +186,7 @@
           var reader = new FileReader();
           reader.readAsArrayBuffer(file);
           reader.onload = readerEvent => {
-            var arrayBuffer = this.result;
+            var arrayBuffer = readerEvent.target.result;
             var array = new Uint8Array(arrayBuffer);
             var converted = parse_csv_dataset_to_json(
               array,
