@@ -46,7 +46,7 @@ pub fn get_fit_bounds(s: String) -> String {
 
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String) -> String {
-    let xml = match crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck"]) {
+    let xml = match crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck", "AX_Strassenverkehr", "AX_Fliessgewaesser", "AX_Gehoelz", "AX_HistorischesFlurstueck", "AX_Wohnbauflaeche", "AX_GemarkungsteilFlur"]) {
         Ok(o) => o,
         Err(e) => return e,
     };
