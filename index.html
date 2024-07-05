@@ -229,6 +229,40 @@
          d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(csv_data));
     }
 
+    function selectTab(id) {
+      uidata.tab = id;
+      replaceRibbon();
+      replaceProjectContent();
+    }
+
+    function closePopOver() {
+      uidata.popover_state = null;
+      replacePopOver();
+    }
+
+    function openHelp() {
+      uidata.popover_state = "Help";
+      replacePopOver();
+    }
+
+    function openInfo() {
+      uidata.popover_state = "Info";
+      replacePopOver();
+    }
+
+    function openConfiguration() {
+      uidata.popover_state = { "Configuration": "Allgemein" };
+      replacePopOver();
+    }
+
+    function activateConfigurationView(event, id) {
+      uidata.popover_state = { "Configuration": id };
+      replacePopOver();
+    }
+
+    window.activateConfigurationView = activateConfigurationView;
+    window.selectTab = selectTab;
+    window.closePopOver = closePopOver;
     window.replacePopOver = replacePopOver;
     window.replaceProjectContent = replaceProjectContent;
     window.replaceRibbon = replaceRibbon;
@@ -240,10 +274,11 @@
         redo: function(event) { },
         import_data: function(event) { replaceDataNasXML(); },
         save_project: function(event) { saveProjectDataToFile(); },
-        open_help: function(event) { },
-        open_info: function(event) { },
-        open_configuration: function(event) { },
+        open_help: function(event) { openHelp(); },
+        open_info: function(event) { openInfo(); },
+        open_configuration: function(event) { openConfiguration(); },
         export_pdf: function(event) { },
+        export_excel: function(event) { },
         export_david: function(event) { },
     };
     window.tab_functions = tab_functions;

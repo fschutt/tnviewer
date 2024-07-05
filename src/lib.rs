@@ -26,7 +26,7 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn ui_render_project_content(decoded: String) -> String {
+pub fn ui_render_project_content(decoded: String, csv_data: String) -> String {
     let _uidata = UiData::from_string(&decoded);
     String::new() // TODO
 }

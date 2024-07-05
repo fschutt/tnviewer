@@ -29,6 +29,8 @@ impl UiData {
 pub enum PopoverState {
     ContextMenu(ContextMenuData),
     Info,
+    Configuration(ConfigurationView),
+    Help,
     ExportPdf,
     CreateNewProjekt,
     ProjektMetaAendern {
@@ -36,27 +38,19 @@ pub enum PopoverState {
         amtsgericht: String,
         blatt: String,
     },
-    ProjektSuchenDialog,
-    ProjektUploadDialog(usize),
-    Configuration(ConfigurationView),
-    Help,
 }
 
+#[test]
+fn test1() {
+    let s = serde_json::to_string(&PopoverState::Info).unwrap_or_default();
+    println!("{s}");
+}
 #[derive(Debug, Copy, PartialEq, Serialize, Deserialize, PartialOrd, Clone)]
 pub enum ConfigurationView {
+    #[serde(rename = "allgemein")]
     Allgemein,
-    RegEx,
-    TextSaubern,
-    Abkuerzungen,
-    FlstAuslesen,
-    KlassifizierungRechteArt,
-    RechtsinhaberAuslesenAbt2,
-    RangvermerkAuslesenAbt2,
-    TextKuerzenAbt2,
-    BetragAuslesenAbt3,
-    KlassifizierungSchuldenArtAbt3,
-    RechtsinhaberAuslesenAbt3,
-    TextKuerzenAbt3,
+    #[serde(rename = "kartenstile")]
+    Kartenstile,
 }
 
 #[derive(Debug, Copy, Serialize, Deserialize, PartialEq, PartialOrd, Clone)]
@@ -140,92 +134,6 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
 
     let pc = match &rpc_data.popover_state {
         None => return String::new(),
-        Some(PopoverState::ProjektUploadDialog(i)) => {
-            /*
-            let commit_title = if rpc_data.commit_title.is_empty() {
-                String::new()
-            } else {
-                format!("value='{}'", rpc_data.commit_title)
-            };
-
-            let commit_description = if rpc_data.commit_msg.is_empty() {
-                String::new()
-            } else {
-                rpc_data
-                    .commit_msg
-                    .lines()
-                    .map(|l| format!("<p>{l}</p>"))
-                    .collect::<Vec<_>>()
-                    .join("\r\n")
-            };
-            */
-            let commit_title = String::new();
-            let commit_description = String::new();
-            let dateien = String::new();
-            let diff = String::new();
-
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:1200px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Änderungen in Datenbank hochladen</h2>
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
-                    <form onsubmit='grundbuchHochladen(event)' action=''>
-                    
-                    <div style='display:flex;font-size:16px;flex-direction:column;'>
-                        <p style='font-size:16px;line-height:2;'>Beschreiben Sie ihre Änderungen:</p>
-                        <input type='text' oninput='editCommitTitle(event);' id='__application_grundbuch_aenderung_commit_titel' required placeholder='z.B. \"Korrektur aufgrund von Kaufvertrag XXX/XXXX\"' style='font-size:18px;font-family:monospace;font-weight:bold;border:1px solid #ccc;cursor:text;display:flex;flex-grow:1;' {commit_title}></input>
-                    </div>
-                    
-                    <div style='display:flex;font-size:16px;flex-direction:column;'>
-                        <p style='font-size:16px;line-height:2;'>Ausführliche Beschreibung der Änderung:</p>
-                        
-                        <div style='display:flex;flex-grow:1;flex-direction:column;background:white;border:1px solid #efefef;margin-top:5px;font-weight:bold;font-size:14px;font-family:monospace;color:black;padding:0px;min-height:200px;max-height:250px;overflow-y:scroll;'>
-                            <div style='padding-left:2px;caret-color: #4a4e6a;' contenteditable='true' onkeydown='insertTabAtCaret(event);' oninput='editCommitDescription(event);' id='__application_grundbuch_aenderung_commit_description'>{commit_description}</div>
-                        </div>
-                    </div>
-                    
-                    <div id='__application_grundbuch_upload_aenderungen' style='display:flex;flex-direction:row;min-height:300px;max-height:400px;flex-grow:1;overflow-y:scroll;'>
-                        <div id='__application_aenderung_dateien' style='padding: 10px 0px;margin-right:10px;overflow-y: scroll;height: 300px;min-width: 300px;'>
-                            {dateien}
-                        </div>
-                        <div id='__application_aenderungen_diff'>
-                            {diff}
-                        </div>
-                    </div>
-                    
-                    <div style='display:flex;flex-direction:row;justify-content: flex-end;margin-top: 20px;'>
-                        <input type='submit' value='Änderungen übernehmen' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:inline-block;flex-grow:0;max-width:320px;' />
-                    </div>
-                    </form>
-                </div>
-            </div>
-            ")
-        }
-        Some(PopoverState::ProjektSuchenDialog) => {
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:1000px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-
-                <h2 style='font-size:24px;font-family:sans-serif;'>Projektblatt suchen</h2>
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
-                    <form onsubmit='grundbuchSuchen(event)' action=''>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;flex-direction:row;margin-bottom:20px;'>
-                        <input type='text' id='__application_grundbuch_suchen_suchbegriff' required placeholder='Suchbegriff (z.B. \"Ludwigsburg Blatt 10\" oder \"Max Mustermann\")' style='font-size:14px;font-weight:bold;border-bottom:1px solid black;cursor:text;display:flex;flex-grow:1;'></input>
-                        <input type='submit' value='Suchen' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:flex;flex-grow:0;margin-left:20px;' />
-                        </div>
-                    </form>
-                    
-                    <div id='__application_grundbuch_suchen_suchergebnisse' style='display:flex;flex-grow:1;min-height:500px;flex-direction:column;max-height:700px;overflow-y:scroll;'>
-                    </div>
-                </div>
-            </div>
-            ")
-        }
         Some(PopoverState::CreateNewProjekt) => {
             format!("
             <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
@@ -416,43 +324,8 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             let img_fx = base64_encode(IMG_FX);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
-            let active_regex = if *cw == RegEx { " active" } else { "" };
-            let active_text_saubern = if *cw == TextSaubern { " active" } else { "" };
-            let active_abkuerzungen = if *cw == Abkuerzungen { " active" } else { "" };
-            let active_flst_auslesen = if *cw == FlstAuslesen { " active" } else { "" };
-            let active_klassifizierung_rechteart = if *cw == KlassifizierungRechteArt {
-                " active"
-            } else {
-                ""
-            };
-            let active_rechtsinhaber_auslesen_abt2 = if *cw == RechtsinhaberAuslesenAbt2 {
-                " active"
-            } else {
-                ""
-            };
-            let active_rangvermerk_auslesen_abt2 = if *cw == RangvermerkAuslesenAbt2 {
-                " active"
-            } else {
-                ""
-            };
-            let active_text_kuerzen_abt2 = if *cw == TextKuerzenAbt2 { " active" } else { "" };
-            let active_betrag_auslesen_abt3 = if *cw == BetragAuslesenAbt3 {
-                " active"
-            } else {
-                ""
-            };
-            let active_klassifizierung_schuldenart_abt3 = if *cw == KlassifizierungSchuldenArtAbt3 {
-                " active"
-            } else {
-                ""
-            };
-            let active_rechtsinhaber_auslesen_abt3 = if *cw == RechtsinhaberAuslesenAbt3 {
-                " active"
-            } else {
-                ""
-            };
-            let active_text_kuerzen_abt3 = if *cw == TextKuerzenAbt3 { " active" } else { "" };
-
+            let active_kartenstile = if *cw == Kartenstile { " active" } else { "" };
+ 
             let sidebar = format!("
                 <div class='__application_configuration_sidebar' style='display:flex;flex-direction:column;width:160px;min-height:750px;'>
                     
@@ -463,66 +336,11 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                     
                     <hr/>
                     
-                    <div class='__application_configuration_sidebar_section{active_regex}' onmouseup='activateConfigurationView(event, \"regex\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_regex}'></img>
-                        <p>Reguläre Ausdrücke</p>
-                    </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_text_saubern}' onmouseup='activateConfigurationView(event, \"text-saubern\")'>
+                    <div class='__application_configuration_sidebar_section{active_kartenstile}' onmouseup='activateConfigurationView(event, \"kartenstile\")'>
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
-                        <p>Text säubern</p>
+                        <p>Kartenstile</p>
                     </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_abkuerzungen}' onmouseup='activateConfigurationView(event, \"abkuerzungen\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_abk}'></img>
-                        <p>Abkürzungen</p>
-                    </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_flst_auslesen}' onmouseup='activateConfigurationView(event, \"flst-auslesen\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Flurstücke auslesen</p>
-                    </div>
-                    
-                    <hr/>
 
-                    <div class='__application_configuration_sidebar_section{active_klassifizierung_rechteart}' onmouseup='activateConfigurationView(event, \"klassifizierung-rechteart-abt2\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Klassifizierung RechteArt (Abt. 2)</p>
-                    </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_rechtsinhaber_auslesen_abt2}' onmouseup='activateConfigurationView(event, \"rechtsinhaber-auslesen-abt2\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Rechtsinhaber auslesen (Abt. 2)</p>
-                    </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_rangvermerk_auslesen_abt2}' onmouseup='activateConfigurationView(event, \"rangvermerk-auslesen-abt2\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Rangvermerk auslesen (Abt. 2)</p>
-                    </div>
-                    
-                    <div class='__application_configuration_sidebar_section{active_text_kuerzen_abt2}' onmouseup='activateConfigurationView(event, \"text-kuerzen-abt2\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Text kürzen (Abt. 2)</p>
-                    </div>
-                    
-                    <hr/>
-
-                    <div class='__application_configuration_sidebar_section{active_betrag_auslesen_abt3}' onmouseup='activateConfigurationView(event, \"betrag-auslesen-abt3\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Betrag auslesen (Abt. 3)</p>
-                    </div>
-                    <div class='__application_configuration_sidebar_section{active_klassifizierung_schuldenart_abt3}' onmouseup='activateConfigurationView(event, \"klassifizierung-schuldenart-abt3\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Klassifizierung SchuldenArt (Abt. 3)</p>
-                    </div>
-                    <div class='__application_configuration_sidebar_section{active_rechtsinhaber_auslesen_abt3}' onmouseup='activateConfigurationView(event, \"rechtsinhaber-auslesen-abt3\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Rechtsinhaber auslesen (Abt. 3)</p>
-                    </div>
-                    <div class='__application_configuration_sidebar_section{active_text_kuerzen_abt3}' onmouseup='activateConfigurationView(event, \"text-kuerzen-abt3\")'>
-                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_fx}'></img>
-                        <p>Text kürzen (Abt. 3)</p>
-                    </div>
                 </div>
             ");
 
@@ -706,6 +524,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     static ICON_SEARCH: &[u8] = include_bytes!("./img/icons8-search-in-cloud-96.png");
     static ICON_UPLOAD: &[u8] = include_bytes!("./img/icons8-upload-to-cloud-96.png");
     static ICON_HVM: &[u8] = include_bytes!("./img/icons8-copy-link-96.png");
+    static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
 
     let disabled = if rpc_data.data_loaded {
         " disabled"
@@ -719,55 +538,32 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
     let icon_help_base64 = base64_encode(ICON_HELP);
     let icon_info_base64 = base64_encode(ICON_INFO);
-    let icon_download_base64 = base64_encode(ICON_DOWNLOAD);
-    let icon_delete_base64 = base64_encode(ICON_DELETE);
     let icon_export_pdf = base64_encode(ICON_PDF);
     let icon_rechte_speichern = base64_encode(ICON_RECHTE_AUSGEBEN);
     let icon_fehler_speichern = base64_encode(ICON_FEHLER_AUSGEBEN);
     let icon_export_teilbelastungen = base64_encode(ICON_TEILBELASTUNGEN_AUSGEBEN);
     let icon_export_abt1 = base64_encode(ICON_ABT1_AUSGEBEN);
-    let icon_search_base64 = base64_encode(ICON_SEARCH);
     let icon_upload_lefis = base64_encode(ICON_UPLOAD);
     let icon_export_csv = base64_encode(ICON_EXPORT_CSV);
     let icon_export_lefis = base64_encode(ICON_EXPORT_LEFIS);
     let icon_hvm = base64_encode(ICON_HVM);
+    let icon_download_base64 = base64_encode(ICON_DOWNLOAD);
+    let icon_delete_base64 = base64_encode(ICON_DELETE);
+    let icon_search_base64 = base64_encode(ICON_SEARCH);
+    let icon_reload = base64_encode(&RELOAD_PNG);
 
-    let nebenbet = {
+    let export_excel = {
         format!("
             <div class='__application-ribbon-section 3'>
                 <div style='display:flex;flex-direction:row;'>
                     <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.export_nb(event)' class='__application-ribbon-action-vertical-large'>
+                        <label onmouseup='tab_functions.export_excel(event)' class='__application-ribbon-action-vertical-large'>
                             <div class='icon-wrapper'>
                                 <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
                             </div>
                             <div>
-                                <p>Nebenbet.</p>
-                                <p>in CSV</p>
-                            </div>
-                        </label>
-                    </div>
-                    
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.import_nb(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_download_base64}'>
-                            </div>
-                            <div>
-                                <p>Nebenbet.</p>
-                                <p>importieren</p>
-                            </div>
-                        </label>
-                    </div>
-                    
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.delete_nb(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
-                            </div>
-                            <div>
-                                <p>Nebenbet.</p>
-                                <p>entfernen</p>
+                                <p>Excel</p>
+                                <p>exportieren</p>
                             </div>
                         </label>
                     </div>
@@ -776,26 +572,26 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
-    let export_lefis = {
+    let export_david = {
         format!("
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_lefis(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.export_david(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Export</p>
-                        <p>(.lefis)</p>
+                        <p>nach DAVID</p>
                     </div>
                 </label>
             </div>
         ")
     };
 
-    let grundbuch_oeffnen = {
+    let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.load_new_pdf(event)' class='__application-ribbon-action-vertical-large'>
+            <label onmouseup='tab_functions.load_project(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
                     <img class='icon' src='data:image/png;base64,{icon_open_base64}'>
                 </div>
@@ -808,10 +604,10 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
-    let neues_grundbuch = {
+    let neues_projekt = {
         format!("
         <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.create_new_grundbuch(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.create_project(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon' src='data:image/png;base64,{icon_neu_base64}'>
                     </div>
@@ -856,86 +652,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
-    let alle_rechte_speichern = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_alle_rechte(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_rechte_speichern}'>
-                </div>
-                <div>
-                    <p>Alle Rechte</p>
-                    <p>speichern unter</p>
-                </div>
-            </label>
-        </div> 
-        ")
-    };
-
-    let alle_fehler_speichern = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_alle_fehler(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_fehler_speichern}'>
-                </div>
-                <div>
-                    <p>Alle Fehler</p>
-                    <p>speichern unter</p>
-                </div>
-            </label>
-        </div> 
-        ")
-    };
-
-    let alle_teibelast_speichern = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_alle_teilbelastungen(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
-                </div>
-                <div>
-                    <p>Alle Teilbelast.</p>
-                    <p>speichern unter</p>
-                </div>
-            </label>
-        </div> 
-        ")
-    };
-
-    let alle_abt1_speichern = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_alle_abt1(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
-                </div>
-                <div>
-                    <p>Alle Abt. 1</p>
-                    <p>speichern unter</p>
-                </div>
-            </label>
-        </div> 
-        ")
-    };
-
-    let alle_hvm_speichern = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_alle_hvm(event)'  class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_hvm}'>
-                </div>
-                <div>
-                    <p>Alle HVM</p>
-                    <p>speichern unter</p>
-                </div>
-            </label>
-        </div> 
-        ")
-    };
-
     let export_pdf = {
         format!("
         <div class='__application-ribbon-section-content'>
@@ -951,9 +667,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         </div>   
         ")
     };
-
-    static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
-    let icon_reload = base64_encode(&RELOAD_PNG);
 
     let daten_importieren = {
         format!("
@@ -971,10 +684,10 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
-    let aenderungen_uebernehmen = {
+    let projekt_speichern = {
         format!("
         <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.upload_grundbuch(event)' class='__application-ribbon-action-vertical-large'>
+            <label onmouseup='tab_functions.save_project(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_upload_lefis}'>
                 </div>
@@ -1048,9 +761,9 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 1'>
                     <div style='display:flex;flex-direction:row;'>
                         
-                        {grundbuch_oeffnen}
+                        {projekt_oeffnen}
 
-                        {neues_grundbuch}
+                        {neues_projekt}
                         
                     </div>
                 </div>
@@ -1072,9 +785,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
-                        {aenderungen_uebernehmen}
-
-                        {export_pdf}
+                        {projekt_speichern}
                     </div>
                 </div>
 
@@ -1107,16 +818,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 4'>
                     <div style='display:flex;flex-direction:row;'>
                         
-                        {alle_rechte_speichern}
-                        
-                        {alle_fehler_speichern}
-                        
-                        {alle_teibelast_speichern}
-
-                        {alle_abt1_speichern}
-                        
-                        {alle_hvm_speichern}
-                        
                     </div>
                 </div>            
             </div>
@@ -1133,14 +834,27 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
             </div>
             <div class='__application-ribbon-body'>
 
-
-                {nebenbet}
-
-                <div style='display:flex;flex-grow:1;'></div>
-
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_lefis}
+                        {export_excel}
+                        
+                        {export_pdf}
+                        
+                        {export_david}
+                    </div>
+                </div>
+
+                <div style='display:flex;flex-grow:1;'></div>
+                
+                <div class='__application-ribbon-section 6'>
+                    <div style='display:flex;flex-direction:row;'>
+
+                        {einstellungen}
+
+                        {hilfe}
+
+                        {info}
+
                     </div>
                 </div>
             </div>
