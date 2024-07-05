@@ -263,10 +263,10 @@
     }
 
     function replaceProjectContent() {
-      console.log(csv_data);
+      console.log(window.csv_data);
       let d = document.getElementById("__application_project_content");
       if (d)
-         d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(csv_data));
+         d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(window.csv_data));
     }
 
     function selectTab(id) {
