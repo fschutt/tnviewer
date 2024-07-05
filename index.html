@@ -142,7 +142,7 @@
       console.log("Ändere " + id + " = " + newstatus);
       if (window.csv_data && window.csv_data[id]) {
         for (var i = 0; i < window.csv_data[id].length; i++) {
-          window.csv_data[i].status = newstatus;
+          window.csv_data[id][i].status = newstatus;
         }
       }
       console.log(window.csv_data[id]);
@@ -154,7 +154,7 @@
       console.log("Ändere " + id + " = " + newnotiz);
       if (window.csv_data && window.csv_data[id]) {
         for (var i = 0; i < window.csv_data[id].length; i++) {
-          window.csv_data[i].notiz = newnotiz;
+          window.csv_data[id][i].notiz = newnotiz;
         }
       }
       console.log(window.csv_data[id]);
