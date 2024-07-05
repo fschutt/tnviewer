@@ -57,6 +57,35 @@ pub struct TaggedPolygon {
     pub attributes: BTreeMap<String, String>,
 }
 
+impl TaggedPolygon {
+    pub fn get_fit_bounds(&self) -> [[f64;2];2] {
+        let mut min_x = 0.0;
+        let mut max_x = 0.0;
+        let mut min_y = 0.0;
+        let mut max_y = 0.0;
+        for l in self.poly.outer_rings.iter() {
+            for p in l.points.iter() {
+                if p.x < min_x {
+                    min_x = p.x;
+                }
+                if p.x > max_x {
+                    max_x = p.x;
+                }
+                if p.y < min_y {
+                    min_y = p.y;
+                }
+                if p.y > max_y {
+                    max_y = p.y;
+                }
+            }
+        }
+    
+        [
+            [min_y, min_x],
+            [max_y, max_x]
+        ]
+    }
+}
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgLine {
     pub points: Vec<SvgPoint>,

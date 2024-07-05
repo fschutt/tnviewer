@@ -1,4 +1,4 @@
-use nas::NasXMLFile;
+use nas::{NasXMLFile, TaggedPolygon};
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
 use crate::csv::CsvDataType;
@@ -31,6 +31,16 @@ pub fn ui_render_project_content(decoded: String, csv_data: String) -> String {
     let _uidata = UiData::from_string(&decoded);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
     crate::ui::render_project_content(csv_data)
+}
+
+#[wasm_bindgen]
+pub fn get_fit_bounds(s: String) -> String {
+    let flst = match serde_json::from_str::<TaggedPolygon>(&s) {
+        Ok(o) => o,
+        Err(e) => return e.to_string()
+    };
+    let bounds = flst.get_fit_bounds();
+    serde_json::to_string(&bounds).unwrap_or_default()
 }
 
 #[wasm_bindgen]

@@ -108,8 +108,10 @@
 
       var found = searchFlst(id, projectdata);
       if (found) {
+        let bounds = JSON.decode(get_fit_bounds(JSON.stringify(found)));
+        console.log(bounds);
+        map.fitBounds(bounds);
         alert(found.ebene);
-        // zoom to flst
       } else {
         alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
       }
@@ -253,6 +255,7 @@
             zoomControl: false,
             maxNativeZoom: 25,
             maxZoom: 25,
+            zoomSnap: 0,
           });
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
