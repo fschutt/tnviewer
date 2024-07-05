@@ -815,11 +815,20 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <p onmouseup='selectTab(2);'>EXPORT</p>
             </div>
             <div class='__application-ribbon-body'>
-                <div class='__application-ribbon-section 4'>
+
+                <div style='display:flex;flex-grow:1;'></div>
+                
+                <div class='__application-ribbon-section 6'>
                     <div style='display:flex;flex-direction:row;'>
-                        
+
+                        {einstellungen}
+
+                        {hilfe}
+
+                        {info}
+
                     </div>
-                </div>            
+                </div>           
             </div>
             "
             )
