@@ -33,7 +33,7 @@
     var configuration = {
       map: {
         basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service",
+        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c_wmts/service?",
         dop_layers: "bebb_dop20c"
       },
       style: {
@@ -74,7 +74,6 @@
 
             var converted = load_nas_xml(readerEvent.target.result);
             projectdata = JSON.parse(converted);
-            // initializeOrUpdateMap();
 
             // remove old LeafLet layers
             for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
