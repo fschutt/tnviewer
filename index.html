@@ -263,8 +263,10 @@
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
           });
+          console.log(configuration.dop_source);
+          console.log(configuration.dop_layers);
           var wms = L.tileLayer.wms(configuration.dop_source, {
-              layers: configuration.dop_layers,
+              layers: configuration.dop_layers
           });
           var basemaps = {
             OSM: basemap,
