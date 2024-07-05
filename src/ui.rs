@@ -1,5 +1,7 @@
 use serde_derive::{Serialize, Deserialize};
 
+use crate::csv::CsvDataType;
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
     #[serde(default)]
@@ -881,12 +883,29 @@ pub fn render_main(_rpc_data: &UiData) -> String {
             <div id='map' style='position:absolute;width:100%;height:100%;z-index:0;'></div>
             <div id='__application_main-overlay-container' style='z-index:9999;pointer-events:none;position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
                 <div id='__application_project_content' style='background:white;padding:20px;width:500px;margin-bottom:40px;box-shadow:0px 0px 10px black;border-radius:3px;'>
-                    <h4 style='font-size:20px;'>PROJEKT</h4>
                 </div>
             </div>
         </div>
     ");
     normalize_for_js(map) // TODO
+}
+
+pub fn render_project_content(csv: CsvDataType) -> String {
+    normalize_for_js(csv.iter().map(|(k, v)| {
+        format!("<div class='csv-datensatz' style='background:blue;'>
+            <h5 style='font-size:16px;font-weight:bold;'>{flst_id}</h5>
+            <p style='font-size:12px;'>{nutzungsart}</p>
+            <input type='text' placeholder='Notiz...'></input>
+            <select >
+            <option value='bleibt'>Bleibt</option>
+            <option value='aenderung-keine-benachrichtigung'>Änderung (keine Benachrichtigung)</option>
+            <option value='aenderung-mit-benachrichtigung'>Änderung (mit Benachrichtigung)</option>
+            </select>
+        </div>", 
+        nutzungsart = v.iter().map(|q| q.nutzung.clone()).collect::<Vec<_>>().join(","),
+        flst_id = k,
+    )
+    }).collect::<Vec<_>>().join(""))
 }
 
 pub fn normalize_for_js(s: String) -> String {

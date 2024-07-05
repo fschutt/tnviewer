@@ -1,6 +1,7 @@
 use nas::NasXMLFile;
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
+use crate::csv::CsvDataType;
 
 pub mod xml;
 pub mod ui;
@@ -28,7 +29,8 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 #[wasm_bindgen]
 pub fn ui_render_project_content(decoded: String, csv_data: String) -> String {
     let _uidata = UiData::from_string(&decoded);
-    String::new() // TODO
+    let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
+    crate::ui::render_project_content(csv_data)
 }
 
 #[wasm_bindgen]

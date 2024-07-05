@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use serde_derive::{Serialize, Deserialize};
 
+pub type CsvDataType = BTreeMap<String, Vec<CsvDatensatz>>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Status {
     #[serde(rename = "bleibt")]
@@ -27,7 +29,7 @@ pub fn parse_csv(
     eigentuemer_col: &str, 
     delimiter: &str, 
     ignore_firstline: bool
-) -> Result<BTreeMap<String, Vec<CsvDatensatz>>, String> {
+) -> Result<CsvDataType, String> {
     
     let mut cells = csv.lines().map(|l| l.split(delimiter).map(String::from).collect::<Vec<_>>()).collect::<Vec<_>>();
     let mut map = BTreeMap::new();
