@@ -153,9 +153,9 @@
           reader.onload = readerEvent => {
             var converted = parse_csv_dataset_to_json(
               readerEvent.target.result,
-              "id",
-              "nutzungsart",
-              "eigentuemer",
+              "Flurstueck",
+              "Nutzung",
+              "Eigentuemer",
               "|",
               "true"
             );
