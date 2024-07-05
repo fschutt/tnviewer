@@ -908,7 +908,7 @@ pub fn render_project_content(csv: CsvDataType) -> String {
     )
     }).collect::<Vec<_>>().join("");
 
-    normalize_for_js(format!("<div class='csv-scrollbox' style='overflow-x:hidden;overflow-y:scroll;'>{s}</div>"))
+    normalize_for_js(format!("<div class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{s}</div>"))
 }
 
 pub fn normalize_for_js(s: String) -> String {
