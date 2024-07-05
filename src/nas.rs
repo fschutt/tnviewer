@@ -59,23 +59,23 @@ pub struct TaggedPolygon {
 
 impl TaggedPolygon {
     pub fn get_fit_bounds(&self) -> [[f64;2];2] {
-        let mut min_x = 0.0;
-        let mut max_x = 0.0;
-        let mut min_y = 0.0;
-        let mut max_y = 0.0;
+        let mut min_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut max_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut min_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+        let mut max_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
         for l in self.poly.outer_rings.iter() {
             for p in l.points.iter() {
-                if p.x < min_x {
-                    min_x = p.x;
-                }
                 if p.x > max_x {
                     max_x = p.x;
                 }
-                if p.y < min_y {
-                    min_y = p.y;
-                }
                 if p.y > max_y {
                     max_y = p.y;
+                }
+                if p.x < min_x {
+                    min_x = p.x;
+                }
+                if p.y < min_y {
+                    min_y = p.y;
                 }
             }
         }
