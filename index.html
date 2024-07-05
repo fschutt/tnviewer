@@ -121,11 +121,12 @@
     }
 
     function searchFlst(id, projectdata) {
+      var id = id.replace(/0+$/, "");
       for (var ebene_id in projectdata.ebenen) {
         var ebene = projectdata.ebenen[ebene_id];
         for (var i = 0; i < ebene.length; i++) {
           var flst = ebene[i];
-          if (flst.attributes["id"] && flst.attributes["id"] == id) {
+          if (flst.attributes["flurstueckskennzeichen"] && flst.attributes["flurstueckskennzeichen"].startsWith(id)) {
             return {
               flst: flst,
               ebene: ebene_id,
