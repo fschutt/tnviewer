@@ -321,6 +321,44 @@ export function get_geojson_fuer_ebene(json, layer) {
     }
 }
 
+/**
+* @param {string} csv
+* @param {string} id_col
+* @param {string} nutzung_col
+* @param {string} eigentuemer_col
+* @param {string} delimiter
+* @param {string} ignore_firstline
+* @returns {string}
+*/
+export function parse_csv_dataset_to_json(csv, id_col, nutzung_col, eigentuemer_col, delimiter, ignore_firstline) {
+    let deferred7_0;
+    let deferred7_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(id_col, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(nutzung_col, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(eigentuemer_col, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(delimiter, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len4 = WASM_VECTOR_LEN;
+        const ptr5 = passStringToWasm0(ignore_firstline, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len5 = WASM_VECTOR_LEN;
+        wasm.parse_csv_dataset_to_json(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred7_0 = r0;
+        deferred7_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred7_0, deferred7_1, 1);
+    }
+}
+
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0));

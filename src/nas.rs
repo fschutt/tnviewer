@@ -112,17 +112,6 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> Result<Na
         None => return Err(format!("Unbekanntes CRS: {crs}")),
     };
 
-    /*
-        "Polygon", "coordinates": [
-          [[-5,-5],[5,-5],[0,5],[-5,-5]],
-          [[-4,-4],[4,-4],[0,4],[-4,-4]]
-        ]},
-        { "type": "MultiPolygon", "coordinates": [[
-          [[-7,-7],[7,-7],[0,7],[-7,-7]],
-          [[-6,-6],[6,-6],[0,6],[-6,-6]]
-        ]
-    */
-
     // Objekte parsen
     let whitelist = std::collections::BTreeSet::from_iter(whitelist.iter().cloned());
     let objekte_nodes = get_all_nodes_in_subtree(&xml, "member");
@@ -262,11 +251,4 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
         ebenen: objekte,
         crs: latlon_proj_string.to_string(),
     })
-}
-
-#[test]
-fn test_parse_nas() {
-    let s = parse_nas_xml(include_str!("../test.xml"), &["AX_Gebaeude", "AX_Landwirtschaft"]).unwrap();
-    let q = transform_nas_xml_to_lat_lon(&s).unwrap();
-    println!("{:#?}", q);
 }

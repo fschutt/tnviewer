@@ -15,13 +15,15 @@
         get_geojson_fuer_ebene,
         ui_render_ribbon,
         ui_render_popover_content,
-        ui_render_project_content
+        ui_render_project_content,
+        parse_csv_dataset_to_json
       } from "./pkg/tnviewer.js";
 
       var map = null; // Leaflet object
       var geojson_layers = [];
       var layers = null;
-      var projectdata = null; // project data
+      var projectdata = null; // project XML NAS data
+      var csv_data = null; // project CSV data
       var uidata = { // UI State
         popover_state: null,
         tab: null, 
@@ -98,6 +100,91 @@
         input.click();
     }
 
+    function newProjectFromCSV() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = 'true';
+      input.accept = ".csv";
+
+      input.onchange = e => { 
+        if (files_read.length < 1) {
+          return;
+        }
+        csv_data = {};
+        for (var i = 0; i < e.target.files.length; i++) {
+          var file = e.target.files[i];
+          var reader = new FileReader();
+          reader.readAsText(file,'UTF-8');
+          reader.onload = readerEvent => {
+            var converted = parse_csv_dataset_to_json(readerEvent.target.result);
+            var json = JSON.parse(converted);
+            for (var property in object) {
+              csv_data[property] = object[property];
+            }
+            replaceProjectContent();
+          }
+        }
+      }
+      input.click();
+    }
+
+    const downloadURL = (data, fileName) => {
+        const a = document.createElement('a')
+        a.href = data
+        a.download = fileName
+        document.body.appendChild(a)
+        a.style.display = 'none'
+        a.click()
+        a.remove()
+    }
+
+    const downloadBlob = (data, fileName, mimeType) => {
+
+        const blob = new Blob([data], {
+            type: mimeType
+        })
+
+        const url = window.URL.createObjectURL(blob)
+
+        downloadURL(url, fileName)
+
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    }
+
+    function saveProjectDataToFile() {
+      if (project && project != null) {
+        var json_obj = {
+          csv: csv_data,
+        };
+        var json = JSON.stringify(json_obj);
+        var json_bytes = new TextEncoder().encode(json);
+        downloadBlob(json, "Projekt.json", 'application/octet-stream');
+      } else {
+        alert("Kein Projekt geladen!");
+      }
+    }
+
+    function loadProjectDataFromFile() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = ".json";
+
+      input.onchange = e => { 
+        if (files_read.length < 1) {
+          return;
+        }
+        var file = e.target.files[0];
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          var json = JSON.parse(readerEvent.target.result);
+          csv_data = json.csv;
+          replaceProjectContent();
+        }
+      }
+      input.click();
+    }
+
     function initializeOrUpdateMap() {
         if (map == null || map == undefined || !map) {
           map = L.map('map', {
@@ -136,23 +223,36 @@
     }
 
     function replaceProjectContent() {
+      console.log(csv_data);
       let d = document.getElementById("__application_project_content");
       if (d)
-         d.innerHTML = ui_render_project_content(JSON.stringify(uidata));
+         d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(csv_data));
     }
 
     window.replacePopOver = replacePopOver;
     window.replaceProjectContent = replaceProjectContent;
     window.replaceRibbon = replaceRibbon;
 
-    window.replaceDataNasXML = replaceDataNasXML;
+    var tab_functions = {
+        load_project: function(event) { loadProjectDataFromFile(); },
+        create_project: function(event) { newProjectFromCSV(); },
+        undo: function(event) { },
+        redo: function(event) { },
+        import_data: function(event) { replaceDataNasXML(); },
+        save_project: function(event) { saveProjectDataToFile(); },
+        open_help: function(event) { },
+        open_info: function(event) { },
+        open_configuration: function(event) { },
+        export_pdf: function(event) { },
+        export_david: function(event) { },
+    };
+    window.tab_functions = tab_functions;
     window.initializeOrUpdateMap = initializeOrUpdateMap;
 
     init()
       .then(() => { 
         document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));
         initializeOrUpdateMap(); // add leaflet map
-        // document.getElementById("__application-daten-laden-test-button").onclick = replaceDataNasXML;
       });
     </script>
   </head>

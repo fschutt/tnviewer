@@ -5,6 +5,7 @@ use crate::ui::UiData;
 pub mod xml;
 pub mod ui;
 pub mod nas;
+pub mod csv;
 
 #[wasm_bindgen]
 pub fn ui_render_entire_screen(decoded: String) -> String {
@@ -49,6 +50,29 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
         Err(e) => return e.to_string(),
     };
     xml.get_geojson_ebene(&layer)
+}
+
+#[wasm_bindgen]
+pub fn parse_csv_dataset_to_json(
+    csv: String, 
+    id_col: String, 
+    nutzung_col: String, 
+    eigentuemer_col: String, 
+    delimiter: String,
+    ignore_firstline: String
+) -> String {
+    let csv_daten = match crate::csv::parse_csv(
+        &csv, 
+        &id_col, 
+        &nutzung_col, 
+        &eigentuemer_col, 
+        &delimiter,
+        ignore_firstline == "true"
+    ) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+    serde_json::to_string(&csv_daten).unwrap_or_default()
 }
 
 /* 
