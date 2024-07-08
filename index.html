@@ -18,7 +18,9 @@
       ui_render_project_content,
       parse_csv_dataset_to_json,
       get_fit_bounds,
-      export_xlsx
+      export_xlsx,
+      export_veraenderte_flst,
+      export_alle_flst
     } from "./pkg/tnviewer.js";
 
     var map = null; // Leaflet object
@@ -118,7 +120,11 @@
             }
             geojson_layers = [];
             for (var layer_name in window.configuration.style) {
-              var geojson = JSON.parse(get_geojson_fuer_ebene(converted, layer_name));
+              var json = get_geojson_fuer_ebene(converted, layer_name);
+              console.log(json);
+              var geojson = JSON.parse(json);
+              console.log(geojson);
+              console.log("ok!");
               var layer_style = window.configuration.style[layer_name];
               var myLayer = L.geoJSON(geojson, {
                 "color": layer_style.outlineColor,
@@ -388,6 +394,22 @@
         downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
     }
 
+    function exportVeraenderteFlst() {
+        if (!csv_data) {
+          return;
+        }
+        var txt = export_veraenderte_flst(JSON.stringify(csv_data));
+        downloadBlob(txt, "veraenderte_flst.txt", 'text/plain');
+    }
+
+    function exportAlleFlst() {
+        if (!csv_data) {
+          return;
+        }
+        var txt = export_alle_flst(JSON.stringify(csv_data));
+        downloadBlob(txt, "alle_flst.txt", 'text/plain');
+    }
+
     window.changeStatus = changeStatus;
     window.changeNotiz = changeNotiz;
     window.activateConfigurationView = activateConfigurationView;
@@ -410,6 +432,8 @@
         open_configuration: function(event) { openConfiguration(); },
         export_pdf: function(event) { },
         export_excel: function(event) { exportExcel(); },
+        export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
+        export_alle_flst: function(event) { exportAlleFlst(); },
         export_david: function(event) { },
     };
     window.tab_functions = tab_functions;

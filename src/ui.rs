@@ -590,6 +590,38 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
+    let export_alle_flurstuecke = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_alle_flst(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>alle Flst.</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let export_veraenderte_flurstuecke = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_veraendert_flst(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>Flst. veränd.</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
     let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>

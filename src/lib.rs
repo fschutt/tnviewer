@@ -91,6 +91,25 @@ pub fn parse_csv_dataset_to_json(
 
 
 #[wasm_bindgen]
+pub fn export_veraenderte_flst(s: String) -> Vec<u8> {
+    let data = match serde_json::from_str::<CsvDataType>(&s) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    crate::xlsx::get_veraenderte_flst(&data)
+}
+
+#[wasm_bindgen]
+pub fn export_alle_flst(s: String) -> Vec<u8> {
+    let data = match serde_json::from_str::<CsvDataType>(&s) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    crate::xlsx::get_alle_flst(&data)
+}
+#[wasm_bindgen]
 pub fn export_xlsx(s: String) -> Vec<u8> {
     let data = match serde_json::from_str::<CsvDataType>(&s) {
         Ok(o) => o,
