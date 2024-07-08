@@ -8,6 +8,7 @@ pub mod ui;
 pub mod nas;
 pub mod csv;
 pub mod xlsx;
+pub mod search;
 
 #[wasm_bindgen]
 pub fn ui_render_entire_screen(decoded: String) -> String {

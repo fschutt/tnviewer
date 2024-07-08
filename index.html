@@ -121,10 +121,10 @@
             geojson_layers = [];
             for (var layer_name in window.configuration.style) {
               var json = get_geojson_fuer_ebene(converted, layer_name);
-              console.log(json);
+              // console.log(json);
               var geojson = JSON.parse(json);
-              console.log(geojson);
-              console.log("ok!");
+              // console.log(geojson);
+              // console.log("ok!");
               var layer_style = window.configuration.style[layer_name];
               var myLayer = L.geoJSON(geojson, {
                 "color": layer_style.outlineColor,
@@ -151,9 +151,9 @@
 
       var found = searchFlst(id, projectdata);
       if (found) {
-        console.log(found);
+        // console.log(found);
         let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found.flst)));
-        console.log(bounds);
+        // console.log(bounds);
         map.fitBounds(bounds);
       } else {
         alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
@@ -162,6 +162,13 @@
 
     function searchFlst(id, projectdata) {
       var id = id.replace(/0+$/, "");
+      // minimum 14 chars, prevent numbers such as "70" from being reduced to "7"
+      if (id.length < 14) {
+        for (let i = (14 - id.length); i > 0; i--) {
+          id += "0";
+        }
+      }
+
       for (var ebene_id in projectdata.ebenen) {
         var ebene = projectdata.ebenen[ebene_id];
         for (var i = 0; i < ebene.length; i++) {
@@ -202,9 +209,9 @@
               "|",
               "true"
             );
-            console.log(converted);
+            // console.log(converted);
             var json = JSON.parse(converted);
-            console.log(json);
+            // console.log(json);
             for (var property in json) {
               window.csv_data[property] = json[property];
             }
@@ -218,25 +225,21 @@
     function changeStatus(event) {
       var newstatus = event.target.value;
       var id = event.target.dataset.id;
-      console.log("Ändere " + id + " = " + newstatus);
       if (window.csv_data && window.csv_data[id]) {
         for (var i = 0; i < window.csv_data[id].length; i++) {
           window.csv_data[id][i].status = newstatus;
         }
       }
-      console.log(window.csv_data[id]);
     }
 
     function changeNotiz(event) {
       var newnotiz = event.target.value;
       var id = event.target.dataset.id;
-      console.log("Ändere " + id + " = " + newnotiz);
       if (window.csv_data && window.csv_data[id]) {
         for (var i = 0; i < window.csv_data[id].length; i++) {
           window.csv_data[id][i].notiz = newnotiz;
         }
       }
-      console.log(window.csv_data[id]);
     }
 
     const downloadURL = (data, fileName) => {
@@ -310,8 +313,6 @@
               maxNativeZoom: 25,
               maxZoom: 25,
           });
-          console.log(window.configuration.map.dop_source);
-          console.log(window.configuration.map.dop_layers);
           var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
               layers: window.configuration.map.dop_layers,
               maxNativeZoom: 25,
@@ -335,7 +336,6 @@
     }
 
     function replacePopOver() {
-      console.log("replace popover");
       let d = document.getElementById("__application_popover");
       if (d)
          d.innerHTML = ui_render_popover_content(JSON.stringify(uidata));
@@ -349,7 +349,6 @@
     }
 
     function replaceProjectContent() {
-      console.log(window.csv_data);
       let d = document.getElementById("__application_project_content");
       if (d)
          d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(window.csv_data));
@@ -368,6 +367,11 @@
 
     function openHelp() {
       uidata.popover_state = "Help";
+      replacePopOver();
+    }
+
+    function searchNA(event) {
+      uidata.popover_state = { "Search": { "text": event.target.value } };
       replacePopOver();
     }
 

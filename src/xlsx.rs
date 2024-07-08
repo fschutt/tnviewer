@@ -36,13 +36,13 @@ fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(String, bool)> {
 
         let mut chars = ds.chars().collect::<Vec<char>>();
         chars.reverse();
-        let mut last_10 = chars.iter().take(10).cloned().collect::<Vec<_>>();
-        last_10.reverse();
-        if last_10.len() != 10 {
+        let mut last_11 = chars.iter().take(11).cloned().collect::<Vec<_>>();
+        last_11.reverse();
+        if last_11.len() != 11 {
             continue;
         }
-        let zaehler = &last_10[..4];
-        let nenner = &last_10[4..];
+        let zaehler = &last_11[..5];
+        let nenner = &last_11[5..9];
         let zaehler = zaehler.into_iter().collect::<String>();
         let nenner = nenner.into_iter().collect::<String>();
         let z = match zaehler.parse::<usize>() {

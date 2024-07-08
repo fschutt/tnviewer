@@ -33,6 +33,7 @@ pub enum PopoverState {
     Info,
     Configuration(ConfigurationView),
     Help,
+    Search { text: String },
     ExportPdf,
     CreateNewProjekt,
     ProjektMetaAendern {
@@ -162,6 +163,33 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                     <input type='submit' value='Speichern' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:inline-block;flex-grow:0;max-width:320px;margin-top:20px;' />
                     </form>
                 </div>
+            </div>
+            ")
+        },
+        Some(PopoverState::Search { text }) => {
+            let found = crate::search::search_map(&text);
+            let found = found.iter().map(|(k, v)| {
+                format!(
+                    "<li>
+                        <strong>{abk} ({bez})</strong>
+                        <p>{def}: {ehb}</p>
+                    </li>", 
+                    abk = k,
+                    bez = v.bez,
+                    def = v.def,
+                    ehb = v.ehb,
+                )
+            }).collect::<Vec<_>>().join("");
+
+            format!("
+            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:all;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
+                
+                {close_button}
+                
+                <div style='padding:5px 0px;display:flex;flex-grow:1;min-height:750px;'>
+                    <ul>{found}</ul>                       
+                </div>
+                                
             </div>
             ")
         },
@@ -790,6 +818,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <p onmouseup='selectTab(0);' class='active'>START</p>
                 <p onmouseup='selectTab(1);'>KORREKTUR</p>
                 <p onmouseup='selectTab(2);'>EXPORT</p>
+                <div style='flex-grow:1;'></div>
+                <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
                 <div class='__application-ribbon-section 1'>
@@ -847,6 +877,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <p onmouseup='selectTab(0);'>START</p>
                 <p onmouseup='selectTab(1);' class='active'>KORREKTUR</p>
                 <p onmouseup='selectTab(2);'>EXPORT</p>
+                <div style='flex-grow:1;'></div>
+                <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
 
@@ -874,6 +906,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <p onmouseup='selectTab(0);'>START</p>
                 <p onmouseup='selectTab(1);'>KORREKTUR</p>
                 <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
+                <div style='flex-grow:1;'></div>
+                <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
 
@@ -882,7 +916,19 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                         {export_excel}
                         
                         {export_pdf}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 5'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {export_alle_flurstuecke}
                         
+                        {export_veraenderte_flurstuecke}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 5'>
+                    <div style='display:flex;flex-direction:row;'>
                         {export_david}
                     </div>
                 </div>

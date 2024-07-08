@@ -1,0 +1,1658 @@
+{
+    "WBF": {
+      "nab": "siedlung",
+      "nak": "11000000",
+      "bez": "Wohnbaufläche",
+      "def": "ist eine baulich geprägte Fläche einschließlich der mit ihr im Zusammenhang stehenden Freiflächen (z. B. Vorgärten, Ziergärten, Zufahrten, Stellplätze und Hofraumflächen), die ausschließlich oder vorwiegend dem Wohnen dient.",
+      "ken": "41001",
+      "oak": "",
+      "ehb": "Die unbebauten Flächen gelten gewöhnlich als der Bebauung untergeordnet, wenn sie das 10fache der bebauten Fläche nicht überschreiten. Hausgärten bis zu 1000 m², im übrigen Flächen bis zu 2000 m² gelten bei obiger Nutzung als der Bebauung untergeordnet."
+    },
+    "WBFO": {
+      "nab": "siedlung",
+      "nak": "11000000",
+      "bez": "Wohnbaufläche offene Bauweise",
+      "def": "",
+      "ken": "41001",
+      "oak": "BEB - 1000",
+      "ehb": "'Offen' beschreibt die Bebauung von 'Wohnbaufläche', die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
+    },
+    "WBFG": {
+      "nab": "siedlung",
+      "nak": "11000000",
+      "bez": "Wohnbaufläche geschlossene Bauweise",
+      "def": "",
+      "ken": "41001",
+      "oak": "BEB - 1000",
+      "ehb": "'Geschlossen' beschreibt die Bebauung von 'Wohnbaufläche', die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent der Wohnbaufläche."
+    },
+    "WBFPA": {
+      "nab": "siedlung",
+      "nak": "11980000",
+      "bez": "Wohnbaufläche - Parken",
+      "def": "",
+      "ken": "41001",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "IGF": {
+      "nab": "siedlung",
+      "nak": "12000000",
+      "bez": "Industrie- und Gewerbefläche",
+      "def": "ist eine Fläche, auf der sich Industrie-, Gewerbe-, Handels- und Dienstleistungsunternehmen sowie deren Betriebsflächen befinden.",
+      "ken": "41002",
+      "oak": "",
+      "ehb": "Die unbebauten Flächen gelten gewöhnlich als der Bebauung untergeordnet, wenn sie das 10fache der bebauten Fläche nicht überschreiten."
+    },
+    "IG": {
+      "nab": "siedlung",
+      "nak": "12010000",
+      "bez": "Industrie und Gewerbe",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Industrie- und Gewerbebetriebe vorhanden sind. Darin sind Gebäude- und Freiflächen und die Betriebsfläche Lagerfläche enthalten.",
+      "ken": "41002",
+      "oak": "FKT - 1700",
+      "ehb": "Hierzu gehören auch Gebäude und Freifläche Industrie und Gewerbe, Produktion, Handwerk, Tankstelle, betriebliche Sozialeinrichtung, Logistik und Transport, Forschung und Entwicklung, Nahrungs-, Futter-, Genussmittel, Textil, Bekleidung, Holz-, Naturfaser-, Verpackungsprodukte, Mediaoprodukte, Mineralölverarbeitung, Chemie-, Pharma-, Kunststoffprodukte, Metallerzeugung und -verar- beitung, Technik, Elektrik, Elektronik, Maschinenbau, Fahrzeugbau, Möbel und sonstige Konsumgüter."
+    },
+    "IGL": {
+      "nab": "siedlung",
+      "nak": "12010400",
+      "bez": "Lagerfläche",
+      "def": "bezeichnet eine Fläche, auf der inner- und außerhalb von Gebäuden wirtschaftliche Güter gelagert werden, ohne Zusammenhang zu weiteren Wertearten.",
+      "ken": "41002",
+      "oak": "FKT - 1740",
+      "ehb": ""
+    },
+    "IGW": {
+      "nab": "siedlung",
+      "nak": "12010900",
+      "bez": "Werft",
+      "def": "ist eine Fläche mit Gebäuden und sonstigen Einrichtungen zum Bau oder zur Reparatur von Schiffen",
+      "ken": "41002",
+      "oak": "FKT - 1790",
+      "ehb": ""
+    },
+    "HD": {
+      "nab": "siedlung",
+      "nak": "12020000",
+      "bez": "Handel und Dienstleistung",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Gebäude stehen, in denen Handels- und/oder Dienstleistungsbetriebe ansässig sind.",
+      "ken": "41002",
+      "oak": "FKT - 1400",
+      "ehb": "Hierzu gehören auch freie Berufe und weitere Dienstleistungen, Bank, Kredit, Versicherung, Beherbergung, Restauration (gastronomische Versorgung), Vergnügung."
+    },
+    "HDH": {
+      "nab": "siedlung",
+      "nak": "12020400",
+      "bez": "Handel",
+      "def": "bezeichnet eine Anlage mit Einzelhandels- und Dienstleistungsbetrieben, die durch einheitliche Verwaltung, auf das Einzugsgebiet abge- stimmter Anbieter und durch große Parkplatzflächen geprägt sind.",
+      "ken": "41002",
+      "oak": "FKT - 1440",
+      "ehb": ""
+    },
+    "HDM": {
+      "nab": "siedlung",
+      "nak": "12020500",
+      "bez": "Ausstellung, Messe",
+      "def": "bezeichnet eine Fläche mit Ausstellungshallen und sonstigen Einrichtungen zur Präsentation von Warenmustern.",
+      "ken": "41002",
+      "oak": "FKT - 1450",
+      "ehb": ""
+    },
+    "HDG": {
+      "nab": "siedlung",
+      "nak": "12020900",
+      "bez": "Gärtnerei",
+      "def": "bezeichnet eine Fläche mit Gebäuden, Gewächshäusern und sonstigen Einrichtungen, zur Aufzucht von Blumen und Gemüsepflanzen.",
+      "ken": "41002",
+      "oak": "FKT - 1490",
+      "ehb": ""
+    },
+    "VS": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Anlagen und Gebäude zur Versorgung der Allgemeinheit mit Elektrizität, Wärme und Wasser vorhanden sind.",
+      "ken": "41002",
+      "oak": "FKT - 2500",
+      "ehb": "Hierzu gehören auch Gaswerk, Funk- und Fernmeldeanlagen."
+    },
+    "VSWA": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Wasser",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 1000",
+      "ehb": ""
+    },
+    "VSKK": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Kernkraft",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 2000",
+      "ehb": ""
+    },
+    "VSSO": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Sonne",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 3000",
+      "ehb": ""
+    },
+    "VSWI": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Wind",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 4000",
+      "ehb": ""
+    },
+    "VSVE": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Verbrennung",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 7000",
+      "ehb": ""
+    },
+    "VSKO": {
+      "nab": "siedlung",
+      "nak": "12030000",
+      "bez": "Versorgungsanlage - Kohle",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2500 / PEG - 7100",
+      "ehb": ""
+    },
+    "FÖ": {
+      "nab": "siedlung",
+      "nak": "12030100",
+      "bez": "Förderanlage",
+      "def": "bezeichnet eine Fläche mit Einrichtungen zur Förderung von Rohstoffen und Energieträgern.",
+      "ken": "41002",
+      "oak": "FKT - 2700",
+      "ehb": "Hierzu gehören Rohstoffe und Energieträger wie Sole, Lauge, Kohlensäure und Erdwärme."
+    },
+    "FÖÖ": {
+      "nab": "siedlung",
+      "nak": "12030101",
+      "bez": "Förderanlage – Erdöl",
+      "def": "bezeichnet eine Fläche mit Einrichtungen zur Förderung von Erdöl, einem flüssigen und brennbaren Kohlenwasserstoffgemisch.",
+      "ken": "41002",
+      "oak": "FKT - 2700 / FGT - 1000",
+      "ehb": ""
+    },
+    "FÖG": {
+      "nab": "siedlung",
+      "nak": "12030102",
+      "bez": "Förderanlage – Erdgas",
+      "def": "bezeichnet eine Fläche mit Einrichtungen zur Förderung von Erdgas, einem in der Erdkruste vorkommenden brennbaren Naturgas.",
+      "ken": "41002",
+      "oak": "FKT - 2700 / FGT - 2000",
+      "ehb": ""
+    },
+    "VSW": {
+      "nab": "siedlung",
+      "nak": "12030200",
+      "bez": "Wasserwerk",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen zur Gewinnung und/ oder zur Aufbereitung von (Trink-)wasser.",
+      "ken": "41002",
+      "oak": "FKT - 2520",
+      "ehb": ""
+    },
+    "VSK": {
+      "nab": "siedlung",
+      "nak": "12030300",
+      "bez": "Kraftwerk",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen zur Erzeugung von elektrischer Energie.",
+      "ken": "41002",
+      "oak": "FKT - 2530",
+      "ehb": ""
+    },
+    "VSKWA": {
+      "nab": "siedlung",
+      "nak": "12030301",
+      "bez": "Kraftwerk - Wasser ",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 1000",
+      "ehb": ""
+    },
+    "VSKKK": {
+      "nab": "siedlung",
+      "nak": "12030302",
+      "bez": "Kraftwerk - Wasser ",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 2000",
+      "ehb": ""
+    },
+    "VSKSO": {
+      "nab": "siedlung",
+      "nak": "12030303",
+      "bez": "Kraftwerk - Sonne",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 3000",
+      "ehb": ""
+    },
+    "VSKWI": {
+      "nab": "siedlung",
+      "nak": "12030304",
+      "bez": "Kraftwerk - Wind",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 4000",
+      "ehb": ""
+    },
+    "VSKVE": {
+      "nab": "siedlung",
+      "nak": "12030307",
+      "bez": "Kraftwerk - Wind",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 7000",
+      "ehb": ""
+    },
+    "VSKKO": {
+      "nab": "siedlung",
+      "nak": "12030308",
+      "bez": "Kraftwerk - Kohle",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2530 / PEG - 7100",
+      "ehb": ""
+    },
+    "VSU": {
+      "nab": "siedlung",
+      "nak": "12030400",
+      "bez": "Umspannstation",
+      "def": "bezeichnet eine Fläche mit Gebäuden und sonstigen Einrichtungen, um Strom auf eine andere Spannungsebene zu transformieren.",
+      "ken": "41002",
+      "oak": "FKT - 2540",
+      "ehb": ""
+    },
+    "VSR": {
+      "nab": "siedlung",
+      "nak": "12030500",
+      "bez": "Raffinerie",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen zur Aufbereitung von Erdöl.",
+      "ken": "41002",
+      "oak": "FKT - 2550",
+      "ehb": ""
+    },
+    "VSH": {
+      "nab": "siedlung",
+      "nak": "12030700",
+      "bez": "Heizwerk",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen zur Erzeugung von Wärmeenergie zu Heizzwecken.",
+      "ken": "41002",
+      "oak": "FKT - 2570",
+      "ehb": ""
+    },
+    "VSHKK": {
+      "nab": "siedlung",
+      "nak": "12030702",
+      "bez": "Heizwerk - Kernkraft ",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2570 / PEG - 2000",
+      "ehb": ""
+    },
+    "VSHSO": {
+      "nab": "siedlung",
+      "nak": "12030703",
+      "bez": "Heizwerk - Sonne",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2570 / PEG - 3000",
+      "ehb": ""
+    },
+    "VSHVE": {
+      "nab": "siedlung",
+      "nak": "12030707",
+      "bez": "Heizwerk - Verbrennung",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2570 / PEG - 7000",
+      "ehb": ""
+    },
+    "VSHKO": {
+      "nab": "siedlung",
+      "nak": "12030708",
+      "bez": "Heizwerk - Kohle",
+      "def": "",
+      "ken": "41002",
+      "oak": "FKT - 2570 / PEG - 7100",
+      "ehb": ""
+    },
+    "ES": {
+      "nab": "siedlung",
+      "nak": "12040000",
+      "bez": "Entsorgung",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Anlagen und Gebäude zur Verwertung und Entsorgung von Abwasser und festen Abfallstoffen vorhanden sind.",
+      "ken": "41002",
+      "oak": "FKT - 2600",
+      "ehb": ""
+    },
+    "ESK": {
+      "nab": "siedlung",
+      "nak": "12040100",
+      "bez": "Kläranlage, Klärwerk",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen zur Reinigung von Abwasser.",
+      "ken": "41002",
+      "oak": "FKT - 2610",
+      "ehb": ""
+    },
+    "ESA": {
+      "nab": "siedlung",
+      "nak": "12040200",
+      "bez": "Abfallbehandlungsanlage",
+      "def": "bezeichnet eine Fläche mit Bauwerken und sonstigen Einrichtungen, auf der Abfälle mit chemisch/physikalischen und biologischen oder thermischen Verfahren oder Kombinationen dieser Verfahren behandelt werden.",
+      "ken": "41002",
+      "oak": "FKT - 2620",
+      "ehb": ""
+    },
+    "ESDO": {
+      "nab": "siedlung",
+      "nak": "12040300",
+      "bez": "Deponie (oberirdisch)",
+      "def": "bezeichnet eine Fläche, auf der oberirdisch Abfallstoffe gelagert werden.",
+      "ken": "41002",
+      "oak": "FKT - 2630",
+      "ehb": ""
+    },
+    "ESDU": {
+      "nab": "siedlung",
+      "nak": "12040400",
+      "bez": "Deponie (untertägig)",
+      "def": "bezeichnet eine oberirdische Betriebsfläche, unter der untertägig Abfallstoffe gelagert werden (Untertagedeponie).",
+      "ken": "41002",
+      "oak": "FKT - 2640",
+      "ehb": ""
+    },
+    "IGFPA": {
+      "nab": "siedlung",
+      "nak": "12980000",
+      "bez": "Industrie und Gewerbe - Parken",
+      "def": "bezeichnet eine oberirdische Betriebsfläche, unter der untertägig Abfallstoffe gelagert werden (Untertagedeponie).",
+      "ken": "41002",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": ""
+    },
+    "HAL": {
+      "nab": "siedlung",
+      "nak": "13000000",
+      "bez": "Halde",
+      "def": "ist eine Fläche, auf der Material langfristig gelagert wird und beschreibt die auch im Relief zu modellierende tatsächliche Aufschüttung.",
+      "ken": "41003",
+      "oak": "",
+      "ehb": "Dauerhaft anders genutzte Halden werden als Objekte entsprechend der TN erfasst."
+    },
+    "BE": {
+      "nab": "siedlung",
+      "nak": "14000000",
+      "bez": "Bergbaubetrieb",
+      "def": "ist eine Fläche, die für die Förderung des Abbaugutes unter Tage genutzt wird.",
+      "ken": "41004",
+      "oak": "",
+      "ehb": ""
+    },
+    "BEAB": {
+      "nab": "siedlung",
+      "nak": "14000000",
+      "bez": "Bergbaubetrieb - Außer Betrieb",
+      "def": "Außer Betrieb, stillgelegt, verlassen zu vergeben",
+      "ken": "41004",
+      "oak": "ZUS - 2100",
+      "ehb": ""
+    },
+    "TG": {
+      "nab": "siedlung",
+      "nak": "15000000",
+      "bez": "Tagebau, Grube, Steinbruch",
+      "def": "ist eine Fläche, auf der oberirdisch Bodenmaterial abgebaut und für die Förderung des oberirdischen Abbaugutes genutzt wird.",
+      "ken": "41005",
+      "oak": "",
+      "ehb": ""
+    },
+    "TGT": {
+      "nab": "siedlung",
+      "nak": "15010100",
+      "bez": "Tagebau, Grube, Steinbruch - Ton",
+      "def": "ist eine Fläche, auf der oberirdisch Ton abgebaut und für die Förderung dessen genutzt wird. Ton ist ein Abbaugut, das aus gelblichem bis grauem Lockergestein besteht und durch Verwitterung älterer Gesteine entsteht.",
+      "ken": "41005",
+      "oak": "AGT - 1001",
+      "ehb": ""
+    },
+    "TGTAB": {
+      "nab": "siedlung",
+      "nak": "15010100",
+      "bez": "Tagebau, Grube, Steinbruch - Ton",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 1001 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGL": {
+      "nab": "siedlung",
+      "nak": "15010400",
+      "bez": "Tagebau, Grube, Steinbruch - Lehm",
+      "def": "ist eine Fläche, auf der oberirdisch Lehm abgebaut und für die Förderung dessen genutzt wird. Lehm ist ein Abbaugut, das durch Verwitterung entstanden ist und aus gelb bis braun gefärbtem sandhaltigem Ton besteht",
+      "ken": "41005",
+      "oak": "AGT - 1004",
+      "ehb": ""
+    },
+    "TGLAB": {
+      "nab": "siedlung",
+      "nak": "15010400",
+      "bez": "Tagebau, Grube, Steinbruch - Lehm",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 1004 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGS": {
+      "nab": "siedlung",
+      "nak": "15010800",
+      "bez": "Tagebau, Grube, Steinbruch - Sand",
+      "def": "ist eine Fläche, auf der oberirdisch Sand abgebaut und für die Förde-\nrung dessen genutzt wird. Sand ist ein Abbaugut, das aus kleinen, losen\nMineralkörnern (häufig Quarz) besteht.",
+      "ken": "41005",
+      "oak": "AGT - 1008",
+      "ehb": ""
+    },
+    "TGSAB": {
+      "nab": "siedlung",
+      "nak": "15010800",
+      "bez": "Tagebau, Grube, Steinbruch - Sand",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 1008 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGKI": {
+      "nab": "siedlung",
+      "nak": "15010800",
+      "bez": "Tagebau, Grube, Steinbruch - Kies, Kiessand",
+      "def": "ist eine Fläche, auf der oberirdisch Kies, Kiessand abgebaut und für die Förderung dessen genutzt wird. Kies, Kiessand ist ein Abbaugut, das aus vom Wasser rund geschliffenen Gesteinsbrocken besteht.",
+      "ken": "41005",
+      "oak": "AGT - 1009",
+      "ehb": ""
+    },
+    "TGKIAB": {
+      "nab": "siedlung",
+      "nak": "15010900",
+      "bez": "Tagebau, Grube, Steinbruch - Kies, Kiessand",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 1009 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGQ": {
+      "nab": "siedlung",
+      "nak": "15011100",
+      "bez": "Tagebau, Grube, Steinbruch - Quarzsand",
+      "def": "ist eine Fläche, auf der oberirdisch Quarzsand abgebaut und für die Förderung dessen genutzt wird. Quarzsand ist ein Abbaugut, das vorwiegend aus kleinen, losen Quarzkörnern besteht.",
+      "ken": "41005",
+      "oak": "AGT - 1012",
+      "ehb": ""
+    },
+    "TGQAB": {
+      "nab": "siedlung",
+      "nak": "15011100",
+      "bez": "Tagebau, Grube, Steinbruch - Quarzsand",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 1012 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGKS": {
+      "nab": "siedlung",
+      "nak": "15020500",
+      "bez": "Tagebau, Grube, Steinbruch - Kalkstein",
+      "def": "ist eine Fläche, auf der oberirdisch Kalkstein abgebaut und für die Förderung dessen genutzt wird. Kalkstein ist ein Abbaugut, das als weit verbreitetes Sedimentgestein überwiegend aus Calciumcarbonat besteht.",
+      "ken": "41005",
+      "oak": "AGT - 2005",
+      "ehb": ""
+    },
+    "TGKSAB": {
+      "nab": "siedlung",
+      "nak": "15020500",
+      "bez": "Tagebau, Grube, Steinbruch - Kalkstein",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 2005 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGG": {
+      "nab": "siedlung",
+      "nak": "15021000",
+      "bez": "Tagebau, Grube, Steinbruch - Grauwacke",
+      "def": "ist eine Fläche, auf der oberirdisch Grauwacke abgebaut und für die Förderung dessen genutzt wird. Grauwacke ist ein Abbaugut, das aus tonhaltigem Sandstein besteht und mit Gesteinsbruchstücken angereichert sein kann.",
+      "ken": "41005",
+      "oak": "AGT - 2010",
+      "ehb": ""
+    },
+    "TGGAB": {
+      "nab": "siedlung",
+      "nak": "15021000",
+      "bez": "Tagebau, Grube, Steinbruch - Grauwacke",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 2010 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGTF": {
+      "nab": "siedlung",
+      "nak": "15030100",
+      "bez": "Tagebau, Grube, Steinbruch - Torf",
+      "def": "ist eine Fläche, auf der oberirdisch Torf abgebaut und für die Förderung dessen genutzt wird. Torf ist ein Abbaugut, das aus der unvollkommenen Zersetzung abgestorbener pflanzlicher Substanz unter Luftabschluss in Mooren entstanden ist.",
+      "ken": "41005",
+      "oak": "AGT - 4010",
+      "ehb": ""
+    },
+    "TGTFAB": {
+      "nab": "siedlung",
+      "nak": "15030100",
+      "bez": "Tagebau, Grube, Steinbruch - Torf",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 4010 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGB": {
+      "nab": "siedlung",
+      "nak": "15030300",
+      "bez": "Tagebau, Grube, Steinbruch - Braunkohle",
+      "def": "ist eine Fläche, auf der oberirdisch Braunkohle abgebaut und für die Förderung dessen genutzt wird. Braunkohle ist ein fossiler Brennstoff, der durch einen bestimmten Grad von Inkohlung (Umwandlungsprozess pflanzlicher Substanz) entstanden ist.",
+      "ken": "41005",
+      "oak": "AGT - 4021",
+      "ehb": ""
+    },
+    "TGBAB": {
+      "nab": "siedlung",
+      "nak": "15030300",
+      "bez": "Tagebau, Grube, Steinbruch - Braunkohle",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "AGT - 4021 / ZUS - 2100",
+      "ehb": ""
+    },
+    "TGPA": {
+      "nab": "siedlung",
+      "nak": "15980000",
+      "bez": "Tagebau, Grube, Steinbruch - Parken",
+      "def": "Außer Betrieb, stillgelegt, verlassen",
+      "ken": "41005",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": ""
+    },
+    "MI": {
+      "nab": "siedlung",
+      "nak": "16000000",
+      "bez": "Fläche gemischter Nutzung",
+      "def": "ist eine bebaute Fläche einschließlich der mit ihr im Zusammenhang stehenden Freifläche (Hofraumfläche, Hausgarten), auf der keine Art der baulichen Nutzung vorherrscht. Solche Flächen sind insbesondere ländlich-dörflich geprägte Flächen mit land- und forstwirtschaftlichen Betrieben, Wohngebäuden u. a. sowie städtisch geprägte Kerngebiete mit Handelsbetrieben und zentralen Einrichtungen für die Wirtschaft und die Verwaltung.",
+      "ken": "41006",
+      "oak": "",
+      "ehb": "Hierzu gehören auch Gebäude und Freifläche Mischnutzung mit Wohnen (zugleich oder nicht ganz untergeordnete Wohn- oder andere Nutzung), Gebäude und Freifläche Land- und Forstwirtschaft (dient vorwiegend Land- und Forstwirtschaft, einschließlich des Wohnteils)."
+    },
+    "MIO": {
+      "nab": "siedlung",
+      "nak": "16000000",
+      "bez": "Fläche gemischter Nutzung offene Bauweise",
+      "def": "",
+      "ken": "41006",
+      "oak": "BEB - 1000",
+      "ehb": "'Offen' beschreibt die Bebauung, die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
+    },
+    "MIG": {
+      "nab": "siedlung",
+      "nak": "16000000",
+      "bez": "Fläche gemischter Nutzung geschlossene Bauweise",
+      "def": "",
+      "ken": "41006",
+      "oak": "BEB - 2000",
+      "ehb": "'Geschlossen' beschreibt die Bebauung, die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent."
+    },
+    "MIPA": {
+      "nab": "siedlung",
+      "nak": "16980000",
+      "bez": "Fläche gemischter Nutzung - Parken",
+      "def": "",
+      "ken": "41006",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "MILB": {
+      "nab": "siedlung",
+      "nak": "16010000",
+      "bez": "Landwirtschaftliche Betriebsfläche",
+      "def": "ist eine bebaute oder unbebaute Fläche, die vorwiegend dem landwirt-\nschaftlichen Betrieb ohne eine Wohnnutzung dient.",
+      "ken": "41006",
+      "oak": "FKT - 6800",
+      "ehb": ""
+    },
+    "MIFB": {
+      "nab": "siedlung",
+      "nak": "16020000",
+      "bez": "Forstwirtschaftliche Betriebsfläche",
+      "def": "bezeichnet eine bebaute oder unbebaute Fläche, die dem forstwirtschaftlichen Betrieb ohne eine Wohnnutzung dient.",
+      "ken": "41006",
+      "oak": "FKT - 7600",
+      "ehb": ""
+    },
+    "MIFW": {
+      "nab": "siedlung",
+      "nak": "16030000",
+      "bez": "Fischereiwirtschaftsfläche",
+      "def": "bezeichnet eine Fläche/Areal, das dem (gewerblichen) Fangen oder Züchten von Fischen und anderen Wassertieren/ im Wasser lebenden Organismen zur Nahrungsgewinnung und Weiterverarbeitung dient.",
+      "ken": "41006",
+      "oak": "FKT - 3000",
+      "ehb": ""
+    },
+    "BP": {
+      "nab": "siedlung",
+      "nak": "17000000",
+      "bez": "Fläche besonderer funktionaler Prägung",
+      "def": "ist eine baulich geprägte Fläche einschließlich der mit ihr im Zusammenhang stehenden Freifläche, auf denen vorwiegend Gebäude und/oder Anlagen zur Erfüllung öffentlicher Zwecke oder historische Anlagen vorhanden sind.",
+      "ken": "41007",
+      "oak": "",
+      "ehb": ""
+    },
+    "BPO": {
+      "nab": "siedlung",
+      "nak": "17000000",
+      "bez": "Fläche besonderer funktionaler Prägung offene Bauweise",
+      "def": "",
+      "ken": "41007",
+      "oak": "BEB - 1000",
+      "ehb": "'Offen' beschreibt die Bebauung, die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
+    },
+    "BPG": {
+      "nab": "siedlung",
+      "nak": "17000000",
+      "bez": "Fläche besonderer funktionaler Prägung geschlossene Bauweise",
+      "def": "",
+      "ken": "41007",
+      "oak": "BEB - 2000",
+      "ehb": "'Geschlossen' beschreibt die Bebauung, die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent ."
+    },
+    "BPÖ": {
+      "nab": "siedlung",
+      "nak": "17010000",
+      "bez": "Öffentliche Zwecke",
+      "def": "bezeichnet eine Fläche, die vorwiegend der Erfüllung öffentlicher Aufgaben und dem Gemeinwesen dient.",
+      "ken": "41007",
+      "oak": "FKT - 1100",
+      "ehb": ""
+    },
+    "BPV": {
+      "nab": "siedlung",
+      "nak": "17010100",
+      "bez": "Regierung und Verwaltung",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Gebäude der öffentlichen Verwaltung, z. B. Rathaus, Gericht, Kreisverwaltung stehen.",
+      "ken": "41007",
+      "oak": "FKT - 1110",
+      "ehb": ""
+    },
+    "BPB": {
+      "nab": "siedlung",
+      "nak": "17010200",
+      "bez": "Bildung und Wissenschaft",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Gebäude stehen, in denen geistige, kulturelle und soziale Fähigkeiten vermittelt werden und/oder wissenschaftliche Forschung betrieben wird (z. B. Schulen, Universitäten, Institute).",
+      "ken": "41007",
+      "oak": "FKT - 1120",
+      "ehb": ""
+    },
+    "BPK": {
+      "nab": "siedlung",
+      "nak": "17010300",
+      "bez": "Kultur",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Anlagen und Gebäude für kulturelle Zwecke, z. B. Konzert- und Museumsgebäude, Bibliotheken, Theater, Schlösser und Burgen stehen.",
+      "ken": "41007",
+      "oak": "FKT - 1130",
+      "ehb": ""
+    },
+    "BPR": {
+      "nab": "siedlung",
+      "nak": "17010400",
+      "bez": "Religiöse Einrichtung",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend religiöse Gebäude stehen.",
+      "ken": "41007",
+      "oak": "FKT - 1140",
+      "ehb": ""
+    },
+    "BPG (copy)": {
+      "nab": "siedlung",
+      "nak": "17010500",
+      "bez": "Gesundheit, Kur",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Gebäude des Gesundheitswesens stehen, z. B. Krankenhäuser, Heil- und Pflegeanstalten.",
+      "ken": "41007",
+      "oak": "FKT - 1150",
+      "ehb": ""
+    },
+    "BPS": {
+      "nab": "siedlung",
+      "nak": "17010600",
+      "bez": "Soziales",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Gebäude des Sozialwesens stehen, z.B. Kindergärten, Jugend- und Senioreneinrichtungen, Freizeit-, Fremden- und Obdachlosenheime.",
+      "ken": "41007",
+      "oak": "FKT - 1160",
+      "ehb": ""
+    },
+    "BPO (copy)": {
+      "nab": "siedlung",
+      "nak": "17010700",
+      "bez": "Sicherheit und Ordnung",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Anlagen und Gebäude der Polizei, der Bundeswehr, der Feuerwehr und der Justizvollzugsbehörden stehen.",
+      "ken": "41007",
+      "oak": "FKT - 1170",
+      "ehb": ""
+    },
+    "BPM": {
+      "nab": "siedlung",
+      "nak": "17010700",
+      "bez": "Medien und Kommunikation",
+      "def": "bezeichnet eine Fläche, auf der vorwiegend Anlagen und Gebäude für die Erzeugung und Verarbeitung von Printmedien, Hörfunk, Film und Fernsehen sowie Internet und Telefonie stehen.",
+      "ken": "41007",
+      "oak": "FKT - 1180",
+      "ehb": ""
+    },
+    "BPHA": {
+      "nab": "siedlung",
+      "nak": "17020000",
+      "bez": "Historische Anlage",
+      "def": "",
+      "ken": "41007",
+      "oak": "FKT - 1300",
+      "ehb": ""
+    },
+    "BPPA": {
+      "nab": "siedlung",
+      "nak": "17980000",
+      "bez": "Historische Anlage",
+      "def": "",
+      "ken": "41007",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "SF": {
+      "nab": "siedlung",
+      "nak": "18000000",
+      "bez": "Sport-, Freizeit- und Erholungsfläche",
+      "def": "ist eine bebaute oder unbebaute Fläche, die dem Sport, der Freizeitgestaltung oder der Erholung dient.",
+      "ken": "41008",
+      "oak": "",
+      "ehb": ""
+    },
+    "SFS": {
+      "nab": "siedlung",
+      "nak": "18010000",
+      "bez": "Sportanlage",
+      "def": "ist eine Fläche mit Bauwerken und Einrichtungen, die zur Ausübung von (Wettkampf-) Sport und für Zuschauer bestimmt ist.",
+      "ken": "41008",
+      "oak": "FKT - 4100",
+      "ehb": "Hierzu gehören auch Sportplatz, Rennbahn, Reitsport, Schießanlage, Eis-, Rollschuhbahn, Tennis."
+    },
+    "SFG": {
+      "nab": "siedlung",
+      "nak": "18010100",
+      "bez": "Golf",
+      "def": "ist eine Fläche mit Bauwerken und Einrichtungen, die zur Ausübung des Golfsports genutzt wird.",
+      "ken": "41008",
+      "oak": "FKT - 4110",
+      "ehb": ""
+    },
+    "SFF": {
+      "nab": "siedlung",
+      "nak": "18020000",
+      "bez": "Freizeitanlage",
+      "def": "ist eine Fläche mit Bauwerken und Einrichtungen, die vorwiegend zur Freizeitgestaltung oder dazu dient, Tiere zu zeigen.",
+      "ken": "41008",
+      "oak": "FKT - 4200",
+      "ehb": "Hierzu gehören auch Verkehrsübungsplatz, Testgelände, Fahrsicherheit, Go-Kart-Bahn, Hundeübungsplatz."
+    },
+    "SFZ": {
+      "nab": "siedlung",
+      "nak": "18020100",
+      "bez": "Zoo",
+      "def": "ist ein Gelände mit Tierschauhäusern und umzäunten Gehegen, auf dem Tiere gehalten und gezeigt werden.",
+      "ken": "41008",
+      "oak": "FKT - 4210",
+      "ehb": ""
+    },
+    "SFWP": {
+      "nab": "siedlung",
+      "nak": "18020200",
+      "bez": "Safaripark, Wildpark",
+      "def": "ist ein Gelände mit umzäunten Gehegen, in denen Tiere im Freien gehalten und gezeigt werden.",
+      "ken": "41008",
+      "oak": "FKT - 4220",
+      "ehb": ""
+    },
+    "SFP": {
+      "nab": "siedlung",
+      "nak": "18020300",
+      "bez": "Freizeitpark",
+      "def": "ist ein Gelände mit Karussells, Verkaufs- und Schaubuden und/oder Wildgattern, das der Freizeitgestaltung dient.",
+      "ken": "41008",
+      "oak": "FKT - 4230",
+      "ehb": "Hierzu gehört auch Kletteranlage."
+    },
+    "SFB": {
+      "nab": "siedlung",
+      "nak": "18020500",
+      "bez": "Freilichtbühne",
+      "def": "ist eine Anlage mit Bühne und Zuschauerbänken für Aufführungen im Freien.",
+      "ken": "41008",
+      "oak": "FKT - 4240",
+      "ehb": ""
+    },
+    "SFM": {
+      "nab": "siedlung",
+      "nak": "18020600",
+      "bez": "Freilichtmuseum",
+      "def": "ist eine volkskundliche Museumsanlage, in der Wohnformen oder historische Betriebsformen in ihrer natürlichen Umgebung im Freien dargestellt sind.",
+      "ken": "41008",
+      "oak": "FKT - 4250",
+      "ehb": ""
+    },
+    "SFA": {
+      "nab": "siedlung",
+      "nak": "18020700",
+      "bez": "Autokino, Freilichtkino",
+      "def": "ist ein Lichtspieltheater im Freien, in dem der Film im Allgemeinen vom Auto aus gesehen wird.",
+      "ken": "41008",
+      "oak": "FKT - 4260",
+      "ehb": ""
+    },
+    "SFMO": {
+      "nab": "siedlung",
+      "nak": "18021100",
+      "bez": "Modellfluggelände",
+      "def": "ist eine Fläche, die zur Ausübung des Modellflugsports dient.",
+      "ken": "41008",
+      "oak": "FKT - 4290",
+      "ehb": ""
+    },
+    "EH": {
+      "nab": "siedlung",
+      "nak": "18030000",
+      "bez": "Modellfluggelände",
+      "def": "ist eine Fläche mit Bauwerken und Einrichtungen, die zur Erholung bestimmt ist.",
+      "ken": "41008",
+      "oak": "FKT - 4300",
+      "ehb": ""
+    },
+    "WFH": {
+      "nab": "siedlung",
+      "nak": "18030100",
+      "bez": "Wochenend- und Ferienhausfläche",
+      "def": "bezeichnet eine extra dafür ausgewiesene Fläche, auf der vorwiegend Wochenend- und Ferienhäuser stehen dürfen.",
+      "ken": "41008",
+      "oak": "FKT - 4310",
+      "ehb": ""
+    },
+    "SCHW": {
+      "nab": "siedlung",
+      "nak": "18030100",
+      "bez": "Schwimmen",
+      "def": "ist eine Anlage mit Wasserfläche sowie Anlagen an Ufern von Gewässern für den Badebetrieb und Schwimmsport.",
+      "ken": "41008",
+      "oak": "FKT - 4320",
+      "ehb": ""
+    },
+    "CAM": {
+      "nab": "siedlung",
+      "nak": "18030300",
+      "bez": "Campingplatz",
+      "def": "ist eine Fläche für den Aufbau einer größeren Zahl von Zelten oder zum Abstellen und Benutzen von Wohnwagen mit ortsfesten Anlagen und Einrichtungen.",
+      "ken": "41008",
+      "oak": "FKT - 4330",
+      "ehb": ""
+    },
+    "GRÜ": {
+      "nab": "siedlung",
+      "nak": "18040000",
+      "bez": "Grünanlage",
+      "def": "ist in erster Linie eine Anlage mit Bäumen, Sträuchern, Rasenflächen, Blumenrabatten und Wegen, die vor allem der Erholung und Verschönerung des Stadtbilds dient.",
+      "ken": "41008",
+      "oak": "FKT - 4400",
+      "ehb": "Hierzu gehören auch Siedlungsgrünfläche, Botanischer Garten, Wochenendplatz, Garten (Erzeugung von Nutzpflanzen zum privaten Gebrauch, nicht Wohnbaufläche untergeordnet), Spielplatz, Bolzplatz"
+    },
+    "PARK": {
+      "nab": "siedlung",
+      "nak": "18040200",
+      "bez": "Park",
+      "def": "ist eine landschaftsgärtnerisch gestaltete Grünanlage, die der Repräsentation und der Erholung dient.",
+      "ken": "41008",
+      "oak": "FKT - 4420",
+      "ehb": ""
+    },
+    "KG": {
+      "nab": "siedlung",
+      "nak": "18040400",
+      "bez": "Kleingarten",
+      "def": "(Schrebergarten) ist eine Anlage von Gartengrundstücken, die von Vereinen verwaltet und verpachtet wird und die im Unterschied zu Gartenbauland vorwiegend der Freizeit und Erholung dient.",
+      "ken": "41008",
+      "oak": "FKT - 4440",
+      "ehb": ""
+    },
+    "SFPA": {
+      "nab": "siedlung",
+      "nak": "18980000",
+      "bez": "Sport-, Freizeit- und Erholungsfläche - Parken",
+      "def": "(Schrebergarten) ist eine Anlage von Gartengrundstücken, die von Vereinen verwaltet und verpachtet wird und die im Unterschied zu Gartenbauland vorwiegend der Freizeit und Erholung dient.",
+      "ken": "41008",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "F": {
+      "nab": "siedlung",
+      "nak": "19000000",
+      "bez": "Friedhof",
+      "def": "ist eine Landfläche, die zur Bestattung dient oder gedient hat, sofern die\nZuordnung zu Grünanlage nicht zutreffender ist.",
+      "ken": "41009",
+      "oak": "",
+      "ehb": "Waldbestattungsflächen werden der Nutzungsart Wald zugeordnet."
+    },
+    "FPA": {
+      "nab": "siedlung",
+      "nak": "19980000",
+      "bez": "Friedhof - Parken",
+      "def": "",
+      "ken": "41009",
+      "oak": "FKT - 1200 / IWN 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "S": {
+      "nab": "verkehr",
+      "nak": "21010000",
+      "bez": "Straßenverkehr",
+      "def": "umfasst alle für die bauliche Anlage Straße erforderlichen sowie dem Straßenverkehr dienenden bebauten und unbebauten Flächen.",
+      "ken": "42001",
+      "oak": "",
+      "ehb": "Zu den als Straßenverkehr nachzuweisenden Flächen gehören gewöhnlich auch die Trenn-, Seiten- und Schutzstreifen, Brücken, Gräben und Böschungen, Parkstreifen und ähnliche Einrichtungen, wenn sie eine Breite von in der Regel 3 m nicht überschreiten."
+    },
+    "SB": {
+      "nab": "verkehr",
+      "nak": "21010200",
+      "bez": "Begleitfläche Straßenverkehr",
+      "def": "bezeichnet eine bebaute oder unbebaute Fläche, die einer Straße zugeordnet wird. Sie ist nicht Bestandteil der Fahrbahn.",
+      "ken": "42001",
+      "oak": "FKT - 2312",
+      "ehb": "Ausgenommen der Fahrstreifen gehören hierzu Flächen von Trenn-, Seiten- und Schutzstreifen, Brücken, Gräben und Böschungen, Parkstreifen und ähnliche Einrichtungen, wenn sie eine Breite von 3 m überschreiten und in Bezug auf die Straßenverkehrsfläche nicht untergeordnet sind."
+    },
+    "WEG": {
+      "nab": "verkehr",
+      "nak": "21020000",
+      "bez": "Weg",
+      "def": "umfasst alle Flächen, die zum Befahren und/oder Begehen vorgesehen sind. Zur Wegfläche gehören auch Seitenstreifen und Gräben zur Wegentwässerung.",
+      "ken": "42006",
+      "oak": "",
+      "ehb": ""
+    },
+    "PL": {
+      "nab": "verkehr",
+      "nak": "21030000",
+      "bez": "Platz",
+      "def": "ist eine Verkehrsfläche in Ortschaften oder eine ebene, befestigte oder unbefestigte Fläche, die bestimmten Zwecken dient (z. B. für Verkehr, Märkte, Festveranstaltungen).",
+      "ken": "42009",
+      "oak": "",
+      "ehb": "Hierzu gehören auch Marktplatz, Busbahnhof."
+    },
+    "FUß": {
+      "nab": "verkehr",
+      "nak": "21030100",
+      "bez": "Fußgängerzone",
+      "def": "ist ein dem Fußgängerverkehr vorbehaltener Bereich, in dem ausnahmsweise öffentlicher Personenverkehr, Lieferverkehr oder Fahrradverkehr zulässig sein kann.",
+      "ken": "42009",
+      "oak": "FKT - 5130",
+      "ehb": ""
+    },
+    "P": {
+      "nab": "verkehr",
+      "nak": "21030200",
+      "bez": "Parkplatz",
+      "def": "ist eine zum vorübergehenden Abstellen von Fahrzeugen bestimmte Fläche.",
+      "ken": "42009",
+      "oak": "FKT - 5310",
+      "ehb": ""
+    },
+    "RAP": {
+      "nab": "verkehr",
+      "nak": "21030300",
+      "bez": "Rastplatz",
+      "def": "ist eine Anlage zum Rasten der Verkehrsteilnehmer mit unmittelbarem Anschluss zur Straße ohne Versorgungseinrichtung, ggf. mit Toiletten.",
+      "ken": "42009",
+      "oak": "FKT - 5320",
+      "ehb": ""
+    },
+    "RAS": {
+      "nab": "verkehr",
+      "nak": "21030400",
+      "bez": "Raststätte, Autohof",
+      "def": "ist eine Anlage an Verkehrsstraßen mit Bauwerken und Einrichtungen zur Versorgung und Erholung von Reisenden.",
+      "ken": "42009",
+      "oak": "FKT - 5330",
+      "ehb": ""
+    },
+    "FP": {
+      "nab": "verkehr",
+      "nak": "21030600",
+      "bez": "Festplatz",
+      "def": "ist eine Fläche, auf der zeitlich begrenzte Festveranstaltungen stattfinden.",
+      "ken": "42009",
+      "oak": "FKT - 5350",
+      "ehb": ""
+    },
+    "BA": {
+      "nab": "verkehr",
+      "nak": "22000000",
+      "bez": "Bahnverkehr",
+      "def": "umfasst alle für den Schienenverkehr erforderlichen Flächen und die dem Schienenverkehr dienenden bebauten und unbebauten Flächen.",
+      "ken": "42010",
+      "oak": "",
+      "ehb": "Hierzu gehören 1. der Bahnkörper mit Gleisanlagen, Bahnsteige und Böschungen, Brücken, Gräben und Schutzstreifen, wenn sie eine Breite von in der Regel 3 m nicht überschreiten. 2. Die auf der freien Strecke befindlichen Flächen mit Wärterhäuschen, Blockhäuschen, Transformatoren u.dgl."
+    },
+    "BAB": {
+      "nab": "verkehr",
+      "nak": "22020000",
+      "bez": "Begleitfläche Bahnverkehr",
+      "def": "bezeichnet eine unbebaute Fläche, die dem Bahnverkehr zugeordnet wird. Sie ist nicht Bestandteil der Gleisanlagen.",
+      "ken": "42010",
+      "oak": "FKT - 2322",
+      "ehb": "Ausgenommen des Bahnkörpers gehören hierzu 1. Böschungen, Brücken, Gräben und Schutzstreifen, wenn sie eine Breite von 3 m überschreiten und in Bezug auf die Bahnverkehrsfläche nicht untergeordnet sind. 2. Ladestraßen, Laderampen, Lagerplätze u. dgl."
+    },
+    "BAPA": {
+      "nab": "verkehr",
+      "nak": "22980000",
+      "bez": "Bahnverkehr - Parken",
+      "def": "bezeichnet eine unbebaute Fläche, die dem Bahnverkehr zugeordnet wird. Sie ist nicht Bestandteil der Gleisanlagen.",
+      "ken": "42010",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "FL": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Flugverkehr",
+      "def": "umfasst die baulich geprägte Fläche und die mit ihr in Zusammenhang stehende Freifläche, die ausschließlich oder vorwiegend dem Flugverkehr dient.",
+      "ken": "42015",
+      "oak": "",
+      "ehb": ""
+    },
+    "IFH": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Internationaler Flughafen",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5511",
+      "ehb": ""
+    },
+    "RFH": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Regionalflughafen",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5512",
+      "ehb": ""
+    },
+    "SFH": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Sonderflughafen",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5513",
+      "ehb": ""
+    },
+    "VLP": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Verkehrslandeplatz",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5521",
+      "ehb": ""
+    },
+    "SLP": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Sonderlandeplatz",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5522",
+      "ehb": ""
+    },
+    "HLP": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Hubschrauberlandeplatz",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5530",
+      "ehb": ""
+    },
+    "SFLG": {
+      "nab": "verkehr",
+      "nak": "23000000",
+      "bez": "Segelfluggelände",
+      "def": "",
+      "ken": "42015",
+      "oak": "ART-5550",
+      "ehb": ""
+    },
+    "FLPA": {
+      "nab": "verkehr",
+      "nak": "23980000",
+      "bez": "Flugverkehr - Parken",
+      "def": "",
+      "ken": "42015",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": ""
+    },
+    "SV": {
+      "nab": "verkehr",
+      "nak": "24020000",
+      "bez": "Schiffsverkehr",
+      "def": "umfasst die baulich geprägte Fläche und die mit ihr in Zusammenhang stehende Freifläche, die ausschließlich oder vorwiegend dem Schiffsverkehr dient.",
+      "ken": "42016",
+      "oak": "",
+      "ehb": ""
+    },
+    "SVPA": {
+      "nab": "verkehr",
+      "nak": "24980000",
+      "bez": "Schiffsverkehr - Parken",
+      "def": "",
+      "ken": "42016",
+      "oak": "FKT - 1200 / IWN - 1000",
+      "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
+    },
+    "SVH": {
+      "nab": "verkehr",
+      "nak": "24020100",
+      "bez": "Hafenanlage (Landfläche)",
+      "def": "bezeichnet die Fläche innerhalb von ‚Hafen‘, die nicht von Wasser bedeckt ist und die ausschließlich zum Betrieb des Hafens dient.",
+      "ken": "42016",
+      "oak": "FKT - 5610",
+      "ehb": ""
+    },
+    "SVS": {
+      "nab": "verkehr",
+      "nak": "24020200",
+      "bez": "Schleuse (Landfläche)",
+      "def": "bezeichnet die Fläche innerhalb von 'Schleuse', die nicht von Wasser bedeckt ist und die ausschließlich zum Betrieb der Schleuse dient.",
+      "ken": "42016",
+      "oak": "FKT - 5620",
+      "ehb": ""
+    },
+    "LW": {
+      "nab": "vegetation",
+      "nak": "31000000",
+      "bez": "Landwirtschaft",
+      "def": "ist eine Fläche für den Anbau von Feldfrüchten sowie eine Fläche, die beweidet und gemäht werden kann, einschließlich der mit besonderen Pflanzen angebauten Fläche (einschließlich landwirtschaftlichen Brachlands).",
+      "ken": "43001",
+      "oak": "",
+      "ehb": ""
+    },
+    "A": {
+      "nab": "vegetation",
+      "nak": "31010000",
+      "bez": "Ackerland",
+      "def": "ist eine Fläche für den Anbau von Feldfrüchten (z. B. Getreide, Hülsenfrüchte, Hackfrüchte) und Beerenfrüchte (z. B. Erdbeeren).",
+      "ken": "43001",
+      "oak": "VEG - 1010",
+      "ehb": "Hierzu gehören auch Spargel, Hanf."
+    },
+    "SOA": {
+      "nab": "vegetation",
+      "nak": "31010100",
+      "bez": "Streuobstacker",
+      "def": "beschreibt den Bewuchs einer Ackerfläche mit Obstbäumen.",
+      "ken": "43001",
+      "oak": "VEG - 1011",
+      "ehb": ""
+    },
+    "HOP": {
+      "nab": "vegetation",
+      "nak": "31010200",
+      "bez": "Hopfen",
+      "def": "ist eine mit speziellen Vorrichtungen ausgestattete Agrarfläche für den Anbau von Hopfen.",
+      "ken": "43001",
+      "oak": "VEG - 1012",
+      "ehb": ""
+    },
+    "GR": {
+      "nab": "vegetation",
+      "nak": "31020000",
+      "bez": "Grünland",
+      "def": "ist eine Grasfläche, die gemäht oder beweidet wird.",
+      "ken": "43001",
+      "oak": "VEG - 1020",
+      "ehb": ""
+    },
+    "SOW": {
+      "nab": "vegetation",
+      "nak": "31020100",
+      "bez": "Streuobstwiese",
+      "def": "beschreibt den Bewuchs einer Grünlandfläche mit Obstbäumen.",
+      "ken": "43001",
+      "oak": "VEG - 1021",
+      "ehb": ""
+    },
+    "SAW": {
+      "nab": "vegetation",
+      "nak": "31020200",
+      "bez": "Salzweide",
+      "def": "",
+      "ken": "43001",
+      "oak": "VEG - 1022",
+      "ehb": ""
+    },
+    "G": {
+      "nab": "vegetation",
+      "nak": "31030000",
+      "bez": "Gartenbauland",
+      "def": "ist eine Fläche, die dem gewerbsmäßigen Anbau von Gartengewächsen (Gemüse, Obst und Blumen) sowie für die Aufzucht von Kulturpflanzen dient.",
+      "ken": "43001",
+      "oak": "VEG - 1030",
+      "ehb": ""
+    },
+    "BAUM": {
+      "nab": "vegetation",
+      "nak": "31030100",
+      "bez": "Baumschule",
+      "def": "ist eine Fläche, auf der Holzgewächse aus Samen, Ablegern oder Stecklingen unter mehrmaligem Umpflanzen (Verschulen) gezogen werden.",
+      "ken": "43001",
+      "oak": "VEG - 1031",
+      "ehb": ""
+    },
+    "REB": {
+      "nab": "vegetation",
+      "nak": "31040000",
+      "bez": "Rebfläche",
+      "def": "ist eine mit speziellen Vorrichtungen ausgestattete Agrarfläche, auf der Weinstöcke angepflanzt sind.",
+      "ken": "43001",
+      "oak": "VEG - 1040",
+      "ehb": ""
+    },
+    "OBP": {
+      "nab": "vegetation",
+      "nak": "31050000",
+      "bez": "Obst- und Nussplantage",
+      "def": "ist eine Fläche, die vorwiegend dem Intensivobstanbau dient und mit Obstbäumen und Obststräuchern bestanden ist. Im Unterschied zu Streuobst handelt es sich hierbei um gleichmäßige und dichter angelegte Monokulturen.",
+      "ken": "43001",
+      "oak": "VEG - 1050",
+      "ehb": ""
+    },
+    "OBBP": {
+      "nab": "vegetation",
+      "nak": "31050100",
+      "bez": "Obst- und Nussbaumplantage",
+      "def": "ist eine landwirtschaftliche Fläche, die ausschließlich mit Obst- und Nussbäumen bepflanzt ist.",
+      "ken": "43001",
+      "oak": "VEG - 1051",
+      "ehb": ""
+    },
+    "WEIH": {
+      "nab": "vegetation",
+      "nak": "31070000",
+      "bez": "Weihnachtsbaumkultur",
+      "def": "ist eine landwirtschaftliche Fläche, die vorrangig mit Weihnachtsbäumen bepflanzt ist.",
+      "ken": "43001",
+      "oak": "VEG - 1060",
+      "ehb": ""
+    },
+    "KURZ": {
+      "nab": "vegetation",
+      "nak": "31080000",
+      "bez": "Kurzumtriebsplantage",
+      "def": "sind Flächen, auf denen Baumarten mit dem Ziel baldiger Holzentnahme angepflanzt werden und deren Bestände eine Umtriebszeit von nicht länger als 20 Jahren haben.",
+      "ken": "43001",
+      "oak": "VEG - 1100",
+      "ehb": ""
+    },
+    "BRA": {
+      "nab": "vegetation",
+      "nak": "31090000",
+      "bez": "Brachland",
+      "def": "ist eine Fläche der Landwirtschaft, die seit längerem nicht mehr zu Produktionszwecken genutzt wird und auf der Verholzung und Verbuschung eingesetzt hat.",
+      "ken": "43001",
+      "oak": "VEG - 1200",
+      "ehb": ""
+    },
+    "WALD": {
+      "nab": "vegetation",
+      "nak": "32000000",
+      "bez": "Wald",
+      "def": "ist eine Fläche, die mit Forstpflanzen (Waldbäume und Waldsträucher) bestockt ist.",
+      "ken": "43002",
+      "oak": "VEG - 1200",
+      "ehb": "Hierzu gehören auch unbefestigte Wege und Schneisen bis 5 m Breite. Weist eine Fläche mehrere Vegetationsmerkmale auf, so erfolgt eine Differenzierung erst bei einer Flächengröße ab 5000 m² je Vegetationsmerkmal, ansonsten wirkt das Dominanzprinzip."
+    },
+    "LH": {
+      "nab": "vegetation",
+      "nak": "32000000",
+      "bez": "Laubholz",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche mit Laubbäumen.",
+      "ken": "43002",
+      "oak": "VEG - 1100",
+      "ehb": ""
+    },
+    "NH": {
+      "nab": "vegetation",
+      "nak": "32000000",
+      "bez": "Nadelholz",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche mit Nadelbäumen.",
+      "ken": "43002",
+      "oak": "VEG - 1200",
+      "ehb": ""
+    },
+    "LNH": {
+      "nab": "vegetation",
+      "nak": "32000000",
+      "bez": "Laub- und Nadelholz",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche mit Laub- und Nadelbäumen",
+      "ken": "43002",
+      "oak": "VEG - 1300",
+      "ehb": ""
+    },
+    "FWF": {
+      "nab": "vegetation",
+      "nak": "32010000",
+      "bez": "Forstwirtschaftsfläche",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche, die hauptsächlich forstwirtschaftlich genutzt werden.",
+      "ken": "43002",
+      "oak": "NTZ - 1000",
+      "ehb": "Hierzu gehören keine Kurzumtriebsplantagen."
+    },
+    "FWFL": {
+      "nab": "vegetation",
+      "nak": "32010000",
+      "bez": "Forstwirtschaftsfläche (Laubholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / VEG - 1100",
+      "ehb": ""
+    },
+    "FWFN": {
+      "nab": "vegetation",
+      "nak": "32010000",
+      "bez": "Forstwirtschaftsfläche (Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / VEG - 1200",
+      "ehb": ""
+    },
+    "FWFLN": {
+      "nab": "vegetation",
+      "nak": "32010000",
+      "bez": "Forstwirtschaftsfläche (Laub- und Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / VEG - 1300",
+      "ehb": ""
+    },
+    "VNPF": {
+      "nab": "vegetation",
+      "nak": "32010100",
+      "bez": "Verjüngungs-, Neuanpflanzungsfläche",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche durch Aufforstung, Naturverjüngung oder Anpflanzung.",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / ZUS - 6100",
+      "ehb": "Wert wird geführt für Flächen bis zu einer Bewuchshöhe von 5 m."
+    },
+    "VNFL": {
+      "nab": "vegetation",
+      "nak": "32010100",
+      "bez": "Verjüngungs-, Neuanpflanzungsfläche (Laubholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / ZUS - 6100 / VEG - 1100",
+      "ehb": ""
+    },
+    "VNFN": {
+      "nab": "vegetation",
+      "nak": "32010100",
+      "bez": "Verjüngungs-, Neuanpflanzungsfläche (Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / ZUS - 6100 / VEG - 1200",
+      "ehb": ""
+    },
+    "VNFLN": {
+      "nab": "vegetation",
+      "nak": "32010100",
+      "bez": "Verjüngungs-, Neuanpflanzungsfläche (Laub- und Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 1000 / ZUS - 6100 / VEG - 1300",
+      "ehb": ""
+    },
+    "WABF": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "Waldbestattungsfläche",
+      "def": "beschreibt den Bewuchs einer Vegetationsfläche, die der Bestattung dient oder gedient hat.",
+      "ken": "43002",
+      "oak": "NTZ - 3000",
+      "ehb": ""
+    },
+    "WABFL": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "Waldbestattungsfläche (Laubholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / VEG - 1100",
+      "ehb": ""
+    },
+    "WABFN": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "Waldbestattungsfläche (Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / VEG - 1200",
+      "ehb": ""
+    },
+    "WABFLN": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "Waldbestattungsfläche (Laub- und Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / VEG - 1300",
+      "ehb": ""
+    },
+    "WABFVN": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / ZUS - 6100",
+      "ehb": ""
+    },
+    "WABFVNL": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Laubholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / ZUS - 6100 / VEG - 1100",
+      "ehb": ""
+    },
+    "WABFVNN": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / ZUS - 6100 / VEG - 1200",
+      "ehb": ""
+    },
+    "WABFVLN": {
+      "nab": "vegetation",
+      "nak": "32030000",
+      "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Laub- und Nadelholz)",
+      "def": "",
+      "ken": "43002",
+      "oak": "NTZ - 3000 / ZUS - 6100 / VEG - 1300",
+      "ehb": ""
+    },
+    "GHÖ": {
+      "nab": "vegetation",
+      "nak": "33000000",
+      "bez": "Gehölz",
+      "def": "ist eine Fläche, die mit einzelnen Bäumen, Baumgruppen, Büschen, Hecken und Sträuchern bestockt ist.",
+      "ken": "43003",
+      "oak": "",
+      "ehb": ""
+    },
+    "HEI": {
+      "nab": "vegetation",
+      "nak": "34000000",
+      "bez": "Heide",
+      "def": "ist eine meist sandige Fläche mit typischen Sträuchern, Gräsern und geringwertigem Baumbestand.",
+      "ken": "43004",
+      "oak": "",
+      "ehb": ""
+    },
+    "MOOR": {
+      "nab": "vegetation",
+      "nak": "35000000",
+      "bez": "Moor",
+      "def": "ist eine unkultivierte Fläche, deren obere Schicht aus vertorften oder zersetzten Pflanzenresten besteht.",
+      "ken": "43005",
+      "oak": "",
+      "ehb": ""
+    },
+    "SUM": {
+      "nab": "vegetation",
+      "nak": "35000000",
+      "bez": "Sumpf",
+      "def": "ist ein wassergesättigtes, zeitweise unter Wasser stehendes Gelände.",
+      "ken": "43006",
+      "oak": "",
+      "ehb": ""
+    },
+    "UV": {
+      "nab": "vegetation",
+      "nak": "37000000",
+      "bez": "Unland, Vegetationslose Fläche",
+      "def": "ist eine Fläche, die dauerhaft landwirtschaftlich nicht genutzt wird, wie z.B. nicht aus dem Geländerelief herausragende Felspartien, Sand- oder Eisflächen, Uferstreifen längs von Gewässern und Sukzessionsflächen.",
+      "ken": "43006",
+      "oak": "",
+      "ehb": ""
+    },
+    "UVS": {
+      "nab": "vegetation",
+      "nak": "37010200",
+      "bez": "vegetationslose Fläche - Steine, Schotter",
+      "def": "ist eine Fläche, die dauerhaft landwirtschaftlich nicht genutzt wird, weil die Erdoberfläche mit zerkleinertem Gestein unterschiedlicher Größe bedeckt ist.",
+      "ken": "43007",
+      "oak": "FKT - 1000 / OFM - 1020",
+      "ehb": ""
+    },
+    "UVG": {
+      "nab": "vegetation",
+      "nak": "37010300",
+      "bez": "vegetationslose Fläche - Geröll",
+      "def": "ist eine Fläche, die dauerhaft landwirtschaftlich nicht genutzt wird, weil die Erdoberfläche mit durchfließendes Wasser abgerundeten Gesteinen bedeckt ist.",
+      "ken": "43007",
+      "oak": "FKT - 1000 / OFM - 1030",
+      "ehb": ""
+    },
+    "UVSA": {
+      "nab": "vegetation",
+      "nak": "37010400",
+      "bez": "vegetationslose Fläche - Sand",
+      "def": "ist eine Fläche, die dauerhaft landwirtschaftlich nicht genutzt wird, weil die Erdoberfläche mit kleinen, losen Gesteinskörnern bedeckt ist.",
+      "ken": "43007",
+      "oak": "FKT - 1000 / OFM - 1040",
+      "ehb": ""
+    },
+    "WAB": {
+      "nab": "vegetation",
+      "nak": "37020000",
+      "bez": "Gewässerbegleitfläche",
+      "def": "bezeichnet eine bebaute oder unbebaute Fläche, die einem Gewässer zugeordnet wird. Die Gewässerbegleitfläche ist nicht Bestandteil der Gewässerfläche.",
+      "ken": "43007",
+      "oak": "FKT - 1100",
+      "ehb": "Ist gewöhnlich beidseitig, ab einer eigenständigen Breite von ≥ 3 m zu führen. Hierzu gehören auch Schutzeinrichtungen wie Deichflächen"
+    },
+    "NF": {
+      "nab": "vegetation",
+      "nak": "37040000",
+      "bez": "Naturnahe Fläche",
+      "def": "ist eine nicht zum Anbau von Kulturpflanzen genutzte Fläche, die mit Pflanzen bewachsen ist.",
+      "ken": "43007",
+      "oak": "FKT - 1300",
+      "ehb": ""
+    },
+    "WAF": {
+      "nab": "gewaesser",
+      "nak": "41000000",
+      "bez": "Fließgewässer",
+      "def": "a) ist ein geometrisch begrenztes, oberirdisches, auf dem Festland fließendes Gewässer, das die Wassermengen sammelt, die als Niederschläge auf die Erdoberfläche fallen oder in Quellen austreten, und in ein anderes Gewässer, ein Meer oder in einen See transportiert oder b) in einem System von natürlichen oder künstlichen Bodenvertiefungen verlaufendes Wasser, das zur Be- und Entwässerung an- oder abgeleitet wird oder c) ein geometrisch begrenzter, für die Schifffahrt angelegter künstlicher Wasserlauf, der in einem oder in mehreren Abschnitten die jeweils gleiche Höhe des Wasserspiegels besitzt.",
+      "ken": "44001",
+      "oak": "FKT - 1300",
+      "ehb": "Hierzu gehören auch vorübergehend oder ganzjährig nicht wasserführende, jedoch dafür vorgesehene Bodenvertie-\nfungen. Hierzu gehören nicht Flächen, die durch Verfüllung oder Verrohrung der ursprünglichen Bodenvertiefung nun einer anderen Nutzung zugeordnet werden können."
+    },
+    "KAN": {
+      "nab": "gewaesser",
+      "nak": "41020000",
+      "bez": "Kanal",
+      "def": "",
+      "ken": "44001",
+      "oak": "FKT - 8300",
+      "ehb": ""
+    },
+    "WAH": {
+      "nab": "gewaesser",
+      "nak": "42000000",
+      "bez": "Hafenbecken",
+      "def": "ist ein natürlicher oder künstlich angelegter oder abgetrennter Teil eines Gewässers, in dem Schiffe be- und entladen werden.",
+      "ken": "44005",
+      "oak": "",
+      "ehb": ""
+    },
+    "WAS": {
+      "nab": "gewaesser",
+      "nak": "42000000",
+      "bez": "Stehendes Gewässer",
+      "def": "ist eine natürliche oder künstliche mit Wasser gefüllte, allseitig umschlossene Hohlform der Landoberfläche ohne unmittelbaren Zusammenhang mit „Meer“.",
+      "ken": "44006",
+      "oak": "",
+      "ehb": "Hierzu gehören nicht vorübergehende Ansammlungen von Wasser. Sie sind der anliegenden Nutzung zuzuordnen."
+    },
+    "STS": {
+      "nab": "gewaesser",
+      "nak": "43010100",
+      "bez": "Stausee",
+      "def": "",
+      "ken": "44006",
+      "oak": "FKT-8630",
+      "ehb": ""
+    },
+    "SPB": {
+      "nab": "gewaesser",
+      "nak": "43010101",
+      "bez": "Speicherbecken",
+      "def": "",
+      "ken": "44006",
+      "oak": "FKT-8631",
+      "ehb": ""
+    }
+  }
