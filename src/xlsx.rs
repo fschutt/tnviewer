@@ -41,8 +41,8 @@ fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(String, bool)> {
         if last_10.len() != 10 {
             continue;
         }
-        let zaehler = &last_10[..5];
-        let nenner = &last_10[5..];
+        let zaehler = &last_10[..4];
+        let nenner = &last_10[4..];
         let zaehler = zaehler.into_iter().collect::<String>();
         let nenner = nenner.into_iter().collect::<String>();
         let z = match zaehler.parse::<usize>() {
