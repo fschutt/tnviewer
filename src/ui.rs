@@ -717,7 +717,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let export_pdf = {
         format!("
         <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.open_export_pdf(event)' class='__application-ribbon-action-vertical-large'>
+            <label onmouseup='tab_functions.export_pdf(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_export_pdf}'>
                 </div>
