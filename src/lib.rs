@@ -109,6 +109,7 @@ pub fn export_alle_flst(s: String) -> Vec<u8> {
 
     crate::xlsx::get_alle_flst(&data)
 }
+
 #[wasm_bindgen]
 pub fn export_xlsx(s: String) -> Vec<u8> {
     let data = match serde_json::from_str::<CsvDataType>(&s) {
