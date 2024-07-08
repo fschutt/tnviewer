@@ -401,10 +401,15 @@
 
     function exportPdf() {
       if (!csv_data) {
-          return;
-        }
-        var pdf = export_pdf(JSON.stringify(csv_data));
-        downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
+        alert("Keine CSV Daten geladen!");
+        return;
+      }
+      if (!projectdata) {
+        alert("Keine Projektdaten geladen!");
+        return;
+      }
+      var pdf = export_pdf(JSON.stringify(csv_data), JSON.stringify(projectdata));
+      downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
     }
 
     function exportVeraenderteFlst() {
