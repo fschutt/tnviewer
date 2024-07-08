@@ -582,73 +582,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let icon_search_base64 = base64_encode(ICON_SEARCH);
     let icon_reload = base64_encode(&RELOAD_PNG);
 
-    let export_excel = {
-        format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.export_excel(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
-                            </div>
-                            <div>
-                                <p>Excel</p>
-                                <p>exportieren</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        ")
-    };
 
-    let export_david = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_david(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Export</p>
-                        <p>nach DAVID</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
-    let export_alle_flurstuecke = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_alle_flst(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Export</p>
-                        <p>alle Flst.</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
-    let export_veraenderte_flurstuecke = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_veraendert_flst(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Export</p>
-                        <p>Flst. veränd.</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
+    // TAB 1
 
     let projekt_oeffnen = {
         format!("
@@ -711,22 +646,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 </div>
             </label>
         </div>
-        ")
-    };
-
-    let export_pdf = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_pdf(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_pdf}'>
-                </div>
-                <div>
-                    <p>Export</p>
-                    <p>als PDF</p>
-                </div>
-            </label>
-        </div>   
         ")
     };
 
@@ -810,6 +729,194 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
+    // TAB 2
+
+    let gebaeude_loeschen = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
+                            </div>
+                            <div>
+                                <p>Gebäude</p>
+                                <p>löschen</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    let nutzung_aendern = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.nutzung_aendern(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_hvm}'>
+                            </div>
+                            <div>
+                                <p>Nutzung</p>
+                                <p>ändern</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    let nutzung_zerlegen = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.nutzung_zerlegen(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
+                            </div>
+                            <div>
+                                <p>Nutzung</p>
+                                <p>zerlegen</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    let ring_anpassen = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.ring_anpassen(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
+                            </div>
+                            <div>
+                                <p>Inneren Ring</p>
+                                <p>anpassen</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    let ring_loeschen = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.ring_loeschen(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_fehler_speichern}'>
+                            </div>
+                            <div>
+                                <p>Inneren Ring</p>
+                                <p>löschen</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    // TAB 3
+
+    let export_excel = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.export_excel(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
+                            </div>
+                            <div>
+                                <p>Excel</p>
+                                <p>exportieren</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
+    let export_pdf = {
+        format!("
+        <div class='__application-ribbon-section-content'>
+            <label onmouseup='tab_functions.export_pdf(event)' class='__application-ribbon-action-vertical-large'>
+                <div class='icon-wrapper'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_pdf}'>
+                </div>
+                <div>
+                    <p>Export</p>
+                    <p>als PDF</p>
+                </div>
+            </label>
+        </div>   
+        ")
+    };
+
+    let export_alle_flurstuecke = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_alle_flst(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>alle Flst.</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let export_veraenderte_flurstuecke = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_veraendert_flst(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>Flst. veränd.</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let export_david = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_david(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>nach DAVID</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
     let ribbon_body = match rpc_data.tab.unwrap_or_default() {
         0 => {
             format!(
@@ -881,6 +988,26 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
+
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {gebaeude_loeschen}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {nutzung_aendern}
+                        {nutzung_zerlegen}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {ring_anpassen}
+                        {ring_loeschen}
+                    </div>
+                </div>
 
                 <div style='display:flex;flex-grow:1;'></div>
                 
