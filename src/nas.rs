@@ -86,21 +86,40 @@ impl TaggedPolygon {
         ]
     }
 }
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SvgLine {
-    pub points: Vec<SvgPoint>,
-}
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPolygon {
     pub outer_rings: Vec<SvgLine>,
     pub inner_rings: Vec<SvgLine>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct SvgLine {
+    pub points: Vec<SvgPoint>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPoint {
     pub x: f64,
     pub y: f64,
+}
+
+impl Eq for SvgPoint { }
+
+impl Ord for SvgPoint {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let ax = (self.x * 1000.0) as usize;
+        let bx = (other.x * 1000.0) as usize;
+        let ay = (self.y * 1000.0) as usize;
+        let by = (other.y * 1000.0) as usize;
+        if ax == bx && ay == by {
+            std::cmp::Ordering::Equal
+        } else if ax < bx || ay < by {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    }
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]

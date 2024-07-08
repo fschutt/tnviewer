@@ -9,6 +9,7 @@ pub mod nas;
 pub mod csv;
 pub mod xlsx;
 pub mod search;
+pub mod pdf;
 
 #[wasm_bindgen]
 pub fn ui_render_entire_screen(decoded: String) -> String {
@@ -119,6 +120,19 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
     };
 
     crate::xlsx::generate_report(&data)
+}
+
+#[wasm_bindgen]
+pub fn export_pdf(csv: String, json: String) -> Vec<u8> {
+    let csv = match serde_json::from_str::<CsvDataType>(&csv) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    crate::pdf::generate_pdf(&csv, &xml)
 }
 
 pub fn decode(bytes: Vec<u8>) -> String {

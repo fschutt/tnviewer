@@ -398,6 +398,14 @@
         downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
     }
 
+    function exportPdf() {
+      if (!csv_data) {
+          return;
+        }
+        var pdf = export_pdf(JSON.stringify(csv_data));
+        downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
+    }
+
     function exportVeraenderteFlst() {
         if (!csv_data) {
           return;
@@ -424,7 +432,8 @@
     window.replaceRibbon = replaceRibbon;
     window.focusFlst = focusFlst;
     window.searchNA = searchNA;
-    
+    window.exportPdf = exportPdf;
+
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
         create_project: function(event) { newProjectFromCSV(); },
@@ -435,7 +444,7 @@
         open_help: function(event) { openHelp(); },
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
-        export_pdf: function(event) { },
+        export_pdf: function(event) { exportPdf(); },
         export_excel: function(event) { exportExcel(); },
         export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
