@@ -212,6 +212,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "polylabel-mini"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "faee212fadf37bc93666b566a657c78c7947f65bfe6bf9d81ce8f2a28ec1e4d1"
+
+[[package]]
 name = "pom"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -400,6 +406,7 @@ dependencies = [
  "base64",
  "chardetng",
  "encoding_rs",
+ "polylabel-mini",
  "printpdf",
  "proj4rs",
  "quick-xml",

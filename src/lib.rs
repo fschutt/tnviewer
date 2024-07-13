@@ -1,4 +1,5 @@
 use nas::{NasXMLFile, TaggedPolygon};
+use ui::Aenderungen;
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
 use crate::csv::CsvDataType;
@@ -12,9 +13,11 @@ pub mod search;
 pub mod pdf;
 
 #[wasm_bindgen]
-pub fn ui_render_entire_screen(decoded: String) -> String {
-    let uidata = UiData::from_string(&decoded);
-    crate::ui::render_entire_screen(&uidata)
+pub fn ui_render_entire_screen(uidata: String, csv: String, aenderungen: String) -> String {
+    let uidata = UiData::from_string(&uidata);
+    let csv = serde_json::from_str(&csv).unwrap_or_default();
+    let aenderungen = serde_json::from_str(&aenderungen).unwrap_or_default();
+    crate::ui::render_entire_screen(&uidata, &csv, &aenderungen)
 }
 
 #[wasm_bindgen]
@@ -31,9 +34,15 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 
 #[wasm_bindgen]
 pub fn ui_render_project_content(decoded: String, csv_data: String) -> String {
-    let _uidata = UiData::from_string(&decoded);
+    let uidata = UiData::from_string(&decoded);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
-    crate::ui::render_project_content(csv_data)
+    crate::ui::render_project_content(&csv_data, &uidata)
+}
+
+#[wasm_bindgen]
+pub fn ui_render_secondary_content(aenderungen: String) -> String {
+    let aenderungen = serde_json::from_str(&aenderungen).unwrap_or_default();
+    crate::ui::render_secondary_content(&aenderungen)
 }
 
 #[wasm_bindgen]
@@ -66,6 +75,17 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
     };
     xml.get_geojson_ebene(&layer)
 }
+
+#[wasm_bindgen]
+pub fn get_labels_fuer_ebene(json: String, layer: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let labels = xml.get_geojson_labels(&layer);
+    serde_json::to_string(&labels).unwrap_or_default()
+}
+
 
 #[wasm_bindgen]
 pub fn parse_csv_dataset_to_json(

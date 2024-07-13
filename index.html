@@ -13,9 +13,11 @@
       ui_render_entire_screen, 
       load_nas_xml, 
       get_geojson_fuer_ebene,
+      get_labels_fuer_ebene,
       ui_render_ribbon,
       ui_render_popover_content,
       ui_render_project_content,
+      ui_render_secondary_content,
       parse_csv_dataset_to_json,
       get_fit_bounds,
       export_xlsx,
@@ -24,15 +26,27 @@
       export_pdf
     } from "./pkg/tnviewer.js";
 
-    var map = null; // Leaflet object
+    var map = null;
     var geojson_layers = [];
+    var tooltips = [];
     var layers = null;
-    var projectdata = null; // project XML NAS data
+    var dissected_flst_layer = null;
+    var draw_nutzung_layer = null;
+    window.projectdata = null; // project XML NAS data
     window.csv_data = null; // project CSV data
-    var uidata = { // UI State
+    window.uidata = { // UI State
       popover_state: null,
       tab: null, 
+      tool: null,
       data_loaded: false,
+      selected_edit_flst: "",
+    };
+    window.aenderungen = {
+      gebaude_loeschen: {},
+      na_definiert: {},
+      na_polygone_neu: {},
+      ring_loeschen: {},
+      ring_einfuegen: {},
     };
     window.configuration = {
       map: {
@@ -84,7 +98,7 @@
           outlineOverprint: false,
         },
         AX_Flurstueck: {
-          fillColor: "transparent",
+          fillColor: "#ccc",
           outlineColor: "#000000",
           outlineThickness: 3,
           outlineDash: null,
@@ -100,6 +114,106 @@
       }
     }; // default config object
 
+    function zoomToGebaeudeLoeschen(event) {
+      
+    }
+    
+    function gebaeudeLoeschenUndo(event) {
+        
+    }
+    
+    function zoomToFlstPart(event) {
+        
+    }
+    
+    function changeSelectAlt(event) {
+        
+    }
+    
+    function setFlstNutzungAlt(event) {
+        
+    }
+    
+    function setFlstNutzungNeu(event) {
+        
+    }
+    
+    function zoomToPolyNeu(event) {
+        
+    }
+    
+    function polyNeuUndo(event) {
+        
+    }
+    
+    function zoomToRingLoeschen(event) {
+        
+    }
+    
+    function ringLoeschenUndo(event) {
+        
+    }
+    
+    function zoomToRingNeu(event) {
+        
+    }
+    
+    function ringNeuUndo(event) {
+        
+    }
+
+    function colorFlurstuecke() {
+      if (!window.csv_data) {
+        return;
+      }
+      for (var k in window.csv_data) {
+        var e = window.csv_data[k];
+        for (var i = 0; i < e.length; i++) {
+          var q = e[i];
+          if (q.status == 'bleibt') {
+            var e = document.getElementById('csv_flst_' + k);
+            if (e) {
+              e.style.background = '#3e3e58';
+            }
+            break;
+          }
+          if (q.status == 'aenderung-keine-benachrichtigung') {
+            var e = document.getElementById('csv_flst_' + k);
+            if (e) {
+              e.style.background = '#ff9a5a';
+            }
+            break;
+          }
+          if (q.status == 'aenderung-mit-benachrichtigung') {
+            var e = document.getElementById('csv_flst_' + k);
+            if (e) {
+              e.style.background = '#ff4545';
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    function whenClicked(e) {
+      console.log(e);
+      if (window.uidata.tab == 0) {
+
+      } 
+      
+      if (window.uidata.tab == 1) {
+
+      }
+      
+    }
+
+    function onEachFeature(feature, layer) {
+        //bind click
+        layer.on({
+            click: whenClicked
+        });
+    }
+
     function replaceDataNasXML() {
       var input = document.createElement('input');
       input.type = 'file';
@@ -112,7 +226,7 @@
           reader.onload = readerEvent => {
 
             var converted = load_nas_xml(readerEvent.target.result);
-            projectdata = JSON.parse(converted);
+            window.projectdata = JSON.parse(converted);
 
             // remove old LeafLet layers
             for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
@@ -122,19 +236,47 @@
             geojson_layers = [];
             for (var layer_name in window.configuration.style) {
               var json = get_geojson_fuer_ebene(converted, layer_name);
-              // console.log(json);
-              var geojson = JSON.parse(json);
-              // console.log(geojson);
-              // console.log("ok!");
+              var geojson = null;
+              try {
+                geojson = JSON.parse(json);
+              } catch (error) {
+                continue;
+              }
+              if (geojson == null) {
+                continue;
+              }
               var layer_style = window.configuration.style[layer_name];
               var myLayer = L.geoJSON(geojson, {
-                "color": layer_style.outlineColor,
-                "fillColor": layer_style.fillColor,
-                "weight": layer_style.outlineThickness,
-                "opacity": 1.0,
-                // "fillOpacity": 1.0
-                "fillOpacity": 0.5
+                "style": {
+                  "color": layer_style.outlineColor,
+                  "fillColor": layer_style.fillColor,
+                  "weight": layer_style.outlineThickness,
+                  "opacity": 1.0,
+                  // "fillOpacity": 1.0
+                  "fillOpacity": 0.5,
+                },
+                "onEachFeature": onEachFeature
               });
+              var l = get_labels_fuer_ebene(converted, layer_name);
+              console.log(layer_name);
+              console.log(l);
+              var labels = JSON.parse(l);
+              console.log(labels);
+              for (var i = 0; i < labels.length; i++) {
+                var e = labels[i];
+                var t = L.tooltip([e.lat, e.lon], { 
+                  content: e.content, 
+                  direction: 'center', 
+                  permanent: true,
+                  interactive: true,
+                });
+                t.on({
+                    click: function() {
+
+                    }
+                });
+                t.addTo(myLayer);
+              }
               myLayer.addTo(map);
               layers.addOverlay(myLayer, layer_name);
               geojson_layers.push(myLayer);
@@ -144,24 +286,29 @@
       input.click();
   }
 
+  function selectFlst(id) {
+    window.uidata.selected_edit_flst = id;
+    replaceProjectContent();
+    document.getElementById('csv_flst_' + id).scrollIntoView();
+  }
+
     function focusFlst(event) {
       var id = event.target.dataset.id;
-      if (!projectdata || projectdata == null) {
+      if (!window.projectdata || window.projectdata == null) {
         alert("Keine Daten geladen");
       }
 
-      var found = searchFlst(id, projectdata);
+      var found = searchFlst(id, window.projectdata);
       if (found) {
-        // console.log(found);
+        selectFlst(id);
         let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found.flst)));
-        // console.log(bounds);
         map.fitBounds(bounds);
       } else {
         alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
       }
     }
 
-    function searchFlst(id, projectdata) {
+    function searchFlst(id, pd) {
       var id = id.replace(/0+$/, "");
       // minimum 14 chars, prevent numbers such as "70" from being reduced to "7"
       if (id.length < 14) {
@@ -170,8 +317,12 @@
         }
       }
 
-      for (var ebene_id in projectdata.ebenen) {
-        var ebene = projectdata.ebenen[ebene_id];
+      if (!pd) {
+        return null;
+      }
+
+      for (var ebene_id in pd.ebenen) {
+        var ebene = pd.ebenen[ebene_id];
         for (var i = 0; i < ebene.length; i++) {
           var flst = ebene[i];
           if (flst.attributes["flurstueckskennzeichen"] && flst.attributes["flurstueckskennzeichen"].startsWith(id)) {
@@ -184,6 +335,7 @@
       }
       return null;
     }
+
     function newProjectFromCSV() {
       var input = document.createElement('input');
       input.type = 'file';
@@ -210,9 +362,7 @@
               "|",
               "true"
             );
-            // console.log(converted);
             var json = JSON.parse(converted);
-            // console.log(json);
             for (var property in json) {
               window.csv_data[property] = json[property];
             }
@@ -333,16 +483,16 @@
     function replaceRibbon() {
       var d = document.getElementById("__application-ribbon");
       if (d)
-         d.innerHTML = ui_render_ribbon(JSON.stringify(uidata));
+         d.innerHTML = ui_render_ribbon(JSON.stringify(window.uidata));
     }
 
     function replacePopOver() {
       let d = document.getElementById("__application_popover");
       if (d)
-         d.innerHTML = ui_render_popover_content(JSON.stringify(uidata));
+         d.innerHTML = ui_render_popover_content(JSON.stringify(window.uidata));
 
       let q = document.getElementById("__application_main-overlay-container");
-      if (q && uidata.popover_state == null) {
+      if (q && window.uidata.popover_state == null) {
         q.style.display = "flex";
       } else {
         q.style.display = "none";
@@ -352,42 +502,62 @@
     function replaceProjectContent() {
       let d = document.getElementById("__application_project_content");
       if (d)
-         d.innerHTML = ui_render_project_content(JSON.stringify(uidata), JSON.stringify(window.csv_data));
+         d.innerHTML = ui_render_project_content(JSON.stringify(window.uidata), JSON.stringify(window.csv_data));
+    }
+
+    function replaceSecondaryProjectContent() {
+      let d = document.getElementById("__application_secondary-overlay-container");
+      if (!d) {
+        return;
+      }
+      if (window.uidata.tab == 1) {
+        d.style.display = "flex";
+      } else {
+        d.style.display = "none";
+        return;
+      }
+      let q = document.getElementById("__application_secondary_content");
+      if (!q) {
+        return;
+      }
+      let aenderungen_html = ui_render_secondary_content(JSON.stringify(window.aenderungen));
+      q.innerHTML = aenderungen_html;
     }
 
     function selectTab(id) {
-      uidata.tab = id;
+      window.uidata.tab = id;
       replaceRibbon();
       replaceProjectContent();
+      replaceSecondaryProjectContent();
     }
 
     function closePopOver() {
-      uidata.popover_state = null;
+      window.uidata.popover_state = null;
       replacePopOver();
     }
 
     function openHelp() {
-      uidata.popover_state = "Help";
+      window.uidata.popover_state = "Help";
       replacePopOver();
     }
 
     function searchNA(event) {
-      uidata.popover_state = { "Search": { "text": event.target.value } };
+      window.uidata.popover_state = { "Search": { "text": event.target.value } };
       replacePopOver();
     }
 
     function openInfo() {
-      uidata.popover_state = "Info";
+      window.uidata.popover_state = "Info";
       replacePopOver();
     }
 
     function openConfiguration() {
-      uidata.popover_state = { "Configuration": "allgemein" };
+      window.uidata.popover_state = { "Configuration": "allgemein" };
       replacePopOver();
     }
 
     function activateConfigurationView(event, id) {
-      uidata.popover_state = { "Configuration": id };
+      window.uidata.popover_state = { "Configuration": id };
       replacePopOver();
     }
 
@@ -404,11 +574,11 @@
         alert("Keine CSV Daten geladen!");
         return;
       }
-      if (!projectdata) {
+      if (!window.projectdata) {
         alert("Keine Projektdaten geladen!");
         return;
       }
-      var pdf = export_pdf(JSON.stringify(csv_data), JSON.stringify(projectdata));
+      var pdf = export_pdf(JSON.stringify(csv_data), JSON.stringify(window.projectdata));
       downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
     }
 
@@ -439,6 +609,19 @@
     window.focusFlst = focusFlst;
     window.searchNA = searchNA;
     window.exportPdf = exportPdf;
+    window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
+    window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
+    window.zoomToFlstPart = zoomToFlstPart;
+    window.changeSelectAlt = changeSelectAlt;
+    window.setFlstNutzungAlt = setFlstNutzungAlt;
+    window.setFlstNutzungNeu = setFlstNutzungNeu;
+    window.zoomToPolyNeu = zoomToPolyNeu;
+    window.polyNeuUndo = polyNeuUndo;
+    window.zoomToRingLoeschen = zoomToRingLoeschen;
+    window.ringLoeschenUndo = ringLoeschenUndo;
+    window.zoomToRingNeu = zoomToRingNeu;
+    window.ringNeuUndo = ringNeuUndo;
+    window.setInterval(colorFlurstuecke, 200);
 
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
@@ -461,7 +644,11 @@
 
     init()
       .then(() => { 
-        document.body.innerHTML = ui_render_entire_screen(JSON.stringify(uidata));
+        document.body.innerHTML = ui_render_entire_screen(
+          JSON.stringify(window.uidata),
+          JSON.stringify(window.projectdata),
+          JSON.stringify(window.aenderungen),
+        );
         initializeOrUpdateMap(); // add leaflet map
       });
     </script>

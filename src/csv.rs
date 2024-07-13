@@ -3,7 +3,7 @@ use serde_derive::{Serialize, Deserialize};
 
 pub type CsvDataType = BTreeMap<String, Vec<CsvDatensatz>>;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Status {
     #[serde(rename = "bleibt")]
     Bleibt,

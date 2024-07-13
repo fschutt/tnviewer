@@ -1,6 +1,8 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use serde_derive::{Serialize, Deserialize};
 
-use crate::csv::{CsvDataType, Status};
+use crate::{csv::{CsvDataType, Status}, nas::SvgPolygon, search::NutzungsArt, xlsx::FlstIdParsed};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
@@ -9,7 +11,25 @@ pub struct UiData {
     #[serde(default)]
     pub tab: Option<usize>,
     #[serde(default)]
+    pub tool: Option<Tool>,
+    #[serde(default)]
     pub data_loaded: bool,
+    #[serde(default)]
+    pub selected_edit_flst: String,
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum Tool {
+    #[serde(rename = "gebaeude-loeschen")]
+    GebaeudeLoeschen,
+    #[serde(rename = "nutzung-aendern")]
+    NutzungAendern,
+    #[serde(rename = "nutzung-zerlegen")]
+    NutzungZerlegen,
+    #[serde(rename = "ring-einzeichnen")]
+    RingEinzeichnen,
+    #[serde(rename = "ring-loeschen")]
+    RingLoeschen,
 }
 
 impl UiData {
@@ -33,14 +53,6 @@ pub enum PopoverState {
     Info,
     Configuration(ConfigurationView),
     Help,
-    Search { text: String },
-    ExportPdf,
-    CreateNewProjekt,
-    ProjektMetaAendern {
-        grundbuch_von: String,
-        amtsgericht: String,
-        blatt: String,
-    },
 }
 
 #[test]
@@ -63,7 +75,7 @@ pub struct ContextMenuData {
 }
 
 // render entire <body> node depending on the state of the rpc_data
-pub fn render_entire_screen(rpc_data: &UiData) -> String {
+pub fn render_entire_screen(rpc_data: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
     normalize_for_js(format!(
         "
             {popover}
@@ -76,7 +88,7 @@ pub fn render_entire_screen(rpc_data: &UiData) -> String {
         ",
         popover = render_popover(rpc_data),
         ribbon_ui = render_ribbon(rpc_data),
-        main = render_main(rpc_data),
+        main = render_main(rpc_data, csv, aenderungen),
     ))
 }
 
@@ -137,152 +149,6 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
 
     let pc = match &rpc_data.popover_state {
         None => return String::new(),
-        Some(PopoverState::CreateNewProjekt) => {
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Projektblatt anlegen</h2>
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
-                    <form onsubmit='grundbuchAnlegen(event)' action=''>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Amtsgericht</label>
-                        <input type='text' id='__application_grundbuch_anlegen_amtsgericht' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;'></input>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Projekt von</label>
-                        <input type='text' id='__application_grundbuch_anlegen_grundbuch_von' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;'></input>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Blatt-Nr.</label>
-                        <input type='number' id='__application_grundbuch_anlegen_blatt_nr' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;'></input>
-                    </div>
-                    <br/>
-                    <input type='submit' value='Speichern' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:inline-block;flex-grow:0;max-width:320px;margin-top:20px;' />
-                    </form>
-                </div>
-            </div>
-            ")
-        },
-        Some(PopoverState::Search { text }) => {
-            let found = crate::search::search_map(&text);
-            let found = found.iter().map(|(k, v)| {
-                format!(
-                    "<li>
-                        <strong>{abk} ({bez})</strong>
-                        <p>{def}: {ehb}</p>
-                    </li>", 
-                    abk = k,
-                    bez = v.bez,
-                    def = v.def,
-                    ehb = v.ehb,
-                )
-            }).collect::<Vec<_>>().join("");
-
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:all;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;min-height:750px;'>
-                    <ul>{found}</ul>                       
-                </div>
-                                
-            </div>
-            ")
-        },
-        Some(PopoverState::ProjektMetaAendern { amtsgericht, grundbuch_von, blatt }) => {
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>Neues Projektblatt anlegen</h2>
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
-                    <form onsubmit='grundbuchMetaAendernFinished(event)' action=''>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Amtsgericht</label>
-                        <input type='text' id='__application_grundbuch_anlegen_amtsgericht' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;' value='{amtsgericht}'></input>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Projekt von</label>
-                        <input type='text' id='__application_grundbuch_anlegen_grundbuch_von' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;' value='{grundbuch_von}'></input>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Blatt-Nr.</label>
-                        <input type='number' id='__application_grundbuch_anlegen_blatt_nr' required style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;' value='{blatt}'></input>
-                    </div>
-                    <br/>
-                    <input type='submit' value='Speichern' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:inline-block;flex-grow:0;max-width:320px;margin-top:20px;' />
-                    </form>
-                </div>
-            </div>
-            ")
-        }
-        Some(PopoverState::ExportPdf) => {
-            format!("
-            <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
-                
-                {close_button}
-
-                <h2 style='font-size:24px;font-family:sans-serif;margin-bottom:25px;'>PDF-Export</h2>
-                
-                <div style='padding:5px 0px;display:flex;flex-grow:1;flex-direction:column;'>
-                    <form onsubmit='grundbuchExportieren(event)'  action=''>
-                    
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Exportiere:</label>
-                        
-                        <select id='__application_export-pdf-was-exportieren' style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:pointer;'>
-                            <option value='offen'>Offenes Projekt</option>
-                            <option value='alle-offen-digitalisiert'>Alle offenen, digitalisierten Grundbücher</option>
-                            <option value='alle-offen'>Alle offenen Grundbücher</option>
-                            <option value='alle-original'>Alle Original-PDFs</option>
-                        </select>
-                    </div>
-
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label style='font-size:20px;font-style:italic;'>Exportiere Abteilungen:</label>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label for='export-pdf-bv' style='font-size:16px;margin-left:10px;'>Bestandsverzeichnis</label>
-                        <input id='export-pdf-bv' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label for='export-pdf-abt-1' style='font-size:16px;margin-left:10px;'>Abteilung 1</label>
-                        <input id='export-pdf-abt-1' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label for='export-pdf-abt-2' style='font-size:16px;margin-left:10px;'>Abteilung 2</label>
-                        <input id='export-pdf-abt-2' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <label for='export-pdf-abt-3' style='font-size:16px;margin-left:10px;'>Abteilung 3</label>
-                        <input id='export-pdf-abt-3' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>
-                    </div>
-                    <br/>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <input id='export-pdf-leere-seite' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>                        
-                        <label for='export-pdf-leere-seite' style='font-size:20px;font-style:italic;'>Leere Seite nach Titelblatt einfügen</label>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <input id='export-pdf-geroetete-eintraege' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>                        
-                        <label for='export-pdf-geroetete-eintraege' style='font-size:20px;font-style:italic;'>Gerötete Einträge ausgeben</label>
-                    </div>
-                    <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                        <input id='export-pdf-eine-datei' type='checkbox' style='width:20px;height:20px;cursor:pointer;' checked='checked'/>                        
-                        <label for='export-pdf-eine-datei' style='font-size:20px;font-style:italic;'>Als ein PDF ausgeben</label>
-                    </div>
-                    <input type='submit' value='Speichern' class='btn btn_neu' style='cursor:pointer;font-size:20px;height:unset;display:inline-block;flex-grow:0;max-width:320px;margin-top:20px;' />
-                        
-                    </form>
-                </div>
-            </div>
-            ")
-        }
         Some(PopoverState::Info) => {
             format!("
             <div style='box-shadow:0px 0px 100px #22222288;pointer-events:initial;width:800px;display:flex;flex-direction:column;position:relative;margin:10px auto;border:1px solid grey;background:white;padding:100px;border-radius:5px;' onmousedown='event.stopPropagation();' onmouseup='event.stopPropagation();'>
@@ -771,7 +637,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
-    let nutzung_zerlegen = {
+    let nutzung_einzeichnen = {
         format!("
             <div class='__application-ribbon-section 3'>
                 <div style='display:flex;flex-direction:row;'>
@@ -782,7 +648,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                             </div>
                             <div>
                                 <p>Nutzung</p>
-                                <p>zerlegen</p>
+                                <p>einzeichnen</p>
                             </div>
                         </label>
                     </div>
@@ -796,13 +662,13 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
             <div class='__application-ribbon-section 3'>
                 <div style='display:flex;flex-direction:row;'>
                     <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.ring_anpassen(event)' class='__application-ribbon-action-vertical-large'>
+                        <label onmouseup='tab_functions.ring_einfuegen(event)' class='__application-ribbon-action-vertical-large'>
                             <div class='icon-wrapper'>
                                 <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
                             </div>
                             <div>
                                 <p>Inneren Ring</p>
-                                <p>anpassen</p>
+                                <p>einfügen</p>
                             </div>
                         </label>
                     </div>
@@ -998,7 +864,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {nutzung_aendern}
-                        {nutzung_zerlegen}
+                        {nutzung_einzeichnen}
                     </div>
                 </div>
 
@@ -1082,24 +948,198 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     normalize_for_js(ribbon_body)
 }
 
-pub fn render_main(_rpc_data: &UiData) -> String {
+pub type FlstId = String; // 121180...
+pub type GebauedeId = String; // DE...
+pub type FlstPartId = String; // 121180...-121180... (intersection polygon between polygons)
+pub type Kuerzel = String; // UV, WBF, GR, ...
+pub type RingId = String; // DE...
+pub type NewPolyId = String; // oudbvW0wu...
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct PolyNeu {
+    pub poly: SvgPolygon,
+    pub nutzung: Kuerzel,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct RingNeu {
+    pub poly: SvgPolygon,
+    pub nutzung: Kuerzel,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct NaAenderungen {
+    pub alt: Kuerzel,
+    pub neu: Kuerzel,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct Aenderungen {
+    pub gebaude_loeschen: BTreeMap<FlstId, GebauedeId>,
+    pub ring_loeschen: BTreeMap<FlstId, BTreeSet<RingId>>,
+    pub ring_einfuegen: BTreeMap<FlstId, RingNeu>,
+    pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
+    pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
+}
+
+pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
     let map = format!("
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
-            <div id='map' style='position:absolute;width:100%;height:100%;z-index:0;'></div>
-            <div id='__application_main-overlay-container' style='z-index:9999;pointer-events:none;position:absolute;height:100%;width:100%;margin:20px;display:flex;flex-direction:row;'>
-                <div id='__application_project_content' style='background:white;padding:20px;pointer-events:all;width:500px;margin-bottom:40px;box-shadow:0px 0px 10px black;border-radius:3px;'>
+            <div id='__application_main-overlay-container' style='display:flex;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
+                <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
+                    <div id='__application_project_content' class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{primary}</div>
                 </div>
             </div>
+            <div id='__application_secondary-overlay-container' style='display:{display_secondary};flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
+                <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
+                    <div id='__application_secondary_content' class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{secondary}</div>
+                </div>
+            </div>
+            <div id='mapcontainer' style='display:flex;flex-grow:1;flex-direction:row;z-index:0;'>
+                <div id='map' style='width:100%;height:100%;'></div>
+            </div>
         </div>
-    ");
+    ",
+        primary = render_project_content(csv, uidata),
+        display_secondary = match uidata.tab {
+            Some(1) => "flex",
+            _ => "none",
+        },
+        secondary = render_secondary_content(&aenderungen),
+    );
     normalize_for_js(map) // TODO
 }
 
-pub fn render_project_content(csv: CsvDataType) -> String {
-    let s = csv.iter().enumerate().map(|(i, (k, v))| {
-        format!("
-        <div class='csv-datensatz' style='background: #3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;' ondblclick='focusFlst(event);' data-id='{flst_id}'>
-            <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>[{i}] {flst_id}</h5>
+pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
+
+    let mut html = "<div id='aenderungen-container'>".to_string();
+    
+    html += "<h2>Zu löschende Gebäude</h2>";
+    html += "<div id='zu-loeschende-gebaeude'>";
+    for (flst_id, gebaeude_id) in aenderungen.gebaude_loeschen.iter() {
+        html.push_str(&format!(
+            "<div id='gebaeude-loeschen-{gebaeude_id}' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>
+                <p onclick='zoomToGebaeudeLoeschen(event);' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>Gebäude {gebaeude_id} löschen</p>
+                <p class='undo' onclick='gebaeudeLoeschenUndo(event);' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>X</p>
+            </div>"
+        ));
+    }
+    html += "</div>";
+
+
+    html += "<h2>Zu ändernde Nutzungsarten</h2>";
+    html += "<div id='zu-aendernde-na'>";
+    for (flst_part_id, kuerzel) in aenderungen.na_definiert.iter() {
+        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id);
+        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id);
+        let kuerzel_alt = &kuerzel.alt;
+        let kuerzel_neu = &kuerzel.neu;
+        html.push_str(&format!(
+            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}' data-kuerzel-alt='{kuerzel_alt}' data-kuerzel-neu='{kuerzel_neu}'>
+                <p onclick='zoomToFlstPart(event);' data-flst-part-id='{flst_part_id}'>Karte</p>
+                {select_alt}
+                {select_neu}
+            </div>"
+        ));
+    }
+    html += "</div>";
+
+
+    html += "<h2>Neue Nutzungsarten</h2>";
+    html += "<div id='neue-na'>";
+    for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter() {
+        let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id);
+        let kuerzel_alt = &polyneu.nutzung;
+        html.push_str(&format!(
+            "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}' data-kuerzel='{kuerzel_alt}'>
+                <p onclick='zoomToPolyNeu(event);' data-new-poly-id='{new_poly_id}'>Karte</p>
+                {select_nutzung}
+                <p class='undo' onclick='polyNeuUndo(event);' data-new-poly-id='{new_poly_id}'>X</p>
+            </div>"
+        ));
+    }
+    html += "</div>";
+
+
+    html += "<h2>Ring löschen</h2>";
+    html += "<div id='ring-loeschen'>";
+    for (flst_id, ring_id) in aenderungen.ring_loeschen.iter() {
+        for r in ring_id.iter() {
+            html.push_str(&format!(
+                "<div class='ring-loeschen' id='ring-loeschen-{r}' data-flst-id='{flst_id}' data-ring-id='{r}'>
+                    <p onclick='zoomToRingLoeschen(event);' data-flst-id='{flst_id}' data-ring-id='{r}'>Karte</p>
+                    <p class='undo' onclick='ringLoeschenUndo(event);' data-flst-id='{flst_id}' data-ring-id='{r}'>X</p>
+                </div>"
+            ));
+        }
+    }
+    html += "</div>";
+
+
+    html += "<h2>Ring einfügen</h2>";
+    html += "<div id='ring-einfuegen'>";
+    for (ring_neu_id, ring_neu) in aenderungen.ring_einfuegen.iter() {
+        html.push_str(&format!(
+            "<div class='ring-neu' id='ring-neu-{ring_neu_id}' data-ring-id='{ring_neu_id}'>
+                <p onclick='zoomToRingNeu(event);' data-ring-id='{ring_neu_id}'>Karte</p>
+                <p class='undo' onclick='ringNeuUndo(event);' data-ring-id='{ring_neu_id}'>X</p>
+            </div>"
+        ));
+    }
+    html += "</div>";
+
+    html += "</div>";
+    html 
+}
+
+pub fn render_select(selected: &str, function: &str, id: &str) -> String {
+    let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+    let mut s = format!("<select onchange='{function}(event);' data-id='{id}'>");
+    for k in map.keys() {
+        let selected = if selected == k { " selected='selected' " } else { "" };
+        s.push_str(&format!("<option {selected}>{k}</option>"));
+    }
+    s += "</select>";
+    s
+}
+
+pub fn render_project_content(csv: &CsvDataType, uidata: &UiData) -> String {
+
+    let s = match uidata.tab {
+        None | Some(0) => render_csv_editable(&csv, false, &uidata.selected_edit_flst),
+        Some(1) => render_csv_editable(&csv, true, &uidata.selected_edit_flst),
+        Some(2) => {
+            format!("
+            <h2>Projekt <input type='text' value='aslkdadfa' placeholder='Projektname...'></input></h2>
+            ")
+        },
+        _ => String::new(),
+    };
+
+    normalize_for_js(s)
+}
+
+fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit_flst: &str) -> String {
+
+    let selected_edit_flst = selected_edit_flst.replace("_", "");
+
+    csv.iter()
+    .filter_map(|(k, v)| {
+        if filter_out_bleibt && v.iter().any(|f| f.status == Status::Bleibt) {
+            None
+        } else {
+            Some((k, v))
+        }
+    })
+    .filter_map(|(k, v)| {
+        let selected = if selected_edit_flst.is_empty() {
+            false 
+        } else {
+            k.starts_with(&selected_edit_flst) 
+        };
+        Some(format!("
+        <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background: {background_col};padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
+            <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Flst. {flst_id_formatted}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
             <select style='font-size:16px;' onchange='changeStatus(event);' data-id='{flst_id}'>
@@ -1107,17 +1147,26 @@ pub fn render_project_content(csv: CsvDataType) -> String {
                 <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
                 <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
             </select>
-        </div>", 
+        </div>",
+        background_col = match v.get(0).map(|f| f.status).unwrap_or(Status::Bleibt) {
+            Status::Bleibt => "#3e3e58",
+            Status::AenderungKeineBenachrichtigung => "#ff9a5a",
+            Status::AenderungMitBenachrichtigung => "#ff4545",
+        },
         nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
         flst_id = k,
+        border = if selected {
+            "border:1px solid red;"
+        } else {
+            "border:1px solid transparent;"
+        },
+        flst_id_formatted = FlstIdParsed::from_str(k).parse_num()?.format_str(),
         notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
-    )
-    }).collect::<Vec<_>>().join("");
-
-    normalize_for_js(format!("<div class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{s}</div>"))
+    ))
+    }).collect::<Vec<_>>().join("")
 }
 
 pub fn normalize_for_js(s: String) -> String {

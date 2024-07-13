@@ -90,7 +90,7 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
                 let eig: String = eigentuemer.join("; ");
                 let nutzung = ds_0.nutzung.clone();
                 sw.append_row(row![
-                    format_flst_id(&flst_id).to_nice_string(),
+                    FlstIdParsed::from_str(&flst_id).to_nice_string(),
                     nutzung.to_string(),
                     match status {
                         crate::csv::Status::Bleibt => "bleibt".to_string(),
@@ -119,7 +119,48 @@ pub struct FlstIdParsed {
     pub padding: String,
 }
 
+pub struct FlstIdParsedNumber {
+    pub land: usize, 
+    pub gemarkung: usize,
+    pub flur: usize,
+    pub flst_zaehler: usize,
+    pub flst_nenner: Option<usize>,
+}
+
+impl FlstIdParsedNumber {
+    pub fn format_str(&self) -> String {
+       match self.flst_nenner {
+        Some(0) | None => self.flst_zaehler.to_string(),
+        Some(s) => format!("{}/{}", self.flst_zaehler, s),
+       }
+    }
+}
+
 impl FlstIdParsed {
+
+    pub fn from_str(id: &str) -> FlstIdParsed {
+
+        // 12 1180 003 00001 0000 00
+        // 12-1180-003-00261/0000
+
+        let chars = id.chars().collect::<Vec<_>>();
+        let land = chars.iter().skip(0).take(2).collect::<String>();
+        let gemarkung = chars.iter().skip(2).take(4).collect::<String>();
+        let flur = chars.iter().skip(6).take(3).collect::<String>();
+        let flst_zaehler = chars.iter().skip(9).take(5).collect::<String>();
+        let flst_nenner = chars.iter().skip(14).take(4).collect::<String>();
+        let padding = chars.iter().skip(18).take(2).collect::<String>();
+
+        FlstIdParsed {
+            land, 
+            gemarkung,
+            flur,
+            flst_zaehler,
+            flst_nenner,
+            padding,
+        }
+    }
+
     pub fn to_nice_string(&self) -> String {
         let FlstIdParsed { 
             land, 
@@ -132,27 +173,14 @@ impl FlstIdParsed {
 
         format!("{land}-{gemarkung}-{flur}-{flst_zaehler}/{flst_nenner}")
     }
-}
 
-fn format_flst_id(id: &str) -> FlstIdParsed {
-
-    // 12 1180 003 00001 0000 00
-    // 12-1180-003-00261/0000
-
-    let chars = id.chars().collect::<Vec<_>>();
-    let land = chars.iter().skip(0).take(2).collect::<String>();
-    let gemarkung = chars.iter().skip(2).take(4).collect::<String>();
-    let flur = chars.iter().skip(6).take(3).collect::<String>();
-    let flst_zaehler = chars.iter().skip(9).take(5).collect::<String>();
-    let flst_nenner = chars.iter().skip(14).take(4).collect::<String>();
-    let padding = chars.iter().skip(18).take(2).collect::<String>();
-
-    FlstIdParsed {
-        land, 
-        gemarkung,
-        flur,
-        flst_zaehler,
-        flst_nenner,
-        padding,
+    pub fn parse_num(&self) -> Option<FlstIdParsedNumber> {
+        Some(FlstIdParsedNumber {
+            land: self.land.trim().parse::<usize>().ok()?, 
+            gemarkung: self.gemarkung.trim().parse::<usize>().ok()?, 
+            flur: self.flur.trim().parse::<usize>().ok()?, 
+            flst_zaehler: self.flst_zaehler.trim().parse::<usize>().ok()?, 
+            flst_nenner: self.flst_nenner.trim().parse::<usize>().ok(), 
+        })
     }
 }

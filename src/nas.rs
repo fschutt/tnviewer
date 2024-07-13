@@ -1,5 +1,9 @@
 use std::collections::BTreeMap;
+use polylabel_mini::LineString;
+use polylabel_mini::Point;
+use polylabel_mini::Polygon;
 use serde_derive::{Serialize, Deserialize};
+use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
 
@@ -9,7 +13,67 @@ pub struct NasXMLFile {
     pub crs: String,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct Label {
+    pub lon: f64,
+    pub lat: f64,
+    pub content: String,
+    pub id: String,
+}
+
 impl NasXMLFile {
+
+    pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
+
+        let objekte = match self.ebenen.get(layer) {
+            Some(o) => o,
+            None => return Vec::new(),
+        };
+
+        let mut labels = Vec::new();
+        for o in objekte.iter() {
+
+            let flst = o.attributes
+            .get("flurstueckskennzeichen")
+            .and_then(|s| FlstIdParsed::from_str(s).parse_num());
+
+            let text = match flst {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let coords_outer = o.poly.outer_rings.iter().flat_map(|line| {
+                 line.points.iter().map(|p| (p.x, p.y))
+            }).collect::<Vec<_>>();
+
+            let polygon = Polygon {
+                exterior: LineString {
+                    points: coords_outer.iter().map(|(x, y)| Point {
+                        x: *x,
+                        y: *y,
+                    }).collect()
+                },
+                interiors: o.poly.inner_rings.iter().map(|l| LineString {
+                    points: l.points.iter().map(|p| Point {
+                        x: p.x,
+                        y: p.y,
+                    }).collect()
+                }).collect()
+            };
+            let label_pos = polylabel_mini::polylabel(&polygon, 0.01);
+
+            let label = Label {
+                lon: label_pos.x, 
+                lat: label_pos.y,
+                content: text.format_str(),
+                id: o.attributes.get("flurstueckskennzeichen").cloned().unwrap_or_default(),
+            };
+            labels.push(label);
+        }
+
+        labels
+    }
+
     /// Returns GeoJSON für die Ebene
     pub fn get_geojson_ebene(&self, layer: &str) -> String {
 
@@ -28,26 +92,34 @@ impl NasXMLFile {
 
         let objekte = match self.ebenen.get(layer) {
             Some(o) => o,
-            None => return String::new(),
+            None => return format!("keine Ebene {layer} vorhanden"),
         };
 
         let geom = objekte.iter().filter_map(|poly| {
-            let holes = if poly.poly.inner_rings.is_empty() {
-                poly.poly.inner_rings.iter().map(convert_svgline_to_string).collect::<Vec<_>>().join(",")
-            } else {
-                String::new()
-            };
+
+            let holes = poly.poly.inner_rings.iter()
+            .map(convert_svgline_to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+            let feature_map = poly.attributes
+            .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
+            .collect::<Vec<_>>().join(",");
+
             if poly.poly.outer_rings.len() > 1 {
                 let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
-                Some(format!("{{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }}"))
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
             } else if let Some(p) = poly.poly.outer_rings.get(0) {
                 let poly = convert_poly_to_string(p, &holes);
-                Some(format!("{{ \"type\": \"Polygon\", \"coordinates\": {poly} }}"))
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
             } else {
                 None
             }
         }).collect::<Vec<_>>().join(",");
-        format!("{{ \"type\": \"GeometryCollection\", \"geometries\": [{geom}] }}")
+
+        format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
     }
 }
 
