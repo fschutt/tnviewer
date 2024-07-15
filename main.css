@@ -40,6 +40,17 @@ textarea {
     resize: none;
 }
 
+#__application_main-overlay-container {
+	max-width: 400px;
+}
+
+#__application_project_content {
+	overflow-x: hidden;
+}
+#__application_secondary-overlay-container {
+	max-width: 400px;
+}
+
 script {
     display: none;
 }
