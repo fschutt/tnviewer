@@ -197,7 +197,6 @@
     }
 
     function whenClicked(e) {
-      console.log(e);
       if (window.uidata.tab == 0) {
 
       } 
@@ -226,7 +225,9 @@
           reader.readAsText(file,'UTF-8');
           reader.onload = readerEvent => {
 
-            var converted = load_nas_xml(readerEvent.target.result);
+            var styles_keys = Object.keys(window.configuration.style);
+            var styles_keys = styles_keys.join(", ");
+            var converted = load_nas_xml(readerEvent.target.result, styles_keys);
             window.projectdata = JSON.parse(converted);
 
             // remove old LeafLet layers
@@ -259,10 +260,7 @@
                 "onEachFeature": onEachFeature
               });
               var l = get_labels_fuer_ebene(converted, layer_name);
-              console.log(layer_name);
-              console.log(l);
               var labels = JSON.parse(l);
-              console.log(labels);
               for (var i = 0; i < labels.length; i++) {
                 var e = labels[i];
                 var t = L.tooltip([e.lat, e.lon], { 

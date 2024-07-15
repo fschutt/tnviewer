@@ -195,7 +195,7 @@ impl Ord for SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> Result<NasXMLFile, String> {
+pub fn parse_nas_xml(s: &str, whitelist: &[String]) -> Result<NasXMLFile, String> {
     let s = match crate::xml::parse_xml_string(s) {
         Ok(o) => o,
         Err(e) => { return Err(format!("XML parse error: {e:?}")); },
@@ -203,7 +203,7 @@ pub fn parse_nas_xml(s: &str, whitelist: &[&str]) -> Result<NasXMLFile, String> 
     xml_nodes_to_nas_svg_file(s, whitelist)
 }
 
-fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[&str]) -> Result<NasXMLFile, String> {
+fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
 
     // CRS parsen
 

@@ -56,8 +56,14 @@ pub fn get_fit_bounds(s: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn load_nas_xml(s: String) -> String {
-    let xml = match crate::nas::parse_nas_xml(&s, &["AX_Gebaeude", "AX_Landwirtschaft", "AX_Flurstueck", "AX_Strassenverkehr", "AX_Fliessgewaesser", "AX_Gehoelz", "AX_HistorischesFlurstueck", "AX_Wohnbauflaeche", "AX_GemarkungsteilFlur"]) {
+pub fn load_nas_xml(s: String, types: String) -> String {
+    let mut t = types.split(",").filter_map(|s| {
+        let s = s.trim();
+        if s.is_empty() { None } else { Some(s.to_string()) }
+    }).collect::<Vec<_>>();
+    t.sort();
+    t.dedup();
+    let xml = match crate::nas::parse_nas_xml(&s, &t) {
         Ok(o) => o,
         Err(e) => return e,
     };

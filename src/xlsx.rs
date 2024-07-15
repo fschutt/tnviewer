@@ -135,11 +135,10 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
                 Some(s) => s,
                 None => continue,
             };
-            let flst = flst.format_str();
             eigentuemer
             .entry(d.eigentuemer.trim().to_string())
-            .or_insert_with(|| BTreeSet::new())
-            .insert(flst);
+            .or_insert_with(|| Vec::new())
+            .push(flst);
         }
     }
 
@@ -148,9 +147,12 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
         sw.append_row(row!["Eigentümer", "Flurstücke"])?;
 
         for (k, v) in eigentuemer.iter() {
+            let mut v = v.clone();
+            v.sort_by(|a, b| a.flst_zaehler.cmp(&b.flst_zaehler));
+            v.dedup();
             sw.append_row(row![
                 k.to_string(),
-                v.iter().cloned().collect::<Vec<_>>().join(", ")
+                v.iter().map(|q| q.format_str()).collect::<Vec<_>>().join(", ")
             ])?;
         }
 
@@ -163,6 +165,7 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct FlstIdParsed {
     pub land: String, 
     pub gemarkung: String,
@@ -172,6 +175,7 @@ pub struct FlstIdParsed {
     pub padding: String,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct FlstIdParsedNumber {
     pub land: usize, 
     pub gemarkung: usize,
