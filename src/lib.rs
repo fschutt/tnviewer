@@ -143,6 +143,16 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+pub fn export_flst_id_nach_eigentuemer(s: String) -> Vec<u8> {
+    let data = match serde_json::from_str::<CsvDataType>(&s) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    crate::xlsx::flst_id_nach_eigentuemer(&data)
+}
+
+#[wasm_bindgen]
 pub fn export_pdf(csv: String, json: String) -> Vec<u8> {
     let csv = match serde_json::from_str::<CsvDataType>(&csv) {
         Ok(o) => o,

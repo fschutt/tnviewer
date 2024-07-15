@@ -23,6 +23,7 @@
       export_xlsx,
       export_veraenderte_flst,
       export_alle_flst,
+      export_flst_id_nach_eigentuemer,
       export_pdf
     } from "./pkg/tnviewer.js";
 
@@ -569,6 +570,14 @@
         downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
     }
 
+    function exportFlstNachEigentuemer() {
+        if (!csv_data) {
+          return;
+        }
+        var xlsx = export_flst_id_nach_eigentuemer(JSON.stringify(csv_data));
+        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
+    }
+
     function exportPdf() {
       if (!csv_data) {
         alert("Keine CSV Daten geladen!");
@@ -635,6 +644,7 @@
         open_configuration: function(event) { openConfiguration(); },
         export_pdf: function(event) { exportPdf(); },
         export_excel: function(event) { exportExcel(); },
+        export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
         export_david: function(event) { },

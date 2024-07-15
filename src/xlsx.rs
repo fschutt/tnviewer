@@ -1,4 +1,7 @@
 
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 
@@ -63,7 +66,7 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     use simple_excel_writer::*;
     
     let mut wb = Workbook::create_in_memory();
-    let mut sheet = wb.create_sheet("Preferences");
+    let mut sheet = wb.create_sheet("Flurstuecke");
 
     // ID
     sheet.add_column(Column { width: 30.0 });
@@ -103,6 +106,56 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
 
             Ok(())
         });
+
+    match wb.close() {
+        Ok(Some(o)) => o,
+        _ => Vec::new(),
+    }
+}
+
+pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
+
+    use simple_excel_writer::*;
+    
+    let mut wb = Workbook::create_in_memory();
+    let mut sheet = wb.create_sheet("FlstIdNachEigentuemer");
+
+    // Eigentuemer
+    sheet.add_column(Column { width: 30.0 });
+    // Flurstuecke
+    sheet.add_column(Column { width: 60.0 });
+
+    let mut eigentuemer = BTreeMap::new();
+    for (k, v) in datensaetze.iter() {
+        for d in v.iter() {
+            if d.status != Status::AenderungMitBenachrichtigung {
+                continue;
+            }
+            let flst = match FlstIdParsed::from_str(k).parse_num() {
+                Some(s) => s,
+                None => continue,
+            };
+            let flst = flst.format_str();
+            eigentuemer
+            .entry(d.eigentuemer.trim().to_string())
+            .or_insert_with(|| BTreeSet::new())
+            .insert(flst);
+        }
+    }
+
+    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
+        let sw = sheet_writer;
+        sw.append_row(row!["Eigentümer", "Flurstücke"])?;
+
+        for (k, v) in eigentuemer.iter() {
+            sw.append_row(row![
+                k.to_string(),
+                v.iter().cloned().collect::<Vec<_>>().join(", ")
+            ])?;
+        }
+
+        Ok(())
+    });
 
     match wb.close() {
         Ok(Some(o)) => o,

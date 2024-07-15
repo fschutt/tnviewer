@@ -719,6 +719,26 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
         ")
     };
 
+    let export_eigentuemer = {
+        format!("
+            <div class='__application-ribbon-section 3'>
+                <div style='display:flex;flex-direction:row;'>
+                    <div class='__application-ribbon-section-content'>
+                        <label onmouseup='tab_functions.export_flst_nach_eigentuemer(event)' class='__application-ribbon-action-vertical-large'>
+                            <div class='icon-wrapper'>
+                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
+                            </div>
+                            <div>
+                                <p>Bearb. Flst.</p>
+                                <p>nach Eigentümer</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        ")
+    };
+
     let export_pdf = {
         format!("
         <div class='__application-ribbon-section-content'>
@@ -907,7 +927,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
                         {export_excel}
-                        
+                        {export_eigentuemer}
                         {export_pdf}
                     </div>
                 </div>
