@@ -673,11 +673,13 @@
       }
       if (window.uidata.tab == 1) {
         d.style.display = "flex";
-        console.log(JSON.parse(get_gebaeude_geojson_fuer_aktive_flst(
+        var f = get_gebaeude_geojson_fuer_aktive_flst(
           JSON.stringify(window.projectdata),
           JSON.stringify(window.csv_data),
           JSON.stringify(window.aenderungen),
-        )));
+        );
+        console.log(f);
+        console.log(JSON.parse(f));
       } else {
         d.style.display = "none";
         return;
