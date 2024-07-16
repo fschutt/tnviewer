@@ -690,7 +690,7 @@
 
     function gebauedeClicked(e) {
 
-      var gebaeude_id = e.target.feature.properties.get("gebaeude_id");
+      var gebaeude_id = e.target.feature.properties.gebaeude_id;
       if (!gebaeude_id) {
         return;
       }
