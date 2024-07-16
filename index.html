@@ -689,13 +689,25 @@
     }
 
     function gebauedeClicked(e) {
-      console.log(e);
-      // aenderungen.push / remove(gebauedeid);
-      // reinitGebaeudeLoeschenLayer();
+
+      var gebaeude_id = e.target.feature.properties.get("gebaeude_id");
+      if (!gebaeude_id) {
+        return;
+      }
+      if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
+        return;
+      }
+      var index = window.aenderungen.gebaeude_loeschen.indexOf(5);
+      if (index > -1) {
+        window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
+      } else {
+        window.aenderungen.gebaeude_loeschen.push(gebaeude_id); // loeschen
+      }
+      console.log(window.aenderungen.gebaeude_loeschen);
+      reinitGebaeudeLoeschenLayer();
     }
 
     function gebaeudeFeatureClick(feature, layer) {
-        //bind click
         layer.on({
             click: gebauedeClicked
         });
@@ -716,20 +728,28 @@
         JSON.stringify(window.csv_data),
         JSON.stringify(window.aenderungen),
       );
-      console.log(f);
       var gebaeude_geojson = JSON.parse(f);
-      console.log(gebaeude_geojson);
       if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
         map.removeLayer(gebaeude_loeschen_layer);
       }
 
       var myLayer = L.geoJSON(gebaeude_geojson, {
         "style": {
-          "color": "red",
-          "fillColor": "red",
-          "weight": 1.0,
-          "opacity": 1.0,
-          "fillOpacity": 1.0
+          "color": function(feature) {
+              switch (feature.properties.gebaeude_geloescht) {
+                  case 'true': return {color: "#ff0000"};
+                  case 'false':   return {color: "#0000ff"};
+              }
+          },
+          "fillColor": function(feature) {
+              switch (feature.properties.gebaeude_geloescht) {
+                  case 'true': return {color: "#ff0000"};
+                  case 'false':   return {color: "#0000ff"};
+              }
+          },
+          "weight": 0.0,
+          "opacity": 0.8,
+          "fillOpacity": 0.8
         },
         "onEachFeature": gebaeudeFeatureClick
       });
