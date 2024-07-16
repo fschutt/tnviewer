@@ -4,6 +4,7 @@ use polylabel_mini::Point;
 use polylabel_mini::Polygon;
 use quadtree_f32::Item;
 use quadtree_f32::QuadTree;
+use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
 use crate::csv::CsvDataType;
 use crate::ui::Aenderungen;
@@ -33,6 +34,13 @@ pub struct GebaeudeInfo {
     pub poly: TaggedPolygon,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct GebaeudeDebugMap {
+    pub anzahl_flurstuecke: usize,
+    pub anzahl_gebaeude: usize,
+    pub aenderungen: Aenderungen,
+}
+
 impl NasXMLFile {
 
     // Returns GeoJSON for all available AX_Gebaeude
@@ -40,24 +48,6 @@ impl NasXMLFile {
 
         use quadtree_f32::ItemId;
         use quadtree_f32::Rect;
-
-        let ax_gebaeude = match self.ebenen.get("AX_Gebaeude") {
-            Some(o) => o,
-            None => return format!("keine Ebene AX_Gebaeude vorhanden"),
-        };
-
-        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
-            let gebaeude_id = tp.attributes.get("id").cloned()?;
-            let item_id = ItemId(i);
-            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-            let bounds = Rect {
-                max_x: max_x as f32,
-                max_y: max_y as f32,
-                min_x: min_x as f32,
-                min_y: min_y as f32,
-            };
-            Some((item_id, (gebaeude_id, bounds, tp.clone())))
-        }).collect::<BTreeMap<_, _>>();
 
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
@@ -78,6 +68,35 @@ impl NasXMLFile {
             Some((flst_id, bounds))
         }).collect::<BTreeMap<_, _>>();
 
+        if ax_flurstuecke_map.is_empty() {
+            return "keine AX_Flurstuecke selected!".to_string();
+        }
+        
+        let ax_gebaeude = match self.ebenen.get("AX_Gebaeude") {
+            Some(o) => o,
+            None => return format!("keine Ebene AX_Gebaeude vorhanden"),
+        };
+
+        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
+            let gebaeude_id = tp.attributes.get("id").cloned()?;
+            let item_id = ItemId(i);
+            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+            let bounds = Rect {
+                max_x: max_x as f32,
+                max_y: max_y as f32,
+                min_x: min_x as f32,
+                min_y: min_y as f32,
+            };
+            Some((item_id, (gebaeude_id, bounds, tp.clone())))
+        }).collect::<BTreeMap<_, _>>();
+
+        return serde_json::to_string(&GebaeudeDebugMap {
+            anzahl_flurstuecke: ax_flurstuecke_map.len(),
+            anzahl_gebaeude: ax_gebaeude_map.len(),
+            aenderungen: aenderungen.clone(),
+        }).unwrap_or_default();
+
+        /* 
         // Get intersection of all gebaeude
         let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
             (k.clone(), Item::Rect(v.1.clone()))
@@ -101,6 +120,7 @@ impl NasXMLFile {
         .collect::<BTreeMap<_, _>>();
 
         serde_json::to_string(&gebaeude_avail).unwrap_or_default()
+        */
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
