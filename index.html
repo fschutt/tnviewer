@@ -716,7 +716,9 @@
         JSON.stringify(window.csv_data),
         JSON.stringify(window.aenderungen),
       );
+      console.log(f);
       var gebaeude_geojson = JSON.parse(f);
+      console.log(gebaeude_geojson);
       if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
         gebaeude_loeschen_layer.removeFrom(map);
       }
