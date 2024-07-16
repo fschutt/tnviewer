@@ -34,6 +34,8 @@
     var layers = null;
     var dissected_flst_layer = null;
     var draw_nutzung_layer = null;
+    var gebaeude_loeschen_layer = null;
+
     window.projectdata = null; // project XML NAS data
     window.csv_data = null; // project CSV data
     window.uidata = { // UI State
@@ -673,13 +675,7 @@
       }
       if (window.uidata.tab == 1) {
         d.style.display = "flex";
-        var f = get_gebaeude_geojson_fuer_aktive_flst(
-          JSON.stringify(window.projectdata),
-          JSON.stringify(window.csv_data),
-          JSON.stringify(window.aenderungen),
-        );
-        console.log(f);
-        console.log(JSON.parse(f));
+        reinitGebaeudeLoeschenLayer();
       } else {
         d.style.display = "none";
         return;
@@ -690,6 +686,53 @@
       }
       let aenderungen_html = ui_render_secondary_content(JSON.stringify(window.aenderungen));
       q.innerHTML = aenderungen_html;
+    }
+
+    function gebauedeClicked(e) {
+      console.log(e);
+      // aenderungen.push / remove(gebauedeid);
+      // reinitGebaeudeLoeschenLayer();
+    }
+
+    function gebaeudeFeatureClick(feature, layer) {
+        //bind click
+        layer.on({
+            click: gebauedeClicked
+        });
+    }
+
+    function reinitGebaeudeLoeschenLayer() {
+      if (!window.projectdata || window.projectdata == null) {
+        return;
+      }
+      if (!window.csv_data || window.csv_data == null) {
+        return;
+      }
+      if (!window.aenderungen || window.aenderungen == null) {
+        return;
+      }
+      var f = get_gebaeude_geojson_fuer_aktive_flst(
+        JSON.stringify(window.projectdata),
+        JSON.stringify(window.csv_data),
+        JSON.stringify(window.aenderungen),
+      );
+      var gebaeude_geojson = JSON.parse(f);
+      if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
+        gebaeude_loeschen_layer.removeFrom(map);
+      }
+
+      var myLayer = L.geoJSON(gebaeude_geojson, {
+        "style": {
+          "color": "red",
+          "fillColor": "red",
+          "weight": 1.0,
+          "opacity": 1.0,
+          "fillOpacity": 1.0
+        },
+        "onEachFeature": gebaeudeFeatureClick
+      });
+      gebaeude_loeschen_layer = myLayer;
+      map.addOverlay(gebaeude_loeschen_layer);
     }
 
     function selectTab(id) {

@@ -49,8 +49,6 @@ impl NasXMLFile {
 
         use quadtree_f32::ItemId;
 
-        let mut log = Vec::new();
-
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Flurstueck vorhanden"),
@@ -89,7 +87,6 @@ impl NasXMLFile {
                 min_x: min_x,
                 min_y: min_y,
             };
-            log.push(format!("push gebaeude {gebaeude_id} {} rect: {bounds:?}", item_id.0));
             Some((item_id, (gebaeude_id, bounds, tp.clone())))
         }).collect::<BTreeMap<_, _>>();
 
@@ -102,11 +99,8 @@ impl NasXMLFile {
         let gebaeude_avail = ax_flurstuecke_map
         .iter()
         .flat_map(|(flst_id, flst_rect)| {
-            let q = buildings_qt.get_ids_that_overlap(&flst_rect);
-            log.push(format!("Items that overlap flst ID {flst_id} (rect: {flst_rect:?}): {q:?}"));
-            q.iter().filter_map(|building_itemid| {
+            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
                 let building = ax_gebaeude_map.get(&building_itemid)?;
-                log.push("got building".to_string());
                 let already_deleted = aenderungen.gebaude_loeschen.contains(&building.0);
                 Some((building.0.clone(), GebaeudeInfo {
                     flst_id: flst_id.clone(),
@@ -117,8 +111,40 @@ impl NasXMLFile {
             }).collect::<Vec<_>>().into_iter()
         })
         .collect::<BTreeMap<_, _>>();
+    
+        let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
 
-        serde_json::to_string(&log).unwrap_or_default()
+            let holes = v.poly.poly.inner_rings.iter()
+            .map(convert_svgline_to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+            let mut attrs = v.poly.attributes.clone();
+
+            attrs.insert("gebaeude_flst_id".to_string(), v.flst_id.clone());
+            attrs.insert("gebaeude_geloescht".to_string(), v.deleted.to_string());
+            attrs.insert("gebaeude_id".to_string(), v.gebaeude_id.to_string());
+
+            let feature_map = attrs
+            .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
+            .collect::<Vec<_>>().join(",");
+
+            if v.poly.poly.outer_rings.len() > 1 {
+                let polygons = v.poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
+            } else if let Some(p) = v.poly.poly.outer_rings.get(0) {
+                let poly = convert_poly_to_string(p, &holes);
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>().join(",");
+
+        format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
+
+        // serde_json::to_string(&gebaeude_avail).unwrap_or_default()
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
