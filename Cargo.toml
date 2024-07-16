@@ -37,4 +37,4 @@ base64 = "0.22.1"
 proj4rs = "0.1.3"
 printpdf = { git = "https://github.com/fschutt/printpdf", rev = "fbc7d691f988b0d295570bee072de932f4cabda2" }
 polylabel-mini = "0.1.0"
-quadtree-f32 = "0.4.0"
+quadtree-f32 = { version = "0.4.1", features = ["f64"] }

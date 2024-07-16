@@ -63,10 +63,10 @@ impl NasXMLFile {
             if (flst.1.iter().any(|c| c.status != Status::Bleibt)) {
                 let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
                 let bounds = Rect {
-                    max_x: max_x as f32,
-                    max_y: max_y as f32,
-                    min_x: min_x as f32,
-                    min_y: min_y as f32,
+                    max_x: max_x,
+                    max_y: max_y,
+                    min_x: min_x,
+                    min_y: min_y,
                 };
                 Some((flst_id, bounds))
             } else {
@@ -84,10 +84,10 @@ impl NasXMLFile {
             let item_id = ItemId(i);
             let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
             let bounds = Rect {
-                max_x: max_x as f32,
-                max_y: max_y as f32,
-                min_x: min_x as f32,
-                min_y: min_y as f32,
+                max_x: max_x,
+                max_y: max_y,
+                min_x: min_x,
+                min_y: min_y,
             };
             log.push(format!("push gebaeude {gebaeude_id} {} rect: {bounds:?}", item_id.0));
             Some((item_id, (gebaeude_id, bounds, tp.clone())))

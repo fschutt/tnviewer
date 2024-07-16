@@ -269,9 +269,9 @@ dependencies = [
 
 [[package]]
 name = "quadtree-f32"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7352e7f1bd63a1b47bb3fe46f85615abb48fd94489ee210b2c5ca8ba6cc09e54"
+checksum = "aeadc5f99b07f16cf97b1792193b7248a6239a305f68fdce625eda523f568612"
 
 [[package]]
 name = "quick-xml"
