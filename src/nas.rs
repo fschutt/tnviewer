@@ -49,6 +49,8 @@ impl NasXMLFile {
 
         use quadtree_f32::ItemId;
 
+        let mut log = Vec::new();
+
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Flurstueck vorhanden"),
@@ -87,6 +89,7 @@ impl NasXMLFile {
                 min_x: min_x as f32,
                 min_y: min_y as f32,
             };
+            log.push(format!("push gebaeude {gebaeude_id} {} rect: {bounds:?}", item_id.0));
             Some((item_id, (gebaeude_id, bounds, tp.clone())))
         }).collect::<BTreeMap<_, _>>();
 
@@ -95,20 +98,15 @@ impl NasXMLFile {
             (k.clone(), Item::Rect(v.1.clone()))
         }));
 
-        /* 
-        return serde_json::to_string_pretty(&GebaeudeDebugMap {
-            anzahl_flurstuecke: ax_flurstuecke_map.len(),
-            anzahl_gebaeude: ax_gebaeude_map.len(),
-            aenderungen: aenderungen.clone(),
-        }).unwrap_or_default();
-        */
-        
         // All buildings witin the given Flst
         let gebaeude_avail = ax_flurstuecke_map
         .iter()
         .flat_map(|(flst_id, flst_rect)| {
-            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
+            let q = buildings_qt.get_ids_that_overlap(&flst_rect);
+            log.push(format!("Items that overlap flst ID {flst_id} (rect: {flst_rect:?}): {q:?}"));
+            q.iter().filter_map(|building_itemid| {
                 let building = ax_gebaeude_map.get(&building_itemid)?;
+                log.push("got building".to_string());
                 let already_deleted = aenderungen.gebaude_loeschen.contains(&building.0);
                 Some((building.0.clone(), GebaeudeInfo {
                     flst_id: flst_id.clone(),
@@ -120,7 +118,7 @@ impl NasXMLFile {
         })
         .collect::<BTreeMap<_, _>>();
 
-        serde_json::to_string(&gebaeude_avail).unwrap_or_default()
+        serde_json::to_string(&log).unwrap_or_default()
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
