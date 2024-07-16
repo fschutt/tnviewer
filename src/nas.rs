@@ -95,13 +95,14 @@ impl NasXMLFile {
             (k.clone(), Item::Rect(v.1.clone()))
         }));
 
+        /* 
         return serde_json::to_string_pretty(&GebaeudeDebugMap {
             anzahl_flurstuecke: ax_flurstuecke_map.len(),
             anzahl_gebaeude: ax_gebaeude_map.len(),
             aenderungen: aenderungen.clone(),
         }).unwrap_or_default();
-
-        /* 
+        */
+        
         // All buildings witin the given Flst
         let gebaeude_avail = ax_flurstuecke_map
         .iter()
@@ -120,7 +121,6 @@ impl NasXMLFile {
         .collect::<BTreeMap<_, _>>();
 
         serde_json::to_string(&gebaeude_avail).unwrap_or_default()
-        */
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
