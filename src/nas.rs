@@ -2,7 +2,11 @@ use std::collections::BTreeMap;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
+use quadtree_f32::Item;
+use quadtree_f32::QuadTree;
 use serde_derive::{Serialize, Deserialize};
+use crate::csv::CsvDataType;
+use crate::ui::Aenderungen;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
@@ -21,7 +25,83 @@ pub struct Label {
     pub id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct GebaeudeInfo {
+    pub flst_id: String,
+    pub deleted: bool,
+    pub gebaeude_id: String,
+    pub poly: TaggedPolygon,
+}
+
 impl NasXMLFile {
+
+    // Returns GeoJSON for all available AX_Gebaeude
+    pub fn get_gebaeude(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
+
+        use quadtree_f32::ItemId;
+        use quadtree_f32::Rect;
+
+        let ax_gebaeude = match self.ebenen.get("AX_Gebaeude") {
+            Some(o) => o,
+            None => return format!("keine Ebene AX_Gebaeude vorhanden"),
+        };
+
+        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
+            let gebaeude_id = tp.attributes.get("id").cloned()?;
+            let item_id = ItemId(i);
+            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+            let bounds = Rect {
+                max_x: max_x as f32,
+                max_y: max_y as f32,
+                min_x: min_x as f32,
+                min_y: min_y as f32,
+            };
+            Some((item_id, (gebaeude_id, bounds, tp.clone())))
+        }).collect::<BTreeMap<_, _>>();
+
+        let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
+            Some(o) => o,
+            None => return format!("keine Ebene AX_Flurstueck vorhanden"),
+        };
+
+        // Flurstueck_ID => Flurstueck Poly
+        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
+            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
+            let _ = crate::csv::search_for_flst_id(&csv, &flst_id)?;
+            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+            let bounds = Rect {
+                max_x: max_x as f32,
+                max_y: max_y as f32,
+                min_x: min_x as f32,
+                min_y: min_y as f32,
+            };
+            Some((flst_id, bounds))
+        }).collect::<BTreeMap<_, _>>();
+
+        // Get intersection of all gebaeude
+        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
+            (k.clone(), Item::Rect(v.1.clone()))
+        }));
+
+        // All buildings witin the given Flst
+        let gebaeude_avail = ax_flurstuecke_map
+        .iter()
+        .flat_map(|(flst_id, flst_rect)| {
+            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
+                let building = ax_gebaeude_map.get(&building_itemid)?;
+                let already_deleted = aenderungen.gebaude_loeschen.contains(&building.0);
+                Some((building.0.clone(), GebaeudeInfo {
+                    flst_id: flst_id.clone(),
+                    deleted: already_deleted,
+                    gebaeude_id: building.0.clone(),
+                    poly: building.2.clone(),
+                }))
+            }).collect::<Vec<_>>().into_iter()
+        })
+        .collect::<BTreeMap<_, _>>();
+
+        serde_json::to_string(&gebaeude_avail).unwrap_or_default()
+    }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
 
@@ -77,19 +157,6 @@ impl NasXMLFile {
     /// Returns GeoJSON für die Ebene
     pub fn get_geojson_ebene(&self, layer: &str) -> String {
 
-        fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
-            format!(
-                "[{src}{comma}{holes}]", 
-                src = convert_svgline_to_string(p),
-                comma = if holes.trim().is_empty() { "" } else { "," },
-                holes = holes,
-            )
-        }
-
-        fn convert_svgline_to_string(q: &SvgLine) -> String {
-            format!("[{}]", q.points.iter().map(|s| format!("[{}, {}]", s.x, s.y)).collect::<Vec<_>>().join(","))
-        }
-
         let objekte = match self.ebenen.get(layer) {
             Some(o) => o,
             None => return format!("keine Ebene {layer} vorhanden"),
@@ -123,7 +190,22 @@ impl NasXMLFile {
     }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+
+fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
+    format!(
+        "[{src}{comma}{holes}]", 
+        src = convert_svgline_to_string(p),
+        comma = if holes.trim().is_empty() { "" } else { "," },
+        holes = holes,
+    )
+}
+
+fn convert_svgline_to_string(q: &SvgLine) -> String {
+    format!("[{}]", q.points.iter().map(|s| format!("[{}, {}]", s.x, s.y)).collect::<Vec<_>>().join(","))
+}
+
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct TaggedPolygon {
     pub poly: SvgPolygon,
     pub attributes: BTreeMap<String, String>,

@@ -24,6 +24,7 @@
       export_veraenderte_flst,
       export_alle_flst,
       export_flst_id_nach_eigentuemer,
+      get_gebaeude_geojson_fuer_aktive_flst,
       export_pdf
     } from "./pkg/tnviewer.js";
 
@@ -672,6 +673,11 @@
       }
       if (window.uidata.tab == 1) {
         d.style.display = "flex";
+        console.log(JSON.parse(get_gebaeude_geojson_fuer_aktive_flst(
+          JSON.stringify(window.projectdata),
+          JSON.stringify(window.csv_data),
+          JSON.stringify(window.aenderungen),
+        )));
       } else {
         d.style.display = "none";
         return;

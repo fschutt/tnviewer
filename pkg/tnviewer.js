@@ -446,6 +446,35 @@ export function get_geojson_fuer_ebene(json, layer) {
 
 /**
 * @param {string} json
+* @param {string} csv
+* @param {string} aenderungen
+* @returns {string}
+*/
+export function get_gebaeude_geojson_fuer_aktive_flst(json, csv, aenderungen) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        wasm.get_gebaeude_geojson_fuer_aktive_flst(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred4_0 = r0;
+        deferred4_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred4_0, deferred4_1, 1);
+    }
+}
+
+/**
+* @param {string} json
 * @param {string} layer
 * @returns {string}
 */

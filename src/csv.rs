@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use serde_derive::{Serialize, Deserialize};
 
+use crate::xlsx::FlstIdParsed;
+
 pub type CsvDataType = BTreeMap<String, Vec<CsvDatensatz>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,4 +68,14 @@ pub fn parse_csv(
     }
 
     Ok(map)
+}
+
+pub fn search_for_flst_id(csv: &CsvDataType, flst_id: &str) -> Option<(String, Vec<CsvDatensatz>)> {
+    let flst_id = flst_id.replace("_", "");
+    let parsed = FlstIdParsed::from_str(&flst_id).parse_num()?.format_start_str();
+    csv
+    .iter()
+    .find_map(|(k, v)| {
+        if k.starts_with(&parsed) { Some((k.clone(), v.clone())) } else { None }
+    })
 }

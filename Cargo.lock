@@ -268,6 +268,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "quadtree-f32"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7352e7f1bd63a1b47bb3fe46f85615abb48fd94489ee210b2c5ca8ba6cc09e54"
+
+[[package]]
 name = "quick-xml"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -409,6 +415,7 @@ dependencies = [
  "polylabel-mini",
  "printpdf",
  "proj4rs",
+ "quadtree-f32",
  "quick-xml",
  "serde",
  "serde_derive",

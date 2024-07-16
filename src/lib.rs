@@ -83,6 +83,23 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderungen: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let csv = match serde_json::from_str::<CsvDataType>(&csv) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    xml.get_gebaeude(&csv, &aenderungen)
+}
+
+#[wasm_bindgen]
 pub fn get_labels_fuer_ebene(json: String, layer: String) -> String {
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {
         Ok(o) => o,

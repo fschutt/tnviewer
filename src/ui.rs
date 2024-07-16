@@ -599,100 +599,64 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 
     let gebaeude_loeschen = {
         format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
-                            </div>
-                            <div>
-                                <p>Gebäude</p>
-                                <p>löschen</p>
-                            </div>
-                        </label>
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
                     </div>
-                </div>
-            </div>
-        ")
-    };
-
-    let nutzung_aendern = {
-        format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.nutzung_aendern(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_hvm}'>
-                            </div>
-                            <div>
-                                <p>Nutzung</p>
-                                <p>ändern</p>
-                            </div>
-                        </label>
+                    <div>
+                        <p>Gebäude</p>
+                        <p>löschen</p>
                     </div>
-                </div>
-            </div>
-        ")
-    };
-
-    let nutzung_einzeichnen = {
-        format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.nutzung_zerlegen(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
-                            </div>
-                            <div>
-                                <p>Nutzung</p>
-                                <p>einzeichnen</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        ")
-    };
-
-    let ring_anpassen = {
-        format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.ring_einfuegen(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
-                            </div>
-                            <div>
-                                <p>Inneren Ring</p>
-                                <p>einfügen</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
+                </label>
             </div>
         ")
     };
 
     let ring_loeschen = {
         format!("
-            <div class='__application-ribbon-section 3'>
-                <div style='display:flex;flex-direction:row;'>
-                    <div class='__application-ribbon-section-content'>
-                        <label onmouseup='tab_functions.ring_loeschen(event)' class='__application-ribbon-action-vertical-large'>
-                            <div class='icon-wrapper'>
-                                <img class='icon {disabled}' src='data:image/png;base64,{icon_fehler_speichern}'>
-                            </div>
-                            <div>
-                                <p>Inneren Ring</p>
-                                <p>löschen</p>
-                            </div>
-                        </label>
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.ring_loeschen(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_fehler_speichern}'>
                     </div>
-                </div>
+                    <div>
+                        <p>Inneren Ring</p>
+                        <p>löschen</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let nutzung_einzeichnen = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.nutzung_einzeichnen(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
+                    </div>
+                    <div>
+                        <p>Nutzung</p>
+                        <p>einzeichnen</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let ring_einzeichnen = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.ring_einzeichnen(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
+                    </div>
+                    <div>
+                        <p>Ring</p>
+                        <p>einzeichnen</p>
+                    </div>
+                </label>
             </div>
         ")
     };
@@ -862,7 +826,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
             </div>
             "
             )
-        }
+        },
         1 => {
             format!(
                 "
@@ -878,20 +842,14 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {gebaeude_loeschen}
-                    </div>
-                </div>
-
-                <div class='__application-ribbon-section 2'>
-                    <div style='display:flex;flex-direction:row;'>
-                        {nutzung_aendern}
-                        {nutzung_einzeichnen}
-                    </div>
-                </div>
-
-                <div class='__application-ribbon-section 2'>
-                    <div style='display:flex;flex-direction:row;'>
-                        {ring_anpassen}
                         {ring_loeschen}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {nutzung_einzeichnen}
+                        {ring_einzeichnen}
                     </div>
                 </div>
 
@@ -974,31 +932,32 @@ pub type FlstPartId = String; // 121180...-121180... (intersection polygon betwe
 pub type Kuerzel = String; // UV, WBF, GR, ...
 pub type RingId = String; // DE...
 pub type NewPolyId = String; // oudbvW0wu...
+pub type NewRingId = String; // oudbvW0wu...
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct PolyNeu {
     pub poly: SvgPolygon,
-    pub nutzung: Kuerzel,
+    pub nutzung: Option<Kuerzel>,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct RingNeu {
     pub poly: SvgPolygon,
-    pub nutzung: Kuerzel,
+    pub nutzung: Option<Kuerzel>,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct NaAenderungen {
-    pub alt: Kuerzel,
-    pub neu: Kuerzel,
+    pub alt: Option<Kuerzel>,
+    pub neu: Option<Kuerzel>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
-    pub gebaude_loeschen: BTreeMap<FlstId, GebauedeId>,
-    pub ring_loeschen: BTreeMap<FlstId, BTreeSet<RingId>>,
-    pub ring_einfuegen: BTreeMap<FlstId, RingNeu>,
     pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
+    pub gebaude_loeschen: BTreeSet<GebauedeId>,
+    pub ring_loeschen: BTreeSet<RingId>,
+    pub ring_einfuegen: BTreeMap<NewRingId, RingNeu>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
@@ -1036,11 +995,11 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     
     html += "<h2>Zu löschende Gebäude</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
-    for (flst_id, gebaeude_id) in aenderungen.gebaude_loeschen.iter() {
+    for gebaeude_id in aenderungen.gebaude_loeschen.iter() {
         html.push_str(&format!(
-            "<div id='gebaeude-loeschen-{gebaeude_id}' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>
-                <p onclick='zoomToGebaeudeLoeschen(event);' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>Gebäude {gebaeude_id} löschen</p>
-                <p class='undo' onclick='gebaeudeLoeschenUndo(event);' data-flst-id='{flst_id}' data-gebaeude-id='{gebaeude_id}'>X</p>
+            "<div id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
+                <p onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>Gebäude {gebaeude_id} löschen</p>
+                <p class='undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{gebaeude_id}'>X</p>
             </div>"
         ));
     }
@@ -1050,12 +1009,12 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "<h2>Zu ändernde Nutzungsarten</h2>";
     html += "<div id='zu-aendernde-na'>";
     for (flst_part_id, kuerzel) in aenderungen.na_definiert.iter() {
-        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id);
-        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id);
+        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id, "aendern-flst-alt");
+        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id, "aendern-flst-neu");
         let kuerzel_alt = &kuerzel.alt;
         let kuerzel_neu = &kuerzel.neu;
         html.push_str(&format!(
-            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}' data-kuerzel-alt='{kuerzel_alt}' data-kuerzel-neu='{kuerzel_neu}'>
+            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}'>
                 <p onclick='zoomToFlstPart(event);' data-flst-part-id='{flst_part_id}'>Karte</p>
                 {select_alt}
                 {select_neu}
@@ -1068,10 +1027,10 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "<h2>Neue Nutzungsarten</h2>";
     html += "<div id='neue-na'>";
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter() {
-        let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id);
+        let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
         let kuerzel_alt = &polyneu.nutzung;
         html.push_str(&format!(
-            "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}' data-kuerzel='{kuerzel_alt}'>
+            "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <p onclick='zoomToPolyNeu(event);' data-new-poly-id='{new_poly_id}'>Karte</p>
                 {select_nutzung}
                 <p class='undo' onclick='polyNeuUndo(event);' data-new-poly-id='{new_poly_id}'>X</p>
@@ -1083,15 +1042,13 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 
     html += "<h2>Ring löschen</h2>";
     html += "<div id='ring-loeschen'>";
-    for (flst_id, ring_id) in aenderungen.ring_loeschen.iter() {
-        for r in ring_id.iter() {
-            html.push_str(&format!(
-                "<div class='ring-loeschen' id='ring-loeschen-{r}' data-flst-id='{flst_id}' data-ring-id='{r}'>
-                    <p onclick='zoomToRingLoeschen(event);' data-flst-id='{flst_id}' data-ring-id='{r}'>Karte</p>
-                    <p class='undo' onclick='ringLoeschenUndo(event);' data-flst-id='{flst_id}' data-ring-id='{r}'>X</p>
-                </div>"
-            ));
-        }
+    for ring_id in aenderungen.ring_loeschen.iter() {
+        html.push_str(&format!(
+            "<div class='ring-loeschen' id='ring-loeschen-{ring_id}' data-ring-id='{ring_id}'>
+                <p onclick='zoomToRingLoeschen(event);' data-ring-id='{ring_id}'>Karte</p>
+                <p class='undo' onclick='ringLoeschenUndo(event);' data-ring-id='{ring_id}'>X</p>
+            </div>"
+        ));
     }
     html += "</div>";
 
@@ -1112,11 +1069,12 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html 
 }
 
-pub fn render_select(selected: &str, function: &str, id: &str) -> String {
+pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_id: &str) -> String {
     let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
-    let mut s = format!("<select onchange='{function}(event);' data-id='{id}'>");
+    let mut s = format!("<select id='{html_id}-{id}' onchange='{function}(event);' data-id='{id}'>");
+    s.push_str(&format!("<option {selected} value='NOTDEFINED'>nicht defin.</option>", selected = if selected.is_none() { " selected='selected' " } else { "" }));
     for k in map.keys() {
-        let selected = if selected == k { " selected='selected' " } else { "" };
+        let selected = if selected.as_deref() == Some(k) { " selected='selected' " } else { "" };
         s.push_str(&format!("<option {selected}>{k}</option>"));
     }
     s += "</select>";

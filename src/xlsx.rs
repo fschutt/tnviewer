@@ -185,6 +185,14 @@ pub struct FlstIdParsedNumber {
 }
 
 impl FlstIdParsedNumber {
+    
+    pub fn format_start_str(&self) -> String {
+        let FlstIdParsedNumber { land, gemarkung, flur, flst_zaehler, flst_nenner } = self;
+        // 12118000300001 0000 00
+        let n = if let Some(n) = flst_nenner { format!("{n:05}") } else { String::new() };
+        format!("{land:02}{gemarkung:04}{flur:03}{flst_zaehler:05}{n}")
+    }
+
     pub fn format_str(&self) -> String {
        match self.flst_nenner {
         Some(0) | None => self.flst_zaehler.to_string(),
