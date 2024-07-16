@@ -1117,7 +1117,7 @@ fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit
         };
         Some(format!("
         <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background: {background_col};padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
-            <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Flst. {flst_id_formatted}</h5>
+            <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Fl. {flur_formatted} Flst. {flst_id_formatted}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
             <select style='font-size:16px;' onchange='changeStatus(event);' data-id='{flst_id}'>
@@ -1138,6 +1138,7 @@ fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit
         } else {
             "border:1px solid transparent;"
         },
+        flur_formatted = FlstIdParsed::from_str(k).parse_num()?.get_flur(),
         flst_id_formatted = FlstIdParsed::from_str(k).parse_num()?.format_str(),
         notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
