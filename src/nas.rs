@@ -7,6 +7,7 @@ use quadtree_f32::QuadTree;
 use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
 use crate::csv::CsvDataType;
+use crate::csv::Status;
 use crate::ui::Aenderungen;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
@@ -47,7 +48,6 @@ impl NasXMLFile {
     pub fn get_gebaeude(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
 
         use quadtree_f32::ItemId;
-        use quadtree_f32::Rect;
 
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
@@ -57,21 +57,21 @@ impl NasXMLFile {
         // Flurstueck_ID => Flurstueck Poly
         let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
             let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
-            let _ = crate::csv::search_for_flst_id(&csv, &flst_id)?;
-            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-            let bounds = Rect {
-                max_x: max_x as f32,
-                max_y: max_y as f32,
-                min_x: min_x as f32,
-                min_y: min_y as f32,
-            };
-            Some((flst_id, bounds))
+            let flst = crate::csv::search_for_flst_id(&csv, &flst_id)?;
+            if (flst.1.iter().any(|c| c.status != Status::Bleibt)) {
+                let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+                let bounds = Rect {
+                    max_x: max_x as f32,
+                    max_y: max_y as f32,
+                    min_x: min_x as f32,
+                    min_y: min_y as f32,
+                };
+                Some((flst_id, bounds))
+            } else {
+                None 
+            }
         }).collect::<BTreeMap<_, _>>();
 
-        if ax_flurstuecke_map.is_empty() {
-            return "keine AX_Flurstuecke selected!".to_string();
-        }
-        
         let ax_gebaeude = match self.ebenen.get("AX_Gebaeude") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Gebaeude vorhanden"),
@@ -90,18 +90,18 @@ impl NasXMLFile {
             Some((item_id, (gebaeude_id, bounds, tp.clone())))
         }).collect::<BTreeMap<_, _>>();
 
-        return serde_json::to_string(&GebaeudeDebugMap {
+        // Get intersection of all gebaeude
+        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
+            (k.clone(), Item::Rect(v.1.clone()))
+        }));
+
+        return serde_json::to_string_pretty(&GebaeudeDebugMap {
             anzahl_flurstuecke: ax_flurstuecke_map.len(),
             anzahl_gebaeude: ax_gebaeude_map.len(),
             aenderungen: aenderungen.clone(),
         }).unwrap_or_default();
 
         /* 
-        // Get intersection of all gebaeude
-        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
-            (k.clone(), Item::Rect(v.1.clone()))
-        }));
-
         // All buildings witin the given Flst
         let gebaeude_avail = ax_flurstuecke_map
         .iter()
