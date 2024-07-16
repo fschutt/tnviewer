@@ -720,7 +720,7 @@
       var gebaeude_geojson = JSON.parse(f);
       console.log(gebaeude_geojson);
       if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
-        gebaeude_loeschen_layer.removeFrom(map);
+        map.removeLayer(gebaeude_loeschen_layer);
       }
 
       var myLayer = L.geoJSON(gebaeude_geojson, {
@@ -734,7 +734,7 @@
         "onEachFeature": gebaeudeFeatureClick
       });
       gebaeude_loeschen_layer = myLayer;
-      map.addOverlay(gebaeude_loeschen_layer);
+      map.addLayer(gebaeude_loeschen_layer);
     }
 
     function selectTab(id) {
