@@ -518,6 +518,7 @@ pub struct SplitNasXml {
     pub crs: String,
     // Flurstücke, indexiert nach Flst ID, mit Nutzungen als Polygonen
     pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
+    pub log: Vec<String>,
 }
 
 pub fn split_xml_flurstuecke(input: NasXMLFile) -> String {
@@ -529,16 +530,21 @@ pub fn split_xml_flurstuecke(input: NasXMLFile) -> String {
 
 pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml, String> {
 
-    let default = SplitNasXml {
+    let mut default = SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),
+        log: Vec::new(),
     };
+    let mut log = Vec::new();
     let ax_flurstuecke = input.ebenen.remove("AX_Flurstueck").unwrap_or_default();
     let _ = input.ebenen.remove("AX_Gebaeude");
     let _ = input.ebenen.remove("AX_HistorischesFlurstueck");
     if ax_flurstuecke.is_empty() {
+        default.crs = "empty ax flurstuecke!".to_string();
         return Ok(default);
     }
+
+    log.push(format!("ok 1"));
 
     let mut btree_id_to_poly = BTreeMap::new();
     let mut itemid = 0_usize;
@@ -551,6 +557,8 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
         }
     }
 
+    log.push(format!("ok 2 (btree = {} items)", itemid));
+
     let nutzungs_qt = QuadTree::new(btree_id_to_poly.iter().map(|(k, v)| {
         let [[min_y, min_x], [max_y, max_x]] = v.get_fit_bounds();
         let bounds = Rect {
@@ -561,6 +569,8 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
         };
         (ItemId(*k), Item::Rect(bounds))
     }));
+
+    log.push(format!("ok 3 (nutzungs_qt = {} items)", itemid));
 
     let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
 
@@ -574,7 +584,8 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
         };
         let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
-        
+        log.push(format!("ok 4 {id} = {ids:?}"));
+
         let polys = polys.iter().flat_map(|p| {
             let intersection_mp = intersect_polys(&flst.poly, &p.poly);
             intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
@@ -597,6 +608,7 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
     Ok(SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen,
+        log,
     })
 }
 
