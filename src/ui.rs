@@ -1026,6 +1026,7 @@ fn render_csv_editable(
         }
     })
     .filter_map(|(k, v)| {
+        let flstidparsed = FlstIdParsed::from_str(k).parse_num()?;
         let selected = if selected_edit_flst.is_empty() {
             false 
         } else {
@@ -1055,13 +1056,16 @@ fn render_csv_editable(
         } else {
             "border:1px solid transparent;"
         },
-        flur_formatted = FlstIdParsed::from_str(k).parse_num()?.get_flur(),
-        flst_id_formatted = FlstIdParsed::from_str(k).parse_num()?.format_str(),
+        flur_formatted = flstidparsed.get_flur(),
+        flst_id_formatted = flstidparsed.format_str(),
         notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
-        split_nas = match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(k)) {
+        split_nas = match split_fs.and_then(|sn| {
+            let k = flstidparsed.format_start_str();
+            sn.flurstuecke_nutzungen.get(&k)
+        }) {
             None => String::new(),
             Some(s) => {
                 format!(

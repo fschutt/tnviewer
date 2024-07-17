@@ -566,6 +566,8 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
     let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
 
         let id = flst.attributes.get("flurstueckskennzeichen")?.replace("_", "");
+        let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
+
         let [[min_y, min_x], [max_y, max_x]] = flst.get_fit_bounds();
         let bounds = Rect {
             max_x: max_x,
