@@ -1,6 +1,4 @@
-use std::collections::BTreeMap;
-
-use nas::{NasXMLFile, SvgPolygon, TaggedPolygon};
+use nas::{NasXMLFile, SplitNasXml, TaggedPolygon};
 use ui::Aenderungen;
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
@@ -35,10 +33,11 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn ui_render_project_content(decoded: String, csv_data: String) -> String {
+pub fn ui_render_project_content(decoded: String, csv_data: String, split_flurstuecke: String) -> String {
     let uidata = UiData::from_string(&decoded);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
-    crate::ui::render_project_content(&csv_data, &uidata)
+    let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
+    crate::ui::render_project_content(&csv_data, &uidata, &split_fs)
 }
 
 #[wasm_bindgen]

@@ -302,22 +302,14 @@
       }
   }
   
+  function nutzungsArtAendern(event) {
+    console.log(event.target.dataset);
+  }
+
   function zoomToFlstPart(event) {
       
   }
-  
-  function changeSelectAlt(event) {
-      
-  }
-  
-  function setFlstNutzungAlt(event) {
-      
-  }
-  
-  function setFlstNutzungNeu(event) {
-      
-  }
-  
+
   function zoomToPolyNeu(event) {
       
   }
@@ -380,7 +372,6 @@
               var v = JSON.parse(event.data);
               if (v) {
                 window.split_flurstuecke = v;
-                console.log(window.split_flurstuecke);
               }
             } catch (error) {
               console.error(error);
@@ -662,7 +653,7 @@
     function replaceProjectContent() {
       let d = document.getElementById("__application_project_content");
       if (d)
-         d.innerHTML = ui_render_project_content(JSON.stringify(window.uidata), JSON.stringify(window.csv_data));
+         d.innerHTML = ui_render_project_content(JSON.stringify(window.uidata), JSON.stringify(window.csv_data), JSON.stringify(window.split_flurstuecke));
     }
 
     function replaceSecondaryProjectContent() {
@@ -889,9 +880,8 @@
     window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
     window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
     window.zoomToFlstPart = zoomToFlstPart;
-    window.changeSelectAlt = changeSelectAlt;
-    window.setFlstNutzungAlt = setFlstNutzungAlt;
-    window.setFlstNutzungNeu = setFlstNutzungNeu;
+    window.nutzungsArtAendern = nutzungsArtAendern;
+    window.setPolyNeuNutzung = setPolyNeuNutzung;
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
     window.setInterval(colorFlurstuecke, 200);

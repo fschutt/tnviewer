@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_derive::{Serialize, Deserialize};
 
-use crate::{csv::{CsvDataType, Status}, nas::SvgPolygon, search::NutzungsArt, xlsx::FlstIdParsed};
+use crate::{csv::{CsvDataType, Status}, nas::{SplitNasXml, SvgPolygon}, search::NutzungsArt, xlsx::FlstIdParsed};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
@@ -932,7 +932,7 @@ pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen
             </div>
         </div>
     ",
-        primary = render_project_content(csv, uidata),
+        primary = render_project_content(csv, uidata, &SplitNasXml::default()),
         display_secondary = match uidata.tab {
             Some(1) => "flex",
             _ => "none",
@@ -976,23 +976,6 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     }
     html += "</div>";
 
-    html += "<h2>Zu ändernde Nutzungsarten</h2>";
-    html += "<div id='zu-aendernde-na'>";
-    for (flst_part_id, kuerzel) in aenderungen.na_definiert.iter() {
-        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id, "aendern-flst-alt");
-        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id, "aendern-flst-neu");
-        let kuerzel_alt = &kuerzel.alt;
-        let kuerzel_neu = &kuerzel.neu;
-        html.push_str(&format!(
-            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}'>
-                <p onclick='zoomToFlstPart(event);' data-flst-part-id='{flst_part_id}'>Karte</p>
-                {select_alt}
-                {select_neu}
-            </div>"
-        ));
-    }
-    html += "</div>";
-
     html += "</div>";
     html 
 }
@@ -1009,11 +992,11 @@ pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_i
     s
 }
 
-pub fn render_project_content(csv: &CsvDataType, uidata: &UiData) -> String {
+pub fn render_project_content(csv: &CsvDataType, uidata: &UiData, split_fs: &SplitNasXml) -> String {
 
     let s = match uidata.tab {
-        None | Some(0) => render_csv_editable(&csv, false, &uidata.selected_edit_flst),
-        Some(1) => render_csv_editable(&csv, true, &uidata.selected_edit_flst),
+        None | Some(0) => render_csv_editable(&csv, false, &uidata.selected_edit_flst, None),
+        Some(1) => render_csv_editable(&csv, true, &uidata.selected_edit_flst, Some(split_fs)),
         Some(2) => {
             format!("
             <h2>Projekt <input type='text' value='aslkdadfa' placeholder='Projektname...'></input></h2>
@@ -1025,7 +1008,12 @@ pub fn render_project_content(csv: &CsvDataType, uidata: &UiData) -> String {
     normalize_for_js(s)
 }
 
-fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit_flst: &str) -> String {
+fn render_csv_editable(
+    csv: &CsvDataType, 
+    filter_out_bleibt: bool, 
+    selected_edit_flst: &str,
+    split_fs: Option<&SplitNasXml>,
+) -> String {
 
     let selected_edit_flst = selected_edit_flst.replace("_", "");
 
@@ -1053,6 +1041,7 @@ fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit
                 <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
                 <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
             </select>
+            {split_nas}
         </div>",
         background_col = match v.get(0).map(|f| f.status).unwrap_or(Status::Bleibt) {
             Status::Bleibt => "#3e3e58",
@@ -1072,6 +1061,23 @@ fn render_csv_editable(csv: &CsvDataType, filter_out_bleibt: bool, selected_edit
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
+        split_nas = match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(k)) {
+            None => String::new(),
+            Some(s) => {
+                format!(
+                    "<div class='nutzung-veraendern'>{}</div>", 
+                    s.iter().filter_map(|tp| {
+                        let ax_ebene = tp.attributes.get("AX_Ebene")?;
+                        let ax_flurstueck = tp.attributes.get("AX_Flurstueck")?.replace("_", "");
+                        let cut_obj_id = tp.attributes.get("id")?;
+                        Some(format!(
+                            "<div style='display:flex;flex-direction:row;'><p>Ändere {ax_ebene} auf:</p>{}</div>", 
+                            render_select(&None, "nutzungsArtAendern", &format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}"), "nutzungsart-aendern")
+                        ))
+                    }).collect::<Vec<_>>().join("")
+                )
+            }
+        }
     ))
     }).collect::<Vec<_>>().join("")
 }
