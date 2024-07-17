@@ -955,7 +955,7 @@ pub struct NaAenderungen {
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
     pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
-    pub gebaude_loeschen: BTreeSet<GebauedeId>,
+    pub gebaeude_loeschen: BTreeSet<GebauedeId>,
     pub ring_loeschen: BTreeSet<RingId>,
     pub ring_einfuegen: BTreeMap<NewRingId, RingNeu>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
@@ -993,13 +993,32 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 
     let mut html = "<div id='aenderungen-container'>".to_string();
     
-    html += "<h2>Zu löschende Gebäude</h2>";
+    html += "<h2>Gebäude löschen</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
-    for gebaeude_id in aenderungen.gebaude_loeschen.iter() {
+    for gebaeude_id in aenderungen.gebaeude_loeschen.iter() {
         html.push_str(&format!(
-            "<div id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
-                <p onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>Gebäude {gebaeude_id} löschen</p>
-                <p class='undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{gebaeude_id}'>X</p>
+            "<div class='__application-aenderung-container' id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
+                <div style='display:flex;'>
+                    <p class='__application-zoom-to' onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>[Karte]</p>
+                    <p style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}'>{gebaeude_id}</p>
+                </div>
+                <p class='__application-secondary-undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{gebaeude_id}'>X</p>
+            </div>"
+        ));
+    }
+    html += "</div>";
+
+    
+    html += "<h2>Ringe löschen</h2>";
+    html += "<div id='ring-loeschen'>";
+    for ring_id in aenderungen.ring_loeschen.iter() {
+        html.push_str(&format!(
+            "<div class='__application-aenderung-container' id='ring-loeschen-{ring_id}' data-ring-id='{ring_id}'>
+                <div style='display:flex;'>
+                    <p class='__application-zoom-to' onclick='zoomToRingLoeschen(event);' data-ring-id='{ring_id}'>[Karte]</p>
+                    <p style='color: white;font-weight: bold;' data-ring-id='{ring_id}'>{ring_id}</p>
+                </div>
+                <p class='__application-secondary-undo' onclick='ringLoeschenUndo(event);' data-ring-id='{ring_id}'>X</p>
             </div>"
         ));
     }
@@ -1038,20 +1057,6 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
         ));
     }
     html += "</div>";
-
-
-    html += "<h2>Ring löschen</h2>";
-    html += "<div id='ring-loeschen'>";
-    for ring_id in aenderungen.ring_loeschen.iter() {
-        html.push_str(&format!(
-            "<div class='ring-loeschen' id='ring-loeschen-{ring_id}' data-ring-id='{ring_id}'>
-                <p onclick='zoomToRingLoeschen(event);' data-ring-id='{ring_id}'>Karte</p>
-                <p class='undo' onclick='ringLoeschenUndo(event);' data-ring-id='{ring_id}'>X</p>
-            </div>"
-        ));
-    }
-    html += "</div>";
-
 
     html += "<h2>Ring einfügen</h2>";
     html += "<div id='ring-einfuegen'>";

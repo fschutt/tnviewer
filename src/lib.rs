@@ -1,4 +1,6 @@
-use nas::{NasXMLFile, TaggedPolygon};
+use std::collections::BTreeMap;
+
+use nas::{NasXMLFile, SvgPolygon, TaggedPolygon};
 use ui::Aenderungen;
 use wasm_bindgen::prelude::*;
 use crate::ui::UiData;
@@ -56,6 +58,51 @@ pub fn get_fit_bounds(s: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn search_for_gebauede(s: String, gebaeude_id: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&s) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let ax_gebauede = match xml.ebenen.get("AX_Gebaeude") {
+        Some(s) => s,
+        None => return "keine Ebene AX_Gebaeude".to_string(),
+    };
+    let r =  ax_gebauede
+    .iter()
+    .find(|f| f.attributes.get("id") == Some(&gebaeude_id));
+    
+    match r {
+        Some(s) => serde_json::to_string(&s.get_fit_bounds()).unwrap_or_default(),
+        None => String::new(),
+    }
+}
+
+#[wasm_bindgen]
+pub fn search_for_ring(s: String, ring_id: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&s) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let f = xml.ebenen.values().find_map(|f| {
+        f.iter().find_map(|tp| tp.poly.inner_rings.get(&ring_id))
+    });
+    let l = match f {
+        Some(s) => s,
+        None => return format!("invalid ring id {ring_id}"),
+    };
+
+    let tp = TaggedPolygon {
+        attributes: BTreeMap::new(),
+        poly: SvgPolygon {
+            outer_rings: vec![(String::new(), l.clone())].into_iter().collect(),
+            inner_rings: BTreeMap::new(),
+        }
+    };
+
+    serde_json::to_string(&tp.get_fit_bounds()).unwrap_or_default()
+}
+
+#[wasm_bindgen]
 pub fn load_nas_xml(s: String, types: String) -> String {
     let mut t = types.split(",").filter_map(|s| {
         let s = s.trim();
@@ -98,6 +145,24 @@ pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderun
     };
     xml.get_gebaeude(&csv, &aenderungen)
 }
+
+#[wasm_bindgen]
+pub fn get_ringe_geojson_fuer_aktive_flst(json: String, csv: String, aenderungen: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let csv = match serde_json::from_str::<CsvDataType>(&csv) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    xml.get_ringe(&csv, &aenderungen)
+}
+
 
 #[wasm_bindgen]
 pub fn get_labels_fuer_ebene(json: String, layer: String) -> String {

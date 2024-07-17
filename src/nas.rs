@@ -101,7 +101,7 @@ impl NasXMLFile {
         .flat_map(|(flst_id, flst_rect)| {
             buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
                 let building = ax_gebaeude_map.get(&building_itemid)?;
-                let already_deleted = aenderungen.gebaude_loeschen.contains(&building.0);
+                let already_deleted = aenderungen.gebaeude_loeschen.contains(&building.0);
                 Some((building.0.clone(), GebaeudeInfo {
                     flst_id: flst_id.clone(),
                     deleted: already_deleted,
@@ -114,7 +114,7 @@ impl NasXMLFile {
     
         let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
 
-            let holes = v.poly.poly.inner_rings.iter()
+            let holes = v.poly.poly.inner_rings.values()
             .map(convert_svgline_to_string)
             .collect::<Vec<_>>()
             .join(",");
@@ -130,10 +130,10 @@ impl NasXMLFile {
             .collect::<Vec<_>>().join(",");
 
             if v.poly.poly.outer_rings.len() > 1 {
-                let polygons = v.poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                let polygons = v.poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = v.poly.poly.outer_rings.get(0) {
+            } else if let Some(p) = v.poly.poly.outer_rings.values().next() {
                 let poly = convert_poly_to_string(p, &holes);
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
@@ -145,6 +145,115 @@ impl NasXMLFile {
         format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
 
         // serde_json::to_string(&gebaeude_avail).unwrap_or_default()
+    }
+
+    // Returns the inner rings for all available AX_Flurstuecke
+    pub fn get_ringe(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
+
+        /* 
+        use quadtree_f32::ItemId;
+
+        let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
+            Some(o) => o,
+            None => return format!("keine Ebene AX_Flurstueck vorhanden"),
+        };
+
+        // Flurstueck_ID => Flurstueck Poly
+        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
+            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
+            let flst = crate::csv::search_for_flst_id(&csv, &flst_id)?;
+            if (flst.1.iter().any(|c| c.status != Status::Bleibt)) {
+                let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+                let bounds = Rect {
+                    max_x: max_x,
+                    max_y: max_y,
+                    min_x: min_x,
+                    min_y: min_y,
+                };
+                Some((flst_id, bounds))
+            } else {
+                None 
+            }
+        }).collect::<BTreeMap<_, _>>();
+
+        let alle_inneren_ringe = self.ebenen.iter().map(|s| {
+            
+        });
+        
+        match self.ebenen.get("AX_Gebaeude") {
+            Some(o) => o,
+            None => return format!("keine Ebene AX_Gebaeude vorhanden"),
+        };
+
+        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
+            let gebaeude_id = tp.attributes.get("id").cloned()?;
+            let item_id = ItemId(i);
+            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
+            let bounds = Rect {
+                max_x: max_x,
+                max_y: max_y,
+                min_x: min_x,
+                min_y: min_y,
+            };
+            Some((item_id, (gebaeude_id, bounds, tp.clone())))
+        }).collect::<BTreeMap<_, _>>();
+
+        // Get intersection of all gebaeude
+        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
+            (k.clone(), Item::Rect(v.1.clone()))
+        }));
+
+        // All buildings witin the given Flst
+        let gebaeude_avail = ax_flurstuecke_map
+        .iter()
+        .flat_map(|(flst_id, flst_rect)| {
+            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
+                let building = ax_gebaeude_map.get(&building_itemid)?;
+                let already_deleted = aenderungen.gebaeude_loeschen.contains(&building.0);
+                Some((building.0.clone(), GebaeudeInfo {
+                    flst_id: flst_id.clone(),
+                    deleted: already_deleted,
+                    gebaeude_id: building.0.clone(),
+                    poly: building.2.clone(),
+                }))
+            }).collect::<Vec<_>>().into_iter()
+        })
+        .collect::<BTreeMap<_, _>>();
+    
+        let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
+
+            let holes = v.poly.poly.inner_rings.values()
+            .map(convert_svgline_to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+            let mut attrs = v.poly.attributes.clone();
+
+            attrs.insert("gebaeude_flst_id".to_string(), v.flst_id.clone());
+            attrs.insert("gebaeude_geloescht".to_string(), v.deleted.to_string());
+            attrs.insert("gebaeude_id".to_string(), v.gebaeude_id.to_string());
+
+            let feature_map = attrs
+            .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
+            .collect::<Vec<_>>().join(",");
+
+            if v.poly.poly.outer_rings.len() > 1 {
+                let polygons = v.poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
+            } else if let Some(p) = v.poly.poly.outer_rings.values().next() {
+                let poly = convert_poly_to_string(p, &holes);
+                Some(format!(
+                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>().join(",");
+
+        format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
+        */
+        // serde_json::to_string(&gebaeude_avail).unwrap_or_default()
+        String::new()
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
@@ -166,7 +275,7 @@ impl NasXMLFile {
                 None => continue,
             };
 
-            let coords_outer = o.poly.outer_rings.iter().flat_map(|line| {
+            let coords_outer = o.poly.outer_rings.values().flat_map(|line| {
                  line.points.iter().map(|p| (p.x, p.y))
             }).collect::<Vec<_>>();
 
@@ -177,7 +286,7 @@ impl NasXMLFile {
                         y: *y,
                     }).collect()
                 },
-                interiors: o.poly.inner_rings.iter().map(|l| LineString {
+                interiors: o.poly.inner_rings.values().map(|l| LineString {
                     points: l.points.iter().map(|p| Point {
                         x: p.x,
                         y: p.y,
@@ -208,7 +317,7 @@ impl NasXMLFile {
 
         let geom = objekte.iter().filter_map(|poly| {
 
-            let holes = poly.poly.inner_rings.iter()
+            let holes = poly.poly.inner_rings.values()
             .map(convert_svgline_to_string)
             .collect::<Vec<_>>()
             .join(",");
@@ -218,10 +327,10 @@ impl NasXMLFile {
             .collect::<Vec<_>>().join(",");
 
             if poly.poly.outer_rings.len() > 1 {
-                let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                let polygons = poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = poly.poly.outer_rings.get(0) {
+            } else if let Some(p) = poly.poly.outer_rings.values().next() {
                 let poly = convert_poly_to_string(p, &holes);
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
@@ -257,11 +366,11 @@ pub struct TaggedPolygon {
 
 impl TaggedPolygon {
     pub fn get_fit_bounds(&self) -> [[f64;2];2] {
-        let mut min_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut max_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut min_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
-        let mut max_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
-        for l in self.poly.outer_rings.iter() {
+        let mut min_x = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut max_x = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut min_y = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+        let mut max_y = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+        for l in self.poly.outer_rings.values() {
             for p in l.points.iter() {
                 if p.x > max_x {
                     max_x = p.x;
@@ -287,8 +396,8 @@ impl TaggedPolygon {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPolygon {
-    pub outer_rings: Vec<SvgLine>,
-    pub inner_rings: Vec<SvgLine>,
+    pub outer_rings: BTreeMap<String, SvgLine>,
+    pub inner_rings: BTreeMap<String, SvgLine>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -433,10 +542,15 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<
         }).collect::<BTreeMap<_, _>>();
         attributes.extend(o_node.attributes.clone().into_iter());
 
+        let flst_id = match attributes.get("id") {
+            Some(s) => s.clone(),
+            None => continue,
+        };
+
         let tp = TaggedPolygon {
             poly: SvgPolygon {
-                outer_rings,
-                inner_rings,
+                outer_rings: outer_rings.iter().enumerate().map(|(i, v)| (format!("{flst_id}-o{i}"), v.clone())).collect(),
+                inner_rings: inner_rings.iter().enumerate().map(|(i, v)| (format!("{flst_id}-i{i}"), v.clone())).collect(),
             },
             attributes,
         };
@@ -486,8 +600,12 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
             TaggedPolygon {
                 attributes: v.attributes.clone(),
                 poly: SvgPolygon {
-                    outer_rings: v.poly.outer_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
-                    inner_rings: v.poly.inner_rings.iter().map(|l| reproject_line(l, &source_proj, &latlon_proj)).collect(),
+                    outer_rings: v.poly.outer_rings.iter()
+                    .map(|(k, l)| (k.clone(), reproject_line(l, &source_proj, &latlon_proj)))
+                    .collect(),
+                    inner_rings: v.poly.inner_rings.iter()
+                    .map(|(k, l)| (k.clone(), reproject_line(l, &source_proj, &latlon_proj)))
+                    .collect(),
                 }
             }
         }).collect())

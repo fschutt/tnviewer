@@ -25,7 +25,8 @@
       export_alle_flst,
       export_flst_id_nach_eigentuemer,
       get_gebaeude_geojson_fuer_aktive_flst,
-      export_pdf
+      export_pdf,
+      search_for_gebauede,
     } from "./pkg/tnviewer.js";
 
     var map = null;
@@ -46,7 +47,7 @@
       selected_edit_flst: "",
     };
     window.aenderungen = {
-      gebaude_loeschen: [],
+      gebaeude_loeschen: [],
       na_definiert: {},
       na_polygone_neu: {},
       ring_loeschen: [],
@@ -280,11 +281,28 @@
     }; // default config object
 
     function zoomToGebaeudeLoeschen(event) {
-      
+      var gebaeude_id = event.target.dataset.gebaeudeId;
+      if (!window.projectdata || window.projectdata == null) {
+        return;
+      }
+      if (!window.projectdata.ebenen.AX_Gebaeude || window.projectdata.ebenen.AX_Gebaeude == null) {
+        return;
+      }
+      var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
+      console.log(extent);
+      var extent_json = JSON.parse(extent);
+      map.fitBounds(extent_json);
     }
     
     function gebaeudeLoeschenUndo(event) {
-        
+        var gebaeude_id = event.target.dataset.gebaeudeId;
+        console.log("undo geb löschen " + gebaeude_id);
+        var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
+        if (index > -1) {
+          window.aenderungen.gebaeude_loeschen.splice(index, 1);
+          reinitGebaeudeLoeschenLayer();
+          replaceSecondaryProjectContent();
+        }
     }
     
     function zoomToFlstPart(event) {
@@ -689,7 +707,6 @@
     }
 
     function gebauedeClicked(e) {
-
       var gebaeude_id = e.target.feature.properties.gebaeude_id;
       if (!gebaeude_id) {
         return;
@@ -697,13 +714,12 @@
       if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
         return;
       }
-      var index = window.aenderungen.gebaeude_loeschen.indexOf(5);
+      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
       if (index > -1) {
         window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
       } else {
         window.aenderungen.gebaeude_loeschen.push(gebaeude_id); // loeschen
       }
-      console.log(window.aenderungen.gebaeude_loeschen);
       reinitGebaeudeLoeschenLayer();
       replaceSecondaryProjectContent();
     }
