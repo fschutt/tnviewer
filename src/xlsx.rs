@@ -274,7 +274,7 @@ impl FlstIdParsed {
             gemarkung: self.gemarkung.trim().parse::<usize>().ok()?, 
             flur: self.flur.trim().parse::<usize>().ok()?, 
             flst_zaehler: self.flst_zaehler.trim().parse::<usize>().ok()?, 
-            flst_nenner: self.flst_nenner.trim().parse::<usize>().ok(), 
+            flst_nenner: self.flst_nenner.trim().parse::<usize>().ok().and_then(|s| if s == 0 { None } else { Some(s) }), 
         })
     }
 }

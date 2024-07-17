@@ -1062,17 +1062,14 @@ fn render_csv_editable(
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
-        split_nas = match split_fs.and_then(|sn| {
-            let k = flstidparsed.format_start_str();
-            sn.flurstuecke_nutzungen.get(&k)
-        }) {
-            None => String::new(),
+        split_nas = match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
+            None => format!("flurstueck nutzung {} nicht gefunden (split_fs = {:?})", flstidparsed.format_start_str(), split_fs.is_some()),
             Some(s) => {
                 format!(
                     "<div class='nutzung-veraendern'>{}</div>", 
                     s.iter().filter_map(|tp| {
                         let ax_ebene = tp.attributes.get("AX_Ebene")?;
-                        let ax_flurstueck = tp.attributes.get("AX_Flurstueck")?.replace("_", "");
+                        let ax_flurstueck = flstidparsed.format_start_str();
                         let cut_obj_id = tp.attributes.get("id")?;
                         Some(format!(
                             "<div style='display:flex;flex-direction:row;'><p>Ändere {ax_ebene} auf:</p>{}</div>", 
