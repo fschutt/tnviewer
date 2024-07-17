@@ -150,6 +150,8 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
             };
             eigentuemer
             .entry(d.eigentuemer.trim().to_string())
+            .or_insert_with(|| BTreeMap::new())
+            .entry(flst.flur)
             .or_insert_with(|| Vec::new())
             .push(flst);
         }
@@ -160,12 +162,18 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
         sw.append_row(row!["Eigentümer", "Flurstücke"])?;
 
         for (k, v) in eigentuemer.iter() {
-            let mut v = v.clone();
-            v.sort_by(|a, b| a.flst_zaehler.cmp(&b.flst_zaehler));
-            v.dedup();
+            let mut txt = String::new();
+            for (flur, fl) in v.iter() {
+                let mut v = fl.clone();
+                v.sort_by(|a, b| a.flst_zaehler.cmp(&b.flst_zaehler));
+                v.dedup();
+                let s_flur = v.iter().map(|q| q.format_str()).collect::<Vec<_>>().join(", ");
+                txt.push_str(&format!("Flur {flur}: Flurstücke {s_flur}"));
+                txt.push_str("\r\n");
+            }
             sw.append_row(row![
                 k.to_string(),
-                v.iter().map(|q| q.format_str()).collect::<Vec<_>>().join(", ")
+                txt
             ])?;
         }
 
