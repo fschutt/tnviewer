@@ -147,115 +147,6 @@ impl NasXMLFile {
         // serde_json::to_string(&gebaeude_avail).unwrap_or_default()
     }
 
-    // Returns the inner rings for all available AX_Flurstuecke
-    pub fn get_ringe(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
-
-        /* 
-        use quadtree_f32::ItemId;
-
-        let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
-            Some(o) => o,
-            None => return format!("keine Ebene AX_Flurstueck vorhanden"),
-        };
-
-        // Flurstueck_ID => Flurstueck Poly
-        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
-            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
-            let flst = crate::csv::search_for_flst_id(&csv, &flst_id)?;
-            if (flst.1.iter().any(|c| c.status != Status::Bleibt)) {
-                let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-                let bounds = Rect {
-                    max_x: max_x,
-                    max_y: max_y,
-                    min_x: min_x,
-                    min_y: min_y,
-                };
-                Some((flst_id, bounds))
-            } else {
-                None 
-            }
-        }).collect::<BTreeMap<_, _>>();
-
-        let alle_inneren_ringe = self.ebenen.iter().map(|s| {
-            
-        });
-        
-        match self.ebenen.get("AX_Gebaeude") {
-            Some(o) => o,
-            None => return format!("keine Ebene AX_Gebaeude vorhanden"),
-        };
-
-        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
-            let gebaeude_id = tp.attributes.get("id").cloned()?;
-            let item_id = ItemId(i);
-            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-            let bounds = Rect {
-                max_x: max_x,
-                max_y: max_y,
-                min_x: min_x,
-                min_y: min_y,
-            };
-            Some((item_id, (gebaeude_id, bounds, tp.clone())))
-        }).collect::<BTreeMap<_, _>>();
-
-        // Get intersection of all gebaeude
-        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
-            (k.clone(), Item::Rect(v.1.clone()))
-        }));
-
-        // All buildings witin the given Flst
-        let gebaeude_avail = ax_flurstuecke_map
-        .iter()
-        .flat_map(|(flst_id, flst_rect)| {
-            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
-                let building = ax_gebaeude_map.get(&building_itemid)?;
-                let already_deleted = aenderungen.gebaeude_loeschen.contains(&building.0);
-                Some((building.0.clone(), GebaeudeInfo {
-                    flst_id: flst_id.clone(),
-                    deleted: already_deleted,
-                    gebaeude_id: building.0.clone(),
-                    poly: building.2.clone(),
-                }))
-            }).collect::<Vec<_>>().into_iter()
-        })
-        .collect::<BTreeMap<_, _>>();
-    
-        let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
-
-            let holes = v.poly.poly.inner_rings.values()
-            .map(convert_svgline_to_string)
-            .collect::<Vec<_>>()
-            .join(",");
-
-            let mut attrs = v.poly.attributes.clone();
-
-            attrs.insert("gebaeude_flst_id".to_string(), v.flst_id.clone());
-            attrs.insert("gebaeude_geloescht".to_string(), v.deleted.to_string());
-            attrs.insert("gebaeude_id".to_string(), v.gebaeude_id.to_string());
-
-            let feature_map = attrs
-            .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
-            .collect::<Vec<_>>().join(",");
-
-            if v.poly.poly.outer_rings.len() > 1 {
-                let polygons = v.poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = v.poly.poly.outer_rings.values().next() {
-                let poly = convert_poly_to_string(p, &holes);
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>().join(",");
-
-        format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
-        */
-        // serde_json::to_string(&gebaeude_avail).unwrap_or_default()
-        String::new()
-    }
-
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
 
         let objekte = match self.ebenen.get(layer) {
@@ -614,5 +505,29 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
     Ok(NasXMLFile {
         ebenen: objekte,
         crs: latlon_proj_string.to_string(),
+    })
+}
+
+
+pub type FlstId = String;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SplitNasXml {
+    pub crs: String,
+    // Flurstücke, indexiert nach Flst ID, mit Nutzungen als Polygonen
+    pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
+}
+
+pub fn split_xml_flurstuecke(input: &NasXMLFile) -> String {
+    match split_xml_flurstuecke_inner(input) {
+        Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
+        Err(e) => e,
+    }
+}
+
+pub fn split_xml_flurstuecke_inner(input: &NasXMLFile) -> Result<SplitNasXml, String> {
+    Ok(SplitNasXml {
+        crs: input.crs.clone(),
+        flurstuecke_nutzungen: BTreeMap::new(),
     })
 }

@@ -22,14 +22,8 @@ pub struct UiData {
 pub enum Tool {
     #[serde(rename = "gebaeude-loeschen")]
     GebaeudeLoeschen,
-    #[serde(rename = "nutzung-aendern")]
-    NutzungAendern,
-    #[serde(rename = "nutzung-zerlegen")]
-    NutzungZerlegen,
-    #[serde(rename = "ring-einzeichnen")]
-    RingEinzeichnen,
-    #[serde(rename = "ring-loeschen")]
-    RingLoeschen,
+    #[serde(rename = "nutzung-einzeichnen")]
+    NutzungEinzeichnen,
 }
 
 impl UiData {
@@ -600,7 +594,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     let gebaeude_loeschen = {
         format!("
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
                     </div>
@@ -610,29 +604,16 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                     </div>
                 </label>
             </div>
-        ")
-    };
-
-    let ring_loeschen = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.ring_loeschen(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_fehler_speichern}'>
-                    </div>
-                    <div>
-                        <p>Inneren Ring</p>
-                        <p>löschen</p>
-                    </div>
-                </label>
-            </div>
-        ")
+        ", active = match rpc_data.tool {
+            Some(Tool::GebaeudeLoeschen) => "background:red !important;color:white !important;",
+            _ => "",
+        })
     };
 
     let nutzung_einzeichnen = {
         format!("
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.nutzung_einzeichnen(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.nutzung_einzeichnen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
                     </div>
@@ -642,23 +623,10 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                     </div>
                 </label>
             </div>
-        ")
-    };
-
-    let ring_einzeichnen = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.ring_einzeichnen(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_abt1}'>
-                    </div>
-                    <div>
-                        <p>Ring</p>
-                        <p>einzeichnen</p>
-                    </div>
-                </label>
-            </div>
-        ")
+        ", active = match rpc_data.tool {
+            Some(Tool::NutzungEinzeichnen) => "background:red !important;color:white !important;",
+            _ => "",
+        })
     };
 
     // TAB 3
@@ -842,14 +810,7 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {gebaeude_loeschen}
-                        {ring_loeschen}
-                    </div>
-                </div>
-
-                <div class='__application-ribbon-section 2'>
-                    <div style='display:flex;flex-direction:row;'>
                         {nutzung_einzeichnen}
-                        {ring_einzeichnen}
                     </div>
                 </div>
 
@@ -941,12 +902,6 @@ pub struct PolyNeu {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct RingNeu {
-    pub poly: SvgPolygon,
-    pub nutzung: Option<Kuerzel>,
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct NaAenderungen {
     pub alt: Option<Kuerzel>,
     pub neu: Option<Kuerzel>,
@@ -954,24 +909,22 @@ pub struct NaAenderungen {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
-    pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
     pub gebaeude_loeschen: BTreeSet<GebauedeId>,
-    pub ring_loeschen: BTreeSet<RingId>,
-    pub ring_einfuegen: BTreeMap<NewRingId, RingNeu>,
+    pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
 pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
     let map = format!("
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
-            <div id='__application_main-overlay-container' style='display:flex;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
+            <div id='__application_main-overlay-container' style='width:400px;max-width:400px;min-width:400px;display:flex;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
                 <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
-                    <div id='__application_project_content' class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{primary}</div>
+                    <div id='__application_project_content' class='csv-scrollbox' style='scrollbar-width:none;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{primary}</div>
                 </div>
             </div>
-            <div id='__application_secondary-overlay-container' style='display:{display_secondary};flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
+            <div id='__application_secondary-overlay-container' style='display:{display_secondary};width:400px;max-width:400px;min-width:400px;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
                 <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
-                    <div id='__application_secondary_content' class='csv-scrollbox' style='overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{secondary}</div>
+                    <div id='__application_secondary_content' class='csv-scrollbox' style='scrollbar-width:none;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{secondary}</div>
                 </div>
             </div>
             <div id='mapcontainer' style='display:flex;flex-grow:1;flex-direction:row;z-index:0;'>
@@ -1008,42 +961,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     }
     html += "</div>";
 
-    
-    html += "<h2>Ringe löschen</h2>";
-    html += "<div id='ring-loeschen'>";
-    for ring_id in aenderungen.ring_loeschen.iter() {
-        html.push_str(&format!(
-            "<div class='__application-aenderung-container' id='ring-loeschen-{ring_id}' data-ring-id='{ring_id}'>
-                <div style='display:flex;'>
-                    <p class='__application-zoom-to' onclick='zoomToRingLoeschen(event);' data-ring-id='{ring_id}'>[Karte]</p>
-                    <p style='color: white;font-weight: bold;' data-ring-id='{ring_id}'>{ring_id}</p>
-                </div>
-                <p class='__application-secondary-undo' onclick='ringLoeschenUndo(event);' data-ring-id='{ring_id}'>X</p>
-            </div>"
-        ));
-    }
-    html += "</div>";
-
-
-    html += "<h2>Zu ändernde Nutzungsarten</h2>";
-    html += "<div id='zu-aendernde-na'>";
-    for (flst_part_id, kuerzel) in aenderungen.na_definiert.iter() {
-        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id, "aendern-flst-alt");
-        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id, "aendern-flst-neu");
-        let kuerzel_alt = &kuerzel.alt;
-        let kuerzel_neu = &kuerzel.neu;
-        html.push_str(&format!(
-            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}'>
-                <p onclick='zoomToFlstPart(event);' data-flst-part-id='{flst_part_id}'>Karte</p>
-                {select_alt}
-                {select_neu}
-            </div>"
-        ));
-    }
-    html += "</div>";
-
-
-    html += "<h2>Neue Nutzungsarten</h2>";
+    html += "<h2>Neue Nutzungen</h2>";
     html += "<div id='neue-na'>";
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
@@ -1058,13 +976,18 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     }
     html += "</div>";
 
-    html += "<h2>Ring einfügen</h2>";
-    html += "<div id='ring-einfuegen'>";
-    for (ring_neu_id, ring_neu) in aenderungen.ring_einfuegen.iter() {
+    html += "<h2>Zu ändernde Nutzungsarten</h2>";
+    html += "<div id='zu-aendernde-na'>";
+    for (flst_part_id, kuerzel) in aenderungen.na_definiert.iter() {
+        let select_alt = render_select(&kuerzel.alt, "setFlstNutzungAlt", flst_part_id, "aendern-flst-alt");
+        let select_neu = render_select(&kuerzel.neu, "setFlstNutzungNeu", flst_part_id, "aendern-flst-neu");
+        let kuerzel_alt = &kuerzel.alt;
+        let kuerzel_neu = &kuerzel.neu;
         html.push_str(&format!(
-            "<div class='ring-neu' id='ring-neu-{ring_neu_id}' data-ring-id='{ring_neu_id}'>
-                <p onclick='zoomToRingNeu(event);' data-ring-id='{ring_neu_id}'>Karte</p>
-                <p class='undo' onclick='ringNeuUndo(event);' data-ring-id='{ring_neu_id}'>X</p>
+            "<div class='na-aendern' id='na-aendern-{flst_part_id}' data-flst-part-id='{flst_part_id}'>
+                <p onclick='zoomToFlstPart(event);' data-flst-part-id='{flst_part_id}'>Karte</p>
+                {select_alt}
+                {select_neu}
             </div>"
         ));
     }

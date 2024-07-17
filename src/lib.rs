@@ -147,24 +147,6 @@ pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderun
 }
 
 #[wasm_bindgen]
-pub fn get_ringe_geojson_fuer_aktive_flst(json: String, csv: String, aenderungen: String) -> String {
-    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    let csv = match serde_json::from_str::<CsvDataType>(&csv) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    xml.get_ringe(&csv, &aenderungen)
-}
-
-
-#[wasm_bindgen]
 pub fn get_labels_fuer_ebene(json: String, layer: String) -> String {
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {
         Ok(o) => o,
@@ -199,6 +181,15 @@ pub fn parse_csv_dataset_to_json(
     serde_json::to_string(&csv_daten).unwrap_or_default()
 }
 
+
+#[wasm_bindgen]
+pub fn split_flurstuecke_background_worker(xml: String) -> String {
+    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::nas::split_xml_flurstuecke(&xml)
+}
 
 #[wasm_bindgen]
 pub fn export_veraenderte_flst(s: String) -> Vec<u8> {

@@ -36,7 +36,8 @@
     var dissected_flst_layer = null;
     var draw_nutzung_layer = null;
     var gebaeude_loeschen_layer = null;
-
+    
+    window.split_flurstuecke = null; // split XML NAS data
     window.projectdata = null; // project XML NAS data
     window.csv_data = null; // project CSV data
     window.uidata = { // UI State
@@ -50,8 +51,6 @@
       gebaeude_loeschen: [],
       na_definiert: {},
       na_polygone_neu: {},
-      ring_loeschen: [],
-      ring_einfuegen: {},
     };
     window.configuration = {
       map: {
@@ -280,192 +279,167 @@
       }
     }; // default config object
 
-    function zoomToGebaeudeLoeschen(event) {
-      var gebaeude_id = event.target.dataset.gebaeudeId;
-      if (!window.projectdata || window.projectdata == null) {
-        return;
-      }
-      if (!window.projectdata.ebenen.AX_Gebaeude || window.projectdata.ebenen.AX_Gebaeude == null) {
-        return;
-      }
-      var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
-      console.log(extent);
-      var extent_json = JSON.parse(extent);
-      map.fitBounds(extent_json);
+  function zoomToGebaeudeLoeschen(event) {
+    var gebaeude_id = event.target.dataset.gebaeudeId;
+    if (!window.projectdata || window.projectdata == null) {
+      return;
     }
-    
-    function gebaeudeLoeschenUndo(event) {
-        var gebaeude_id = event.target.dataset.gebaeudeId;
-        console.log("undo geb löschen " + gebaeude_id);
-        var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
-        if (index > -1) {
-          window.aenderungen.gebaeude_loeschen.splice(index, 1);
-          reinitGebaeudeLoeschenLayer();
-          replaceSecondaryProjectContent();
-        }
+    if (!window.projectdata.ebenen.AX_Gebaeude || window.projectdata.ebenen.AX_Gebaeude == null) {
+      return;
     }
-    
-    function zoomToFlstPart(event) {
-        
-    }
-    
-    function changeSelectAlt(event) {
-        
-    }
-    
-    function setFlstNutzungAlt(event) {
-        
-    }
-    
-    function setFlstNutzungNeu(event) {
-        
-    }
-    
-    function zoomToPolyNeu(event) {
-        
-    }
-    
-    function polyNeuUndo(event) {
-        
-    }
-    
-    function zoomToRingLoeschen(event) {
-        
-    }
-    
-    function ringLoeschenUndo(event) {
-        
-    }
-    
-    function zoomToRingNeu(event) {
-        
-    }
-    
-    function ringNeuUndo(event) {
-        
-    }
-
-    function colorFlurstuecke() {
-      if (!window.csv_data) {
-        return;
-      }
-      for (var k in window.csv_data) {
-        var e = window.csv_data[k];
-        for (var i = 0; i < e.length; i++) {
-          var q = e[i];
-          if (q.status == 'bleibt') {
-            var e = document.getElementById('csv_flst_' + k);
-            if (e) {
-              e.style.background = '#3e3e58';
-            }
-            break;
-          }
-          if (q.status == 'aenderung-keine-benachrichtigung') {
-            var e = document.getElementById('csv_flst_' + k);
-            if (e) {
-              e.style.background = '#ff9a5a';
-            }
-            break;
-          }
-          if (q.status == 'aenderung-mit-benachrichtigung') {
-            var e = document.getElementById('csv_flst_' + k);
-            if (e) {
-              e.style.background = '#ff4545';
-            }
-            break;
-          }
-        }
-      }
-    }
-
-    function whenClicked(e) {
-      if (window.uidata.tab == 0) {
-
-      } 
-      
-      if (window.uidata.tab == 1) {
-
-      }
-      
-    }
-
-    function onEachFeature(feature, layer) {
-        //bind click
-        layer.on({
-            click: whenClicked
-        });
-    }
-
-    function replaceDataNasXML() {
-      var input = document.createElement('input');
-      input.type = 'file';
-      input.accept = ".xml";
-
-      input.onchange = e => { 
-          var file = e.target.files[0]; 
-          var reader = new FileReader();
-          reader.readAsText(file,'UTF-8');
-          reader.onload = readerEvent => {
-
-            var styles_keys = Object.keys(window.configuration.style);
-            var styles_keys = styles_keys.join(", ");
-            var converted = load_nas_xml(readerEvent.target.result, styles_keys);
-            window.projectdata = JSON.parse(converted);
-
-            // remove old LeafLet layers
-            for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
-              layers.removeLayer(layer_obj);
-              layer_obj.remove();
-            }
-            geojson_layers = [];
-            for (var layer_name in window.configuration.style) {
-              var json = get_geojson_fuer_ebene(converted, layer_name);
-              var geojson = null;
-              try {
-                geojson = JSON.parse(json);
-              } catch (error) {
-                continue;
-              }
-              if (geojson == null) {
-                continue;
-              }
-              var layer_style = window.configuration.style[layer_name];
-              var myLayer = L.geoJSON(geojson, {
-                "style": {
-                  "color": layer_style.outlineColor,
-                  "fillColor": layer_style.fillColor,
-                  "weight": layer_style.outlineThickness,
-                  "opacity": 1.0,
-                  // "fillOpacity": 1.0
-                  "fillOpacity": 0.5,
-                },
-                "onEachFeature": onEachFeature
-              });
-              var l = get_labels_fuer_ebene(converted, layer_name);
-              var labels = JSON.parse(l);
-              for (var i = 0; i < labels.length; i++) {
-                var e = labels[i];
-                var t = L.tooltip([e.lat, e.lon], { 
-                  content: e.content, 
-                  direction: 'center', 
-                  permanent: true,
-                  interactive: true,
-                });
-                t.on({
-                    click: function() {
-
-                    }
-                });
-                t.addTo(myLayer);
-              }
-              myLayer.addTo(map);
-              layers.addOverlay(myLayer, layer_name);
-              geojson_layers.push(myLayer);
-            }
-          }
-      }
-      input.click();
+    var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
+    var extent_json = JSON.parse(extent);
+    map.fitBounds(extent_json);
   }
+  
+  function gebaeudeLoeschenUndo(event) {
+      var gebaeude_id = event.target.dataset.gebaeudeId;
+      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
+      if (index > -1) {
+        window.aenderungen.gebaeude_loeschen.splice(index, 1);
+        reinitGebaeudeLoeschenLayer();
+        replaceSecondaryProjectContent();
+      }
+  }
+  
+  function zoomToFlstPart(event) {
+      
+  }
+  
+  function changeSelectAlt(event) {
+      
+  }
+  
+  function setFlstNutzungAlt(event) {
+      
+  }
+  
+  function setFlstNutzungNeu(event) {
+      
+  }
+  
+  function zoomToPolyNeu(event) {
+      
+  }
+  
+  function polyNeuUndo(event) {
+      
+  }
+
+  function colorFlurstuecke() {
+    if (!window.csv_data) {
+      return;
+    }
+    for (var k in window.csv_data) {
+      var e = window.csv_data[k];
+      for (var i = 0; i < e.length; i++) {
+        var q = e[i];
+        if (q.status == 'bleibt') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#3e3e58';
+          }
+          break;
+        }
+        if (q.status == 'aenderung-keine-benachrichtigung') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#ff9a5a';
+          }
+          break;
+        }
+        if (q.status == 'aenderung-mit-benachrichtigung') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#ff4545';
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  function replaceDataNasXML() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = ".xml";
+
+    input.onchange = e => { 
+        var file = e.target.files[0]; 
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+
+          var styles_keys = Object.keys(window.configuration.style);
+          var styles_keys = styles_keys.join(", ");
+          var converted = load_nas_xml(readerEvent.target.result, styles_keys);
+          window.projectdata = JSON.parse(converted);
+          window.split_flurstuecke_worker = new Worker('/test.js', { type: "module" });
+          window.split_flurstuecke_worker.onmessage = function(event){
+            try {
+              var v = JSON.parse(event.data);
+              if (v) {
+                window.split_flurstuecke = v;
+                console.log(window.split_flurstuecke);
+              }
+            } catch (error) {
+              console.error(error);
+            }
+          }
+          window.split_flurstuecke_worker.postMessage(converted);
+
+          // remove old LeafLet layers
+          for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
+            layers.removeLayer(layer_obj);
+            layer_obj.remove();
+          }
+          geojson_layers = [];
+          for (var layer_name in window.configuration.style) {
+            var json = get_geojson_fuer_ebene(converted, layer_name);
+            var geojson = null;
+            try {
+              geojson = JSON.parse(json);
+            } catch (error) {
+              continue;
+            }
+            if (geojson == null) {
+              continue;
+            }
+            var layer_style = window.configuration.style[layer_name];
+            var myLayer = L.geoJSON(geojson, {
+              "style": {
+                "color": layer_style.outlineColor,
+                "fillColor": layer_style.fillColor,
+                "weight": layer_style.outlineThickness,
+                "opacity": 1.0,
+                "fillOpacity": 0.3,
+              }
+            });
+            var l = get_labels_fuer_ebene(converted, layer_name);
+            var labels = JSON.parse(l);
+            for (var i = 0; i < labels.length; i++) {
+              var e = labels[i];
+              var t = L.tooltip([e.lat, e.lon], { 
+                content: e.content, 
+                direction: 'center', 
+                permanent: true,
+                interactive: true,
+              });
+              t.on({
+                  click: function() {
+
+                  }
+              });
+              t.addTo(myLayer);
+            }
+            myLayer.addTo(map);
+            layers.addOverlay(myLayer, layer_name);
+            geojson_layers.push(myLayer);
+          }
+        }
+    }
+    input.click();
+}
 
   function selectFlst(id) {
     window.uidata.selected_edit_flst = id;
@@ -662,6 +636,11 @@
       }
 
     function replaceRibbon() {
+      if (window.uidata.tab == '1' && (!window.split_flurstuecke || window.split_flurstuecke == null)) {
+        alert("Flurstücke werden noch gesplittet, bitte warten...");
+        throw "test";
+      }
+
       var d = document.getElementById("__application-ribbon");
       if (d)
          d.innerHTML = ui_render_ribbon(JSON.stringify(window.uidata));
@@ -706,6 +685,29 @@
       q.innerHTML = aenderungen_html;
     }
 
+    function removeAllExtraLayers() {
+      removeGebaeudeLoeschenLayer();
+      removeNutzungEinzeichnenLayer();
+    }
+
+    // Gebäude löschen
+    function showHideGebaeudeLoeschenLayer() {
+      removeAllExtraLayers();
+      if (window.uidata.tool != 'gebaeude-loeschen') {
+        reinitGebaeudeLoeschenLayer();
+        window.uidata.tool = 'gebaeude-loeschen';
+      } else {
+        window.uidata.tool = null;
+      }
+      replaceRibbon();
+    }
+
+    function removeGebaeudeLoeschenLayer() {
+      if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
+        map.removeLayer(gebaeude_loeschen_layer);
+      }
+    }
+
     function gebauedeClicked(e) {
       var gebaeude_id = e.target.feature.properties.gebaeude_id;
       if (!gebaeude_id) {
@@ -716,7 +718,11 @@
       }
       var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
       if (index > -1) {
-        window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
+        if (window.uidata.tool == 'gebaeude-loeschen') {
+          window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
+        } else {
+          alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
+        }
       } else {
         window.aenderungen.gebaeude_loeschen.push(gebaeude_id); // loeschen
       }
@@ -728,6 +734,17 @@
         layer.on({
             click: gebauedeClicked
         });
+    }
+
+    function gebaeudeStyle(feature) {
+      var d = feature.properties.gebaeude_geloescht == "true";
+      return {
+          "color": d ? "#ff0000" : "#0000ff",
+          "fillColor": d ? "#ff0000" : "#0000ff",
+          "weight": 0.0,
+          "opacity": 0.8,
+          "fillOpacity": 0.8
+        };
     }
 
     function reinitGebaeudeLoeschenLayer() {
@@ -746,33 +763,35 @@
         JSON.stringify(window.aenderungen),
       );
       var gebaeude_geojson = JSON.parse(f);
-      if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
-        map.removeLayer(gebaeude_loeschen_layer);
-      }
-
+      removeGebaeudeLoeschenLayer();
       var myLayer = L.geoJSON(gebaeude_geojson, {
-        "style": {
-          "color": function(feature) {
-              switch (feature.properties.gebaeude_geloescht) {
-                  case 'true': return {color: "#ff0000"};
-                  case 'false':   return {color: "#0000ff"};
-              }
-          },
-          "fillColor": function(feature) {
-              switch (feature.properties.gebaeude_geloescht) {
-                  case 'true': return {color: "#ff0000"};
-                  case 'false':   return {color: "#0000ff"};
-              }
-          },
-          "weight": 0.0,
-          "opacity": 0.8,
-          "fillOpacity": 0.8
-        },
+        "style": gebaeudeStyle,
         "onEachFeature": gebaeudeFeatureClick
       });
       gebaeude_loeschen_layer = myLayer;
       map.addLayer(gebaeude_loeschen_layer);
     }
+
+    // Nutzung einzeichnen
+
+    function showHideNutzungEinzeichnenLayer() {
+      removeAllExtraLayers();
+      if (window.uidata.tool != 'nutzung-einzeichnen') {
+        reinitNutzungEinzeichnenLayer();
+        window.uidata.tool = 'nutzung-einzeichnen';
+      } else {
+        window.uidata.tool = null;
+      }
+      replaceRibbon();
+    }
+
+    function removeNutzungEinzeichnenLayer() {
+      if (nutzung_einzeichnen_layer && nutzung_einzeichnen_layer != null) {
+        map.removeLayer(nutzung_einzeichnen_layer);
+      }
+    }
+
+    // UI ----
 
     function selectTab(id) {
       window.uidata.tab = id;
@@ -875,17 +894,11 @@
     window.setFlstNutzungNeu = setFlstNutzungNeu;
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
-    window.zoomToRingLoeschen = zoomToRingLoeschen;
-    window.ringLoeschenUndo = ringLoeschenUndo;
-    window.zoomToRingNeu = zoomToRingNeu;
-    window.ringNeuUndo = ringNeuUndo;
     window.setInterval(colorFlurstuecke, 200);
 
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
         create_project: function(event) { newProjectFromCSV(); },
-        undo: function(event) { },
-        redo: function(event) { },
         import_data: function(event) { replaceDataNasXML(); },
         save_project: function(event) { saveProjectDataToFile(); },
         open_help: function(event) { openHelp(); },
@@ -896,7 +909,11 @@
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
+        gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
+        nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
         export_david: function(event) { },
+        undo: function(event) { },
+        redo: function(event) { },
     };
     window.tab_functions = tab_functions;
     window.initializeOrUpdateMap = initializeOrUpdateMap;
