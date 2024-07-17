@@ -78,31 +78,6 @@ pub fn search_for_gebauede(s: String, gebaeude_id: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn search_for_ring(s: String, ring_id: String) -> String {
-    let xml = match serde_json::from_str::<NasXMLFile>(&s) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    let f = xml.ebenen.values().find_map(|f| {
-        f.iter().find_map(|tp| tp.poly.inner_rings.get(&ring_id))
-    });
-    let l = match f {
-        Some(s) => s,
-        None => return format!("invalid ring id {ring_id}"),
-    };
-
-    let tp = TaggedPolygon {
-        attributes: BTreeMap::new(),
-        poly: SvgPolygon {
-            outer_rings: vec![(String::new(), l.clone())].into_iter().collect(),
-            inner_rings: BTreeMap::new(),
-        }
-    };
-
-    serde_json::to_string(&tp.get_fit_bounds()).unwrap_or_default()
-}
-
-#[wasm_bindgen]
 pub fn load_nas_xml(s: String, types: String) -> String {
     let mut t = types.split(",").filter_map(|s| {
         let s = s.trim();
@@ -188,7 +163,7 @@ pub fn split_flurstuecke_background_worker(xml: String) -> String {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::nas::split_xml_flurstuecke(&xml)
+    crate::nas::split_xml_flurstuecke(xml)
 }
 
 #[wasm_bindgen]

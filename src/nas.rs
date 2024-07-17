@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
+use geo::CoordsIter;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
 use quadtree_f32::Item;
+use quadtree_f32::ItemId;
 use quadtree_f32::QuadTree;
 use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
@@ -114,7 +116,7 @@ impl NasXMLFile {
     
         let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
 
-            let holes = v.poly.poly.inner_rings.values()
+            let holes = v.poly.poly.inner_rings.iter()
             .map(convert_svgline_to_string)
             .collect::<Vec<_>>()
             .join(",");
@@ -130,10 +132,10 @@ impl NasXMLFile {
             .collect::<Vec<_>>().join(",");
 
             if v.poly.poly.outer_rings.len() > 1 {
-                let polygons = v.poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                let polygons = v.poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = v.poly.poly.outer_rings.values().next() {
+            } else if let Some(p) = v.poly.poly.outer_rings.iter().next() {
                 let poly = convert_poly_to_string(p, &holes);
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
@@ -166,7 +168,7 @@ impl NasXMLFile {
                 None => continue,
             };
 
-            let coords_outer = o.poly.outer_rings.values().flat_map(|line| {
+            let coords_outer = o.poly.outer_rings.iter().flat_map(|line| {
                  line.points.iter().map(|p| (p.x, p.y))
             }).collect::<Vec<_>>();
 
@@ -177,7 +179,7 @@ impl NasXMLFile {
                         y: *y,
                     }).collect()
                 },
-                interiors: o.poly.inner_rings.values().map(|l| LineString {
+                interiors: o.poly.inner_rings.iter().map(|l| LineString {
                     points: l.points.iter().map(|p| Point {
                         x: p.x,
                         y: p.y,
@@ -208,7 +210,7 @@ impl NasXMLFile {
 
         let geom = objekte.iter().filter_map(|poly| {
 
-            let holes = poly.poly.inner_rings.values()
+            let holes = poly.poly.inner_rings.iter()
             .map(convert_svgline_to_string)
             .collect::<Vec<_>>()
             .join(",");
@@ -218,10 +220,10 @@ impl NasXMLFile {
             .collect::<Vec<_>>().join(",");
 
             if poly.poly.outer_rings.len() > 1 {
-                let polygons = poly.poly.outer_rings.values().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+                let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = poly.poly.outer_rings.values().next() {
+            } else if let Some(p) = poly.poly.outer_rings.iter().next() {
                 let poly = convert_poly_to_string(p, &holes);
                 Some(format!(
                     "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
@@ -257,11 +259,11 @@ pub struct TaggedPolygon {
 
 impl TaggedPolygon {
     pub fn get_fit_bounds(&self) -> [[f64;2];2] {
-        let mut min_x = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut max_x = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut min_y = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
-        let mut max_y = self.poly.outer_rings.values().next().and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
-        for l in self.poly.outer_rings.values() {
+        let mut min_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut max_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
+        let mut min_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+        let mut max_y = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+        for l in self.poly.outer_rings.iter() {
             for p in l.points.iter() {
                 if p.x > max_x {
                     max_x = p.x;
@@ -287,8 +289,8 @@ impl TaggedPolygon {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPolygon {
-    pub outer_rings: BTreeMap<String, SvgLine>,
-    pub inner_rings: BTreeMap<String, SvgLine>,
+    pub outer_rings: Vec<SvgLine>,
+    pub inner_rings: Vec<SvgLine>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -440,8 +442,8 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<
 
         let tp = TaggedPolygon {
             poly: SvgPolygon {
-                outer_rings: outer_rings.iter().enumerate().map(|(i, v)| (format!("{flst_id}-o{i}"), v.clone())).collect(),
-                inner_rings: inner_rings.iter().enumerate().map(|(i, v)| (format!("{flst_id}-i{i}"), v.clone())).collect(),
+                outer_rings: outer_rings,
+                inner_rings: inner_rings,
             },
             attributes,
         };
@@ -492,10 +494,10 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
                 attributes: v.attributes.clone(),
                 poly: SvgPolygon {
                     outer_rings: v.poly.outer_rings.iter()
-                    .map(|(k, l)| (k.clone(), reproject_line(l, &source_proj, &latlon_proj)))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
                     .collect(),
                     inner_rings: v.poly.inner_rings.iter()
-                    .map(|(k, l)| (k.clone(), reproject_line(l, &source_proj, &latlon_proj)))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
                     .collect(),
                 }
             }
@@ -511,23 +513,130 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
 
 pub type FlstId = String;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SplitNasXml {
     pub crs: String,
     // Flurstücke, indexiert nach Flst ID, mit Nutzungen als Polygonen
     pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
 }
 
-pub fn split_xml_flurstuecke(input: &NasXMLFile) -> String {
+pub fn split_xml_flurstuecke(input: NasXMLFile) -> String {
     match split_xml_flurstuecke_inner(input) {
         Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
         Err(e) => e,
     }
 }
 
-pub fn split_xml_flurstuecke_inner(input: &NasXMLFile) -> Result<SplitNasXml, String> {
-    Ok(SplitNasXml {
+pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml, String> {
+
+    let default = SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),
+    };
+    let ax_flurstuecke = input.ebenen.remove("AX_Flurstuecke").unwrap_or_default();
+    let _ = input.ebenen.remove("AX_Gebaeude");
+    let _ = input.ebenen.remove("AX_HistorischesFlurstueck");
+    if ax_flurstuecke.is_empty() {
+        return Ok(default);
+    }
+
+    let mut btree_id_to_poly = BTreeMap::new();
+    let mut itemid = 0_usize;
+    for (k, polys) in input.ebenen.iter() {
+        for poly in polys.iter() {
+            let mut poly = poly.clone();
+            poly.attributes.insert("AX_Ebene".to_string(), k.clone());
+            btree_id_to_poly.insert(itemid, poly);
+            itemid += 1;
+        }
+    }
+
+    let nutzungs_qt = QuadTree::new(btree_id_to_poly.iter().map(|(k, v)| {
+        let [[min_y, min_x], [max_y, max_x]] = v.get_fit_bounds();
+        let bounds = Rect {
+            max_x: max_x,
+            max_y: max_y,
+            min_x: min_x,
+            min_y: min_y,
+        };
+        (ItemId(*k), Item::Rect(bounds))
+    }));
+
+    let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
+
+        let id = flst.attributes.get("flurstueckskennzeichen")?;
+        let [[min_y, min_x], [max_y, max_x]] = flst.get_fit_bounds();
+        let bounds = Rect {
+            max_x: max_x,
+            max_y: max_y,
+            min_x: min_x,
+            min_y: min_y,
+        };
+        let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
+        let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
+        
+        let polys = polys.iter().flat_map(|p| {
+            let intersection_mp = intersect_polys(&flst.poly, &p.poly);
+            intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
+                attributes: {
+                    let mut attrs = p.attributes.clone();
+                    attrs.insert("AX_Flurstueck".to_string(), id.clone());
+                    attrs
+                },
+                poly: svg_poly,
+            })
+        }).collect::<Vec<_>>();
+
+        if polys.is_empty() {
+            None
+        } else {
+            Some((id.clone(), polys))
+        }
+    }).collect();
+
+    Ok(SplitNasXml {
+        crs: input.crs.clone(),
+        flurstuecke_nutzungen,
     })
+}
+
+fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
+    use geo::BooleanOps;
+    let a = translate_to_geo_poly(a);
+    let b = translate_to_geo_poly(b);
+    let intersect = a.intersection(&b);
+    translate_from_geo_poly(&intersect)
+}
+
+fn translate_to_geo_poly(a: &SvgPolygon) -> geo::MultiPolygon<f64> {
+    geo::MultiPolygon(a.outer_rings.iter().map(|outer| {
+        let outer = translate_geoline(outer);
+        let inner = a.inner_rings.iter().map(translate_geoline).collect::<Vec<_>>();
+        geo::Polygon::new(outer, inner)
+    }).collect())
+}
+
+fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
+    geo::LineString(a.points.iter().map(|coord| geo::Coord {
+        x: coord.x,
+        y: coord.y,
+    }).collect())
+}
+
+fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygon> {
+    a.0.iter().map(|s| {
+        SvgPolygon {
+            outer_rings: vec![translate_ring(s.exterior())],
+            inner_rings: s.interiors().iter().map(translate_ring).collect(),
+        }
+    }).collect()
+}
+
+fn translate_ring(a: &geo::LineString<f64>) -> SvgLine {
+    SvgLine {
+        points: a.coords_iter().into_iter().map(|coord| SvgPoint {
+            x: coord.x,
+            y: coord.y,
+        }).collect(),
+    }
 }
