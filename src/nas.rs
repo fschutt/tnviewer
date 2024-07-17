@@ -533,7 +533,7 @@ pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml,
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),
     };
-    let ax_flurstuecke = input.ebenen.remove("AX_Flurstuecke").unwrap_or_default();
+    let ax_flurstuecke = input.ebenen.remove("AX_Flurstueck").unwrap_or_default();
     let _ = input.ebenen.remove("AX_Gebaeude");
     let _ = input.ebenen.remove("AX_HistorischesFlurstueck");
     if ax_flurstuecke.is_empty() {
