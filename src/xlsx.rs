@@ -7,27 +7,53 @@ use crate::csv::Status;
 
 pub fn get_veraenderte_flst(datensaetze: &CsvDataType) -> Vec<u8> {
     let all = get_alle_flst_internal(datensaetze);
-    all.iter()
+    let all = all.iter()
     .filter_map(|(v, b)| if *b {
         Some(v.clone())
     } else {
         None
-    }).collect::<Vec<String>>()
-    .join(",")
-    .into()
+    }).collect::<Vec<FlstIdParsedNumber>>();
+    format_flst_liste(all)
 }
 
 pub fn get_alle_flst(datensaetze: &CsvDataType) -> Vec<u8> {
     let all = get_alle_flst_internal(datensaetze);
-    all.iter()
+    let all = all.iter()
     .map(|(v, _)| v.clone())
-    .collect::<Vec<_>>()
-    .join(",")
-    .into()
+    .collect::<Vec<_>>();
+    format_flst_liste(all)
 }
 
+fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> Vec<u8> {
 
-fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(String, bool)> {
+    let mut grouped = BTreeMap::new();
+    for f in all {
+        grouped.entry(f.flur).or_insert_with(|| Vec::new()).push(f.clone());
+    }
+
+    if grouped.len() == 1 {
+        grouped
+        .values()
+        .next()
+        .unwrap()
+        .iter()
+        .map(|f: &FlstIdParsedNumber| f.format_str_zero())
+        .collect::<Vec<_>>()
+        .join(",")
+        .into()
+    } else {
+        grouped.iter().map(|(k, v)| {
+            format!("FLUR {k}: {}", v.iter()
+            .map(|f: &FlstIdParsedNumber| f.format_str_zero())
+            .collect::<Vec<_>>()
+            .join(",")
+        )}).collect::<Vec<String>>()
+        .join("\r\n")
+        .into()
+    }
+}
+
+fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(FlstIdParsedNumber, bool)> {
     // 12 1175 003 00038 00000
     let mut target = Vec::new();
     for (ds, v) in datensaetze.iter() {
@@ -37,26 +63,13 @@ fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(String, bool)> {
         .map(|s| s.status == Status::AenderungMitBenachrichtigung)
         .unwrap_or(false);
 
-        let mut chars = ds.chars().collect::<Vec<char>>();
-        chars.reverse();
-        let mut last_11 = chars.iter().take(11).cloned().collect::<Vec<_>>();
-        last_11.reverse();
-        if last_11.len() != 11 {
-            continue;
-        }
-        let zaehler = &last_11[..5];
-        let nenner = &last_11[5..9];
-        let zaehler = zaehler.into_iter().collect::<String>();
-        let nenner = nenner.into_iter().collect::<String>();
-        let z = match zaehler.parse::<usize>() {
-            Ok(o) => o,
-            Err(_) => continue,
+        let flst = FlstIdParsed::from_str(ds);
+        let flst_num = match flst.parse_num() {
+            Some(s) => s,
+            None => continue,
         };
-        let n = match nenner.parse::<usize>() {
-            Ok(o) => o,
-            Err(_) => continue,
-        };
-        target.push((format!("{z}/{n}"), ds_modified));
+
+        target.push((flst_num, ds_modified));
     }
     target
 }
@@ -203,6 +216,10 @@ impl FlstIdParsedNumber {
         Some(s) => format!("{}/{}", self.flst_zaehler, s),
        }
     }
+    pub fn format_str_zero(&self) -> String {
+        let nenner = self.flst_nenner.unwrap_or(0);
+        format!("{}/{}", self.flst_zaehler, nenner)
+     }
 }
 
 impl FlstIdParsed {
