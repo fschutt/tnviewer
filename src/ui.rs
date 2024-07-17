@@ -1037,7 +1037,7 @@ fn render_csv_editable(
             <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Fl. {flur_formatted} Flst. {flst_id_formatted}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
-            <select style='font-size:16px;' onchange='changeStatus(event);' data-id='{flst_id}'>
+            <select style='font-size:16px;padding:5px;' onchange='changeStatus(event);' data-id='{flst_id}'>
                 <option value='bleibt' {selected_bleibt}>Bleibt</option>
                 <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
                 <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
@@ -1063,7 +1063,7 @@ fn render_csv_editable(
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
         split_nas = match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
-            None => format!("flurstueck nutzung {} nicht gefunden (split_fs = {:?})", flstidparsed.format_start_str(), split_fs.is_some()),
+            None => String::new(),
             Some(s) => {
                 format!(
                     "<div class='nutzung-veraendern'>{}</div>", 
@@ -1072,7 +1072,7 @@ fn render_csv_editable(
                         let ax_flurstueck = flstidparsed.format_start_str();
                         let cut_obj_id = tp.attributes.get("id")?;
                         Some(format!(
-                            "<div style='display:flex;flex-direction:row;'><p>Ändere {ax_ebene} auf:</p>{}</div>", 
+                            "<div><p>{ax_ebene}:</p>{}</div>", 
                             render_select(&None, "nutzungsArtAendern", &format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}"), "nutzungsart-aendern")
                         ))
                     }).collect::<Vec<_>>().join("")

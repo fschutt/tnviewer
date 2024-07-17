@@ -751,3 +751,28 @@ img {
     cursor:pointer;
 }
 
+.nutzung-veraendern {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    background: #eee;
+    padding: 5px;
+}
+
+.nutzung-veraendern > div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 5px;
+    background: #ccc;
+    align-items: center;
+}
+.nutzung-veraendern > div > p {
+    font-size: 0.9rem;
+}
+
+.nutzung-veraendern select {
+    padding: 5px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
