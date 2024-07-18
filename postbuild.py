@@ -27,6 +27,10 @@ pkg_viewer_wasm = read_file_base64("./pkg/tnviewer_bg.wasm")
 pkg_viewer_js = read_file("./pkg/tnviewer.js")
 leaflet_js = read_file("./js/leaflet/leaflet.js")
 leaflet_css = read_file("./js/leaflet/leaflet.css")
+leaflet_draw_js = read_file("./js/leaflet/leaflet.draw.js")
+leaflet_draw_css = read_file("./js/leaflet/leaflet.draw.css")
+leaflet_snap_js = read_file("./js/leaflet/leaflet.snap.js")
+leaflet_geometryutil_js = read_file("./js/leaflet/leaflet.geometryutil.js")
 main_css = read_file("./main.css")
 fixup_js = "\r\n".join([
     "async function __wbg_init(input) {",
@@ -94,8 +98,10 @@ wasm_script_out += "\r\n].join('');\r\n"
 for line in index_html.splitlines():
     if "<!--LEAFLET_CSS_LINK-->" in line:
         out_file.append("<style>" + leaflet_css + "</style>")
+        out_file.append("<style>" + leaflet_draw_css + "</style>")
     elif "<!--LEAFLET_JS-->" in line:
         out_file.append("<script type='text/javascript'>" + leaflet_js +"</script>")
+        out_file.append("<script type='text/javascript'>" + leaflet_draw_js +"</script>")
     elif "<!--MAIN_CSS-->" in line:
         out_file.append("<style>" + main_css + "</style>")
     elif "// PUT_WASM_JS_HERE" in line:

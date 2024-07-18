@@ -5,6 +5,7 @@
     <title>Tatsächliche Nutzung Viewer / Editor</title>
     <!--LEAFLET_CSS_LINK-->
     <!--LEAFLET_JS-->
+    <!--LEAFLET_DRAW_JS-->
     <!--MAIN_CSS-->
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
@@ -269,6 +270,44 @@
         },
       }
     }; // default config object
+
+
+  function initLeafletDraw() {
+
+    var options = {
+        position: 'topright',
+        draw: {
+            polyline: false,
+            polygon: {
+                allowIntersection: false, // Restricts shapes to simple polygons
+                drawError: {
+                    color: '#e1e100', // Color the shape will turn when intersects
+                    message: '<strong>Oh snap!<strong> you can\'t draw that!' // Message that will show when intersect
+                },
+                shapeOptions: {
+                    color: '#bada55'
+                }
+            },
+            circle: false, // Turns off this drawing tool
+            rectangle: false,
+            marker: false,
+            circlemarker: false,
+        }
+    };
+    
+    var drawControl = new L.Control.Draw(options);
+    map.addControl(drawControl);
+    map.on(L.Draw.Event.DRAWSTOP, function (e) {
+        console.log("draw stop!");
+        var type = e.layerType,
+            layer = e.layer;
+        console.log(type);
+        console.log(layer);
+        console.log(e);
+    });
+  }
+
+  window.initLeafletDraw = initLeafletDraw;
 
   function zoomToGebaeudeLoeschen(event) {
     var gebaeude_id = event.target.dataset.gebaeudeId;
@@ -612,6 +651,7 @@
             maxZoom: 25,
             zoomSnap: 0,
           });
+          map.doubleClickZoom.disable(); 
           map.setView([53.2467, 13.6045], 10);
           var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
@@ -631,6 +671,7 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
+          initLeafletDraw();
         }
       }
 
