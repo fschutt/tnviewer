@@ -14,6 +14,7 @@ use crate::ui::Aenderungen;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
+use proj4rs::Proj;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NasXMLFile {
@@ -323,11 +324,7 @@ impl Ord for SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(s: &str, whitelist: &[String]) -> Result<NasXMLFile, String> {
-    let s = match crate::xml::parse_xml_string(s) {
-        Ok(o) => o,
-        Err(e) => { return Err(format!("XML parse error: {e:?}")); },
-    };
+pub fn parse_nas_xml(s: Vec<XmlNode>, whitelist: &[String], log: &mut Vec<String>) -> Result<NasXMLFile, String> {
     xml_nodes_to_nas_svg_file(s, whitelist)
 }
 
@@ -467,22 +464,21 @@ fn get_proj_string(input: &str) -> Option<String> {
     known_strings.get(input).cloned()
 }
 
-pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, String> {
-    use proj4rs::Proj;
 
-    fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
-        SvgLine {
-            points: line.points.iter().filter_map(|p| {
-                let mut point3d = (p.x, p.y, 0.0_f64);
-                proj4rs::transform::transform(source, target, &mut point3d).ok()?;
-                Some(SvgPoint {
-                    x: point3d.0.to_degrees(), 
-                    y: point3d.1.to_degrees()
-                })
-            }).collect()
-        }
+fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
+    SvgLine {
+        points: line.points.iter().filter_map(|p| {
+            let mut point3d = (p.x, p.y, 0.0_f64);
+            proj4rs::transform::transform(source, target, &mut point3d).ok()?;
+            Some(SvgPoint {
+                x: point3d.0.to_degrees(), 
+                y: point3d.1.to_degrees()
+            })
+        }).collect()
     }
+}
 
+pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -> Result<NasXMLFile, String> {
     let source_proj = Proj::from_proj_string(&input.crs).map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
     let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
     let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
@@ -510,6 +506,33 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile) -> Result<NasXMLFile, St
     })
 }
 
+pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<String>) -> Result<SplitNasXml, String> {
+    let source_proj = Proj::from_proj_string(&input.crs).map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
+    let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
+
+    let flurstuecke_nutzungen = input.flurstuecke_nutzungen.iter()
+    .map(|(k, v)| {
+        (k.clone(), v.iter().map(|v| {
+            TaggedPolygon {
+                attributes: v.attributes.clone(),
+                poly: SvgPolygon {
+                    outer_rings: v.poly.outer_rings.iter()
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
+                    .collect(),
+                    inner_rings: v.poly.inner_rings.iter()
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
+                    .collect(),
+                }
+            }
+        }).collect())
+    }).collect();
+
+    Ok(SplitNasXml {
+        crs: input.crs.clone(),
+        flurstuecke_nutzungen: flurstuecke_nutzungen,
+    })
+}
 
 pub type FlstId = String;
 
@@ -520,15 +543,9 @@ pub struct SplitNasXml {
     pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
 }
 
-pub fn split_xml_flurstuecke(input: NasXMLFile) -> String {
-    match split_xml_flurstuecke_inner(input) {
-        Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
-        Err(e) => e,
-    }
-}
+pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) -> Result<SplitNasXml, String> {
 
-pub fn split_xml_flurstuecke_inner(mut input: NasXMLFile) -> Result<SplitNasXml, String> {
-
+    let mut input = input.clone();
     let mut default = SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),

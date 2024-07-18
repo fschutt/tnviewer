@@ -68,7 +68,7 @@ impl XmlNode {
     }
 }
 
-pub fn parse_xml_string(xml: &str) -> Result<Vec<XmlNode>, XmlParseError> {
+pub fn parse_xml_string(xml: &str, log: &mut Vec<String>) -> Result<Vec<XmlNode>, XmlParseError> {
     use xmlparser::ElementEnd::*;
     use xmlparser::Token::*;
     use xmlparser::Tokenizer;

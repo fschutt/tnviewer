@@ -1,8 +1,12 @@
+use std::slice::SplitInclusive;
+
 use nas::{NasXMLFile, SplitNasXml, TaggedPolygon};
 use ui::Aenderungen;
 use wasm_bindgen::prelude::*;
+use xml::XmlNode;
 use crate::ui::UiData;
 use crate::csv::CsvDataType;
+use serde_derive::{Serialize, Deserialize};
 
 pub mod xml;
 pub mod ui;
@@ -76,6 +80,16 @@ pub fn search_for_gebauede(s: String, gebaeude_id: String) -> String {
     }
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct LoadNasReturn {
+    pub log: Vec<String>,
+    pub xml_parsed: Vec<XmlNode>,
+    pub nas_original: NasXMLFile,
+    pub nas_cut_original: SplitNasXml,
+    pub nas_projected: NasXMLFile,
+    pub nas_cut_projected: SplitNasXml,
+}
+
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String, types: String) -> String {
     let mut t = types.split(",").filter_map(|s| {
@@ -84,14 +98,36 @@ pub fn load_nas_xml(s: String, types: String) -> String {
     }).collect::<Vec<_>>();
     t.sort();
     t.dedup();
-    let xml = match crate::nas::parse_nas_xml(&s, &t) {
+    let mut log = Vec::new();
+    log.push(format!("parsing XML: types = {t:?}"));
+    let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
+        Ok(o) => o,
+        Err(e) => return format!("XML parse error: {e:?}"),
+    };
+    let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t, &mut log) {
         Ok(o) => o,
         Err(e) => return e,
     };
-    match crate::nas::transform_nas_xml_to_lat_lon(&xml) {
-        Ok(o) => serde_json::to_string(&o).unwrap_or_default(),
-        Err(e) => e,
-    }
+    let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&nas_original, &mut log) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+    let nas_projected = match crate::nas::transform_nas_xml_to_lat_lon(&nas_original, &mut log) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+    let nas_cut_projected = match crate::nas::transform_split_nas_xml_to_lat_lon(&nas_cut_original, &mut log) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+    serde_json::to_string(&LoadNasReturn {
+        log,
+        xml_parsed,
+        nas_original,
+        nas_cut_original,
+        nas_projected,
+        nas_cut_projected,
+    }).unwrap_or_default()
 }
 
 #[wasm_bindgen]
@@ -153,16 +189,6 @@ pub fn parse_csv_dataset_to_json(
         Err(e) => return e,
     };
     serde_json::to_string(&csv_daten).unwrap_or_default()
-}
-
-
-#[wasm_bindgen]
-pub fn split_flurstuecke_background_worker(xml: String) -> String {
-    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    crate::nas::split_xml_flurstuecke(xml)
 }
 
 #[wasm_bindgen]
