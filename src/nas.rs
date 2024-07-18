@@ -529,8 +529,8 @@ pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<Str
     }).collect();
 
     Ok(SplitNasXml {
-        crs: input.crs.clone(),
         flurstuecke_nutzungen: flurstuecke_nutzungen,
+        crs: latlon_proj_string.to_string(),
     })
 }
 

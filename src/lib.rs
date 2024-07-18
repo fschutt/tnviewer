@@ -134,7 +134,7 @@ pub fn load_nas_xml(s: String, types: String) -> String {
 pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {
         Ok(o) => o,
-        Err(e) => return e.to_string(),
+        Err(e) => return "ERROR HERE".to_string() + &e.to_string(),
     };
     xml.get_geojson_ebene(&layer)
 }

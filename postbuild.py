@@ -1,30 +1,4 @@
-import json
-import re
-import pprint
-import os
-import subprocess
-import shutil
-from sys import platform
-import time
 import base64
-
-def create_folder(path):
-    os.mkdir(path)
-
-def remove_path(path):
-    """ param <path> could either be relative or absolute. """
-    if os.path.isfile(path) or os.path.islink(path):
-        os.remove(path)  # remove the file
-    elif os.path.isdir(path):
-        shutil.rmtree(path)  # remove dir and all contains
-    else:
-        raise ValueError("file {} is not a file or dir.".format(path))
-
-def zip_directory(output_filename, dir_name):
-    shutil.make_archive(output_filename, 'zip', dir_name)
-
-def copy_file(src, dest):
-    shutil.copyfile(src, dest)
 
 def read_file(path):
     text_file = open(path, 'r')
@@ -43,14 +17,48 @@ def write_file(string, path):
     text_file.write(string)
     text_file.close()
 
-index_html = read_file("./index.html")
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+index_html = read_file("./skeleton.html")
 pkg_viewer_wasm = read_file_base64("./pkg/tnviewer_bg.wasm")
 pkg_viewer_js = read_file("./pkg/tnviewer.js")
-fixup_js = read_file("./js/fixup.js")
-fixup2_js = read_file("./js/fixup2.js")
 leaflet_js = read_file("./js/leaflet/leaflet.js")
 leaflet_css = read_file("./js/leaflet/leaflet.css")
 main_css = read_file("./main.css")
+fixup_js = "\r\n".join([
+    "async function __wbg_init(input) {",
+    "    if (wasm !== undefined) return wasm;",
+    "    const imports = __wbg_get_imports();",
+    "    __wbg_init_memory(imports);",
+    "    var v = base64ToArrayBuffer(window.GLOBAL_WASM);",
+    "    const { instance, module } = await WebAssembly.instantiate(v, imports);",
+    "    return __wbg_finalize_init(instance, module);",
+    "}",
+])
+
+fixup2_js = "\r\n".join([
+    "window.init = __wbg_init;",
+    "window.ui_render_entire_screen = ui_render_entire_screen; ",
+    "window.load_nas_xml = load_nas_xml; ",
+    "window.get_geojson_fuer_ebene = get_geojson_fuer_ebene;",
+    "window.get_labels_fuer_ebene = get_labels_fuer_ebene;",
+    "window.ui_render_ribbon = ui_render_ribbon;",
+    "window.ui_render_popover_content = ui_render_popover_content;",
+    "window.ui_render_project_content = ui_render_project_content;",
+    "window.ui_render_secondary_content = ui_render_secondary_content;",
+    "window.parse_csv_dataset_to_json = parse_csv_dataset_to_json;",
+    "window.get_fit_bounds = get_fit_bounds;",
+    "window.export_xlsx = export_xlsx;",
+    "window.export_veraenderte_flst = export_veraenderte_flst;",
+    "window.export_alle_flst = export_alle_flst;",
+    "window.export_flst_id_nach_eigentuemer = export_flst_id_nach_eigentuemer;",
+    "window.get_gebaeude_geojson_fuer_aktive_flst = get_gebaeude_geojson_fuer_aktive_flst;",
+    "window.export_pdf = export_pdf;",
+    "window.search_for_gebauede = search_for_gebauede;",
+])
 
 pkg_viewer_js_fixed = []
 emit_wr = True
@@ -71,10 +79,18 @@ for line in pkg_viewer_js.splitlines():
 pkg_viewer_js_fixed.append("")
 for l in fixup2_js.splitlines():
     pkg_viewer_js_fixed.append(l)
-
 pkg_viewer_js = "\r\n".join(pkg_viewer_js_fixed)
+
 out_file = []
 write_line = True
+
+global_wasm_script = chunks(pkg_viewer_wasm, 100)
+wasm_script = ["window.GLOBAL_WASM = ["]
+for l in global_wasm_script:
+    wasm_script.append("    \"" + l + "\",")
+wasm_script_out = "\r\n".join(wasm_script)
+wasm_script_out += "\r\n].join('');\r\n"
+
 for line in index_html.splitlines():
     if "<!--LEAFLET_CSS_LINK-->" in line:
         out_file.append("<style>" + leaflet_css + "</style>")
@@ -82,17 +98,10 @@ for line in index_html.splitlines():
         out_file.append("<script type='text/javascript'>" + leaflet_js +"</script>")
     elif "<!--MAIN_CSS-->" in line:
         out_file.append("<style>" + main_css + "</style>")
-    elif "<!--PUT_WASM_JS_HERE-->" in line:
-        out_file.append("<script type='text/javascript'> var GLOBAL_WASM = '"  + pkg_viewer_wasm + "'; </script>")
-        out_file.append("<script type='module'>" + pkg_viewer_js + "</script>")
-    elif "<!--WASM_LOADING_SCRIPT_BEGIN-->" in line:
-        write_line = False
-    elif "<!--WASM_LOADING_SCRIPT_END-->" in line:
-        write_line = True
+    elif "// PUT_WASM_JS_HERE" in line:
+        out_file.append(wasm_script_out)
+        out_file.append(pkg_viewer_js)
     else:
-        if write_line:
-            out_file.append(line)
-        else:
-            pass
+        out_file.append(line)
 
-write_file("\r\n".join(out_file), "out.html")
+write_file("\r\n".join(out_file), "index.html")

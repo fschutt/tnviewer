@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Tatsächliche Nutzung Viewer / Editor</title>
+    <!--LEAFLET_CSS_LINK-->
+    <!--LEAFLET_JS-->
+    <!--MAIN_CSS-->
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <script type="module">
+    function base64ToArrayBuffer(base64) {
+        var binaryString = atob(base64);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+    window.base64ToArrayBuffer = base64ToArrayBuffer;
+
+    // PUT_WASM_JS_HERE
+
+    var map = null;
+    var geojson_layers = [];
+    var tooltips = [];
+    var layers = null;
+    var dissected_flst_layer = null;
+    var draw_nutzung_layer = null;
+    var gebaeude_loeschen_layer = null;
+    
+    window.split_flurstuecke = null; // split XML NAS data
+    window.projectdata = null; // project XML NAS data
+    window.csv_data = null; // project CSV data
+    window.uidata = { // UI State
+      popover_state: null,
+      tab: null, 
+      tool: null,
+      data_loaded: false,
+      selected_edit_flst: "",
+    };
+    window.aenderungen = {
+      gebaeude_loeschen: [],
+      na_definiert: {},
+      na_polygone_neu: {},
+    };
+    window.configuration = {
+      map: {
+        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
+        dop_layers: "bebb_dop20c"
+      },
+      style: {
+        AX_BauRaumOderBodenordnungsrecht: {
+          fillColor: "#ff0000",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Landwirtschaft: {
+          fillColor: "#fff596",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Wald: {
+          fillColor: "#51ed4e",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Gehoelz: {
+          fillColor: "#03b800",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Heide: {
+          fillColor: "#b8005c",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Sumpf: {
+          fillColor: "#00a367",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_UnlandVegetationsloseFlaeche: {
+          fillColor: "#d9d9d9",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Wohnbauflaeche: {
+          fillColor: "#ffadbe",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_IndustrieUndGewerbeflaeche: {
+          fillColor: "#fcba03",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Halde: {
+          fillColor: "#7a7463",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_TagebauGrubeSteinbruch: {
+          fillColor: "#9c9c9c",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_FlaecheGemischterNutzung: {
+          fillColor: "#648ae3",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_FlaecheBesondererFunktionalerPraegung: {
+          fillColor: "#e364e1",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_SportFreizeitUndErholungsflaeche: {
+          fillColor: "#61a360",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Friedhof: {
+          fillColor: "#638062",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Strassenverkehr: {
+          fillColor: "#cccccc",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Weg: {
+          fillColor: "#b8b8b8",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Platz: {
+          fillColor: "#b8b8b8",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Bahnverkehr: {
+          fillColor: "#b8b8b8",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Gebaeude: {
+          fillColor: "#bdbdbd",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Gebaeude: {
+          fillColor: "#bdbdbd",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Bauteil: {
+          fillColor: "#008822",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Turm: {
+          fillColor: "#008822",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_BauwerkOderAnlageFuerIndustrieUndGewerbe: {
+          fillColor: "#008822",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_SonstigesBauwerkOderSonstigeEinrichtung: {
+          fillColor: "#008822",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_BauwerkImVerkehrsbereich: {
+          fillColor: "#008822",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Fliessgewaesser: {
+          fillColor: "#00ccab",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_StehendesGewaesser: {
+          fillColor: "#00ccab",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Meer: {
+          fillColor: "#00ccab",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_Flurstueck: {
+          fillColor: "#ccc",
+          outlineColor: "#000000",
+          outlineThickness: 3,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+        AX_HistorischesFlurstueck: {
+          fillColor: "transparent",
+          outlineColor: "#000000",
+          outlineThickness: 1,
+          outlineDash: null,
+          outlineOverprint: false,
+        },
+      }
+    }; // default config object
+
+  function zoomToGebaeudeLoeschen(event) {
+    var gebaeude_id = event.target.dataset.gebaeudeId;
+    if (!window.projectdata || window.projectdata == null) {
+      return;
+    }
+    if (!window.projectdata.ebenen.AX_Gebaeude || window.projectdata.ebenen.AX_Gebaeude == null) {
+      return;
+    }
+    var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
+    var extent_json = JSON.parse(extent);
+    map.fitBounds(extent_json);
+  }
+  
+  function gebaeudeLoeschenUndo(event) {
+      var gebaeude_id = event.target.dataset.gebaeudeId;
+      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
+      if (index > -1) {
+        window.aenderungen.gebaeude_loeschen.splice(index, 1);
+        reinitGebaeudeLoeschenLayer();
+        replaceSecondaryProjectContent();
+      }
+  }
+  
+  function nutzungsArtAendern(event) {
+    console.log(event.target.dataset);
+  }
+
+  function setPolyNeuNutzung(event) {
+    console.log(event.target.dataset);
+  }
+
+  function zoomToFlstPart(event) {
+      
+  }
+
+  function zoomToPolyNeu(event) {
+      
+  }
+  
+  function polyNeuUndo(event) {
+      
+  }
+
+  function colorFlurstuecke() {
+    if (!window.csv_data) {
+      return;
+    }
+    for (var k in window.csv_data) {
+      var e = window.csv_data[k];
+      for (var i = 0; i < e.length; i++) {
+        var q = e[i];
+        if (q.status == 'bleibt') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#3e3e58';
+          }
+          break;
+        }
+        if (q.status == 'aenderung-keine-benachrichtigung') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#ff9a5a';
+          }
+          break;
+        }
+        if (q.status == 'aenderung-mit-benachrichtigung') {
+          var e = document.getElementById('csv_flst_' + k);
+          if (e) {
+            e.style.background = '#ff4545';
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  function replaceDataNasXML() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = ".xml";
+
+    input.onchange = e => { 
+        var file = e.target.files[0]; 
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+
+          var styles_keys = Object.keys(window.configuration.style);
+          var styles_keys = styles_keys.join(", ");
+          var converted = load_nas_xml(readerEvent.target.result, styles_keys);
+          var parsed = JSON.parse(converted);
+          window.projectdata = parsed.nas_projected;
+          window.xml_data = parsed.xml_parsed;
+          window.nas_original = parsed.nas_original;
+          window.split_flurstuecke_original = parsed.nas_cut_original;
+          window.split_flurstuecke = parsed.nas_cut_projected;
+          window.parse_log = parsed.log;
+
+          // remove old LeafLet layers
+          for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
+            layers.removeLayer(layer_obj);
+            layer_obj.remove();
+          }
+          geojson_layers = [];
+          for (var layer_name in window.configuration.style) {
+            var json = null;
+            try {
+              var f = get_geojson_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
+              console.log(JSON.parse(f));
+              json = f;
+            } catch (error) {
+              console.error(e);
+              console.log("cannot process " + layer_name + ", continuing...");
+              continue;
+            }
+
+            var geojson = null;
+            try {
+              geojson = JSON.parse(json);
+            } catch (error) {
+              console.error(e);
+              console.log(geojson);
+              console.log("cannot process " + layer_name + ", continuing...");
+              continue;
+            }
+            if (geojson == null) {
+              continue;
+            }
+            var layer_style = window.configuration.style[layer_name];
+            var myLayer = L.geoJSON(geojson, {
+              "style": {
+                "color": layer_style.outlineColor,
+                "fillColor": layer_style.fillColor,
+                "weight": layer_style.outlineThickness,
+                "opacity": 1.0,
+                "fillOpacity": 0.3,
+              }
+            });
+            var l = null;
+            try {
+              l = get_labels_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
+            } catch (error) {
+                console.error(error);
+                continue;
+            }
+            var labels = JSON.parse(l);
+            for (var i = 0; i < labels.length; i++) {
+              var e = labels[i];
+              var t = L.tooltip([e.lat, e.lon], { 
+                content: e.content, 
+                direction: 'center', 
+                permanent: true,
+                interactive: true,
+              });
+              t.on({
+                  click: function() {
+
+                  }
+              });
+              t.addTo(myLayer);
+            }
+            myLayer.addTo(map);
+            layers.addOverlay(myLayer, layer_name);
+            geojson_layers.push(myLayer);
+          }
+        }
+    }
+    input.click();
+}
+
+  function selectFlst(id) {
+    window.uidata.selected_edit_flst = id;
+    replaceProjectContent();
+    document.getElementById('csv_flst_' + id).scrollIntoView();
+  }
+
+    function focusFlst(event) {
+      var id = event.target.dataset.id;
+      if (!window.projectdata || window.projectdata == null) {
+        alert("Keine Daten geladen");
+      }
+
+      var found = searchFlst(id, window.projectdata);
+      if (found) {
+        selectFlst(id);
+        let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found.flst)));
+        map.fitBounds(bounds);
+      } else {
+        alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
+      }
+    }
+
+    function searchFlst(id, pd) {
+      var id = id.replace(/0+$/, "");
+      // minimum 14 chars, prevent numbers such as "70" from being reduced to "7"
+      if (id.length < 14) {
+        for (let i = (14 - id.length); i > 0; i--) {
+          id += "0";
+        }
+      }
+
+      if (!pd) {
+        return null;
+      }
+
+      for (var ebene_id in pd.ebenen) {
+        var ebene = pd.ebenen[ebene_id];
+        for (var i = 0; i < ebene.length; i++) {
+          var flst = ebene[i];
+          if (flst.attributes["flurstueckskennzeichen"] && flst.attributes["flurstueckskennzeichen"].startsWith(id)) {
+            return {
+              flst: flst,
+              ebene: ebene_id,
+            };
+          }
+        }
+      }
+      return null;
+    }
+
+    function newProjectFromCSV() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = 'true';
+      input.accept = ".csv";
+
+      input.onchange = e => { 
+        if (e.target.files.length < 1) {
+          return;
+        }
+        window.csv_data = {};
+        for (var i = 0; i < e.target.files.length; i++) {
+          var file = e.target.files[i];
+          var reader = new FileReader();
+          reader.readAsArrayBuffer(file);
+          reader.onload = readerEvent => {
+            var arrayBuffer = readerEvent.target.result;
+            var array = new Uint8Array(arrayBuffer);
+            var converted = parse_csv_dataset_to_json(
+              array,
+              "Flurstueck",
+              "Nutzung",
+              "Eigentuemer",
+              "|",
+              "true"
+            );
+            var json = JSON.parse(converted);
+            for (var property in json) {
+              window.csv_data[property] = json[property];
+            }
+            replaceProjectContent();
+          }
+        }
+      }
+      input.click();
+    }
+
+    function changeStatus(event) {
+      var newstatus = event.target.value;
+      var id = event.target.dataset.id;
+      if (window.csv_data && window.csv_data[id]) {
+        for (var i = 0; i < window.csv_data[id].length; i++) {
+          window.csv_data[id][i].status = newstatus;
+        }
+      }
+    }
+
+    function changeNotiz(event) {
+      var newnotiz = event.target.value;
+      var id = event.target.dataset.id;
+      if (window.csv_data && window.csv_data[id]) {
+        for (var i = 0; i < window.csv_data[id].length; i++) {
+          window.csv_data[id][i].notiz = newnotiz;
+        }
+      }
+    }
+
+    const downloadURL = (data, fileName) => {
+        const a = document.createElement('a')
+        a.href = data
+        a.download = fileName
+        document.body.appendChild(a)
+        a.style.display = 'none'
+        a.click()
+        a.remove()
+    }
+
+    const downloadBlob = (data, fileName, mimeType) => {
+
+        const blob = new Blob([data], {
+            type: mimeType
+        })
+
+        const url = window.URL.createObjectURL(blob)
+
+        downloadURL(url, fileName)
+
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    }
+
+    function saveProjectDataToFile() {
+      if (window.csv_data && window.csv_data != null) {
+        var json_obj = {
+          csv: window.csv_data,
+        };
+        var json = JSON.stringify(json_obj);
+        var json_bytes = new TextEncoder().encode(json);
+        downloadBlob(json, "Projekt.json", 'application/octet-stream');
+      } else {
+        alert("Kein Projekt geladen!");
+      }
+    }
+
+    function loadProjectDataFromFile() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = ".json";
+
+      input.onchange = e => { 
+        if (e.target.files.length < 1) {
+          return;
+        }
+        var file = e.target.files[0];
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          var json = JSON.parse(readerEvent.target.result);
+          window.csv_data = json.csv;
+          replaceProjectContent();
+        }
+      }
+      input.click();
+    }
+
+    function initializeOrUpdateMap() {
+        if (map == null || map == undefined || !map) {
+          map = L.map('map', {
+            zoomControl: false,
+            maxNativeZoom: 25,
+            maxZoom: 25,
+            zoomSnap: 0,
+          });
+          map.setView([53.2467, 13.6045], 10);
+          var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
+              maxNativeZoom: 25,
+              maxZoom: 25,
+          });
+          var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
+              layers: window.configuration.map.dop_layers,
+              maxNativeZoom: 25,
+              maxZoom: 25,
+          });
+          var basemaps = {
+            OSM: basemap,
+            DOP: wms,
+          };
+          layers = L.control.layers(basemaps);
+          layers.addTo(map);
+          L.control.zoom({ position: 'bottomright' }).addTo(map);
+          basemaps.OSM.addTo(map);
+        }
+      }
+
+    function replaceRibbon() {
+      if (window.uidata.tab == '1' && (!window.split_flurstuecke || window.split_flurstuecke == null)) {
+        if (window.projectdata == null) {
+          alert("Keine Flurstücke zum Korrigieren geladen!");
+        } else {
+          alert("Flurstücke werden noch gesplittet, bitte warten...");
+        }
+        throw "test";
+      }
+
+      var d = document.getElementById("__application-ribbon");
+      if (d)
+         d.innerHTML = ui_render_ribbon(JSON.stringify(window.uidata));
+    }
+
+    function replacePopOver() {
+      let d = document.getElementById("__application_popover");
+      if (d)
+         d.innerHTML = ui_render_popover_content(JSON.stringify(window.uidata));
+
+      let q = document.getElementById("__application_main-overlay-container");
+      if (q && window.uidata.popover_state == null) {
+        q.style.display = "flex";
+      } else {
+        q.style.display = "none";
+      }
+    }
+
+    function replaceProjectContent() {
+      let d = document.getElementById("__application_project_content");
+      if (d)
+         d.innerHTML = ui_render_project_content(JSON.stringify(window.uidata), JSON.stringify(window.csv_data), JSON.stringify(window.split_flurstuecke));
+    }
+
+    function replaceSecondaryProjectContent() {
+      let d = document.getElementById("__application_secondary-overlay-container");
+      if (!d) {
+        return;
+      }
+      if (window.uidata.tab == 1) {
+        d.style.display = "flex";
+      } else {
+        d.style.display = "none";
+        return;
+      }
+      let q = document.getElementById("__application_secondary_content");
+      if (!q) {
+        return;
+      }
+      let aenderungen_html = ui_render_secondary_content(JSON.stringify(window.aenderungen));
+      q.innerHTML = aenderungen_html;
+    }
+
+    function removeAllExtraLayers() {
+      removeGebaeudeLoeschenLayer();
+      removeNutzungEinzeichnenLayer();
+    }
+
+    // Gebäude löschen
+    function showHideGebaeudeLoeschenLayer() {
+      removeAllExtraLayers();
+      if (window.uidata.tool != 'gebaeude-loeschen') {
+        reinitGebaeudeLoeschenLayer();
+        window.uidata.tool = 'gebaeude-loeschen';
+      } else {
+        window.uidata.tool = null;
+      }
+      replaceRibbon();
+    }
+
+    function removeGebaeudeLoeschenLayer() {
+      if (gebaeude_loeschen_layer && gebaeude_loeschen_layer != null) {
+        map.removeLayer(gebaeude_loeschen_layer);
+      }
+    }
+
+    function gebauedeClicked(e) {
+      var gebaeude_id = e.target.feature.properties.gebaeude_id;
+      if (!gebaeude_id) {
+        return;
+      }
+      if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
+        return;
+      }
+      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
+      if (index > -1) {
+        if (window.uidata.tool == 'gebaeude-loeschen') {
+          window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
+        } else {
+          alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
+        }
+      } else {
+        window.aenderungen.gebaeude_loeschen.push(gebaeude_id); // loeschen
+      }
+      reinitGebaeudeLoeschenLayer();
+      replaceSecondaryProjectContent();
+    }
+
+    function gebaeudeFeatureClick(feature, layer) {
+        layer.on({
+            click: gebauedeClicked
+        });
+    }
+
+    function gebaeudeStyle(feature) {
+      var d = feature.properties.gebaeude_geloescht == "true";
+      return {
+          "color": d ? "#ff0000" : "#0000ff",
+          "fillColor": d ? "#ff0000" : "#0000ff",
+          "weight": 0.0,
+          "opacity": 0.8,
+          "fillOpacity": 0.8
+        };
+    }
+
+    function reinitGebaeudeLoeschenLayer() {
+      if (!window.projectdata || window.projectdata == null) {
+        return;
+      }
+      if (!window.csv_data || window.csv_data == null) {
+        return;
+      }
+      if (!window.aenderungen || window.aenderungen == null) {
+        return;
+      }
+      if (!window.uidata || window.uidata.tool != 'gebaeude-loeschen') {
+        return;
+      }
+      var f = get_gebaeude_geojson_fuer_aktive_flst(
+        JSON.stringify(window.projectdata),
+        JSON.stringify(window.csv_data),
+        JSON.stringify(window.aenderungen),
+      );
+      var gebaeude_geojson = JSON.parse(f);
+      removeGebaeudeLoeschenLayer();
+      var myLayer = L.geoJSON(gebaeude_geojson, {
+        "style": gebaeudeStyle,
+        "onEachFeature": gebaeudeFeatureClick
+      });
+      gebaeude_loeschen_layer = myLayer;
+      map.addLayer(gebaeude_loeschen_layer);
+    }
+
+    // Nutzung einzeichnen
+
+    function showHideNutzungEinzeichnenLayer() {
+      removeAllExtraLayers();
+      if (window.uidata.tool != 'nutzung-einzeichnen') {
+        reinitNutzungEinzeichnenLayer();
+        window.uidata.tool = 'nutzung-einzeichnen';
+      } else {
+        window.uidata.tool = null;
+      }
+      replaceRibbon();
+    }
+
+    function removeNutzungEinzeichnenLayer() {
+      if (nutzung_einzeichnen_layer && nutzung_einzeichnen_layer != null) {
+        map.removeLayer(nutzung_einzeichnen_layer);
+      }
+    }
+
+    // UI ----
+
+    function selectTab(id) {
+      window.uidata.tab = id;
+      replaceRibbon();
+      replaceProjectContent();
+      replaceSecondaryProjectContent();
+    }
+
+    function closePopOver() {
+      window.uidata.popover_state = null;
+      replacePopOver();
+    }
+
+    function openHelp() {
+      window.uidata.popover_state = "Help";
+      replacePopOver();
+    }
+
+    function searchNA(event) {
+      window.uidata.popover_state = { "Search": { "text": event.target.value } };
+      replacePopOver();
+    }
+
+    function openInfo() {
+      window.uidata.popover_state = "Info";
+      replacePopOver();
+    }
+
+    function openConfiguration() {
+      window.uidata.popover_state = { "Configuration": "allgemein" };
+      replacePopOver();
+    }
+
+    function activateConfigurationView(event, id) {
+      window.uidata.popover_state = { "Configuration": id };
+      replacePopOver();
+    }
+
+    function exportExcel() {
+        if (!csv_data) {
+          return;
+        }
+        var xlsx = export_xlsx(JSON.stringify(csv_data));
+        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
+    }
+
+    function exportFlstNachEigentuemer() {
+        if (!csv_data) {
+          return;
+        }
+        var xlsx = export_flst_id_nach_eigentuemer(JSON.stringify(csv_data));
+        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
+    }
+
+    function exportPdf() {
+      if (!csv_data) {
+        alert("Keine CSV Daten geladen!");
+        return;
+      }
+      if (!window.projectdata) {
+        alert("Keine Projektdaten geladen!");
+        return;
+      }
+      var pdf = export_pdf(JSON.stringify(csv_data), JSON.stringify(window.projectdata));
+      downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
+    }
+
+    function exportVeraenderteFlst() {
+        if (!csv_data) {
+          return;
+        }
+        var txt = export_veraenderte_flst(JSON.stringify(csv_data));
+        downloadBlob(txt, "veraenderte_flst.txt", 'text/plain');
+    }
+
+    function exportAlleFlst() {
+        if (!csv_data) {
+          return;
+        }
+        var txt = export_alle_flst(JSON.stringify(csv_data));
+        downloadBlob(txt, "alle_flst.txt", 'text/plain');
+    }
+
+    window.changeStatus = changeStatus;
+    window.changeNotiz = changeNotiz;
+    window.activateConfigurationView = activateConfigurationView;
+    window.selectTab = selectTab;
+    window.closePopOver = closePopOver;
+    window.replacePopOver = replacePopOver;
+    window.replaceProjectContent = replaceProjectContent;
+    window.replaceRibbon = replaceRibbon;
+    window.focusFlst = focusFlst;
+    window.searchNA = searchNA;
+    window.exportPdf = exportPdf;
+    window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
+    window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
+    window.zoomToFlstPart = zoomToFlstPart;
+    window.nutzungsArtAendern = nutzungsArtAendern;
+    window.setPolyNeuNutzung = setPolyNeuNutzung;
+    window.zoomToPolyNeu = zoomToPolyNeu;
+    window.polyNeuUndo = polyNeuUndo;
+    window.setInterval(colorFlurstuecke, 200);
+
+    var tab_functions = {
+        load_project: function(event) { loadProjectDataFromFile(); },
+        create_project: function(event) { newProjectFromCSV(); },
+        import_data: function(event) { replaceDataNasXML(); },
+        save_project: function(event) { saveProjectDataToFile(); },
+        open_help: function(event) { openHelp(); },
+        open_info: function(event) { openInfo(); },
+        open_configuration: function(event) { openConfiguration(); },
+        export_pdf: function(event) { exportPdf(); },
+        export_excel: function(event) { exportExcel(); },
+        export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
+        export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
+        export_alle_flst: function(event) { exportAlleFlst(); },
+        gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
+        nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
+        export_david: function(event) { },
+        undo: function(event) { },
+        redo: function(event) { },
+    };
+    window.tab_functions = tab_functions;
+    window.initializeOrUpdateMap = initializeOrUpdateMap;
+
+    init()
+      .then(() => { 
+        document.body.innerHTML = ui_render_entire_screen(
+          JSON.stringify(window.uidata),
+          JSON.stringify(window.projectdata),
+          JSON.stringify(window.aenderungen),
+        );
+        initializeOrUpdateMap(); // add leaflet map
+      });
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
