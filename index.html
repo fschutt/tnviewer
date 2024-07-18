@@ -3,31 +3,55 @@
   <head>
     <meta charset="utf-8">
     <title>Tatsächliche Nutzung Viewer / Editor</title>
-    <link rel="stylesheet" href="./js/leaflet/leaflet.css">
-    <script src="./js/leaflet/leaflet.js"></script>
-    <link rel="stylesheet" href="main.css">
+    <!--LEAFLET_CSS_LINK--><link rel="stylesheet" href="./js/leaflet/leaflet.css">
+    <!--LEAFLET_JS--><script src="./js/leaflet/leaflet.js"></script>
+    <!--MAIN_CSS--><link rel="stylesheet" href="main.css">
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <!--PUT_WASM_JS_HERE-->
+    <!--WASM_LOADING_SCRIPT_BEGIN-->
     <script type="module">
 
-    import init, {
-      ui_render_entire_screen, 
-      load_nas_xml, 
-      get_geojson_fuer_ebene,
-      get_labels_fuer_ebene,
-      ui_render_ribbon,
-      ui_render_popover_content,
-      ui_render_project_content,
-      ui_render_secondary_content,
-      parse_csv_dataset_to_json,
-      get_fit_bounds,
-      export_xlsx,
-      export_veraenderte_flst,
-      export_alle_flst,
-      export_flst_id_nach_eigentuemer,
-      get_gebaeude_geojson_fuer_aktive_flst,
-      export_pdf,
-      search_for_gebauede,
-    } from "./pkg/tnviewer.js";
+      import init, {
+        ui_render_entire_screen, 
+        load_nas_xml, 
+        get_geojson_fuer_ebene,
+        get_labels_fuer_ebene,
+        ui_render_ribbon,
+        ui_render_popover_content,
+        ui_render_project_content,
+        ui_render_secondary_content,
+        parse_csv_dataset_to_json,
+        get_fit_bounds,
+        export_xlsx,
+        export_veraenderte_flst,
+        export_alle_flst,
+        export_flst_id_nach_eigentuemer,
+        get_gebaeude_geojson_fuer_aktive_flst,
+        export_pdf,
+        search_for_gebauede,
+      } from "./pkg/tnviewer.js";
+      
+      window.init = init;
+      window.ui_render_entire_screen = ui_render_entire_screen; 
+      window.load_nas_xml = load_nas_xml; 
+      window.get_geojson_fuer_ebene = get_geojson_fuer_ebene;
+      window.get_labels_fuer_ebene = get_labels_fuer_ebene;
+      window.ui_render_ribbon = ui_render_ribbon;
+      window.ui_render_popover_content = ui_render_popover_content;
+      window.ui_render_project_content = ui_render_project_content;
+      window.ui_render_secondary_content = ui_render_secondary_content;
+      window.parse_csv_dataset_to_json = parse_csv_dataset_to_json;
+      window.get_fit_bounds = get_fit_bounds;
+      window.export_xlsx = export_xlsx;
+      window.export_veraenderte_flst = export_veraenderte_flst;
+      window.export_alle_flst = export_alle_flst;
+      window.export_flst_id_nach_eigentuemer = export_flst_id_nach_eigentuemer;
+      window.get_gebaeude_geojson_fuer_aktive_flst = get_gebaeude_geojson_fuer_aktive_flst;
+      window.export_pdf = export_pdf;
+      window.search_for_gebauede = search_for_gebauede;
+    </script>
+    <!--WASM_LOADING_SCRIPT_END-->
+    <script type="module">
 
     var map = null;
     var geojson_layers = [];
