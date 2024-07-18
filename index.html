@@ -394,7 +394,20 @@
           var styles_keys = styles_keys.join(", ");
           var converted = load_nas_xml(readerEvent.target.result, styles_keys);
           window.projectdata = JSON.parse(converted);
-          window.split_flurstuecke_worker = new Worker('/test.js', { type: "module" });
+
+          /*
+          const testjs = `
+          async function functionThatTakesLongTime(someArgument){
+              await init();
+              return split_flurstuecke_background_worker(someArgument);
+          }
+
+          onmessage = async function(event){
+              let result = await functionThatTakesLongTime(event.data);
+              postMessage(result);
+          };
+          `;
+          window.split_flurstuecke_worker = new Worker(testjs);
           window.split_flurstuecke_worker.onmessage = function(event){
             try {
               var v = JSON.parse(event.data);
@@ -406,6 +419,7 @@
             }
           }
           window.split_flurstuecke_worker.postMessage(converted);
+          */
 
           // remove old LeafLet layers
           for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
