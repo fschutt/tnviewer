@@ -71,6 +71,7 @@ fixup2_js = "\r\n".join([
     "window.get_gebaeude_geojson_fuer_aktive_flst = get_gebaeude_geojson_fuer_aktive_flst;",
     "window.export_pdf = export_pdf;",
     "window.search_for_gebauede = search_for_gebauede;",
+    "window.stringify_savefile = stringify_savefile;"
 ])
 
 pkg_viewer_js_fixed = []

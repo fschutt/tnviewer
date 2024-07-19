@@ -271,7 +271,7 @@
 
 
   function initLeafletDraw(map) {
-
+    
     var guides = 
         L.polyline([
             [48.505431207150885, 1.3999843597412107],
@@ -714,12 +714,17 @@
 
     function saveProjectDataToFile() {
       if (window.csv_data && window.csv_data != null) {
-        var json_obj = {
-          csv: window.csv_data,
-        };
-        var json = JSON.stringify(json_obj);
-        var json_bytes = new TextEncoder().encode(json);
-        downloadBlob(json, "Projekt.json", 'application/octet-stream');
+        var s = "";
+        try {
+          s = stringify_savefile(
+            JSON.stringify(window.csv_data),
+            JSON.stringify(window.aenderungen),
+          );
+        } catch (error) {
+          alert("Fehler beim Speichern: " + error);
+          return;
+        }
+        downloadBlob(s, "Projekt.json", 'application/octet-stream');
       } else {
         alert("Kein Projekt geladen!");
       }
@@ -739,8 +744,19 @@
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
           var json = JSON.parse(readerEvent.target.result);
+          console.log(json);
           window.csv_data = json.csv;
+          if (json.aenderungen) {
+            window.aenderungen = json.aenderungen;
+          }
+          console.log(window.csv_data);
+          console.log(window.uidata);
+          console.log(window.split_flurstuecke);
           replaceProjectContent();
+          if (window.uidata.tab == '1') {
+            replaceSecondaryProjectContent();
+            reinitMapDrawnStaticLayers();
+          }
         }
       }
       input.click();
@@ -776,8 +792,6 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
-          map.setView([48.49, 1.4], 16);
-          initLeafletDraw(map);
         }
       }
 
@@ -847,11 +861,11 @@
     function showHideGebaeudeLoeschenLayer() {
       removeAllExtraLayers();
       if (window.uidata.tool != 'gebaeude-loeschen') {
-        reinitGebaeudeLoeschenLayer();
         window.uidata.tool = 'gebaeude-loeschen';
       } else {
         window.uidata.tool = null;
       }
+      reinitGebaeudeLoeschenLayer();
       replaceRibbon();
     }
 
@@ -913,6 +927,7 @@
       if (!window.uidata || window.uidata.tool != 'gebaeude-loeschen') {
         return;
       }
+      console.log("get geojson buildings!");
       var f = get_gebaeude_geojson_fuer_aktive_flst(
         JSON.stringify(window.projectdata),
         JSON.stringify(window.csv_data),
@@ -920,25 +935,68 @@
       );
       var gebaeude_geojson = JSON.parse(f);
       removeGebaeudeLoeschenLayer();
-      var myLayer = L.geoJSON(gebaeude_geojson, {
-        "style": gebaeudeStyle,
-        "onEachFeature": gebaeudeFeatureClick
-      });
+      var myLayer = null;
+      
+      if (L.geoJSON) {
+        myLayer = L.geoJSON(gebaeude_geojson, {
+          "style": gebaeudeStyle,
+          "onEachFeature": gebaeudeFeatureClick
+        });
+      } else if (L.geoJson) {
+        myLayer = L.geoJson(gebaeude_geojson, {
+          "style": gebaeudeStyle,
+          "onEachFeature": gebaeudeFeatureClick
+        });
+      }
       gebaeude_loeschen_layer = myLayer;
       map.addLayer(gebaeude_loeschen_layer);
     }
 
     // Nutzung einzeichnen
 
+    function reinitNutzungEinzeichnenLayer() {
+      if (!window.projectdata || window.projectdata == null) {
+        return;
+      }
+      if (!window.csv_data || window.csv_data == null) {
+        return;
+      }
+      if (!window.aenderungen || window.aenderungen == null) {
+        return;
+      }
+      if (!window.uidata || window.uidata.tool != 'nutzung-einzeichnen') {
+        return;
+      }
+      /*
+
+        var f = get_guidelines(
+          JSON.stringify(window.projectdata),
+          JSON.stringify(window.csv_data),
+          JSON.stringify(window.aenderungen),
+        );
+        var gebaeude_geojson = JSON.parse(f);
+        removeGebaeudeLoeschenLayer();
+        var myLayer = L.geoJSON(gebaeude_geojson, {
+          "style": gebaeudeStyle,
+          "onEachFeature": gebaeudeFeatureClick
+        });
+        gebaeude_loeschen_layer = myLayer;
+        map.addLayer(gebaeude_loeschen_layer);
+
+      */
+
+      initLeafletDraw(map);
+    }
+
     function showHideNutzungEinzeichnenLayer() {
       removeAllExtraLayers();
       if (window.uidata.tool != 'nutzung-einzeichnen') {
-        reinitNutzungEinzeichnenLayer();
         window.uidata.tool = 'nutzung-einzeichnen';
       } else {
         window.uidata.tool = null;
       }
       replaceRibbon();
+      reinitNutzungEinzeichnenLayer();
     }
 
     function removeNutzungEinzeichnenLayer() {

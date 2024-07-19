@@ -58,6 +58,23 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn stringify_savefile(csv_data: String, aenderungen: String) -> String {
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct SaveFile {
+        csv: CsvDataType,
+        aenderungen: Aenderungen,
+    }
+
+    let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or(Aenderungen::default());
+    serde_json::to_string_pretty(&SaveFile {
+        csv: csv_data,
+        aenderungen,
+    }).unwrap_or_default()
+}
+
+#[wasm_bindgen]
 pub fn ui_render_project_content(decoded: String, csv_data: String, split_flurstuecke: Option<String>) -> String {
     let split_flurstuecke = split_flurstuecke.unwrap_or_default();
     let uidata = UiData::from_string(&decoded);
