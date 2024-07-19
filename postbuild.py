@@ -25,12 +25,21 @@ def chunks(lst, n):
 index_html = read_file("./skeleton.html")
 pkg_viewer_wasm = read_file_base64("./pkg/tnviewer_bg.wasm")
 pkg_viewer_js = read_file("./pkg/tnviewer.js")
-leaflet_js = read_file("./js/leaflet/leaflet.js")
-leaflet_css = read_file("./js/leaflet/leaflet.css")
-leaflet_draw_js = read_file("./js/leaflet/leaflet.draw.js")
-leaflet_draw_css = read_file("./js/leaflet/leaflet.draw.css")
-leaflet_snap_js = read_file("./js/leaflet/leaflet.snap.js")
-leaflet_geometryutil_js = read_file("./js/leaflet/leaflet.geometryutil.js")
+
+leaflet_js = read_file("./js/leaflet_07/leaflet.js")
+leaflet_css = read_file("./js/leaflet_07/leaflet.css")
+leaflet_draw_js = read_file("./js/leaflet_07/leaflet.draw.js")
+leaflet_draw_css = read_file("./js/leaflet_07/leaflet.draw.css")
+leaflet_snap_js = read_file("./js/leaflet_07/leaflet.snap.js")
+leaflet_geometryutil_js = read_file("./js/leaflet_07/leaflet.geometryutil.js")
+
+# leaflet_js = read_file("./js/leaflet/leaflet.js")
+# leaflet_css = read_file("./js/leaflet/leaflet.css")
+# leaflet_draw_js = read_file("./js/leaflet/leaflet.draw.js")
+# leaflet_draw_css = read_file("./js/leaflet/leaflet.draw.css")
+# leaflet_snap_js = read_file("./js/leaflet/leaflet.snap.js")
+# leaflet_geometryutil_js = read_file("./js/leaflet/leaflet.geometryutil.js")
+
 main_css = read_file("./main.css")
 fixup_js = "\r\n".join([
     "async function __wbg_init(input) {",
@@ -102,6 +111,8 @@ for line in index_html.splitlines():
     elif "<!--LEAFLET_JS-->" in line:
         out_file.append("<script type='text/javascript'>" + leaflet_js +"</script>")
         out_file.append("<script type='text/javascript'>" + leaflet_draw_js +"</script>")
+        out_file.append("<script type='text/javascript'>" + leaflet_geometryutil_js +"</script>")
+        out_file.append("<script type='text/javascript'>" + leaflet_snap_js +"</script>")
     elif "<!--MAIN_CSS-->" in line:
         out_file.append("<style>" + main_css + "</style>")
     elif "// PUT_WASM_JS_HERE" in line:
