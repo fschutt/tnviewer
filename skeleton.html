@@ -37,7 +37,6 @@
       popover_state: null,
       tab: null, 
       tool: null,
-      data_loaded: false,
       selected_edit_flst: "",
     };
     window.aenderungen = {
@@ -45,6 +44,19 @@
       na_definiert: {},
       na_polygone_neu: {},
     };
+    window.info = {
+      antragsnr: new Date().getFullYear() + "-31-XXX",
+      katasteramt: "Uckermark",
+      vermessungsstelle: "KVA Uckermark",
+      erstellt_durch: "Felix Schütt",
+      beruf_kuerzel: "GM",
+      gemeinde: "Carmzow-Wallmow",
+      gemarkung: "Cremzow",
+      gemarkung_nr: "3911",
+    }
+    window.risse = {
+
+    }
     window.configuration = {
       map: {
         basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -271,6 +283,30 @@
         },
       }
     }; // default config object
+
+    // INJECT_SELECT_MAP_JS
+    
+  function projectInfoEdit(event) {
+    var id = event.target.id;
+    var newvalue = event.target.value;
+    if (id == 'antragsnr') {
+      window.info.antragsnr = newvalue;
+    } else if (id == 'katasteramt') {
+      window.info.katasteramt = newvalue;
+    } else if (id == 'vermessungsstelle') {
+      window.info.vermessungsstelle = newvalue;
+    } else if (id == 'erstellt_durch') {
+      window.info.erstellt_durch = newvalue;
+    } else if (id == 'beruf_kuerzel') {
+      window.info.beruf_kuerzel = newvalue;
+    } else if (id == 'gemeinde') {
+      window.info.gemeinde = newvalue;
+    } else if (id == 'gemarkung') {
+      window.info.gemarkung = newvalue;
+    } else if (id == 'gemarkung_nr') {
+      window.info.gemarkung_nr = newvalue;
+    }
+  }
 
   function reinitMapDrawnStaticLayers() {
     if (current_edit_layer != null) {

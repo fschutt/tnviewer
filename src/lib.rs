@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, slice::SplitInclusive};
+use std::collections::BTreeMap;
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
 use ui::{Aenderungen, PolyNeu};
@@ -137,7 +137,7 @@ pub fn ui_render_entire_screen(uidata: String, csv: String, aenderungen: String)
 #[wasm_bindgen]
 pub fn ui_render_ribbon(decoded: String) -> String {
     let uidata = UiData::from_string(&decoded);
-    crate::ui::render_ribbon(&uidata)
+    crate::ui::render_ribbon(&uidata, false)
 }
 
 #[wasm_bindgen]

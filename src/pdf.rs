@@ -6,6 +6,18 @@ use crate::csv::CsvDataType;
 use crate::nas::{NasXMLFile, SvgLine};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct ProjektInfo {
+    pub antragsnr: String,
+    pub katasteramt: String,
+    pub vermessungsstelle: String,
+    pub erstellt_durch: String,
+    pub beruf_kuerzel: String,
+    pub gemeinde: String,
+    pub gemarkung: String,
+    pub gemarkung_nr: String,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct RissConfig {
     pub title: String,
     pub center_lat: f64,

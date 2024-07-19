@@ -32,6 +32,7 @@ leaflet_draw_js = read_file("./js/leaflet_07/leaflet.draw.js")
 leaflet_draw_css = read_file("./js/leaflet_07/leaflet.draw.css")
 leaflet_snap_js = read_file("./js/leaflet_07/leaflet.snap.js")
 leaflet_geometryutil_js = read_file("./js/leaflet_07/leaflet.geometryutil.js")
+select_map_js = read_file("./js/select-map.js")
 
 # leaflet_js = read_file("./js/leaflet/leaflet.js")
 # leaflet_css = read_file("./js/leaflet/leaflet.css")
@@ -52,28 +53,6 @@ fixup_js = "\r\n".join([
     "}",
 ])
 
-fixup2_js = "\r\n".join([
-    "window.init = __wbg_init;",
-    "window.ui_render_entire_screen = ui_render_entire_screen; ",
-    "window.load_nas_xml = load_nas_xml; ",
-    "window.get_geojson_fuer_ebene = get_geojson_fuer_ebene;",
-    "window.get_labels_fuer_ebene = get_labels_fuer_ebene;",
-    "window.ui_render_ribbon = ui_render_ribbon;",
-    "window.ui_render_popover_content = ui_render_popover_content;",
-    "window.ui_render_project_content = ui_render_project_content;",
-    "window.ui_render_secondary_content = ui_render_secondary_content;",
-    "window.parse_csv_dataset_to_json = parse_csv_dataset_to_json;",
-    "window.get_fit_bounds = get_fit_bounds;",
-    "window.export_xlsx = export_xlsx;",
-    "window.export_veraenderte_flst = export_veraenderte_flst;",
-    "window.export_alle_flst = export_alle_flst;",
-    "window.export_flst_id_nach_eigentuemer = export_flst_id_nach_eigentuemer;",
-    "window.get_gebaeude_geojson_fuer_aktive_flst = get_gebaeude_geojson_fuer_aktive_flst;",
-    "window.export_pdf = export_pdf;",
-    "window.search_for_gebauede = search_for_gebauede;",
-    "window.stringify_savefile = stringify_savefile;"
-])
-
 pkg_viewer_js_fixed = []
 emit_wr = True
 for line in pkg_viewer_js.splitlines():
@@ -89,11 +68,6 @@ for line in pkg_viewer_js.splitlines():
             pkg_viewer_js_fixed.append(line)
         else:
             pass
-
-pkg_viewer_js_fixed.append("")
-for l in fixup2_js.splitlines():
-    pkg_viewer_js_fixed.append(l)
-pkg_viewer_js = "\r\n".join(pkg_viewer_js_fixed)
 
 out_file = []
 write_line = True
@@ -119,6 +93,9 @@ for line in index_html.splitlines():
     elif "// PUT_WASM_JS_HERE" in line:
         out_file.append(wasm_script_out)
         out_file.append(pkg_viewer_js)
+    elif "// INJECT_SELECT_MAP_JS" in line:
+        # out_file.append(select_map_js)
+        pass
     else:
         out_file.append(line)
 

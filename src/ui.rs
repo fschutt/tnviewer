@@ -13,8 +13,6 @@ pub struct UiData {
     #[serde(default)]
     pub tool: Option<Tool>,
     #[serde(default)]
-    pub data_loaded: bool,
-    #[serde(default)]
     pub selected_edit_flst: String,
 }
 
@@ -81,7 +79,7 @@ pub fn render_entire_screen(rpc_data: &UiData, csv: &CsvDataType, aenderungen: &
             </div>
         ",
         popover = render_popover(rpc_data),
-        ribbon_ui = render_ribbon(rpc_data),
+        ribbon_ui = render_ribbon(rpc_data, csv.is_empty()),
         main = render_main(rpc_data, csv, aenderungen),
     ))
 }
@@ -394,7 +392,7 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
     normalize_for_js(pc)
 }
 
-pub fn render_ribbon(rpc_data: &UiData) -> String {
+pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
     static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-settings-48.png");
     static ICON_HELP: &[u8] = include_bytes!("./img/icons8-help-96.png");
     static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-48.png");
@@ -416,11 +414,6 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
     static ICON_HVM: &[u8] = include_bytes!("./img/icons8-copy-link-96.png");
     static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
 
-    let disabled = if rpc_data.data_loaded {
-        " disabled"
-    } else {
-        ""
-    };
     let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
     let icon_neu_base64 = base64_encode(ICON_NEU);
     let icon_back_base64 = base64_encode(ICON_ZURUECK);
@@ -444,7 +437,8 @@ pub fn render_ribbon(rpc_data: &UiData) -> String {
 
 
     // TAB 1
-
+    let disabled = if data_loaded { "" } else { "disabled" };
+     
     let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>
