@@ -26,13 +26,15 @@ index_html = read_file("./skeleton.html")
 pkg_viewer_wasm = read_file_base64("./pkg/tnviewer_bg.wasm")
 pkg_viewer_js = read_file("./pkg/tnviewer.js")
 
+icon_marker = read_file_base64("./icons/marker.png")
+icon_marker_middle = read_file_base64("./icons/marker-middle.png")
 leaflet_js = read_file("./js/leaflet_07/leaflet.js")
 leaflet_css = read_file("./js/leaflet_07/leaflet.css")
 leaflet_draw_js = read_file("./js/leaflet_07/leaflet.draw.js")
 leaflet_draw_css = read_file("./js/leaflet_07/leaflet.draw.css")
 leaflet_snap_js = read_file("./js/leaflet_07/leaflet.snap.js")
 leaflet_geometryutil_js = read_file("./js/leaflet_07/leaflet.geometryutil.js")
-select_map_js = read_file("./js/select-map.js")
+select_map_js = read_file("./js/coordinate-conversion.js")
 
 # leaflet_js = read_file("./js/leaflet/leaflet.js")
 # leaflet_css = read_file("./js/leaflet/leaflet.css")
@@ -69,6 +71,9 @@ for line in pkg_viewer_js.splitlines():
         else:
             pass
 
+pkg_viewer_js_fixed.append("")
+pkg_viewer_js = "\r\n".join(pkg_viewer_js_fixed)
+
 out_file = []
 write_line = True
 
@@ -93,9 +98,12 @@ for line in index_html.splitlines():
     elif "// PUT_WASM_JS_HERE" in line:
         out_file.append(wasm_script_out)
         out_file.append(pkg_viewer_js)
+    elif "var MARKER_NORMAL_WEBP =" in line:
+        out_file.append("var MARKER_NORMAL_WEBP = \"" + icon_marker + "\";")
+    elif "var MARKER_MIDDLE_WEBP =" in line:
+        out_file.append("var MARKER_MIDDLE_WEBP = \"" + icon_marker_middle + "\";")
     elif "// INJECT_SELECT_MAP_JS" in line:
-        # out_file.append(select_map_js)
-        pass
+        out_file.append(select_map_js)
     else:
         out_file.append(line)
 

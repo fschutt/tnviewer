@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_derive::{Serialize, Deserialize};
 
-use crate::{csv::{CsvDataType, Status}, nas::{SplitNasXml, SvgPolygon}, search::NutzungsArt, xlsx::FlstIdParsed};
+use crate::{csv::{CsvDataType, Status}, nas::{SplitNasXml, SvgPolygon}, pdf::{ProjektInfo, Risse}, search::NutzungsArt, xlsx::FlstIdParsed};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
@@ -67,7 +67,13 @@ pub struct ContextMenuData {
 }
 
 // render entire <body> node depending on the state of the rpc_data
-pub fn render_entire_screen(rpc_data: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
+pub fn render_entire_screen(
+    projekt_info: &ProjektInfo,
+    risse: &Risse,
+    rpc_data: &UiData, 
+    csv: &CsvDataType, 
+    aenderungen: &Aenderungen
+) -> String {
     normalize_for_js(format!(
         "
             {popover}
@@ -80,7 +86,7 @@ pub fn render_entire_screen(rpc_data: &UiData, csv: &CsvDataType, aenderungen: &
         ",
         popover = render_popover(rpc_data),
         ribbon_ui = render_ribbon(rpc_data, csv.is_empty()),
-        main = render_main(rpc_data, csv, aenderungen),
+        main = render_main(projekt_info, risse, rpc_data, csv, aenderungen),
     ))
 }
 
@@ -438,7 +444,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
     // TAB 1
     let disabled = if data_loaded { "" } else { "disabled" };
-     
+
     let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>
@@ -508,7 +514,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.import_data(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_reload}'>
+                    <img class='icon' src='data:image/png;base64,{icon_reload}'>
                 </div>
                 <div>
                     <p>NAS-Daten</p>
@@ -902,7 +908,13 @@ pub struct Aenderungen {
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
-pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
+pub fn render_main(
+    projekt_info: &ProjektInfo,
+    risse: &Risse,
+    uidata: &UiData,
+    csv: &CsvDataType, 
+    aenderungen: &Aenderungen
+) -> String {
     let map = format!("
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
             <div id='__application_main-overlay-container' style='width:400px;max-width:400px;min-width:400px;display:flex;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
@@ -920,7 +932,7 @@ pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen
             </div>
         </div>
     ",
-        primary = render_project_content(csv, aenderungen, uidata, &SplitNasXml::default()),
+        primary = render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default()),
         display_secondary = match uidata.tab {
             Some(1) => "flex",
             _ => "none",
@@ -985,20 +997,100 @@ pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_i
     s
 }
 
-pub fn render_project_content(csv: &CsvDataType, aenderungen: &Aenderungen, uidata: &UiData, split_fs: &SplitNasXml) -> String {
-
+pub fn render_project_content(
+    projekt_info: &ProjektInfo, 
+    risse: &Risse, 
+    csv: &CsvDataType, 
+    aenderungen: &Aenderungen, 
+    uidata: &UiData, 
+    split_fs: &SplitNasXml
+) -> String {
     let s = match uidata.tab {
         None | Some(0) => render_csv_editable(&csv, aenderungen, false, &uidata.selected_edit_flst, None),
         Some(1) => render_csv_editable(&csv, aenderungen, true, &uidata.selected_edit_flst, Some(split_fs)),
-        Some(2) => {
-            format!("
-            <h2>Projekt <input type='text' value='aslkdadfa' placeholder='Projektname...'></input></h2>
-            ")
-        },
-        _ => String::new(),
+        Some(2) => render_risse_ui(projekt_info, risse, &csv, aenderungen),
+        s => format!("Falscher TAB {s:?}"),
+    };
+    normalize_for_js(s)
+}
+
+fn render_risse_ui(
+    projekt_info: &ProjektInfo,
+    risse: &Risse,
+    csv: &CsvDataType, 
+    aenderungen: &Aenderungen, 
+) -> String {
+    let render_config_field = |(name, value, id): (&str, &str, &str)| {
+        format!("<div class='ri-config-field'>
+            <label for='projekt-info-{id}' style='bold'>{name}</label>
+            <input type='text' id='projekt-info-{id}' oninput='projectInfoEdit(event);' onchange='projectInfoEdit(event);' dataset-id='{id}' value='{value}'>
+        </div>")
     };
 
-    normalize_for_js(s)
+    format!(
+        "<div class='risse-wrapper-container'>
+            <div class='projekt-info'>
+                {antragsnr}
+                {katasteramt}
+                {vermessungsstelle}
+                {erstellt_durch}
+                {beruf_kuerzel}
+                {gemeinde}
+                {gemarkung}
+                {gemarkung_nr}
+            </div>
+            <div id='risse' style='display:flex;flex-direction:column;'>
+                <h2 style='font-size:16px;font-weight:bold;margin-top:20px;'>Risse</h2>
+                <button onclick='rissNeu(event);' style='margin: 10px 0px;display: flex;padding: 10px;border-radius: 5px;cursor: pointer;background: #828295;color: white;border: 1px solid black;'>Neuen Riss anlegen</button>
+                {risse}
+            </div>
+        </div>",
+        antragsnr = render_config_field(("Antragsnummer", &projekt_info.antragsnr, "antragsnr")),
+        katasteramt = render_config_field(("Katasteramt", &projekt_info.katasteramt, "katasteramt")),
+        vermessungsstelle = render_config_field(("Vermessungsstelle", &projekt_info.vermessungsstelle, "vermessungsstelle")),
+        erstellt_durch = render_config_field(("Erstellt durch", &projekt_info.erstellt_durch, "erstellt_durch")),
+        beruf_kuerzel = render_config_field(("Beruf (Kürzel)", &projekt_info.beruf_kuerzel, "beruf_kuerzel")),
+        gemeinde = render_config_field(("Gemeinde", &projekt_info.gemeinde, "gemeinde")),
+        gemarkung = render_config_field(("Gemarkung", &projekt_info.gemarkung, "gemarkung")),
+        gemarkung_nr = render_config_field(("Gemarkungsnr.", &projekt_info.gemarkung_nr, "gemarkung_nr")),
+        risse = risse.iter().map(|(id, rc)| {
+            format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #ccc;border-radius: 3px;'>
+
+                <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
+                    <p style='font-size: 14px;font-weight: bold;'>Riss ID {id_nice}</p>
+                    <p class='__application-secondary-undo' style='margin-left: 10px;display: flex;align-items: center;' onclick='rissLoeschen(event);' data-riss-id='{id}'>X</p>
+                </div>
+                <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
+                    <div>
+                        <label for='projekt-info-{id}' style='font-weight: bold;margin-right: 5px;'>Breite:</label>
+                        <input id='riss-{id}-width' type='number' style='max-width: 100px;margin-right:0px;' value='{width}' data-riss-id='{id}' data-input-id='width' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
+                    </div>
+                    <div>
+                        <button onclick='switchRissWh(event);' data-riss-id='{id}'> &lt;&gt;</button>
+                    </div>
+                    <div>
+                        <label for='projekt-info-{id}' style='font-weight: bold;margin-right: 5px;'>Höhe:</label>
+                        <input id='riss-{id}-height' style='max-width: 100px;margin-right:0px;' type='number' value='{height}' data-riss-id='{id}' data-input-id='height' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
+                    </div>
+                </div>
+
+                <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;align-items:center;'>
+                    <label for='projekt-info-{id}' style='font-weight: bold;margin-right: 5px;'>Maßstab:</label>
+                    <input id='riss-{id}-scale' type='number' value='{scale}' style='display:flex;flex-grow:1;margin-right:0px;' data-riss-id='{id}' data-input-id='scale' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
+                </div>
+
+                <button id='riss-{id}-flm-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideFlurMarker(event);'>Flurmarker setzen</button>
+                <button id='riss-{id}-np-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideNordpfeil(event);'>Nordpfeil setzen</button>
+                <button id='riss-{id}-anschluss-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideAnschlussRisse(event);'>Anschlussrisse setzen</button>
+                <button id='riss-{id}-label-verschieben' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideLabel(event);'>Label verschieben</button>
+            </div>",
+                width = rc.width_mm,
+                height = rc.height_mm,
+                scale = rc.scale,
+                id_nice = id.split("-").next().unwrap_or(""),
+            )
+        }).collect::<Vec<_>>().join("")
+    )
 }
 
 fn render_csv_editable(

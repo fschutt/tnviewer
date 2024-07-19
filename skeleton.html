@@ -21,15 +21,35 @@
 
     // PUT_WASM_JS_HERE
 
+    window.init = __wbg_init;
+
+    var MARKER_NORMAL_WEBP = "";
+    var MARKER_MIDDLE_WEBP = "";
+    var RISS_COLOR = "blue";
+
+    var drag_icon_normal_src = 'data:image/png;charset=utf-8;base64,' + MARKER_NORMAL_WEBP;
+    var drag_icon_normal = L.icon({
+        iconUrl: drag_icon_normal_src,
+        iconSize: [20, 20],
+    });
+
+    var drag_icon_middle_src = 'data:image/png;charset=utf-8;base64,' + MARKER_MIDDLE_WEBP;
+    var drag_icon_middle = L.icon({
+        iconUrl: drag_icon_middle_src,
+        iconSize: [30, 30],
+    });
+
     var map = null;
     var geojson_layers = [];
     var geojson_repaint_layers = [];
+    var leaflet_risse = {};
     var layers = null;
     var nutzung_einzeichnen_layer = null;
     var gebaeude_loeschen_layer = null;
     var current_edit_layer = null;
     var guideLayers = [];
 
+    var defaultdate = new Date().getFullYear() + "-31-XXX";
     window.split_flurstuecke = null; // split XML NAS data
     window.projectdata = null; // project XML NAS data
     window.csv_data = null; // project CSV data
@@ -45,7 +65,7 @@
       na_polygone_neu: {},
     };
     window.info = {
-      antragsnr: new Date().getFullYear() + "-31-XXX",
+      antragsnr: defaultdate,
       katasteramt: "Uckermark",
       vermessungsstelle: "KVA Uckermark",
       erstellt_durch: "Felix Schütt",
@@ -53,10 +73,8 @@
       gemeinde: "Carmzow-Wallmow",
       gemarkung: "Cremzow",
       gemarkung_nr: "3911",
-    }
-    window.risse = {
-
-    }
+    };
+    window.risse = {};
     window.configuration = {
       map: {
         basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -284,10 +302,130 @@
       }
     }; // default config object
 
-    // INJECT_SELECT_MAP_JS
-    
+  // INJECT_SELECT_MAP_JS
+
+  function changeRiss(event) {
+    var id = event.target.dataset.rissId;
+    var event_id = event.target.dataset.inputId;
+    var newval = parseFloat(event.target.value);
+    if (event_id == "width") {
+      window.risse[id].width_mm = newval;
+    } else if (event_id == "height") {
+      window.risse[id].height_mm = newval;
+    } else if (event_id == "scale") {
+      window.risse[id].scale = newval;
+    }
+    rerenderRisse();
+  }
+
+  window.changeRiss = changeRiss;
+
+  function showHideFlurMarker(event) {
+
+  }
+
+  window.showHideFlurMarker = showHideFlurMarker;
+
+  function showHideNordpfeil(event) {
+
+  }
+
+  window.showHideNordpfeil = showHideNordpfeil;
+
+  function showHideLabel(event) {
+
+  }
+
+  window.showHideLabel = showHideLabel;
+
+  function rissNeu(event) {
+    let center = map.getCenter();
+    window.risse[get_new_poly_id()] = {
+      lat: center.lat,
+      lon: center.lng,
+      crs: "latlon",
+      width_mm: 297.0,
+      height_mm: 420.0,
+      scale: 3500.0,
+    };
+    replaceProjectContent();
+    rerenderRisse();  
+  }
+  window.rissNeu = rissNeu;
+
+  function rissLoeschen(event) {
+    var riss_id = event.target.dataset.rissId;
+    delete window.risse[riss_id];
+    replaceProjectContent();
+    rerenderRisse();
+  }
+  window.rissLoeschen = rissLoeschen;
+
+  function removeRisseLayer() {
+      for (var [riss_id, riss_objekte] of Object.entries(leaflet_risse)) {
+        map.removeLayer(riss_objekte.leaflet_rect);
+        map.removeLayer(riss_objekte.leaflet_center_handle);
+      }
+      leaflet_risse = {};
+    }
+
+  function rerenderRisse() {
+    removeRisseLayer();
+    for (var [riss_id, riss_config] of Object.entries(window.risse)) {
+      var rect = calculate_coords(
+        riss_config.width_mm, 
+        riss_config.height_mm, 
+        riss_config.scale, 
+        riss_config.lon, 
+        riss_config.lat
+      );
+
+      if (leaflet_risse[riss_id]) {
+        leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+        leaflet_risse[riss_id].leaflet_center_handle.setLatLng({ lat:riss_config.lat,lng:riss_config.lon });
+      } else {
+        var map_extent = L.rectangle(rect.coords, {color: RISS_COLOR, weight: 2});
+        var map_handle_center = L.marker({ lat:riss_config.lat,lng:riss_config.lon }, { draggable: true, icon: drag_icon_middle, riss_id: riss_id });
+        map_handle_center.on('drag', function(event){ drag_handle(event) });
+        leaflet_risse[riss_id] = {
+          leaflet_rect: map_extent,
+          leaflet_center_handle: map_handle_center,
+        };
+        map_extent.addTo(map);
+        map_handle_center.addTo(map);
+      }
+    }
+  }
+
+  window.rerenderRisse = rerenderRisse;
+  window.removeRisseLayer = removeRisseLayer;
+
+  function switchRissWh(event) {
+    var id = event.target.dataset.rissId;
+    if (window.risse[id]) {
+      var tmp = window.risse[id].width_mm;
+      window.risse[id].width_mm = window.risse[id].height_mm;
+      window.risse[id].height_mm = tmp;
+    }
+    rerenderRisse();
+    replaceProjectContent();
+  }
+  window.switchRissWh = switchRissWh;
+
+  function drag_handle(event) {
+    var riss_id = event.target.options.riss_id;
+    var center_lat_lng = leaflet_risse[riss_id].leaflet_center_handle.getLatLng();
+    var width = window.risse[riss_id].width_mm;
+    var height = window.risse[riss_id].height_mm;
+    var scale = window.risse[riss_id].scale;
+    window.risse[riss_id].lat = center_lat_lng.lat;
+    window.risse[riss_id].lon = center_lat_lng.lng;
+    var rect = calculate_coords(width, height, scale, center_lat_lng.lng, center_lat_lng.lat);
+    leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+  }
+
   function projectInfoEdit(event) {
-    var id = event.target.id;
+    var id = event.target.dataset.id;
     var newvalue = event.target.value;
     if (id == 'antragsnr') {
       window.info.antragsnr = newvalue;
@@ -307,7 +445,7 @@
       window.info.gemarkung_nr = newvalue;
     }
   }
-
+  
   function reinitMapDrawnStaticLayers() {
     if (current_edit_layer != null) {
       map.removeLayer(current_edit_layer);
@@ -713,6 +851,8 @@
         var s = "";
         try {
           s = stringify_savefile(
+            JSON.stringify(window.info),
+            JSON.stringify(window.risse),
             JSON.stringify(window.csv_data),
             JSON.stringify(window.aenderungen),
           );
@@ -743,6 +883,12 @@
           window.csv_data = json.csv;
           if (json.aenderungen) {
             window.aenderungen = json.aenderungen;
+          }
+          if (json.risse) {
+            window.risse = json.risse;
+          }
+          if (json.info) {
+            window.info = json.info;
           }
           replaceProjectContent();
           if (window.uidata.tab == '1') {
@@ -818,13 +964,17 @@
 
     function replaceProjectContent() {
       let d = document.getElementById("__application_project_content");
-      if (d)
-         d.innerHTML = ui_render_project_content(
-        JSON.stringify(window.uidata), 
-        JSON.stringify(window.csv_data), 
-        JSON.stringify(window.aenderungen),
-        JSON.stringify(window.split_flurstuecke)
-      );
+      if (d) {
+        var f = ui_render_project_content(
+          JSON.stringify(window.info),
+          JSON.stringify(window.risse),
+          JSON.stringify(window.uidata), 
+          JSON.stringify(window.csv_data), 
+          JSON.stringify(window.aenderungen),
+          JSON.stringify(window.split_flurstuecke)
+        );
+        d.innerHTML = f;
+      }
     }
 
     function replaceSecondaryProjectContent() {
@@ -849,6 +999,7 @@
     function removeAllExtraLayers() {
       removeGebaeudeLoeschenLayer();
       removeNutzungEinzeichnenLayer();
+      removeRisseLayer();
     }
 
     // Gebäude löschen
@@ -1123,8 +1274,16 @@
         alert("Keine Projektdaten geladen!");
         return;
       }
-      var pdf = export_pdf(JSON.stringify(csv_data), JSON.stringify(window.projectdata));
-      downloadBlob(pdf, "Riss1.pdf", 'application/pdf');
+
+      var pdf = export_pdf(
+        JSON.stringify(window.projekt_info),
+        JSON.stringify(window.risse),
+        JSON.stringify(window.csv_data),
+        JSON.stringify(window.projectdata),
+        JSON.stringify(window.aenderungen),
+        JSON.stringify(window.split_flurstuecke),
+      );
+      downloadBlob(pdf, window.projekt_info.antragsnr + ".pdf", 'application/pdf');
     }
 
     function exportVeraenderteFlst() {
@@ -1160,6 +1319,7 @@
     window.changeSelectPolyNeu = changeSelectPolyNeu;
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
+    window.projectInfoEdit = projectInfoEdit;
     window.setInterval(colorFlurstuecke, 200);
 
     var tab_functions = {
@@ -1187,6 +1347,8 @@
     init()
       .then(() => { 
         document.body.innerHTML = ui_render_entire_screen(
+          JSON.stringify(window.info),
+          JSON.stringify(window.risse),
           JSON.stringify(window.uidata),
           JSON.stringify(window.projectdata),
           JSON.stringify(window.aenderungen),

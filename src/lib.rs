@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
+use pdf::{ProjektInfo, Risse};
+use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
 use xml::XmlNode;
@@ -127,11 +129,19 @@ pub fn fixup_polyline(
 }
 
 #[wasm_bindgen]
-pub fn ui_render_entire_screen(uidata: String, csv: String, aenderungen: String) -> String {
+pub fn ui_render_entire_screen(
+    projektinfo: String,
+    risse: String,
+    uidata: String, 
+    csv: String, 
+    aenderungen: String
+) -> String {
+    let projektinfo = serde_json::from_str::<ProjektInfo>(&projektinfo).unwrap_or_default();
+    let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
     let uidata = UiData::from_string(&uidata);
     let csv = serde_json::from_str(&csv).unwrap_or_default();
     let aenderungen = serde_json::from_str(&aenderungen).unwrap_or_default();
-    crate::ui::render_entire_screen(&uidata, &csv, &aenderungen)
+    crate::ui::render_entire_screen(&projektinfo, &risse, &uidata, &csv, &aenderungen)
 }
 
 #[wasm_bindgen]
@@ -147,30 +157,50 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn stringify_savefile(csv_data: String, aenderungen: String) -> String {
+pub fn stringify_savefile(
+    projekt_info: String,
+    risse: String,
+    csv_data: String, 
+    aenderungen: String
+) -> String {
 
     #[derive(Debug, Deserialize, Serialize)]
     struct SaveFile {
+        info: ProjektInfo,
+        risse: Risse,
         csv: CsvDataType,
         aenderungen: Aenderungen,
     }
 
+    let info = serde_json::from_str(&projekt_info).unwrap_or_default();
+    let risse = serde_json::from_str(&risse).unwrap_or_default();
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or(Aenderungen::default());
+    
     serde_json::to_string_pretty(&SaveFile {
+        info,
+        risse,
         csv: csv_data,
         aenderungen,
     }).unwrap_or_default()
 }
 
 #[wasm_bindgen]
-pub fn ui_render_project_content(uidata: String, csv_data: String, aenderungen: String, split_flurstuecke: Option<String>) -> String {
-    let split_flurstuecke = split_flurstuecke.unwrap_or_default();
+pub fn ui_render_project_content(
+    projektinfo: String,
+    risse: String,
+    uidata: String, 
+    csv_data: String, 
+    aenderungen: String, 
+    split_flurstuecke: Option<String>
+) -> String {
+    let projektinfo = serde_json::from_str::<ProjektInfo>(&projektinfo).unwrap_or_default();
+    let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
     let uidata = UiData::from_string(&uidata);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
-    let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
-    crate::ui::render_project_content(&csv_data, &aenderungen, &uidata, &split_fs)
+    let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
+    crate::ui::render_project_content(&projektinfo, &risse, &csv_data, &aenderungen, &uidata, &split_fs)
 }
 
 #[wasm_bindgen]
@@ -385,16 +415,21 @@ pub fn export_flst_id_nach_eigentuemer(s: String) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
-pub fn export_pdf(csv: String, json: String) -> Vec<u8> {
-    let csv = match serde_json::from_str::<CsvDataType>(&csv) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-    let xml = match serde_json::from_str::<NasXMLFile>(&json) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-    crate::pdf::generate_pdf(&csv, &xml)
+pub fn export_pdf(
+    projekt_info: String,
+    risse: String, 
+    csv: String, 
+    xml: String, 
+    aenderungen: String, 
+    split_flurstuecke: Option<String>
+) -> Vec<u8> {
+    let projekt_info = serde_json::from_str::<ProjektInfo>(&projekt_info).unwrap_or_default();
+    let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
+    let csv = serde_json::from_str::<CsvDataType>(&csv).unwrap_or_default();
+    let xml  = serde_json::from_str::<NasXMLFile>(&xml).unwrap_or_default();
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
+    let split_flurstuecke = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
+    crate::pdf::generate_pdf(&projekt_info, &risse, &csv, &xml, &aenderungen, &split_flurstuecke)
 }
 
 pub fn decode(bytes: Vec<u8>) -> String {

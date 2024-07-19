@@ -3,9 +3,12 @@ use std::collections::BTreeMap;
 use printpdf::{Mm, CustomPdfConformance, PdfConformance, PdfDocument};
 use serde_derive::{Deserialize, Serialize};
 use crate::csv::CsvDataType;
-use crate::nas::{NasXMLFile, SvgLine};
+use crate::nas::{NasXMLFile, SplitNasXml, SvgLine};
+use crate::ui::Aenderungen;
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub type Risse = BTreeMap<String, RissConfig>;
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct ProjektInfo {
     pub antragsnr: String,
     pub katasteramt: String,
@@ -17,12 +20,11 @@ pub struct ProjektInfo {
     pub gemarkung_nr: String,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct RissConfig {
-    pub title: String,
-    pub center_lat: f64,
-    pub center_lon: f64,
-    pub target_crs: String,
+    pub lat: f64,
+    pub lon: f64,
+    pub crs: String,
     pub width_mm: f32,
     pub height_mm: f32,
     pub scale: f32,
@@ -50,23 +52,20 @@ pub enum Aenderung {
 
 // + Risse config
 // + Änderungen
-pub fn generate_pdf(csv: &CsvDataType, xml: &NasXMLFile) -> Vec<u8> {
-
-    let riss = RissConfig {
-        title: "Riss1".to_string(),
-        center_lat: 50.0,
-        center_lon: 13.0,
-        target_crs: "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33".to_string(),
-        width_mm: 250.0,
-        height_mm: 210.0,
-        scale: 3500.0,
-    };
+pub fn generate_pdf(
+    projekt_info: &ProjektInfo,
+    risse: &Risse, 
+    csv: &CsvDataType, 
+    xml: &NasXMLFile,
+    aenderungen: &Aenderungen, 
+    split_flurstuecke: &SplitNasXml,
+) -> Vec<u8> {
 
     let (mut doc, page1, layer1) = PdfDocument::new(
-        &riss.title,
-        Mm(riss.width_mm),
-        Mm(riss.height_mm),
-        &riss.title,
+        "Riss",
+        Mm(risse.iter().next().map(|(k, v)| v.width_mm).unwrap_or(210.0)),
+        Mm(risse.iter().next().map(|(k, v)| v.height_mm).unwrap_or(297.0)),
+        "Riss",
     );
 
     doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
@@ -75,5 +74,52 @@ pub fn generate_pdf(csv: &CsvDataType, xml: &NasXMLFile) -> Vec<u8> {
         .. Default::default()
     }));
 
+    for (i, (ri, rc))  in risse.iter().enumerate() {
+        let (page, layer) = if i == 0 {
+            (page1, layer1)
+        } else {
+            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), ri)
+        };
+        let mut page = doc.get_page(page);
+        let mut layer = page.get_layer(layer);
+
+        let aenderungen_repro = reproject_aenderungen_into_pdf_space(
+            &aenderungen,
+            &rc,
+        );
+    
+    
+        let xml_reprojected = reproject_split_nas_xml_into_pdf_space(
+            &xml,
+            &rc,
+        );
+    
+        let split_flurstuecke_repro = reproject_split_flurstuecke_into_pdf_space(
+            &split_flurstuecke,
+            &rc,
+        );
+    }
+
     doc.save_to_bytes().unwrap_or_default()
+}
+
+fn reproject_aenderungen_into_pdf_space(
+    aenderungen: &Aenderungen,
+    riss: &RissConfig,
+) -> Aenderungen {
+    aenderungen.clone() // TODO
+}
+
+fn reproject_split_nas_xml_into_pdf_space(
+    input: &NasXMLFile,
+    riss: &RissConfig,
+) -> NasXMLFile {
+    input.clone() // TODO
+}
+
+fn reproject_split_flurstuecke_into_pdf_space(
+    input: &SplitNasXml,
+    riss: &RissConfig,
+) -> SplitNasXml {
+    input.clone() // TODO 
 }

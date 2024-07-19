@@ -784,3 +784,18 @@ img {
     margin-bottom: 5px;
     background: #8e8e8e;
 }
+
+.ri-config-field {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.ri-config-field input {
+    width: 170px;
+}
+
+.ri-config-field label {
+    font-weight: bold;
+}
+
