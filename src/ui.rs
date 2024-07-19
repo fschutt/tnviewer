@@ -1072,9 +1072,15 @@ fn render_csv_editable(
                         let ax_flurstueck = flstidparsed.format_start_str();
                         let cut_obj_id = tp.attributes.get("id")?;
                         let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
+                        let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
+                        let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
+                        let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
                         Some(format!(
-                            "<div><p>{ax_ebene}:</p>{}</div>", 
-                            render_select(&aenderungen.na_definiert.get(&objid_total).cloned(), "nutzungsArtAendern", &objid_total, "nutzungsart-aendern")
+                            "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
+                            render_select(&
+                                aenderungen.na_definiert.get(&objid_total).cloned()
+                                .or(auto_kuerzel.clone())
+                            , "nutzungsArtAendern", &objid_total, "nutzungsart-aendern")
                         ))
                     }).collect::<Vec<_>>().join("")
                 )

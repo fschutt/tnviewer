@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use geo::Area;
 use geo::CoordsIter;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
@@ -251,7 +252,6 @@ fn convert_svgline_to_string(q: &SvgLine) -> String {
     format!("[{}]", q.points.iter().map(|s| format!("[{}, {}]", s.x, s.y)).collect::<Vec<_>>().join(","))
 }
 
-
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct TaggedPolygon {
     pub poly: SvgPolygon,
@@ -259,6 +259,39 @@ pub struct TaggedPolygon {
 }
 
 impl TaggedPolygon {
+
+    pub fn get_groesse(&self) -> f64 {
+        translate_to_geo_poly(&self.poly).0.iter().map(|p| p.signed_area()).sum()
+    }
+
+    pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
+        match ebene {
+            "AX_Landwirtschaft" => Some("A"),
+            "AX_Wald" => Some("WALD"),
+            "AX_Gehoelz" => Some("GHÖ"),
+            "AX_Heide" => Some("HEI"),
+            "AX_Sumpf" => Some("SUM"),
+            "AX_UnlandVegetationsloseFlaeche" => Some("UV"),
+            "AX_Wohnbauflaeche" => Some("WBF"),
+            "AX_IndustrieUndGewerbeflaeche" => Some("IG"),
+            "AX_Halde" => Some("HAL"),
+            "AX_TagebauGrubeSteinbruch" => Some("TG"),
+            "AX_FlaecheGemischterNutzung" => Some("MI"),
+            "AX_FlaecheBesondererFunktionalerPraegung" => Some("BP"),
+            "AX_SportFreizeitUndErholungsflaeche" => Some("SF"),
+            "AX_Friedhof" => Some("F"),
+            "AX_Strassenverkehr" => Some("S"),
+            "AX_Weg" => Some("WEG"),
+            "AX_Platz" => Some("PL"),
+            "AX_Bahnverkehr" => Some("BA"),
+            "AX_BauwerkOderAnlageFuerIndustrieUndGewerbe" => Some("IG"),
+            "AX_Fliessgewaesser" => Some("WAF"),
+            "AX_StehendesGewaesser" => Some("WAS"),
+            "AX_Meer" => Some("WAF"),
+            _ => None,
+        }.map(|s| s.to_string())
+    }
+
     pub fn get_fit_bounds(&self) -> [[f64;2];2] {
         let mut min_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
         let mut max_x = self.poly.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
@@ -532,6 +565,19 @@ pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<Str
         flurstuecke_nutzungen: flurstuecke_nutzungen,
         crs: latlon_proj_string.to_string(),
     })
+}
+
+pub fn fixup_flst_groesse(unprojected: &SplitNasXml, projected: &mut SplitNasXml) {
+    for (key, up_polys) in unprojected.flurstuecke_nutzungen.iter() {
+        let mut p_polys = match projected.flurstuecke_nutzungen.get_mut(key) {
+            Some(s) => s,
+            None => continue,
+        };
+        for (up, p) in up_polys.iter().zip(p_polys.iter_mut()) {
+            let up_size = up.get_groesse();
+            p.attributes.insert("BerechneteGroesseM2".to_string(), up_size.round().to_string());
+        }
+    }
 }
 
 pub type FlstId = String;

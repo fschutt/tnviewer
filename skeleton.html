@@ -422,7 +422,16 @@
   }
   
   function nutzungsArtAendern(event) {
-    console.log(event.target.dataset);
+    var id = event.target.dataset.id;
+    var kuerzel = event.target.value;
+    if (!window.aenderungen || window.aenderungen == null) {
+      return;
+    }
+    if (kuerzel == 'NOTDEFINED') {
+      delete window.aenderungen.na_definiert;
+    } else {
+      window.aenderungen.na_definiert[id] = kuerzel;
+    }
   }
 
   function changeSelectPolyNeu(event) {

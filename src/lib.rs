@@ -179,10 +179,11 @@ pub fn load_nas_xml(s: String, types: String) -> String {
         Ok(o) => o,
         Err(e) => return e,
     };
-    let nas_cut_projected = match crate::nas::transform_split_nas_xml_to_lat_lon(&nas_cut_original, &mut log) {
+    let mut nas_cut_projected = match crate::nas::transform_split_nas_xml_to_lat_lon(&nas_cut_original, &mut log) {
         Ok(o) => o,
         Err(e) => return e,
     };
+    crate::nas::fixup_flst_groesse(&nas_cut_original, &mut nas_cut_projected);
     serde_json::to_string(&LoadNasReturn {
         log,
         xml_parsed,
