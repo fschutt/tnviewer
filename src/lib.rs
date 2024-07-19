@@ -1,6 +1,6 @@
 use std::slice::SplitInclusive;
 
-use nas::{NasXMLFile, SplitNasXml, TaggedPolygon};
+use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
 use ui::Aenderungen;
 use wasm_bindgen::prelude::*;
 use xml::XmlNode;
@@ -15,6 +15,27 @@ pub mod csv;
 pub mod xlsx;
 pub mod search;
 pub mod pdf;
+pub mod uuid_wasm;
+
+#[wasm_bindgen]
+pub fn get_new_poly_id() -> String {
+    crate::uuid_wasm::uuid()
+}
+
+#[wasm_bindgen]
+pub fn fixup_polyline(
+    xml: String,
+    split_flurstuecke: String,
+    points: String,
+) -> String {
+    serde_json::to_string_pretty(&crate::ui::PolyNeu {
+        poly: SvgPolygon {
+            outer_rings: Vec::new(),
+            inner_rings: Vec::new()
+        },
+        nutzung: None,
+    }).unwrap_or_default()
+}
 
 #[wasm_bindgen]
 pub fn ui_render_entire_screen(uidata: String, csv: String, aenderungen: String) -> String {
@@ -37,7 +58,8 @@ pub fn ui_render_popover_content(decoded: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn ui_render_project_content(decoded: String, csv_data: String, split_flurstuecke: String) -> String {
+pub fn ui_render_project_content(decoded: String, csv_data: String, split_flurstuecke: Option<String>) -> String {
+    let split_flurstuecke = split_flurstuecke.unwrap_or_default();
     let uidata = UiData::from_string(&decoded);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();

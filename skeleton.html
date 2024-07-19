@@ -812,7 +812,11 @@
     function replaceProjectContent() {
       let d = document.getElementById("__application_project_content");
       if (d)
-         d.innerHTML = ui_render_project_content(JSON.stringify(window.uidata), JSON.stringify(window.csv_data), JSON.stringify(window.split_flurstuecke));
+         d.innerHTML = ui_render_project_content(
+        JSON.stringify(window.uidata), 
+        JSON.stringify(window.csv_data), 
+        JSON.stringify(window.split_flurstuecke)
+      );
     }
 
     function replaceSecondaryProjectContent() {

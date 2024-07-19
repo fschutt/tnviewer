@@ -245,6 +245,56 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
+/**
+* @returns {string}
+*/
+export function get_new_poly_id() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        wasm.get_new_poly_id(retptr);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred1_0 = r0;
+        deferred1_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+* @param {string} xml
+* @param {string} split_flurstuecke
+* @param {string} points
+* @returns {string}
+*/
+export function fixup_polyline(xml, split_flurstuecke, points) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(xml, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(points, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        wasm.fixup_polyline(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred4_0 = r0;
+        deferred4_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred4_0, deferred4_1, 1);
+    }
+}
+
 /**
 * @param {string} uidata
 * @param {string} csv
@@ -323,7 +373,7 @@ export function ui_render_popover_content(decoded) {
 /**
 * @param {string} decoded
 * @param {string} csv_data
-* @param {string} split_flurstuecke
+* @param {string | undefined} [split_flurstuecke]
 * @returns {string}
 */
 export function ui_render_project_content(decoded, csv_data, split_flurstuecke) {
@@ -335,8 +385,8 @@ export function ui_render_project_content(decoded, csv_data, split_flurstuecke) 
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len2 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(split_flurstuecke) ? 0 : passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len2 = WASM_VECTOR_LEN;
         wasm.ui_render_project_content(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
@@ -994,6 +1044,7 @@ function __wbg_get_imports() {
         getInt32Memory0()[arg0 / 4 + 1] = len1;
         getInt32Memory0()[arg0 / 4 + 0] = ptr1;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_new0_7d84e5b2cd9fdc73 = function() {
         const ret = new Date();
         return addHeapObject(ret);

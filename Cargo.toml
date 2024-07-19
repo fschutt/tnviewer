@@ -39,4 +39,6 @@ printpdf = { git = "https://github.com/fschutt/printpdf", rev = "fbc7d691f988b0d
 polylabel-mini = "0.1.0"
 quadtree-f32 = { version = "0.4.1", features = ["f64"] }
 geo = "0.28.0"
+rand = { version = "0.8.5", default-features = false }
+rand_xorshift = "0.3.0"
 
