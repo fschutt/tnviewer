@@ -28,6 +28,7 @@
     var nutzung_einzeichnen_layer = null;
     var gebaeude_loeschen_layer = null;
     var current_edit_layer = null;
+    var guideLayers = [];
 
     window.split_flurstuecke = null; // split XML NAS data
     window.projectdata = null; // project XML NAS data
@@ -271,97 +272,6 @@
       }
     }; // default config object
 
-
-  function initLeafletDraw(map) {
-    
-    var guides = 
-        L.polyline([
-            [48.505431207150885, 1.3999843597412107],
-            [48.50335551764662, 1.398911476135254],
-            [48.50173471468476, 1.3994693756103516],
-            [48.49974418399956, 1.3991689682006836],
-            [48.49684355649577, 1.3993835449218748],
-            [48.4956206932084, 1.398611068725586],
-            [48.49465375716902, 1.3980531692504883],
-            [48.49419872206354, 1.3975811004638672],
-            [48.492406981637345, 1.3971948623657227],
-            [48.49156797030711, 1.396486759185791],
-            [48.49067206152607, 1.3961219787597656],
-            [48.48988, 1.39638],
-            [48.489342389949364, 1.394963264465332],
-            [48.48864554279267, 1.3944590091705322],
-            [48.487628697617744, 1.3940191268920896],
-            [48.485666057669334, 1.3944482803344727],
-            [48.48541005555473, 1.3942551612854002],
-            [48.48461359626773, 1.3942766189575195],
-            [48.483489998505746, 1.3933539390563965],
-            [48.48164098598135, 1.3928818702697754],
-            [48.480232846617845, 1.3912296295166016],
-            [48.479450530080534, 1.3906073570251463],
-            [48.478511734309954, 1.3902640342712402],
-            [48.47714618217502, 1.389319896697998],
-            [48.47600819398379, 1.388998031616211]
-        ], {
-            weight: 5,
-            color: 'red',
-            opacity: 1.0
-        }).addTo(map);
-
-      var snapEdit = new L.EditToolbar.SnapEdit(map, {
-          featureGroup: L.featureGroup([]),
-          snapOptions: {
-              guideLayers: [guides]
-          }
-      });
-
-      var guideLayers = [guides];
-
-      map.drawControl.setDrawingOptions({
-          polyline: {
-              guideLayers: guideLayers
-          },
-          polygon: {
-              guideLayers: guideLayers,
-              snapDistance: 5
-          },
-          marker: {
-              guideLayers: guideLayers,
-              snapVertices: false
-          },
-          rectangle: false,
-          circle: false
-      });
-
-      map.on('draw:created', function(e) {
-          var layer = e.layer;
-          current_edit_layer = layer;
-          map.addLayer(layer);
-          guideLayers.push(layer);
-      });
-
-      map.on('draw:drawstop', function (e) {
-        if (e.layerType != 'polyline') {
-          return;
-        }
-        var layers = e.target._layers;
-        var keys = Object.keys(layers);
-        var lastkey = keys[keys.length - 1];
-        var l = layers[lastkey];
-        var points = l.editing.latlngs[0];
-        if (points.length == 0) {
-          return;
-        }
-        var newpolyid = get_new_poly_id();
-        window.aenderungen.na_polygone_neu[newpolyid] = JSON.parse(fixup_polyline(
-          JSON.stringify(window.projectdata), 
-          JSON.stringify(window.split_flurstuecke), 
-          JSON.stringify(points),
-        ));
-        replaceSecondaryProjectContent();
-        reinitMapDrawnStaticLayers();
-    });
-  }
-
   function reinitMapDrawnStaticLayers() {
     if (current_edit_layer != null) {
       map.removeLayer(current_edit_layer);
@@ -420,8 +330,6 @@
       geojson_repaint_layers.push(myLayer);
     }
   }
-
-  window.initLeafletDraw = initLeafletDraw;
 
   function zoomToGebaeudeLoeschen(event) {
     var gebaeude_id = event.target.dataset.gebaeudeId;
@@ -489,6 +397,8 @@
       return;
     }
     delete window.aenderungen.na_polygone_neu[id];
+    replaceSecondaryProjectContent();
+    reinitMapDrawnStaticLayers();
   }
 
   function colorFlurstuecke() {
@@ -838,7 +748,7 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
-          initLeafletDraw(map);
+          reinitMapDrawnStaticLayers();
         }
       }
 
@@ -1014,25 +924,80 @@
       if (!window.uidata || window.uidata.tool != 'nutzung-einzeichnen') {
         return;
       }
-      /*
 
-        var f = get_guidelines(
-          JSON.stringify(window.projectdata),
-          JSON.stringify(window.csv_data),
-          JSON.stringify(window.aenderungen),
-        );
-        var gebaeude_geojson = JSON.parse(f);
-        removeGebaeudeLoeschenLayer();
-        var myLayer = L.geoJSON(gebaeude_geojson, {
-          "style": gebaeudeStyle,
-          "onEachFeature": gebaeudeFeatureClick
-        });
-        gebaeude_loeschen_layer = myLayer;
-        map.addLayer(gebaeude_loeschen_layer);
+      var lines = JSON.parse(get_polyline_guides_in_current_bounds(
+      JSON.stringify(window.split_flurstuecke),
+      JSON.stringify(aenderungen),
+      JSON.stringify(map.getBounds())
+    ));
+    for (var o = 0; o < guideLayers.length; o++) {
+      map.removeLayer(guideLayers[o]);
+    }
+    guideLayers = [];
+    for (var q = 0; q < lines.length; q++) {
+      let pl = L.polyline(lines[q], {
+          weight: 5,
+          color: 'red',
+          opacity: 1.0
+      });
+      pl.addTo(map);
+      guideLayers.push(pl)
+    }
 
-      */
+    var snapEdit = new L.EditToolbar.SnapEdit(map, {
+        featureGroup: L.featureGroup([]),
+        snapOptions: {
+            guideLayers: guideLayers
+        }
+    });
 
-      initLeafletDraw(map);
+    map.drawControl.setDrawingOptions({
+        polyline: {
+            guideLayers: guideLayers
+        },
+        polygon: {
+            guideLayers: guideLayers,
+            snapDistance: 5
+        },
+        marker: {
+            guideLayers: guideLayers,
+            snapVertices: false
+        },
+        rectangle: false,
+        circle: false
+    });
+
+    map.on('draw:created', function(e) {
+        var layer = e.layer;
+        current_edit_layer = layer;
+        map.addLayer(layer);
+        guideLayers.push(layer);
+    });
+
+    map.on('draw:drawstop', function (e) {
+      if (e.layerType != 'polyline') {
+        return;
+      }
+      var layers = e.target._layers;
+      var keys = Object.keys(layers);
+      var lastkey = keys[keys.length - 1];
+      var l = layers[lastkey];
+      if ((!l) || (!l.editing)) {
+        return;
+      }
+      var points = l.editing.latlngs[0];
+      if (points.length == 0) {
+        return;
+      }
+      var newpolyid = get_new_poly_id();
+      window.aenderungen.na_polygone_neu[newpolyid] = JSON.parse(fixup_polyline(
+        JSON.stringify(window.projectdata), 
+        JSON.stringify(window.split_flurstuecke), 
+        JSON.stringify(points),
+      ));
+      replaceSecondaryProjectContent();
+      reinitMapDrawnStaticLayers();
+    });
     }
 
     function showHideNutzungEinzeichnenLayer() {
@@ -1050,6 +1015,11 @@
       if (nutzung_einzeichnen_layer && nutzung_einzeichnen_layer != null) {
         map.removeLayer(nutzung_einzeichnen_layer);
       }
+      nutzung_einzeichnen_layer = null;
+      for (let i = 0; i < guideLayers.length; i++) {
+        map.removeLayer(guideLayers[i]);
+      }
+      guideLayers = [];
     }
 
     // UI ----
@@ -1059,6 +1029,7 @@
       replaceRibbon();
       replaceProjectContent();
       replaceSecondaryProjectContent();
+      reinitMapDrawnStaticLayers();
     }
 
     function closePopOver() {

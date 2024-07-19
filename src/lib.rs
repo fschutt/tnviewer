@@ -67,6 +67,46 @@ pub fn get_geojson_fuer_neue_polygone(aenderungen: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn get_polyline_guides_in_current_bounds(
+    split_flurstuecke: String,
+    aenderungen: String,
+    map_bounds: String,
+) -> String {
+
+    #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+    struct MapBounds {
+        _northEast: crate::analyze::LatLng,
+        _southWest: crate::analyze::LatLng,
+    }
+    
+    let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
+    let MapBounds { _northEast, _southWest } = match serde_json::from_str::<MapBounds>(&map_bounds) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let rect = quadtree_f32::Rect {
+        min_x: _southWest.lng,
+        min_y: _southWest.lat,
+        max_x: _northEast.lng,
+        max_y: _northEast.lat,
+    };
+    let mut ringe = split_fs.get_polyline_guides_in_bounds(rect);
+    let mut aenderungen_ringe = aenderungen.na_polygone_neu.values().flat_map(|p| {
+        let mut v = p.poly.outer_rings.clone();
+        v.append(&mut p.poly.inner_rings.clone());
+        v.into_iter()
+    }).collect::<Vec<_>>();
+    ringe.append(&mut aenderungen_ringe);
+
+    let pl = ringe.iter().map(|svg_line| {
+        svg_line.points.iter().map(|p| [p.y, p.x]).collect::<Vec<_>>()
+    }).collect::<Vec<_>>();
+
+    serde_json::to_string(&pl).unwrap_or_default()
+}
+
+#[wasm_bindgen]
 pub fn fixup_polyline(
     xml: String,
     split_flurstuecke: String,

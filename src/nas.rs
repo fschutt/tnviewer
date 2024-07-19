@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::io::Split;
 use geo::Area;
 use geo::CoordsIter;
 use polylabel_mini::LineString;
@@ -591,6 +592,28 @@ pub struct SplitNasXml {
     pub crs: String,
     // Flurstücke, indexiert nach Flst ID, mit Nutzungen als Polygonen
     pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
+}
+
+impl SplitNasXml {
+    pub fn get_polyline_guides_in_bounds(&self, search_bounds: quadtree_f32::Rect) -> Vec<SvgLine> {
+        let mut b = Vec::new();
+        for (_k, v) in self.flurstuecke_nutzungen.iter() {
+            for poly in v {
+                let [[min_y, min_x], [max_y, max_x]] = poly.get_fit_bounds();
+                let bounds = Rect {
+                    max_x: max_x,
+                    max_y: max_y,
+                    min_x: min_x,
+                    min_y: min_y,
+                };
+                if bounds.overlaps_rect(&search_bounds) {
+                    b.extend(poly.poly.outer_rings.iter().cloned());
+                    b.extend(poly.poly.inner_rings.iter().cloned());
+                }
+            }
+        }
+        b
+    }
 }
 
 pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) -> Result<SplitNasXml, String> {
