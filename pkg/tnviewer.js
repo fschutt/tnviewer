@@ -397,31 +397,34 @@ export function stringify_savefile(csv_data, aenderungen) {
 }
 
 /**
-* @param {string} decoded
+* @param {string} uidata
 * @param {string} csv_data
+* @param {string} aenderungen
 * @param {string | undefined} [split_flurstuecke]
 * @returns {string}
 */
-export function ui_render_project_content(decoded, csv_data, split_flurstuecke) {
-    let deferred4_0;
-    let deferred4_1;
+export function ui_render_project_content(uidata, csv_data, aenderungen, split_flurstuecke) {
+    let deferred5_0;
+    let deferred5_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr0 = passStringToWasm0(uidata, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len1 = WASM_VECTOR_LEN;
-        var ptr2 = isLikeNone(split_flurstuecke) ? 0 : passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        var len2 = WASM_VECTOR_LEN;
-        wasm.ui_render_project_content(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        const ptr2 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        var ptr3 = isLikeNone(split_flurstuecke) ? 0 : passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len3 = WASM_VECTOR_LEN;
+        wasm.ui_render_project_content(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred4_0 = r0;
-        deferred4_1 = r1;
+        deferred5_0 = r0;
+        deferred5_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_2(deferred4_0, deferred4_1, 1);
+        wasm.__wbindgen_export_2(deferred5_0, deferred5_1, 1);
     }
 }
 
@@ -468,6 +471,32 @@ export function get_fit_bounds(s) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
         wasm.__wbindgen_export_2(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+* @param {string} aenderungen
+* @param {string} poly_id
+* @returns {string}
+*/
+export function search_for_polyneu(aenderungen, poly_id) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(poly_id, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.search_for_polyneu(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred3_0, deferred3_1, 1);
     }
 }
 

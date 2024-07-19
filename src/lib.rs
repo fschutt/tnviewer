@@ -1,4 +1,4 @@
-use std::slice::SplitInclusive;
+use std::{collections::BTreeMap, slice::SplitInclusive};
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
 use ui::Aenderungen;
@@ -75,12 +75,13 @@ pub fn stringify_savefile(csv_data: String, aenderungen: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn ui_render_project_content(decoded: String, csv_data: String, split_flurstuecke: Option<String>) -> String {
+pub fn ui_render_project_content(uidata: String, csv_data: String, aenderungen: String, split_flurstuecke: Option<String>) -> String {
     let split_flurstuecke = split_flurstuecke.unwrap_or_default();
-    let uidata = UiData::from_string(&decoded);
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
+    let uidata = UiData::from_string(&uidata);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
-    crate::ui::render_project_content(&csv_data, &uidata, &split_fs)
+    crate::ui::render_project_content(&csv_data, &aenderungen, &uidata, &split_fs)
 }
 
 #[wasm_bindgen]
@@ -97,6 +98,29 @@ pub fn get_fit_bounds(s: String) -> String {
     };
     let bounds = flst.get_fit_bounds();
     serde_json::to_string(&bounds).unwrap_or_default()
+}
+
+#[wasm_bindgen]
+pub fn search_for_polyneu(aenderungen: String, poly_id: String) -> String {
+    let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let tp = aenderungen.na_polygone_neu.iter()
+    .find_map(|(k, v)| if k.as_str() == poly_id.as_str() {
+        Some(TaggedPolygon {
+            attributes: BTreeMap::new(),
+            poly: v.poly.clone(),
+        })
+    } else {
+        None
+    });
+
+    match tp {
+        Some(s) => serde_json::to_string(&s.get_fit_bounds()).unwrap_or_default(),
+        None => String::new(),
+    }
 }
 
 #[wasm_bindgen]

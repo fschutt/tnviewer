@@ -776,3 +776,11 @@ img {
     font-size: 0.9rem;
     cursor: pointer;
 }
+.na-neu {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    background: #8e8e8e;
+}

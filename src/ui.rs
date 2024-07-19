@@ -901,16 +901,10 @@ pub struct PolyNeu {
     pub nutzung: Option<Kuerzel>,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct NaAenderungen {
-    pub alt: Option<Kuerzel>,
-    pub neu: Option<Kuerzel>,
-}
-
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
     pub gebaeude_loeschen: BTreeSet<GebauedeId>,
-    pub na_definiert: BTreeMap<FlstPartId, NaAenderungen>,
+    pub na_definiert: BTreeMap<FlstPartId, Kuerzel>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
@@ -932,7 +926,7 @@ pub fn render_main(uidata: &UiData, csv: &CsvDataType, aenderungen: &Aenderungen
             </div>
         </div>
     ",
-        primary = render_project_content(csv, uidata, &SplitNasXml::default()),
+        primary = render_project_content(csv, aenderungen, uidata, &SplitNasXml::default()),
         display_secondary = match uidata.tab {
             Some(1) => "flex",
             _ => "none",
@@ -965,12 +959,17 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "<div id='neue-na'>";
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
-        let kuerzel_alt = &polyneu.nutzung;
+        let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
         html.push_str(&format!(
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
-                <p onclick='zoomToPolyNeu(event);' data-new-poly-id='{new_poly_id}'>Karte</p>
-                {select_nutzung}
-                <p class='undo' onclick='polyNeuUndo(event);' data-new-poly-id='{new_poly_id}'>X</p>
+                <div style='display:flex;'>
+                    <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' data-poly-neu-id='{new_poly_id}'>[Karte]</p>
+                    <p style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
+                </div>
+                <div style='display:flex;'>
+                    {select_nutzung}
+                    <p class='__application-secondary-undo' onclick='polyNeuUndo(event);' data-poly-neu-id='{new_poly_id}' style='margin-left: 10px;display: flex;align-items: center;'>X</p>
+                </div>
             </div>"
         ));
     }
@@ -992,11 +991,11 @@ pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_i
     s
 }
 
-pub fn render_project_content(csv: &CsvDataType, uidata: &UiData, split_fs: &SplitNasXml) -> String {
+pub fn render_project_content(csv: &CsvDataType, aenderungen: &Aenderungen, uidata: &UiData, split_fs: &SplitNasXml) -> String {
 
     let s = match uidata.tab {
-        None | Some(0) => render_csv_editable(&csv, false, &uidata.selected_edit_flst, None),
-        Some(1) => render_csv_editable(&csv, true, &uidata.selected_edit_flst, Some(split_fs)),
+        None | Some(0) => render_csv_editable(&csv, aenderungen, false, &uidata.selected_edit_flst, None),
+        Some(1) => render_csv_editable(&csv, aenderungen, true, &uidata.selected_edit_flst, Some(split_fs)),
         Some(2) => {
             format!("
             <h2>Projekt <input type='text' value='aslkdadfa' placeholder='Projektname...'></input></h2>
@@ -1010,6 +1009,7 @@ pub fn render_project_content(csv: &CsvDataType, uidata: &UiData, split_fs: &Spl
 
 fn render_csv_editable(
     csv: &CsvDataType, 
+    aenderungen: &Aenderungen,
     filter_out_bleibt: bool, 
     selected_edit_flst: &str,
     split_fs: Option<&SplitNasXml>,
@@ -1071,9 +1071,10 @@ fn render_csv_editable(
                         let ax_ebene = tp.attributes.get("AX_Ebene")?;
                         let ax_flurstueck = flstidparsed.format_start_str();
                         let cut_obj_id = tp.attributes.get("id")?;
+                        let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
                         Some(format!(
                             "<div><p>{ax_ebene}:</p>{}</div>", 
-                            render_select(&None, "nutzungsArtAendern", &format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}"), "nutzungsart-aendern")
+                            render_select(&aenderungen.na_definiert.get(&objid_total).cloned(), "nutzungsArtAendern", &objid_total, "nutzungsart-aendern")
                         ))
                     }).collect::<Vec<_>>().join("")
                 )

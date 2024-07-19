@@ -425,20 +425,35 @@
     console.log(event.target.dataset);
   }
 
-  function setPolyNeuNutzung(event) {
-    console.log(event.target.dataset);
-  }
-
-  function zoomToFlstPart(event) {
-      
+  function changeSelectPolyNeu(event) {
+    var id = event.target.dataset.id;
+    var kuerzel = event.target.value;
+    if (!window.aenderungen || window.aenderungen == null) {
+      return;
+    }
+    if (kuerzel == 'NOTDEFINED') {
+      window.aenderungen.na_polygone_neu[id].nutzung = null;
+    } else {
+      window.aenderungen.na_polygone_neu[id].nutzung = kuerzel;
+    }
   }
 
   function zoomToPolyNeu(event) {
-      
+    var id = event.target.dataset.polyNeuId;
+    if (!window.aenderungen || window.aenderungen == null) {
+      return;
+    }
+    var extent = search_for_polyneu(JSON.stringify(window.aenderungen), id);
+    var extent_json = JSON.parse(extent);
+    map.fitBounds(extent_json);
   }
   
   function polyNeuUndo(event) {
-      
+    var id = event.target.dataset.polyNeuId;
+    if (!window.aenderungen || window.aenderungen == null) {
+      return;
+    }
+    delete window.aenderungen.na_polygone_neu[id];
   }
 
   function colorFlurstuecke() {
@@ -829,6 +844,7 @@
          d.innerHTML = ui_render_project_content(
         JSON.stringify(window.uidata), 
         JSON.stringify(window.csv_data), 
+        JSON.stringify(window.aenderungen),
         JSON.stringify(window.split_flurstuecke)
       );
     }
@@ -1102,9 +1118,8 @@
     window.exportPdf = exportPdf;
     window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
     window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
-    window.zoomToFlstPart = zoomToFlstPart;
     window.nutzungsArtAendern = nutzungsArtAendern;
-    window.setPolyNeuNutzung = setPolyNeuNutzung;
+    window.changeSelectPolyNeu = changeSelectPolyNeu;
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
     window.setInterval(colorFlurstuecke, 200);
