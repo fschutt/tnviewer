@@ -209,35 +209,39 @@ impl NasXMLFile {
             Some(o) => o,
             None => return format!("keine Ebene {layer} vorhanden"),
         };
-
-        let geom = objekte.iter().filter_map(|poly| {
-
-            let holes = poly.poly.inner_rings.iter()
-            .map(convert_svgline_to_string)
-            .collect::<Vec<_>>()
-            .join(",");
-
-            let feature_map = poly.attributes
-            .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
-            .collect::<Vec<_>>().join(",");
-
-            if poly.poly.outer_rings.len() > 1 {
-                let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = poly.poly.outer_rings.iter().next() {
-                let poly = convert_poly_to_string(p, &holes);
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>().join(",");
-
-        format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
+        tagged_polys_to_featurecollection(&objekte)
     }
 }
 
+
+pub fn tagged_polys_to_featurecollection(objekte: &[TaggedPolygon]) -> String {
+
+    let geom = objekte.iter().filter_map(|poly| {
+
+        let holes = poly.poly.inner_rings.iter()
+        .map(convert_svgline_to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+
+        let feature_map = poly.attributes
+        .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
+        .collect::<Vec<_>>().join(",");
+
+        if poly.poly.outer_rings.len() > 1 {
+            let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
+            Some(format!(
+                "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
+        } else if let Some(p) = poly.poly.outer_rings.iter().next() {
+            let poly = convert_poly_to_string(p, &holes);
+            Some(format!(
+                "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
+        } else {
+            None
+        }
+    }).collect::<Vec<_>>().join(",");
+
+    format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
+}
 
 fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
     format!(

@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, slice::SplitInclusive};
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
-use ui::Aenderungen;
+use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
 use xml::XmlNode;
 use crate::ui::UiData;
@@ -16,10 +16,54 @@ pub mod xlsx;
 pub mod search;
 pub mod pdf;
 pub mod uuid_wasm;
+pub mod analyze;
 
 #[wasm_bindgen]
 pub fn get_new_poly_id() -> String {
     crate::uuid_wasm::uuid()
+}
+
+#[wasm_bindgen]
+pub fn get_geojson_fuer_neue_polygone(aenderungen: String) -> String {
+    
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct NeuePolygoneGeoJson {
+        nutzung_definiert: bool,
+        geojson: String,
+    }
+
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
+
+    let construct_polys = |(k, v): (&String, &PolyNeu)| {
+        TaggedPolygon {
+            attributes: vec![("newPolyId".to_string(), k.clone())].into_iter().collect(),
+            poly: v.poly.clone(),
+        }
+    };
+
+    let nutzung_definiert = aenderungen.na_polygone_neu.iter()
+    .filter(|(_, poly)| poly.nutzung.is_some())
+    .map(construct_polys).collect::<Vec<_>>();
+
+    let nutzung_definiert = NeuePolygoneGeoJson {
+        nutzung_definiert: true,
+        geojson: crate::nas::tagged_polys_to_featurecollection(&nutzung_definiert),
+    };
+
+    let nutzung_nicht_definiert = aenderungen.na_polygone_neu.iter()
+    .filter(|(_, poly)| poly.nutzung.is_none())
+    .map(construct_polys).collect::<Vec<_>>();
+
+    let nutzung_nicht_definiert = NeuePolygoneGeoJson {
+        nutzung_definiert: false,
+        geojson: crate::nas::tagged_polys_to_featurecollection(&nutzung_nicht_definiert),
+    };
+
+    serde_json::to_string(&[
+        nutzung_definiert,
+        nutzung_nicht_definiert
+    ]).unwrap_or_default()
+
 }
 
 #[wasm_bindgen]
@@ -28,11 +72,16 @@ pub fn fixup_polyline(
     split_flurstuecke: String,
     points: String,
 ) -> String {
-    serde_json::to_string_pretty(&crate::ui::PolyNeu {
-        poly: SvgPolygon {
-            outer_rings: Vec::new(),
-            inner_rings: Vec::new()
-        },
+    use crate::analyze::LatLng;
+    let xml = serde_json::from_str::<NasXMLFile>(&xml).unwrap_or_default();
+    let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
+    let points = serde_json::from_str::<Vec<LatLng>>(&points).unwrap_or_default();
+    let poly = match crate::analyze::fixup_polyline_internal(&points, &split_fs) {
+        Some(s) => s,
+        None => return format!("failed to create poly from points {points:?}"),
+    };
+    serde_json::to_string(&crate::ui::PolyNeu {
+        poly: poly,
         nutzung: None,
     }).unwrap_or_default()
 }
