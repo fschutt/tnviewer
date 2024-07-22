@@ -443,8 +443,9 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
 
     // TAB 1
-    let disabled = if data_loaded { "" } else { "disabled" };
-
+    // let disabled = if data_loaded { "" } else { "disabled" };
+    let disabled = "";
+    
     let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>

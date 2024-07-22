@@ -18,6 +18,8 @@ use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
 use proj4rs::Proj;
 
+pub const LATLON_STRING: &str = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NasXMLFile {
     pub ebenen: BTreeMap<String, Vec<TaggedPolygon>>,
@@ -503,7 +505,7 @@ fn get_proj_string(input: &str) -> Option<String> {
 }
 
 
-fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
+pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
     SvgLine {
         points: line.points.iter().filter_map(|p| {
             let mut point3d = (p.x, p.y, 0.0_f64);
@@ -516,31 +518,41 @@ fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
     }
 }
 
+pub fn reproject_poly(
+    poly: &SvgPolygon,
+    source_proj: &proj4rs::Proj,
+    target_proj: &proj4rs::Proj,
+) -> SvgPolygon {
+    SvgPolygon {
+        outer_rings: poly.outer_rings.iter()
+        .map(|l| reproject_line(l, &source_proj, &target_proj))
+        .collect(),
+        inner_rings: poly.inner_rings.iter()
+        .map(|l| reproject_line(l, &source_proj, &target_proj))
+        .collect(),
+    }
+}
+
 pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -> Result<NasXMLFile, String> {
-    let source_proj = Proj::from_proj_string(&input.crs).map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
-    let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
+    let source_proj = Proj::from_proj_string(&input.crs)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
+    
+    let latlon_proj = Proj::from_proj_string(LATLON_STRING)
+    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
 
     let objekte = input.ebenen.iter()
     .map(|(k, v)| {
         (k.clone(), v.iter().map(|v| {
             TaggedPolygon {
                 attributes: v.attributes.clone(),
-                poly: SvgPolygon {
-                    outer_rings: v.poly.outer_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
-                    .collect(),
-                    inner_rings: v.poly.inner_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
-                    .collect(),
-                }
+                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj)
             }
         }).collect())
     }).collect();
 
     Ok(NasXMLFile {
         ebenen: objekte,
-        crs: latlon_proj_string.to_string(),
+        crs: LATLON_STRING.to_string(),
     })
 }
 

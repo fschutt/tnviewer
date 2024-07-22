@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
-use pdf::{ProjektInfo, Risse};
+use pdf::{ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
@@ -419,9 +419,11 @@ pub fn export_pdf(
     projekt_info: String,
     risse: String, 
     csv: String, 
-    xml: String, 
+    xml: String, // original projection
     aenderungen: String, 
-    split_flurstuecke: Option<String>
+    split_flurstuecke: Option<String>, // original projection
+    risse_extente: String, // latlon projection
+    style_config: String,
 ) -> Vec<u8> {
     let projekt_info = serde_json::from_str::<ProjektInfo>(&projekt_info).unwrap_or_default();
     let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
@@ -429,7 +431,18 @@ pub fn export_pdf(
     let xml  = serde_json::from_str::<NasXMLFile>(&xml).unwrap_or_default();
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
     let split_flurstuecke = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
-    crate::pdf::generate_pdf(&projekt_info, &risse, &csv, &xml, &aenderungen, &split_flurstuecke)
+    let style_config = serde_json::from_str::<StyleConfig>(&style_config).unwrap_or_default();
+    let riss_extente = serde_json::from_str::<RissMap>(&risse_extente).unwrap_or_default();
+    crate::pdf::generate_pdf(
+        &projekt_info, 
+        &style_config, 
+        &csv, 
+        &xml, 
+        &split_flurstuecke, 
+        &aenderungen, 
+        &risse,
+        &riss_extente
+    )
 }
 
 pub fn decode(bytes: Vec<u8>) -> String {

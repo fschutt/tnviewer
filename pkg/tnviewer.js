@@ -836,10 +836,12 @@ export function export_flst_id_nach_eigentuemer(s) {
 * @param {string} csv
 * @param {string} xml
 * @param {string} aenderungen
-* @param {string | undefined} [split_flurstuecke]
+* @param {string | undefined} split_flurstuecke
+* @param {string} risse_extente
+* @param {string} style_config
 * @returns {Uint8Array}
 */
-export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flurstuecke) {
+export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flurstuecke, risse_extente, style_config) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(projekt_info, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -854,12 +856,16 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flu
         const len4 = WASM_VECTOR_LEN;
         var ptr5 = isLikeNone(split_flurstuecke) ? 0 : passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         var len5 = WASM_VECTOR_LEN;
-        wasm.export_pdf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
+        const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len6 = WASM_VECTOR_LEN;
+        const ptr7 = passStringToWasm0(style_config, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len7 = WASM_VECTOR_LEN;
+        wasm.export_pdf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        var v7 = getArrayU8FromWasm0(r0, r1).slice();
+        var v9 = getArrayU8FromWasm0(r0, r1).slice();
         wasm.__wbindgen_export_2(r0, r1 * 1, 1);
-        return v7;
+        return v9;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }

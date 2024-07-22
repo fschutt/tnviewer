@@ -623,9 +623,10 @@
           var styles_keys = styles_keys.join(", ");
           var converted = load_nas_xml(readerEvent.target.result, styles_keys);
           var parsed = JSON.parse(converted);
-          window.projectdata = parsed.nas_projected;
+          
           window.xml_data = parsed.xml_parsed;
           window.nas_original = parsed.nas_original;
+          window.projectdata = parsed.nas_projected;
           window.split_flurstuecke_original = parsed.nas_cut_original;
           window.split_flurstuecke = parsed.nas_cut_projected;
           window.parse_log = parsed.log;
@@ -1217,6 +1218,11 @@
       replaceProjectContent();
       replaceSecondaryProjectContent();
       reinitMapDrawnStaticLayers();
+      if (id == 2) {
+        rerenderRisse();
+      } else {
+        removeRisseLayer();
+      }
     }
 
     function closePopOver() {
@@ -1275,15 +1281,42 @@
         return;
       }
 
+      var risse_extent = {};
+      for (var [riss_id, riss_config] of Object.entries(window.risse)) {
+        risse_extent[riss_id] = calculate_coords(
+          riss_config.width_mm, 
+          riss_config.height_mm, 
+          riss_config.scale, 
+          riss_config.lon, 
+          riss_config.lat
+        );
+      }
+
+      console.log(window.info);
+      console.log(window.risse);
+      console.log(window.csv_data);
+      console.log(window.projectdata);
+      console.log(window.aenderungen);
+      console.log(window.split_flurstuecke);
+      console.log(risse_extent);
+
+      var style_config = {
+        "nutzungsartengrenze_col": "#555",
+        "nutzungsartengrenze_thickness": 1.0,
+        "ebenen": window.configuration.style,
+      };
+      console.log(style_config);
       var pdf = export_pdf(
-        JSON.stringify(window.projekt_info),
+        JSON.stringify(window.info),
         JSON.stringify(window.risse),
         JSON.stringify(window.csv_data),
-        JSON.stringify(window.projectdata),
+        JSON.stringify(window.nas_original),
         JSON.stringify(window.aenderungen),
-        JSON.stringify(window.split_flurstuecke),
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(risse_extent),
+        JSON.stringify(style_config),
       );
-      downloadBlob(pdf, window.projekt_info.antragsnr + ".pdf", 'application/pdf');
+      downloadBlob(pdf, window.info.antragsnr + ".pdf", 'application/pdf');
     }
 
     function exportVeraenderteFlst() {
