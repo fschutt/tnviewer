@@ -381,14 +381,16 @@ fn write_border(
     riss: &RissConfig,
 ) -> Option<()> {
 
+    use printpdf::Point;
+
     let add_rect = |x, y, w, h, paintmode| {
     
-        let points = printpdf::calculate_points_for_rect(
-            Mm(w), 
-            Mm(h), 
-            Mm(x),
-            Mm(y)
-        );
+        let points = vec![
+            (Point { x: Mm(x).into(), y: Mm(y).into() }, false),
+            (Point { x: Mm(x + w).into(), y: Mm(y).into() }, false),
+            (Point { x: Mm(x + w).into(), y: Mm(y + h).into() }, false),
+            (Point { x: Mm(x).into(), y: Mm(y + h).into() }, false),
+        ];
 
         let poly = printpdf::Polygon {
             rings: vec![points],
