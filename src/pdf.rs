@@ -75,7 +75,7 @@ impl RissExtent {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RissExtentReprojected {
     pub crs: String,
     pub min_x: f64,
@@ -341,7 +341,12 @@ fn line_into_pdf_space(
     riss_config: &RissConfig,
     log: &mut Vec<String>,
 ) -> SvgLine {
+    log.push("LINESTART".to_string());
+    log.push(serde_json::to_string(&riss).unwrap_or_default());
     log.push(serde_json::to_string(line).unwrap_or_default());
+    for p in line.points.iter() {
+        log.push(format!("{:?} // {:?}", [riss_config.width_mm as f64, riss.width_m(), p.x], [riss_config.height_mm as f64, riss.height_m(), p.y]));
+    }
     let l = SvgLine {
         points: line.points.iter().map(|p| {
             SvgPoint {
@@ -350,8 +355,9 @@ fn line_into_pdf_space(
             }
         }).collect()
     };
-
     log.push(serde_json::to_string(&l).unwrap_or_default());
+    log.push("LINEEND".to_string());
+
     l
 }
 
