@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference};
 use serde_derive::{Deserialize, Serialize};
 use crate::analyze::LatLng;
@@ -397,15 +398,39 @@ fn write_split_flurstuecke_into_layer(
     log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
 
     for (k, style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
-        for poly in polys.iter() {
-            layer.add_polygon(translate_poly(&poly.poly));
+        layer.save_graphics_state();
+    
+        let mut paintmode = PaintMode::Fill;
+        let fill_color = style.fill_color.as_ref()
+        .and_then(|s| csscolorparser::parse(&s).ok())
+        .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }));
+
+        let outline_color: Option<printpdf::Color> = style.outline_color.as_ref()
+        .and_then(|s| csscolorparser::parse(&s).ok())
+        .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }));
+
+        let outline_thickness = style.outline_thickness.unwrap_or(1.0);
+
+        if let Some(fc) = fill_color.as_ref() {
+            layer.set_fill_color(fc.clone());
         }
+        if let Some(oc) = outline_color.as_ref() {
+            layer.set_outline_color(oc.clone());
+            layer.set_outline_thickness(outline_thickness);
+            paintmode = PaintMode::FillStroke;
+        }
+
+        for poly in polys.iter() {
+            layer.add_polygon(translate_poly(&poly.poly, paintmode));
+        }
+        layer.restore_graphics_state();
     }
     Some(())
 }
 
 fn translate_poly(
     svg: &SvgPolygon,
+    paintmode: PaintMode,
 ) -> printpdf::Polygon {
     printpdf::Polygon {
         rings: {
@@ -427,7 +452,7 @@ fn translate_poly(
             }
             r
         },
-        mode: printpdf::path::PaintMode::Fill,
+        mode: paintmode,
         winding_order: printpdf::path::WindingOrder::NonZero,
     }
 }
