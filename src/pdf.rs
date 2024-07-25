@@ -44,9 +44,9 @@ pub struct RissExtent {
 
 impl RissExtent {
     // latlon -> 
-    pub fn reproject(&self, target_crs: &str) -> Option<RissExtentReprojected> {
+    pub fn reproject(&self, target_crs: &str, log: &mut Vec<String>) -> Option<RissExtentReprojected> {
         
-        let coords = self.coords.iter().map(|l| {
+        let mut coords = self.coords.iter().map(|l| {
             (l.lng.to_radians(), l.lat.to_radians(), 0.0)
         }).collect::<Vec<_>>();
         if coords.is_empty() {
@@ -55,21 +55,21 @@ impl RissExtent {
 
         let source = proj4rs::Proj::from_proj_string(&self.projection).ok()?;
         let target = proj4rs::Proj::from_proj_string(&target_crs).ok()?;
-        let points = coords.iter().filter_map(|p| {
-            let mut p = p.clone();
-            proj4rs::transform::transform(&source, &target, &mut p).ok()?;
-            Some(SvgPoint {
+        proj4rs::transform::transform(&source, &target, coords.as_mut_slice()).ok()?;
+        let points = coords.iter().map(|p| {
+            SvgPoint {
                 x: p.0, 
                 y: p.1,
-            })
+            }
         }).collect::<Vec<_>>();
-        let spec = 1000000.0;
+        let spec = 1000.0;
+        log.push(format!("riss points {points:#?}"));
         Some(RissExtentReprojected {
             crs: target_crs.to_string(),
             max_x: points.iter().map(|v| (v.x * spec) as usize).max().unwrap_or(0) as f64 / spec,
             min_x: points.iter().map(|v| (v.x * spec) as usize).min().unwrap_or(0) as f64 / spec,
-            max_y: points.iter().map(|v| (v.x * spec) as usize).max().unwrap_or(0) as f64 / spec,
-            min_y: points.iter().map(|v| (v.x * spec) as usize).min().unwrap_or(0) as f64 / spec,
+            max_y: points.iter().map(|v| (v.y * spec) as usize).max().unwrap_or(0) as f64 / spec,
+            min_y: points.iter().map(|v| (v.y * spec) as usize).min().unwrap_or(0) as f64 / spec,
         })
 
     }
@@ -166,7 +166,7 @@ pub fn generate_pdf(
 
         log.push(format!("Rendering Riss {ri}"));
 
-        let riss_extent = match riss_map.get(ri).and_then(|r| r.reproject(&xml.crs)) {
+        let riss_extent = match riss_map.get(ri).and_then(|r| r.reproject(&xml.crs, log)) {
             Some(s) => s,
             None => continue,
         };
