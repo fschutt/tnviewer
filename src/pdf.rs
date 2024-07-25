@@ -241,6 +241,12 @@ fn reproject_aenderungen_into_pdf_space(
     let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
     .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
 
+    let target_riss = quadtree_f32::Rect {
+        min_x: riss.min_x,
+        min_y: riss.min_y,
+        max_x: riss.max_x,
+        max_y: riss.max_y,
+    };
     Ok(Aenderungen {
         gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
         na_definiert: aenderungen.na_definiert.clone(),
@@ -252,11 +258,15 @@ fn reproject_aenderungen_into_pdf_space(
                 nutzung: v.nutzung.clone(),
             })
         })
-        .map(|(k, v)| {
-            (k.clone(), PolyNeu {
-                poly: poly_into_pdf_space(&v.poly, &riss, riss_config, log),
-                nutzung: v.nutzung,
-            })
+        .filter_map(|(k, v)| {
+            if v.poly.get_rect().overlaps_rect(&target_riss) {
+                Some((k.clone(), PolyNeu {
+                    poly: poly_into_pdf_space(&v.poly, &riss, riss_config, log),
+                    nutzung: v.nutzung,
+                }))
+            } else {
+                None
+            }
         })
         .collect()
     })
@@ -331,7 +341,7 @@ fn line_into_pdf_space(
     riss_config: &RissConfig,
     log: &mut Vec<String>,
 ) -> SvgLine {
-    log.push(format!("{}", serde_json::to_string(line).unwrap_or_default()));
+    log.push(serde_json::to_string(line).unwrap_or_default());
     let l = SvgLine {
         points: line.points.iter().map(|p| {
             SvgPoint {
@@ -341,7 +351,7 @@ fn line_into_pdf_space(
         }).collect()
     };
 
-    log.push(format!("{}", serde_json::to_string(line).unwrap_or_default()));
+    log.push(serde_json::to_string(&l).unwrap_or_default());
     l
 }
 
