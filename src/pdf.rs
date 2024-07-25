@@ -188,7 +188,7 @@ pub fn generate_pdf(
             doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), ri)
         };
 
-        let mut page = doc.get_page(page);
+        let page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
 
         let aenderungen_in_pdf_space = match reproject_aenderungen_into_pdf_space(
@@ -352,24 +352,14 @@ fn line_into_pdf_space(
     riss_config: &RissConfig,
     log: &mut Vec<String>,
 ) -> SvgLine {
-    log.push("LINESTART".to_string());
-    log.push(serde_json::to_string(&riss).unwrap_or_default());
-    log.push(serde_json::to_string(line).unwrap_or_default());
-    for p in line.points.iter() {
-        log.push(format!("{:?} // {:?}", [riss_config.width_mm as f64, riss.width_m(), p.x], [riss_config.height_mm as f64, riss.height_m(), p.y]));
-    }
-    let l = SvgLine {
+    SvgLine {
         points: line.points.iter().map(|p| {
             SvgPoint {
                 x: (p.x - riss.min_x) / riss.width_m() * riss_config.width_mm as f64, 
                 y: (p.y - riss.min_y) / riss.height_m() * riss_config.height_mm as f64, 
             }
         }).collect()
-    };
-    log.push(serde_json::to_string(&l).unwrap_or_default());
-    log.push("LINEEND".to_string());
-
-    l
+    }
 }
 
 fn write_split_flurstuecke_into_layer(
@@ -378,16 +368,16 @@ fn write_split_flurstuecke_into_layer(
     style: &StyleConfig,
     log: &mut Vec<String>,
 ) -> Option<()> {
-    // let flurstuecke_nutzungen_in_riss = write_split_flurstuecke_into_layer
+    log.push(format!("style {:#?}", style));
+    log.push(format!("writing split flurstuecke: "));
+    log.push(serde_json::to_string(&split_flurstuecke).unwrap_or_default());
     for (k, v) in split_flurstuecke.flurstuecke_nutzungen.iter() {
         let style = match style.ebenen.get(k) {
             Some(s) => s,
             None => continue,
         };
         for poly in v.iter() {
-            let pdf_poly = translate_poly(&poly.poly);
-            log.push(format!("drawing polygon {k}: {pdf_poly:#?}"));
-            layer.add_polygon(pdf_poly);
+            layer.add_polygon(translate_poly(&poly.poly));
         }
     }
     Some(())
