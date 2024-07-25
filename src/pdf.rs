@@ -173,6 +173,7 @@ pub fn generate_pdf(
         .. Default::default()
     }));
 
+    /*
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
         log.push(format!("Rendering Riss {ri}"));
@@ -231,6 +232,8 @@ pub fn generate_pdf(
         log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
 
+    */
+    
     log.push(format!("Rendering Risse: 5 ok"));
 
     doc.save_to_bytes().unwrap_or_default()

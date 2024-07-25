@@ -245,6 +245,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -874,8 +875,6 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flu
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
-
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0));
@@ -1191,11 +1190,11 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_new0_7d84e5b2cd9fdc73 = function() {
         const ret = new Date();
         return addHeapObject(ret);
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };
