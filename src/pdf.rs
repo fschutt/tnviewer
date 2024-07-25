@@ -171,8 +171,6 @@ pub fn generate_pdf(
             None => continue,
         };
 
-        log.push(format!("extend reprojected {ri}: {:#?}", riss_extent));
-
         let (page, layer) = if i == 0 {
             (page1, layer1)
         } else {
@@ -187,14 +185,13 @@ pub fn generate_pdf(
             &riss_extent,
             rc,
             &xml.crs,
+            log,
         ) {
             Ok(o) => o,
             Err(_) => continue,
         };
 
-        log.push(format!("aenderungen pdf space {}", serde_json::to_string(&aenderungen_in_pdf_space).unwrap_or_default()));
-
-        log.push(format!("extend reprojected {ri}: {:#?}", riss_extent));
+        log.push(format!("aenderungen ok---"));
 
         log.push(format!("Rendering Riss {ri}: 2 ok"));
 
@@ -202,11 +199,12 @@ pub fn generate_pdf(
             &split_flurstuecke,
             &riss_extent,
             rc,
+            log
         );
 
         log.push(format!("Rendering Riss {ri}: 3 ok"));
 
-        log.push(format!("split flurstuecke in pdf space {}", serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default()));
+        // log.push(serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default());
 
         write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
 
@@ -214,9 +212,10 @@ pub fn generate_pdf(
             &xml,
             &riss_extent,
             rc,
+            log,
         );
 
-        log.push(format!("nas xml in pdf space {}", serde_json::to_string(&nas_xml_in_pdf_space).unwrap_or_default()));
+        // log.push(format!("nas xml in pdf space {}", serde_json::to_string(&nas_xml_in_pdf_space).unwrap_or_default()));
 
         log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
@@ -232,6 +231,7 @@ fn reproject_aenderungen_into_pdf_space(
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
     original_crs: &str,
+    log: &mut Vec<String>
 ) -> Result<Aenderungen, String> {
     use crate::nas::LATLON_STRING;
 
@@ -254,7 +254,7 @@ fn reproject_aenderungen_into_pdf_space(
         })
         .map(|(k, v)| {
             (k.clone(), PolyNeu {
-                poly: poly_into_pdf_space(&v.poly, &riss, riss_config),
+                poly: poly_into_pdf_space(&v.poly, &riss, riss_config, log),
                 nutzung: v.nutzung,
             })
         })
@@ -267,6 +267,7 @@ fn reproject_splitnas_into_pdf_space(
     split_flurstuecke: &SplitNasXml,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
+    log: &mut Vec<String>
 ) -> SplitNasXml {
     let target_riss = quadtree_f32::Rect {
         min_x: riss.min_x,
@@ -281,7 +282,7 @@ fn reproject_splitnas_into_pdf_space(
                 if s.get_rect().overlaps_rect(&target_riss) {
                     Some(TaggedPolygon {
                         attributes: s.attributes.clone(),
-                        poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
+                        poly: poly_into_pdf_space(&s.poly, &riss, riss_config, log),
                     })
                 } else {
                     None
@@ -296,6 +297,7 @@ fn reproject_nasxml_into_pdf_space(
     nas_xml: &NasXMLFile,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
+    log: &mut Vec<String>
 ) -> NasXMLFile {
     NasXMLFile {
         crs: "pdf".to_string(),
@@ -304,7 +306,7 @@ fn reproject_nasxml_into_pdf_space(
             v.iter().map(|s| {
                 TaggedPolygon {
                     attributes: s.attributes.clone(),
-                    poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
+                    poly: poly_into_pdf_space(&s.poly, &riss, riss_config, log),
                 }
             }).collect())
         }).collect()
@@ -315,10 +317,11 @@ fn poly_into_pdf_space(
     poly: &SvgPolygon,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
+    log: &mut Vec<String>,
 ) -> SvgPolygon {
     SvgPolygon { 
-        outer_rings: poly.outer_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
-        inner_rings: poly.inner_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
+        outer_rings: poly.outer_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config, log)).collect(), 
+        inner_rings: poly.inner_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config, log)).collect(), 
     }
 }
 
@@ -326,15 +329,20 @@ fn line_into_pdf_space(
     line: &SvgLine,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
+    log: &mut Vec<String>,
 ) -> SvgLine {
-    SvgLine {
+    log.push(format!("{}", serde_json::to_string(line).unwrap_or_default()));
+    let l = SvgLine {
         points: line.points.iter().map(|p| {
             SvgPoint {
                 x: riss_config.width_mm as f64 / riss.width_m() * p.x, 
                 y: riss_config.height_mm as f64 - (riss_config.height_mm as f64 / riss.height_m() * p.y), 
             }
         }).collect()
-    }
+    };
+
+    log.push(format!("{}", serde_json::to_string(line).unwrap_or_default()));
+    l
 }
 
 fn write_split_flurstuecke_into_layer(
