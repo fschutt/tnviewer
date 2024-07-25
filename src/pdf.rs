@@ -62,7 +62,6 @@ impl RissExtent {
                 y: p.1,
             }
         }).collect::<Vec<_>>();
-        log.push(format!("riss points {points:#?}"));
 
         let mut max_x = points.get(0)?.x;
         let mut min_x = points.get(0)?.x;
@@ -362,8 +361,8 @@ fn line_into_pdf_space(
     let l = SvgLine {
         points: line.points.iter().map(|p| {
             SvgPoint {
-                x: riss_config.width_mm as f64 / riss.width_m() * p.x, 
-                y: riss_config.height_mm as f64 - (riss_config.height_mm as f64 / riss.height_m() * p.y), 
+                x: (p.x - riss.min_x) / riss.width_m() * riss_config.width_mm as f64, 
+                y: (p.y - riss.min_y) / riss.height_m() * riss_config.height_mm as f64, 
             }
         }).collect()
     };
