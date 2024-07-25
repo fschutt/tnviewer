@@ -380,14 +380,24 @@ fn write_split_flurstuecke_into_layer(
 ) -> Option<()> {
     log.push(format!("writing split flurstuecke: "));
     log.push(format!("found style {}", serde_json::to_string(&style.ebenen.keys().collect::<Vec<_>>()).unwrap_or_default()));
-    for (k, v) in split_flurstuecke.flurstuecke_nutzungen.iter() {
-        log.push(format!("looking for style for ebene {k}"));
-        let style = match style.ebenen.get(k) {
-            Some(s) => s,
-            None => continue,
-        };
-        log.push(format!("found style {}", serde_json::to_string(&style).unwrap_or_default()));
-        for poly in v.iter() {
+    let flurstueck_nutzungen_grouped_by_ebene = style.ebenen.iter().filter_map(|(ebene_key, ebenen_style)| {
+        
+        let polygone = split_flurstuecke.flurstuecke_nutzungen.iter()
+        .flat_map(|(flst_id, flst_parts)| {
+            flst_parts.iter().filter(|f| f.attributes.get("AX_Ebene") == Some(ebene_key)).collect::<Vec<_>>()
+        }).cloned().collect::<Vec<_>>();
+
+        if polygone.is_empty() {
+            None
+        } else {
+            Some((ebene_key.clone(), ebenen_style.clone(), polygone))
+        }
+    }).collect::<Vec<_>>();
+
+    log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
+
+    for (k, style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
+        for poly in polys.iter() {
             layer.add_polygon(translate_poly(&poly.poly));
         }
     }
