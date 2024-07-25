@@ -1319,7 +1319,7 @@
         JSON.stringify(style_config),
       ));
       console.log(pdf.log);
-      downloadBlob(pdf.bytes, window.info.antragsnr + ".pdf", 'application/pdf');
+      downloadBlob(new Uint8Array(pdf.bytes), window.info.antragsnr + ".pdf", 'application/pdf');
     }
 
     function exportVeraenderteFlst() {

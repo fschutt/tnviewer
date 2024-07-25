@@ -173,7 +173,7 @@ pub fn generate_pdf(
         .. Default::default()
     }));
 
-    /*
+
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
         log.push(format!("Rendering Riss {ri}"));
@@ -232,8 +232,7 @@ pub fn generate_pdf(
         log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
 
-    */
-    
+
     log.push(format!("Rendering Risse: 5 ok"));
 
     doc.save_to_bytes().unwrap_or_default()
@@ -301,8 +300,8 @@ fn reproject_splitnas_into_pdf_space(
     };
     SplitNasXml {
         crs: "pdf".to_string(),
-        flurstuecke_nutzungen: split_flurstuecke.flurstuecke_nutzungen.iter().map(|(k, v)| {
-            (k.clone(), v.iter().filter_map(|s| {
+        flurstuecke_nutzungen: split_flurstuecke.flurstuecke_nutzungen.iter().filter_map(|(k, v)| {
+            let v = v.iter().filter_map(|s| {
                 if s.get_rect().overlaps_rect(&target_riss) {
                     Some(TaggedPolygon {
                         attributes: s.attributes.clone(),
@@ -311,7 +310,12 @@ fn reproject_splitnas_into_pdf_space(
                 } else {
                     None
                 }
-            }).collect())
+            }).collect::<Vec<_>>();
+            if v.is_empty() {
+                None 
+            } else {
+                Some((k.clone(), v))
+            }
         }).collect()
     }
 }
