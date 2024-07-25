@@ -622,6 +622,7 @@
           var styles_keys = Object.keys(window.configuration.style);
           var styles_keys = styles_keys.join(", ");
           var converted = load_nas_xml(readerEvent.target.result, styles_keys);
+          console.log(converted);
           var parsed = JSON.parse(converted);
           
           window.xml_data = parsed.xml_parsed;
@@ -1292,6 +1293,12 @@
         );
       }
 
+      var style_config = {
+        "nutzungsartengrenze_col": "#555",
+        "nutzungsartengrenze_thickness": 1.0,
+        "ebenen": window.configuration.style,
+      };
+
       console.log(window.info);
       console.log(window.risse);
       console.log(window.csv_data);
@@ -1299,14 +1306,9 @@
       console.log(window.aenderungen);
       console.log(window.split_flurstuecke);
       console.log(risse_extent);
-
-      var style_config = {
-        "nutzungsartengrenze_col": "#555",
-        "nutzungsartengrenze_thickness": 1.0,
-        "ebenen": window.configuration.style,
-      };
       console.log(style_config);
-      var pdf = export_pdf(
+
+      var pdf = JSON.parse(export_pdf(
         JSON.stringify(window.info),
         JSON.stringify(window.risse),
         JSON.stringify(window.csv_data),
@@ -1315,8 +1317,9 @@
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(risse_extent),
         JSON.stringify(style_config),
-      );
-      downloadBlob(pdf, window.info.antragsnr + ".pdf", 'application/pdf');
+      ));
+      console.log(pdf.log);
+      downloadBlob(pdf.bytes, window.info.antragsnr + ".pdf", 'application/pdf');
     }
 
     function exportVeraenderteFlst() {

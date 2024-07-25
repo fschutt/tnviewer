@@ -47,7 +47,7 @@ impl RissExtent {
     pub fn reproject(&self, target_crs: &str) -> Option<RissExtentReprojected> {
         
         let coords = self.coords.iter().map(|l| {
-            (l.lng, l.lat, 0.0)
+            (l.lng.to_radians(), l.lat.to_radians(), 0.0)
         }).collect::<Vec<_>>();
         if coords.is_empty() {
             return None;
@@ -59,8 +59,8 @@ impl RissExtent {
             let mut p = p.clone();
             proj4rs::transform::transform(&source, &target, &mut p).ok()?;
             Some(SvgPoint {
-                x: p.0.to_degrees(), 
-                y: p.1.to_degrees(),
+                x: p.0, 
+                y: p.1,
             })
         }).collect::<Vec<_>>();
         let spec = 1000000.0;
@@ -74,6 +74,8 @@ impl RissExtent {
 
     }
 }
+
+#[derive(Debug, Clone)]
 pub struct RissExtentReprojected {
     pub crs: String,
     pub min_x: f64,
@@ -144,6 +146,7 @@ pub fn generate_pdf(
     aenderungen: &Aenderungen, 
     risse: &Risse,
     riss_map: &RissMap,
+    log: &mut Vec<String>
 ) -> Vec<u8> {
 
     let (mut doc, page1, layer1) = PdfDocument::new(
@@ -159,7 +162,11 @@ pub fn generate_pdf(
         .. Default::default()
     }));
 
+    log.push(format!("Riss map {riss_map:#?}"));
+
     for (i, (ri, rc))  in risse.iter().enumerate() {
+
+        log.push(format!("Rendering Riss {ri}"));
 
         let riss_extent = match riss_map.get(ri).and_then(|r| r.reproject(&xml.crs)) {
             Some(s) => s,
@@ -171,6 +178,9 @@ pub fn generate_pdf(
         } else {
             doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), ri)
         };
+
+        log.push(format!("Rendering Riss {ri}: 1 ok"));
+
         let mut page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
 
@@ -184,13 +194,17 @@ pub fn generate_pdf(
             Err(_) => continue,
         };
 
+        log.push(format!("Rendering Riss {ri}: 2 ok"));
+
         let split_flurstuecke_in_pdf_space = reproject_splitnas_into_pdf_space(
             &split_flurstuecke,
             &riss_extent,
             rc,
         );
 
-        write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style);
+        log.push(format!("Rendering Riss {ri}: 3 ok"));
+
+        write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
 
         let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
             &xml,
@@ -198,8 +212,10 @@ pub fn generate_pdf(
             rc,
         );
 
-
+        log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
+
+    log.push(format!("Rendering Risse: 5 ok"));
 
     doc.save_to_bytes().unwrap_or_default()
 }
@@ -309,7 +325,9 @@ fn write_split_flurstuecke_into_layer(
     layer: &mut PdfLayerReference,
     split_flurstuecke: &SplitNasXml,
     style: &StyleConfig,
+    log: &mut Vec<String>,
 ) -> Option<()> {
+    // let flurstuecke_nutzungen_in_riss = write_split_flurstuecke_into_layer
     for (k, v) in split_flurstuecke.flurstuecke_nutzungen.iter() {
         let style = match style.ebenen.get(k) {
             Some(s) => s,
@@ -317,6 +335,7 @@ fn write_split_flurstuecke_into_layer(
         };
         for poly in v.iter() {
             let pdf_poly = translate_poly(&poly.poly);
+            log.push(format!("drawing polygon {k}: {pdf_poly:#?}"));
             layer.add_polygon(pdf_poly);
         }
     }

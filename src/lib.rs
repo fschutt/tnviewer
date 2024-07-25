@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon};
+use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
@@ -424,7 +424,12 @@ pub fn export_pdf(
     split_flurstuecke: Option<String>, // original projection
     risse_extente: String, // latlon projection
     style_config: String,
-) -> Vec<u8> {
+) -> String {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct ExportPdfReturn {
+        bytes: Vec<u8>,
+        log: Vec<String>,
+    }
     let projekt_info = serde_json::from_str::<ProjektInfo>(&projekt_info).unwrap_or_default();
     let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
     let csv = serde_json::from_str::<CsvDataType>(&csv).unwrap_or_default();
@@ -432,8 +437,12 @@ pub fn export_pdf(
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
     let split_flurstuecke = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
     let style_config = serde_json::from_str::<StyleConfig>(&style_config).unwrap_or_default();
-    let riss_extente = serde_json::from_str::<RissMap>(&risse_extente).unwrap_or_default();
-    crate::pdf::generate_pdf(
+    let mut riss_extente = serde_json::from_str::<RissMap>(&risse_extente).unwrap_or_default();
+    let mut log = Vec::new();
+    for r in riss_extente.values_mut() {
+        r.projection = LATLON_STRING.to_string();
+    }
+    let bytes = crate::pdf::generate_pdf(
         &projekt_info, 
         &style_config, 
         &csv, 
@@ -441,8 +450,14 @@ pub fn export_pdf(
         &split_flurstuecke, 
         &aenderungen, 
         &risse,
-        &riss_extente
-    )
+        &riss_extente,
+        &mut log,
+    );
+    serde_json::to_string(&ExportPdfReturn {
+        bytes,
+        log,
+    }).unwrap_or_default()
+
 }
 
 pub fn decode(bytes: Vec<u8>) -> String {
