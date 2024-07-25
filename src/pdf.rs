@@ -11,18 +11,18 @@ pub type Risse = BTreeMap<String, RissConfig>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EbenenStyle {
-    #[serde(default)]
+    #[serde(default, alias = "fillColor")]
     fill_color: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "outlineColor")]
     outline_color: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "outlineThickness")]
     outline_thickness: Option<f32>,
-    #[serde(default)]
+    #[serde(default, alias = "outlineDash")]
     outline_dash: Option<String>,
-    #[serde(default)]
-    pattern: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "outlineOverprint")]
     outline_overprint: bool,
+    #[serde(default, alias = "patternSvg")]
+    pattern_svg: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -160,11 +160,13 @@ pub fn generate_pdf(
     log: &mut Vec<String>
 ) -> Vec<u8> {
 
+    let len = risse.len();
+    let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Riss",
         Mm(risse.iter().next().map(|(k, v)| v.width_mm).unwrap_or(210.0)),
         Mm(risse.iter().next().map(|(k, v)| v.height_mm).unwrap_or(297.0)),
-        "Riss",
+        &format!("Riss 1 / {len} ({first_riss_id})"),
     );
 
     doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
@@ -183,10 +185,11 @@ pub fn generate_pdf(
             None => continue,
         };
 
+        let p = ri.split("-").next().unwrap_or("");
         let (page, layer) = if i == 0 {
             (page1, layer1)
         } else {
-            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), ri)
+            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {len} ({p})", i + 1))
         };
 
         let page = doc.get_page(page);
@@ -375,14 +378,15 @@ fn write_split_flurstuecke_into_layer(
     style: &StyleConfig,
     log: &mut Vec<String>,
 ) -> Option<()> {
-    log.push(format!("style {:#?}", style));
     log.push(format!("writing split flurstuecke: "));
-    log.push(serde_json::to_string(&split_flurstuecke).unwrap_or_default());
+    log.push(format!("found style {}", serde_json::to_string(&style.ebenen.keys().collect::<Vec<_>>()).unwrap_or_default()));
     for (k, v) in split_flurstuecke.flurstuecke_nutzungen.iter() {
+        log.push(format!("looking for style for ebene {k}"));
         let style = match style.ebenen.get(k) {
             Some(s) => s,
             None => continue,
         };
+        log.push(format!("found style {}", serde_json::to_string(&style).unwrap_or_default()));
         for poly in v.iter() {
             layer.add_polygon(translate_poly(&poly.poly));
         }
