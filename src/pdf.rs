@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference};
+use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
 use serde_derive::{Deserialize, Serialize};
 use crate::analyze::LatLng;
 use crate::csv::CsvDataType;
@@ -222,7 +222,9 @@ pub fn generate_pdf(
 
         // log.push(serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default());
 
-        write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
+        let _ = write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
+
+        let _ = write_border(&mut layer, 16.5, &rc);
 
         let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
             &xml,
@@ -371,6 +373,68 @@ fn line_into_pdf_space(
             }
         }).collect()
     }
+}
+
+fn write_border(
+    layer: &mut PdfLayerReference,
+    border_width_mm: f32,
+    riss: &RissConfig,
+) -> Option<()> {
+
+    let add_rect = |x, y, w, h, paintmode| {
+    
+        let points = printpdf::calculate_points_for_rect(
+            Mm(w), 
+            Mm(h), 
+            Mm(x),
+            Mm(y)
+        );
+
+        let poly = printpdf::Polygon {
+            rings: vec![points],
+            mode: paintmode,
+            winding_order: printpdf::path::WindingOrder::NonZero,
+        };
+
+        layer.add_polygon(poly);
+    };
+
+    layer.save_graphics_state();
+
+    layer.set_fill_color(printpdf::Color::Rgb(Rgb {
+        r: 255.0,
+        g: 255.0,
+        b: 255.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_thickness(1.0);
+
+    add_rect(0.0, 0.0, riss.width_mm, border_width_mm, PaintMode::Fill);
+    add_rect(0.0, 0.0, border_width_mm, riss.height_mm, PaintMode::Fill);
+    add_rect(0.0, riss.height_mm - border_width_mm, riss.width_mm, border_width_mm, PaintMode::Fill);
+    add_rect(riss.width_mm - border_width_mm, 0.0, border_width_mm, riss.height_mm, PaintMode::Fill);
+
+
+    add_rect(border_width_mm, border_width_mm, riss.width_mm - border_width_mm, riss.height_mm - border_width_mm, PaintMode::Stroke);
+
+    add_rect(
+        border_width_mm,
+        riss.height_mm - border_width_mm,
+        175.0,
+        35.0,
+        PaintMode::Fill
+    );
+
+    layer.restore_graphics_state();
+    Some(())
 }
 
 fn write_split_flurstuecke_into_layer(
