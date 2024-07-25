@@ -87,13 +87,7 @@ impl NasXMLFile {
         let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
             let gebaeude_id = tp.attributes.get("id").cloned()?;
             let item_id = ItemId(i);
-            let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-            let bounds = Rect {
-                max_x: max_x,
-                max_y: max_y,
-                min_x: min_x,
-                min_y: min_y,
-            };
+            let bounds = tp.get_rect();
             Some((item_id, (gebaeude_id, bounds, tp.clone())))
         }).collect::<BTreeMap<_, _>>();
 
@@ -297,6 +291,16 @@ impl TaggedPolygon {
             "AX_Meer" => Some("WAF"),
             _ => None,
         }.map(|s| s.to_string())
+    }
+
+    pub fn get_rect(&self) -> quadtree_f32::Rect {
+        let [[min_y, min_x], [max_y, max_x]] = self.get_fit_bounds();
+        quadtree_f32::Rect {
+            max_x: max_x,
+            max_y: max_y,
+            min_x: min_x,
+            min_y: min_y,
+        }
     }
 
     pub fn get_fit_bounds(&self) -> [[f64;2];2] {

@@ -162,8 +162,6 @@ pub fn generate_pdf(
         .. Default::default()
     }));
 
-    log.push(format!("Riss map {riss_map:#?}"));
-
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
         log.push(format!("Rendering Riss {ri}"));
@@ -173,13 +171,13 @@ pub fn generate_pdf(
             None => continue,
         };
 
+        log.push(format!("extend reprojected {ri}: {:#?}", riss_extent));
+
         let (page, layer) = if i == 0 {
             (page1, layer1)
         } else {
             doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), ri)
         };
-
-        log.push(format!("Rendering Riss {ri}: 1 ok"));
 
         let mut page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
@@ -194,6 +192,10 @@ pub fn generate_pdf(
             Err(_) => continue,
         };
 
+        log.push(format!("aenderungen pdf space {}", serde_json::to_string(&aenderungen_in_pdf_space).unwrap_or_default()));
+
+        log.push(format!("extend reprojected {ri}: {:#?}", riss_extent));
+
         log.push(format!("Rendering Riss {ri}: 2 ok"));
 
         let split_flurstuecke_in_pdf_space = reproject_splitnas_into_pdf_space(
@@ -204,6 +206,8 @@ pub fn generate_pdf(
 
         log.push(format!("Rendering Riss {ri}: 3 ok"));
 
+        log.push(format!("split flurstuecke in pdf space {}", serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default()));
+
         write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
 
         let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
@@ -211,6 +215,8 @@ pub fn generate_pdf(
             &riss_extent,
             rc,
         );
+
+        log.push(format!("nas xml in pdf space {}", serde_json::to_string(&nas_xml_in_pdf_space).unwrap_or_default()));
 
         log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
@@ -262,13 +268,23 @@ fn reproject_splitnas_into_pdf_space(
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
 ) -> SplitNasXml {
+    let target_riss = quadtree_f32::Rect {
+        min_x: riss.min_x,
+        min_y: riss.min_y,
+        max_x: riss.max_x,
+        max_y: riss.max_y,
+    };
     SplitNasXml {
         crs: "pdf".to_string(),
         flurstuecke_nutzungen: split_flurstuecke.flurstuecke_nutzungen.iter().map(|(k, v)| {
-            (k.clone(), v.iter().map(|s| {
-                TaggedPolygon {
-                    attributes: s.attributes.clone(),
-                    poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
+            (k.clone(), v.iter().filter_map(|s| {
+                if s.get_rect().overlaps_rect(&target_riss) {
+                    Some(TaggedPolygon {
+                        attributes: s.attributes.clone(),
+                        poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
+                    })
+                } else {
+                    None
                 }
             }).collect())
         }).collect()
