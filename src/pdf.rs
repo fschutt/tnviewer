@@ -62,14 +62,26 @@ impl RissExtent {
                 y: p.1,
             }
         }).collect::<Vec<_>>();
-        let spec = 1000.0;
         log.push(format!("riss points {points:#?}"));
+
+        let mut max_x = points.get(0)?.x;
+        let mut min_x = points.get(0)?.x;
+        let mut max_y = points.get(0)?.y;
+        let mut min_y = points.get(0)?.y;
+
+        for p in points {
+            if p.x > max_x { max_x = p.x; }
+            if p.x < min_x { min_x = p.x; }
+            if p.y > max_y { max_y = p.y; }
+            if p.y < min_y { min_y = p.y; }
+        }
+
         Some(RissExtentReprojected {
             crs: target_crs.to_string(),
-            max_x: points.iter().map(|v| (v.x * spec) as usize).max().unwrap_or(0) as f64 / spec,
-            min_x: points.iter().map(|v| (v.x * spec) as usize).min().unwrap_or(0) as f64 / spec,
-            max_y: points.iter().map(|v| (v.y * spec) as usize).max().unwrap_or(0) as f64 / spec,
-            min_y: points.iter().map(|v| (v.y * spec) as usize).min().unwrap_or(0) as f64 / spec,
+            max_x,
+            min_x,
+            max_y,
+            min_y,
         })
 
     }
