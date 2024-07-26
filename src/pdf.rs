@@ -10,7 +10,7 @@ use crate::ui::{Aenderungen, PolyNeu};
 
 pub type Risse = BTreeMap<String, RissConfig>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EbenenStyle {
     #[serde(default, alias = "name")]
     pub name: String,
@@ -26,7 +26,7 @@ pub struct EbenenStyle {
 pub struct Konfiguration {
     pub map: MapKonfiguration,
     #[serde(default)]
-    pub style: BTreeMap<String, EbenenStyle>,
+    pub style: StyleConfig,
     #[serde(default)]
     pub pdf: PdfStyleConfig,
 }
@@ -41,28 +41,64 @@ pub struct MapKonfiguration {
     pub dop_layers: Option<String>,
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct StyleConfig {
+    #[serde(default)]
+    pub ebenen_ordnung: Vec<String>,
+    #[serde(default)]
+    pub ebenen: BTreeMap<String, EbenenStyle>,
+}
+
+impl StyleConfig {
+    pub fn get_styles_sorted(&self) -> Vec<(String, EbenenStyle)> {
+        self.ebenen_ordnung.iter().filter_map(|s| self.ebenen.get(s).cloned().map(|q| (s.clone(), q))).collect()
+    }
+}
+
 pub type Kuerzel = String;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PdfStyleConfig {
+    #[serde(default)]
     pub grenzpunkt_svg: Option<String>,
-    pub pfeil_svg: Option<PpoStil>,
-    pub nordpfeil_svg: Option<PpoStil>,
+    #[serde(default)]
+    pub pfeil_svg: Option<String>,
+    #[serde(default)]
+    pub nordpfeil_svg: Option<String>,
+    #[serde(default)]
     pub gebauede_loeschen_svg: Option<String>,
-    pub ax_flur_stil: Option<PdfEbenenStyle>,
-    pub ax_bauraum_stil: Option<PdfEbenenStyle>,
-    pub lagebez_mit_hsnr: Option<PtoStil>,
+
+    #[serde(default)]
+    pub ax_flur_stil: PdfEbenenStyle,
+    #[serde(default)]
+    pub ax_bauraum_stil: PdfEbenenStyle,
+    #[serde(default)]
+    pub lagebez_mit_hsnr: PtoStil,
+
+    #[serde(default)]
     pub layer_ordnung: Vec<String>,
+    #[serde(default)]
     pub nutzungsarten: BTreeMap<String, PdfEbenenStyle>,
+    #[serde(default)]
     pub beschriftungen: BTreeMap<String, PtoStil>,
+    #[serde(default)]
     pub symbole: BTreeMap<String, PpoStil>,
+}
+
+impl PdfStyleConfig {
+    pub fn get_nutzungsarten_sorted(&self) -> Vec<(String, PdfEbenenStyle)> {
+        self.layer_ordnung.iter().filter_map(|s| self.nutzungsarten.get(s).cloned().map(|q| (s.clone(), q))).collect()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PdfEbenenStyle {
+    #[serde(default)]
     pub kuerzel: String,
     #[serde(default, alias = "fillColor")]
     pub fill_color: Option<String>,
+    #[serde(default = "default_fill", alias = "fill")]
+    pub fill: bool,
     #[serde(default, alias = "outlineColor")]
     pub outline_color: Option<String>,
     #[serde(default, alias = "outlineThickness")]
@@ -76,10 +112,29 @@ pub struct PdfEbenenStyle {
     #[serde(default, alias = "patternPlacement")]
     pub pattern_placement: Option<String>,
     #[serde(default, alias = "lagebezOhneHsnr")]
-    pub lagebez_ohne_hsnr: Option<PtoStil>,
+    pub lagebez_ohne_hsnr: PtoStil,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+fn default_fill() -> bool { true }
+
+impl Default for PdfEbenenStyle {
+    fn default() -> Self {
+        PdfEbenenStyle {
+            kuerzel: String::new(),
+            fill_color: Some("#000000".to_string()),
+            fill: true,
+            outline_color: None,
+            outline_thickness: None,
+            outline_overprint: false,
+            outline_dash: None,
+            pattern_svg: None,
+            pattern_placement: None,
+            lagebez_ohne_hsnr: PtoStil::default(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PtoStil {
     #[serde(default, alias = "art")]
     pub art: String, // BEZ, Gewanne

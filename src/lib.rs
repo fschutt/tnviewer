@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{Konfiguration, ProjektInfo, RissExtent, RissMap, Risse};
+use pdf::{EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
@@ -155,7 +155,10 @@ pub fn ui_render_ribbon(decoded: String) -> String {
 #[wasm_bindgen]
 pub fn ui_render_popover_content(decoded: String, konfiguration: String) -> String {
     let uidata = UiData::from_string(&decoded);
-    let konfiguration = serde_json::from_str(&konfiguration).unwrap_or_default();
+    let konfiguration = match serde_json::from_str(&konfiguration) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
     crate::ui::render_popover_content(&uidata, &konfiguration)
 }
 
@@ -376,6 +379,109 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
     };
 
     crate::xlsx::generate_report(&data)
+}
+
+#[wasm_bindgen]
+pub fn edit_konfiguration_layer_neu(konfiguration: String, layer_type: String) -> String {
+    let mut config = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    match layer_type.as_str() {
+        "style" => {
+            let ebene_id = get_new_poly_id();
+            config.style.ebenen.insert(ebene_id.clone(), EbenenStyle::default());
+            let mut copy = config.style.ebenen_ordnung.clone();
+            copy.reverse();
+            copy.push(ebene_id);
+            copy.reverse();
+            config.style.ebenen_ordnung = copy;
+        },
+        "pdf-nutzungsarten" =>  {
+            let ebene_id = get_new_poly_id();
+            config.pdf.nutzungsarten.insert(ebene_id.clone(), PdfEbenenStyle::default());
+            let mut copy = config.pdf.layer_ordnung.clone();
+            copy.reverse();
+            copy.push(ebene_id);
+            copy.reverse();
+            config.pdf.layer_ordnung = copy;
+        },
+        _ => { },
+    }
+    serde_json::to_string(&config).unwrap_or_default()
+}
+
+#[wasm_bindgen]
+pub fn edit_konfiguration_move_layer(konfiguration: String, layer_type: String, ebene_id: String, move_type: String) -> String {
+    let mut config = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    match move_type.as_str() {
+        "delete" => {
+            match layer_type.as_str() {
+                "style" => {
+                    config.style.ebenen.remove(ebene_id.as_str());
+                    config.style.ebenen_ordnung.retain(|s| *s != ebene_id);
+                },
+                "pdf-nutzungsarten" => {
+                    config.style.ebenen.remove(ebene_id.as_str());
+                    config.style.ebenen_ordnung.retain(|s| *s != ebene_id);
+                },
+                _ => { },
+            }
+        },
+        "move-up" =>  {
+            match layer_type.as_str() {
+                "style" => {
+                    let mut temp = ebene_id.clone();
+                    if let Some(pos) = config.style.ebenen_ordnung.iter().position(|s| s.as_str() == ebene_id) {
+                        if let Some(next) = config.style.ebenen_ordnung.get_mut(pos.saturating_sub(1)) {
+                            std::mem::swap(&mut temp, next);
+                        }
+                        if let Some(pos_st) = config.style.ebenen_ordnung.get_mut(pos) {
+                            std::mem::swap(&mut temp, pos_st);
+                        }
+                    }
+                },
+                "pdf-nutzungsarten" => {
+                    let mut temp = ebene_id.clone();
+                    if let Some(pos) = config.pdf.layer_ordnung.iter().position(|s| s.as_str() == ebene_id) {
+                        if let Some(next) = config.pdf.layer_ordnung.get_mut(pos.saturating_sub(1)) {
+                            std::mem::swap(&mut temp, next);
+                        }
+                        if let Some(pos_st) = config.pdf.layer_ordnung.get_mut(pos) {
+                            std::mem::swap(&mut temp, pos_st);
+                        }
+                    }
+                },
+                _ => { },
+            }
+        },
+        "move-down" =>  {
+            match layer_type.as_str() {
+                "style" => {
+                    let mut temp = ebene_id.clone();
+                    if let Some(pos) = config.style.ebenen_ordnung.iter().position(|s| s.as_str() == ebene_id) {
+                        if let Some(next) = config.style.ebenen_ordnung.get_mut(pos.saturating_add(1)) {
+                            std::mem::swap(&mut temp, next);
+                        }
+                        if let Some(pos_st) = config.style.ebenen_ordnung.get_mut(pos) {
+                            std::mem::swap(&mut temp, pos_st);
+                        }
+                    }
+                },
+                "pdf-nutzungsarten" => {
+                    let mut temp = ebene_id.clone();
+                    if let Some(pos) = config.pdf.layer_ordnung.iter().position(|s| s.as_str() == ebene_id) {
+                        if let Some(next) = config.pdf.layer_ordnung.get_mut(pos.saturating_add(1)) {
+                            std::mem::swap(&mut temp, next);
+                        }
+                        if let Some(pos_st) = config.pdf.layer_ordnung.get_mut(pos) {
+                            std::mem::swap(&mut temp, pos_st);
+                        }
+                    }
+                },
+                _ => { },
+            }
+        },
+        _ => { },
+    }
+    serde_json::to_string(&config).unwrap_or_default()
 }
 
 #[wasm_bindgen]

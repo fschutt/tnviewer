@@ -786,6 +786,64 @@ export function export_xlsx(s) {
 }
 
 /**
+* @param {string} konfiguration
+* @param {string} layer_type
+* @returns {string}
+*/
+export function edit_konfiguration_layer_neu(konfiguration, layer_type) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(layer_type, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.edit_konfiguration_layer_neu(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+* @param {string} konfiguration
+* @param {string} layer_type
+* @param {string} ebene_id
+* @param {string} move_type
+* @returns {string}
+*/
+export function edit_konfiguration_move_layer(konfiguration, layer_type, ebene_id, move_type) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(layer_type, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(ebene_id, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(move_type, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len3 = WASM_VECTOR_LEN;
+        wasm.edit_konfiguration_move_layer(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred5_0 = r0;
+        deferred5_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
 * @param {string} s
 * @returns {Uint8Array}
 */
@@ -1164,11 +1222,11 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_new0_7d84e5b2cd9fdc73 = function() {
         const ret = new Date();
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };

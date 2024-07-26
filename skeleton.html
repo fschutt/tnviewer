@@ -82,165 +82,354 @@
         dop_layers: "bebb_dop20c"
       },
       style: {
-        AX_BauRaumOderBodenordnungsrecht: {
-          fillColor: "#ff0000",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        ebenen_ordnung: ["a","b","c","d","e","f","g","h","i","j","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","za","zb","zc","zd"],
+          ebenen: {
+        "a": {
+          "name": "AX_HistorischesFlurstueck",
+          "fillColor": "transparent",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Landwirtschaft: {
-          fillColor: "#fff596",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "b": {
+          "name": "AX_Flurstueck",
+          "fillColor": "#ccc",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Wald: {
-          fillColor: "#51ed4e",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "c": {
+          "name": "AX_Meer",
+          "fillColor": "#00ccab",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Gehoelz: {
-          fillColor: "#03b800",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "d": {
+          "name": "AX_StehendesGewaesser",
+          "fillColor": "#00ccab",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Heide: {
-          fillColor: "#b8005c",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "e": {
+          "name": "AX_Fliessgewaesser",
+          "fillColor": "#00ccab",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Sumpf: {
-          fillColor: "#00a367",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "f": {
+          "name": "AX_BauwerkImVerkehrsbereich",
+          "fillColor": "#008822",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_UnlandVegetationsloseFlaeche: {
-          fillColor: "#d9d9d9",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "g": {
+          "name": "AX_SonstigesBauwerkOderSonstigeEinrichtung",
+          "fillColor": "#008822",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Wohnbauflaeche: {
-          fillColor: "#ffadbe",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "h": {
+          "name": "AX_BauwerkOderAnlageFuerIndustrieUndGewerbe",
+          "fillColor": "#008822",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_IndustrieUndGewerbeflaeche: {
-          fillColor: "#fcba03",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "i": {
+          "name": "AX_Turm",
+          "fillColor": "#008822",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Halde: {
-          fillColor: "#7a7463",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "j": {
+          "name": "AX_Bauteil",
+          "fillColor": "#008822",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_TagebauGrubeSteinbruch: {
-          fillColor: "#9c9c9c",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "k": {
+          "name": "AX_Gebaeude",
+          "fillColor": "#bdbdbd",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_FlaecheGemischterNutzung: {
-          fillColor: "#648ae3",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "l": {
+          "name": "AX_Gebaeude",
+          "fillColor": "#bdbdbd",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_FlaecheBesondererFunktionalerPraegung: {
-          fillColor: "#e364e1",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "m": {
+          "name": "AX_Bahnverkehr",
+          "fillColor": "#b8b8b8",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_SportFreizeitUndErholungsflaeche: {
-          fillColor: "#61a360",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "n": {
+          "name": "AX_Platz",
+          "fillColor": "#b8b8b8",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Friedhof: {
-          fillColor: "#638062",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "o": {
+          "name": "AX_Weg",
+          "fillColor": "#b8b8b8",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Strassenverkehr: {
-          fillColor: "#cccccc",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "p": {
+          "name": "AX_Strassenverkehr",
+          "fillColor": "#cccccc",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Weg: {
-          fillColor: "#b8b8b8",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "q": {
+          "name": "AX_Friedhof",
+          "fillColor": "#638062",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Platz: {
-          fillColor: "#b8b8b8",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "r": {
+          "name": "AX_SportFreizeitUndErholungsflaeche",
+          "fillColor": "#61a360",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Bahnverkehr: {
-          fillColor: "#b8b8b8",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "s": {
+          "name": "AX_FlaecheBesondererFunktionalerPraegung",
+          "fillColor": "#e364e1",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Gebaeude: {
-          fillColor: "#bdbdbd",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "t": {
+          "name": "AX_FlaecheGemischterNutzung",
+          "fillColor": "#648ae3",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Gebaeude: {
-          fillColor: "#bdbdbd",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "u": {
+          "name": "AX_TagebauGrubeSteinbruch",
+          "fillColor": "#9c9c9c",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Bauteil: {
-          fillColor: "#008822",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "v": {
+          "name": "AX_Halde",
+          "fillColor": "#7a7463",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Turm: {
-          fillColor: "#008822",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "w": {
+          "name": "AX_IndustrieUndGewerbeflaeche",
+          "fillColor": "#fcba03",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_BauwerkOderAnlageFuerIndustrieUndGewerbe: {
-          fillColor: "#008822",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "x": {
+          "name": "AX_Wohnbauflaeche",
+          "fillColor": "#ffadbe",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_SonstigesBauwerkOderSonstigeEinrichtung: {
-          fillColor: "#008822",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "y": {
+          "name": "AX_UnlandVegetationsloseFlaeche",
+          "fillColor": "#d9d9d9",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_BauwerkImVerkehrsbereich: {
-          fillColor: "#008822",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "z": {
+          "name": "AX_Sumpf",
+          "fillColor": "#00a367",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Fliessgewaesser: {
-          fillColor: "#00ccab",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "za": {
+          "name": "AX_Heide",
+          "fillColor": "#b8005c",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_StehendesGewaesser: {
-          fillColor: "#00ccab",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "zb": {
+          "name": "AX_Gehoelz",
+          "fillColor": "#03b800",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Meer: {
-          fillColor: "#00ccab",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "zc": {
+          "name": "AX_Wald",
+          "fillColor": "#51ed4e",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_Flurstueck: {
-          fillColor: "#ccc",
-          outlineColor: "#000000",
-          outlineThickness: 0,
+        "zd": {
+          "name": "AX_Landwirtschaft",
+          "fillColor": "#fff596",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
         },
-        AX_HistorischesFlurstueck: {
-          fillColor: "transparent",
-          outlineColor: "#000000",
-          outlineThickness: 0,
-        },
+        "ze": {
+          "name": "AX_BauRaumOderBodenordnungsrecht",
+          "fillColor": "#ff0000",
+          "outlineColor": "#000000",
+          "outlineThickness": 0
+        }
       }
-    }; // default config object
+    },
+    pdf: {
+      grenzpunkt_svg: null,
+      pfeil_svg: null,
+      nordpfeil_svg: null,
+      gebauede_loeschen_svg: null,
+      ax_flur_stil: {
+        fillColor: "#000",
+        fill: false,
+        outlineColor: "#ccc",
+        outlineThickness: 3.0,
+        outlineDash: "5-5-5-5-5-5",
+        outlineOverprint: true,
+        patternSvg: null,
+        patternPlacement: null,
+      },
+      ax_bauraum_stil: {
+        fillColor: "#000",
+        fill: false,
+        outlineColor: "#ff0000",
+        outlineThickness: 3.0,
+        outlineDash: "5-5-5-5-5-5",
+        outlineOverprint: true,
+        patternSvg: null,
+        patternPlacement: null,
+      },
+      lagebez_mit_hsnr: {
 
-  // INJECT_SELECT_MAP_JS
+      },
+    }
+  }; // default config object
+
+    // INJECT_SELECT_MAP_JS
+
+    function editKonfigurationInputFile(e) {
+      if (e.target.files.length < 1) {
+        return;
+      }
+      
+      var textfield_type = e.target.dataset.konfigurationTextfield;
+      var style_id = e.target.dataset.konfigurationStyleId;
+      var file = e.target.files[0];
+      var reader = new FileReader();
+      reader.readAsText(file,'UTF-8');
+      reader.onload = readerEvent => {
+        var svg = readerEvent.target.result;
+        var d = document.getElementById("__application_pdf_nutzungsart_pattern_" + style_id);
+        d.value = btoa(svg);
+        d.dispatchEvent(new Event('change'));
+      }
+    }
+
+    window.editKonfigurationInputFile = editKonfigurationInputFile;
+
+    function konfigurationLayerNeu(event) {
+      var konfiguration_type = event.target.dataset.konfigurationType;
+      var json = JSON.parse(edit_konfiguration_layer_neu(JSON.stringify(window.configuration), konfiguration_type));
+      window.configuration = json;
+      replacePopOver();
+    }
+
+    window.konfigurationLayerNeu = konfigurationLayerNeu;
+
+  function moveOrDeleteKonfigurationField(event) {
+    var konfiguration_type = event.target.dataset.konfigurationType;
+    var style_id = event.target.dataset.konfigurationStyleId;
+    var move_type = event.target.dataset.moveType;
+    var json = JSON.parse(edit_konfiguration_move_layer(
+      JSON.stringify(window.configuration), 
+      konfiguration_type,
+      style_id,
+      move_type,
+    ));
+    window.configuration = json;
+    replacePopOver();
+  }
+
+  window.moveOrDeleteKonfigurationField = moveOrDeleteKonfigurationField;
+
+  function editKonfigurationTextField (event) {
+    
+    var textfield_type = event.target.dataset.konfigurationTextfield;
+    var style_id = event.target.dataset.konfigurationStyleId;
+    var value = event.target.value;
+
+    switch (textfield_type) {
+      case "map-basiskarte":
+        window.configuration.map.basemap = value;
+        break;
+      case "map-dop-source":
+        window.configuration.map.dop_source = value;
+        break;      
+      case "map-dop-layer":
+        window.configuration.map.dop_layers = value;
+        break;
+      case "map-pdf-svg-grenzpunkt":
+        window.configuration.pdf.grenzpunkt_svg = value;
+        break;
+      case "map-pdf-svg-pfeil":
+        window.configuration.pdf.pfeil_svg = value;
+        break;
+      case "map-pdf-svg-nordpfeil":
+        window.configuration.pdf.nordpfeil_svg = value;
+        break;
+      case "map-pdf-svg-gebaeude-loeschen":
+        window.configuration.pdf.gebauede_loeschen_svg = value;
+        break;
+      case "map-style-name":
+        window.configuration.style.ebenen[style_id].name = value;
+        break;
+      case "map-style-fillcolor":
+        window.configuration.style.ebenen[style_id].fillColor = value;
+        break;
+      case "map-style-outlinecolor":
+        window.configuration.style.ebenen[style_id].outlineColor = value;
+        break;
+      case "map-style-outlinethickness":
+        window.configuration.style.ebenen[style_id].outlineThickness = parseFloat(value);
+        break;
+      case "map-pdf-nutzungsart-name":
+        window.configuration.pdf.nutzungsarten[style_id].kuerzel = value;
+        break;
+      case "map-pdf-nutzungsart-fillcolor":
+        window.configuration.pdf.nutzungsarten[style_id].fillColor = value;
+        break;
+      case "map-pdf-nutzungsart-outlinecolor":
+        window.configuration.pdf.nutzungsarten[style_id].outlineColor = value;
+        break;
+      case "map-pdf-nutzungsart-outlinethickness":
+        window.configuration.pdf.nutzungsarten[style_id].outlineThickness = value;
+        break;
+      case "map-pdf-nutzungsart-outlinedash":
+        window.configuration.pdf.nutzungsarten[style_id].outlineDash = value;
+        break;
+      case "map-pdf-nutzungsart-outline-overprint":
+        window.configuration.pdf.nutzungsarten[style_id].outlineOverprint = (value == "true");
+        break;
+      case "map-pdf-nutzungsart-pattern-svg":
+        window.configuration.pdf.nutzungsarten[style_id].patternSvg = value;
+        break;
+      case "map-pdf-nutzungsart-pattern-type":
+        window.configuration.pdf.nutzungsarten[style_id].patternType = value;
+        break;
+      case "map-pdf-nutzungsart-beschriftung-schriftart":
+        window.configuration.pdf.nutzungsarten[style_id].lagebez_ohne_hsnr.font = value;
+        break;
+      case "map-pdf-nutzungsart-beschriftung-schriftgroesse":
+        window.configuration.pdf.nutzungsarten[style_id].lagebez_ohne_hsnr.fontsize = value;
+        break;
+      case "map-pdf-nutzungsart-beschriftung-schriftfarbe":
+        window.configuration.pdf.nutzungsarten[style_id].lagebez_ohne_hsnr.color = value;
+        break;
+      
+      default:
+        break;
+    }
+  }
+
+  window.editKonfigurationTextField = editKonfigurationTextField;
 
   function changeRiss(event) {
     var id = event.target.dataset.rissId;
@@ -560,7 +749,6 @@
           var styles_keys = Object.keys(window.configuration.style);
           var styles_keys = styles_keys.join(", ");
           var converted = load_nas_xml(readerEvent.target.result, styles_keys);
-          console.log(converted);
           var parsed = JSON.parse(converted);
           
           window.xml_data = parsed.xml_parsed;
@@ -576,7 +764,9 @@
             layer_obj.remove();
           }
           geojson_layers = [];
-          for (var layer_name in window.configuration.style) {
+          var arr =  window.configuration.style.ebenen_ordnung;
+          arr.reverse();
+          for (var layer_name in arr) {
             var json = null;
             try {
               var f = get_geojson_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
@@ -594,7 +784,7 @@
             if (geojson == null) {
               continue;
             }
-            var layer_style = window.configuration.style[layer_name];
+            var layer_style = window.configuration.style.ebenen[layer_name];
             var myLayer = null;
             if (L.geoJson) {
               myLayer = L.geoJson(geojson, {
@@ -625,7 +815,7 @@
             if (L.tooltip) {
               var l = null;
               try {
-                l = get_labels_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
+                l = get_labels_fuer_ebene(JSON.stringify(window.projectdata), layer_style.name);
               } catch (error) {
                   console.error(error);
                   continue;
@@ -648,7 +838,7 @@
             }
             }
             myLayer.addTo(map);
-            layers.addOverlay(myLayer, layer_name);
+            layers.addOverlay(myLayer, layer_style.name);
             geojson_layers.push(myLayer);
           }
         }

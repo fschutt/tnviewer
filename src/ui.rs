@@ -66,6 +66,12 @@ pub enum ConfigurationView {
     DarstellungBearbeitung,
     #[serde(rename = "darstellung-pdf")]
     DarstellungPdf,
+    #[serde(rename = "darstellung-pdf-allgemein")]
+    DarstellungPdfAllgemein,
+    #[serde(rename = "pdf-beschriftungen")]
+    PdfBeschriftungen,
+    #[serde(rename = "pdf-symbole")]
+    PdfSymbole,
 }
 
 #[derive(Debug, Copy, Serialize, Deserialize, PartialEq, PartialOrd, Clone)]
@@ -229,6 +235,9 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
             let active_darstellung_pdf = if *cw == DarstellungPdf { " active" } else { "" };
             let active_darstellung_bearbeitung = if *cw == DarstellungBearbeitung { " active" } else { "" };
+            let active_darstellung_pdf_allgemein = if *cw == DarstellungPdfAllgemein { " active" } else { "" };
+            let active_pdf_beschriftungen = if *cw == PdfBeschriftungen { " active" } else { "" };
+            let active_pdf_symbole = if *cw == PdfSymbole { " active" } else { "" };
 
             let sidebar = format!("
                 <div class='__application_configuration_sidebar' style='display:flex;flex-direction:column;width:160px;min-height:750px;'>
@@ -242,14 +251,28 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     
                     <div class='__application_configuration_sidebar_section{active_darstellung_bearbeitung}' onmouseup='activateConfigurationView(event, \"darstellung-bearbeitung\")'>
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
-                        <p>Darstellung Bearbeitung</p>
+                        <p>Bearbeitung</p>
+                    </div>
+
+                    <div class='__application_configuration_sidebar_section{active_darstellung_pdf_allgemein}' onmouseup='activateConfigurationView(event, \"darstellung-pdf-allgemein\")'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
+                        <p>PDF Allgemein</p>
                     </div>
 
                     <div class='__application_configuration_sidebar_section{active_darstellung_pdf}' onmouseup='activateConfigurationView(event, \"darstellung-pdf\")'>
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
-                        <p>Darstellung PDF</p>
+                        <p>PDF Ebenen</p>
                     </div>
 
+                    <div class='__application_configuration_sidebar_section{active_pdf_beschriftungen}' onmouseup='activateConfigurationView(event, \"pdf-beschriftungen\")'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
+                        <p>PDF Beschriftungen</p>
+                    </div>
+
+                    <div class='__application_configuration_sidebar_section{active_pdf_symbole}' onmouseup='activateConfigurationView(event, \"pdf-symbole\")'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
+                        <p>PDF Symbole</p>
+                    </div>
                 </div>
             ");
 
@@ -284,7 +307,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     format!("
                         <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
                             <div>
-                                <h2 style='font-size:20px;'>Darstellung Bearbeitung</h2>
+                                <h2 style='font-size:20px;'>Bearbeitung</h2>
                                 
                                 <button onclick='konfigurationLayerNeu(event)' data-konfiguration-type='style' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Neue Ebene anlegen</button>
 
@@ -293,9 +316,9 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 </div>
                             </div>
                         </div>
-                    ", edit_fields_bearbeitung = konfiguration.style.iter().map(|(k, v)| {
+                    ", edit_fields_bearbeitung = konfiguration.style.get_styles_sorted().iter().map(|(k, v)| {
                         format!("
-                            <div style='padding:10px;margin-bottom:5px;background:#ccc;'>
+                            <div style='padding:10px;margin-bottom:5px;background:#cccccc;'>
                                 <div style='display: flex;flex-direction: row;justify-content: flex-end;'>
                                     <input type='text' class='konfiguration-editfield1' value='{name}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-style-name' onchange='editKonfigurationTextField(event)' style='flex-grow:1;'></input>
                                     <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-up' data-konfiguration-type='style' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>^ Layer anheben</button>
@@ -317,8 +340,8 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                             </div>
                             ", 
                                 name = v.name.trim(),
-                                fill_color = v.fill_color.clone().unwrap_or("#000".to_string()),
-                                outline_color = v.outline_color.clone().unwrap_or("#000".to_string()),
+                                fill_color = v.fill_color.clone().unwrap_or("#000000".to_string()),
+                                outline_color = v.outline_color.clone().unwrap_or("#000000".to_string()),
                                 outline_thickness = v.outline_thickness.clone().unwrap_or(0.0),
                             )
                         }).collect::<Vec<_>>().join("")
@@ -328,7 +351,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     format!("
                         <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
                             <div>
-                                <h2 style='font-size:20px;'>Darstellung PDF</h2>
+                                <h2 style='font-size:20px;'>PDF Ebenen</h2>
                                 
                                 <!-- NORDPFEIL SVG ... -->
 
@@ -340,9 +363,9 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 
                             </div>
                         </div>
-                    ", edit_fields_pdf = konfiguration.pdf.nutzungsarten.iter().map(|(k, v)| {
+                    ", edit_fields_pdf = konfiguration.pdf.get_nutzungsarten_sorted().iter().map(|(k, v)| {
                         format!("
-                            <div style='padding:10px;margin-bottom:5px;background:ccc;'>
+                            <div style='padding:10px;margin-bottom:5px;background:#cccccc;'>
                                 <div style='display: flex;flex-direction: row;justify-content: flex-end;'>
                                     <input type='text' class='konfiguration-editfield1' value='{name}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-name' onchange='editKonfigurationTextField(event)' style='flex-grow:1;'></input>
                                     <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-up'  data-konfiguration-type='pdf-nutzungsarten' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>^ Layer anheben</button>
@@ -367,45 +390,45 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 </div>
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
                                     <label style='font-size:12px;font-style:italic;'>Umrandung überdrucken (Overprint)</label>
-                                    <input type='checkbox' checked='{outline_overprint}' class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outline-overprint' onchange='editKonfigurationTextField(event)'></input>
+                                    <input type='checkbox' {outline_overprint} class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outline-overprint' onchange='editKonfigurationTextField(event)'></input>
                                 </div>
+
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
                                     <label style='font-size:12px;font-style:italic;'>Muster</label>
                                     <input id='__application_pdf_nutzungsart_pattern_{k}' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' data-konfiguration-style-id='{k}' value='{pattern_svg}'></input>
-                                    <input type='file' class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                    <input type='file' accept='.svg' style='display:flex;' class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
                                 </div>
+                                
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                    <label style='font-size:20px;font-style:italic;'>Platzierung Muster</label>
-                                    <select value='{pattern_placement}'>
+                                    <label style='font-size:12px;font-style:italic;'>Platzierung Muster</label>
+                                    <select value='{pattern_placement}' style='display:flex;flex-grow:1;max-width:300px;' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-type' onchange='editKonfigurationTextField(event)'>
                                         {pattern_type_select_options}
                                     </select>
                                 </div>
 
-                                <hr/>
-
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
+                                    <label style='font-size:12px;font-style:italic;'>Beschriftung Schrift</label>
                                     <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftart}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftart' onchange='editKonfigurationTextField(event)'></input>
                                 </div>
 
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
-                                    <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftgroesse}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftgroesse' onchange='editKonfigurationTextField(event)'></input>
+                                    <label style='font-size:12px;font-style:italic;'>Beschriftung Schriftgröße</label>
+                                    <input type='number' class='konfiguration-editfield1' value='{beschriftung_schriftgroesse}' data-konfiguration-style-id='{k}' minval='0' maxval='50' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftgroesse' onchange='editKonfigurationTextField(event)'></input>
                                 </div>
 
                                 <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
-                                    <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftfarbe}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftfarbe' onchange='editKonfigurationTextField(event)'></input>
+                                    <label style='font-size:12px;font-style:italic;'>Beschriftung Schrift</label>
+                                    <input type='color' class='konfiguration-editfield1' value='{beschriftung_schriftfarbe}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftfarbe' onchange='editKonfigurationTextField(event)'></input>
                                 </div>
                             </div>
                             ", 
                                 k = k,
                                 name = v.kuerzel.clone(),
-                                fill_color = v.fill_color.clone().unwrap_or("#000".to_string()),
-                                outline_color = v.outline_color.clone().unwrap_or("#000".to_string()),
+                                fill_color = v.fill_color.clone().unwrap_or("#000000".to_string()),
+                                outline_color = v.outline_color.clone().unwrap_or("#000000".to_string()),
                                 outline_thickness = v.outline_thickness.clone().unwrap_or(0.0),
                                 outline_dash = v.outline_dash.clone().unwrap_or_default(),
-                                outline_overprint = if v.outline_overprint { "checked" } else { "" },
+                                outline_overprint = if v.outline_overprint { "checked='checked'" } else { "" },
                                 pattern_svg = v.pattern_svg.clone().unwrap_or_default(),
                                 pattern_placement = v.pattern_placement.clone().unwrap_or_default(),
                                 pattern_type_select_options = {
@@ -418,13 +441,81 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                         format!("<option value='{k}'>{v}</option>")
                                     }).collect::<Vec<_>>().join("")
                                 },
-                                beschriftung_schriftart = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.font.clone()).clone().unwrap_or_default(),
-                                beschriftung_schriftgroesse = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.fontsize).clone().unwrap_or(0.0),
-                                beschriftung_schriftfarbe = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.color.clone()).unwrap_or("#000".to_string()),
+                                beschriftung_schriftart = v.lagebez_ohne_hsnr.font.clone().unwrap_or_default(),
+                                beschriftung_schriftgroesse = v.lagebez_ohne_hsnr.fontsize.unwrap_or(0.0),
+                                beschriftung_schriftfarbe = v.lagebez_ohne_hsnr.color.clone().unwrap_or("#000000".to_string()),
                             )
                         }).collect::<Vec<_>>().join("")
                     )
                 },
+                DarstellungPdfAllgemein => {
+                    
+                    /*
+                        pub ax_flur_stil: PdfEbenenStyle,
+                        pub ax_bauraum_stil: PdfEbenenStyle,
+                        pub lagebez_mit_hsnr: PtoStil,
+                    */
+
+                    format!("
+                        <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
+                            <div>
+                                <h2 style='font-size:20px;'>PDF Allgemein</h2>
+                                
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>SVG Grenzpunkt</label>
+                                    <input id='__application_pdf_nutzungsart_pattern_svg_grenzpunkt' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-svg-grenzpunkt' data-konfiguration-style-id='svg_grenzpunkt' value='{grenzpunkt_svg}'></input>
+                                    <input type='file' accept='.svg' style='display:flex;' class='konfiguration-editfield1' data-konfiguration-style-id='svg_grenzpunkt' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                </div>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>SVG Pfeil</label>
+                                    <input id='__application_pdf_nutzungsart_pattern_svg_pfeil' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-svg-pfeil' data-konfiguration-style-id='svg_pfeil' value='{pfeil_svg}'></input>
+                                    <input type='file' accept='.svg' style='display:flex;' class='konfiguration-editfield1' data-konfiguration-style-id='svg_pfeil' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                </div>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>SVG Nordpfeil</label>
+                                    <input id='__application_pdf_nutzungsart_pattern_svg_nordpfeil' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-svg-nordpfeil' data-konfiguration-style-id='svg_nordpfeil' value='{nordpfeil_svg}'></input>
+                                    <input type='file' accept='.svg' style='display:flex;' class='konfiguration-editfield1' data-konfiguration-style-id='svg_nordpfeil' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                </div>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>SVG Gebäude löschen</label>
+                                    <input id='__application_pdf_nutzungsart_pattern_svg_gebaeude_loeschen' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-svg-gebaeude-loeschen' data-konfiguration-style-id='svg_gebaeude_loeschen' value='{gebaeude_loeschen_svg}'></input>
+                                    <input type='file' accept='.svg' style='display:flex;' class='konfiguration-editfield1' data-konfiguration-style-id='svg_gebaeude_loeschen' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                </div>
+                            </div>
+                        </div>
+                    ",
+                        grenzpunkt_svg = konfiguration.pdf.grenzpunkt_svg.clone().unwrap_or_default(),
+                        pfeil_svg = konfiguration.pdf.pfeil_svg.clone().unwrap_or_default(),
+                        nordpfeil_svg = konfiguration.pdf.nordpfeil_svg.clone().unwrap_or_default(),
+                        gebaeude_loeschen_svg = konfiguration.pdf.gebauede_loeschen_svg.clone().unwrap_or_default(),
+                    )
+                
+                },
+                PdfBeschriftungen => {
+                    format!("
+                        <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
+                            <div>
+                                <h2 style='font-size:20px;'>PDF Beschriftungen</h2>
+                                
+                            </div>
+                        </div>
+                    ",
+                    )
+                },
+                PdfSymbole => {
+                    format!("
+                        <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
+                            <div>
+                                <h2 style='font-size:20px;'>PDF Symbole</h2>
+                                
+                            </div>
+                        </div>
+                    ",
+                    )
+                }
             };
 
             let main = format!("<div style='display:flex;flex-grow:1;padding:0px 20px;line-height: 1.2;'>{main_content}</div>");
@@ -1132,7 +1223,7 @@ fn render_risse_ui(
         gemarkung = render_config_field(("Gemarkung", &projekt_info.gemarkung, "gemarkung")),
         gemarkung_nr = render_config_field(("Gemarkungsnr.", &projekt_info.gemarkung_nr, "gemarkung_nr")),
         risse = risse.iter().map(|(id, rc)| {
-            format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #ccc;border-radius: 3px;'>
+            format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #cccccc;border-radius: 3px;'>
 
                 <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
                     <p style='font-size: 14px;font-weight: bold;'>Riss ID {id_nice}</p>
