@@ -178,7 +178,7 @@
       "ken": "41002",
       "oak": "FKT - 2700",
       "ehb": "Hierzu gehören Rohstoffe und Energieträger wie Sole, Lauge, Kohlensäure und Erdwärme."
-    },
+    },  
     "FÖÖ": {
       "nab": "siedlung",
       "nak": "12030101",
@@ -218,7 +218,7 @@
     "VSKWA": {
       "nab": "siedlung",
       "nak": "12030301",
-      "bez": "Kraftwerk - Wasser ",
+      "bez": "Kraftwerk - Wasser",
       "def": "",
       "ken": "41002",
       "oak": "FKT - 2530 / PEG - 1000",
@@ -227,7 +227,7 @@
     "VSKKK": {
       "nab": "siedlung",
       "nak": "12030302",
-      "bez": "Kraftwerk - Wasser ",
+      "bez": "Kraftwerk - Kernkraft",
       "def": "",
       "ken": "41002",
       "oak": "FKT - 2530 / PEG - 2000",

@@ -266,29 +266,220 @@ impl TaggedPolygon {
     }
 
     pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
+
+        let vegetationsmerkmal = self.attributes.get("vegetationsmerkmal").map(|s| s.as_str());
+        let zustand = self.attributes.get("zustand").map(|s| s.as_str());
+        let nutzung = self.attributes.get("nutzung").map(|s| s.as_str());
+        let abbaugut = self.attributes.get("abbaugut").map(|s| s.as_str());
+        let funktion = self.attributes.get("funktion").map(|s| s.as_str());
+        let foerdergut = self.attributes.get("foerdergut").map(|s| s.as_str());
+        let primaerenergie = self.attributes.get("primaerenergie").map(|s| s.as_str());
+        let art = self.attributes.get("art").map(|s| s.as_str());
+        let oberflaechenmaterial = self.attributes.get("oberflaechenmaterial").map(|s| s.as_str());
+
         match ebene {
-            "AX_Landwirtschaft" => Some("A"),
-            "AX_Wald" => Some("WALD"),
+            "AX_Wohnbauflaeche" => match funktion {
+                Some("1200") => Some("WBFPA"),
+                _ => Some("WBF")
+            },
+            "AX_Landwirtschaft" => match vegetationsmerkmal {
+                Some("1010") => Some("A"),
+                Some("1011") => Some("SOA"),
+                Some("1012") => Some("HOP"),
+                Some("1013") => Some("HOP"), // Spargel
+                Some("1020") => Some("GR"),
+                Some("1021") => Some("SOW"),
+                Some("1022") => Some("SAW"),
+                Some("1030") => Some("G"),
+                Some("1031") => Some("BAUM"),
+                Some("1040") => Some("REB"),
+                Some("1050") => Some("OBP"),
+                Some("1051") => Some("OBBP"),
+                Some("1060") => Some("WEIH"),
+                Some("1100") => Some("KURZ"),
+                Some("1200") => Some("BRA"),
+                _ => Some("LW"),
+            },
+            "AX_Wald" => match (vegetationsmerkmal, nutzung, zustand) {
+                (Some("1100"), Some("3000"), Some("6100")) => Some("WABFVNL"),
+                (Some("1100"), Some("1000"), Some("6100")) => Some("VNFL"),
+                (Some("1200"), Some("3000"), Some("6100")) => Some("WABFVNN"),
+                (Some("1200"), Some("1000"), Some("6100")) => Some("VNFN"),
+                (Some("1300"), Some("3000"), Some("6100")) => Some("WABFVLN"),
+                (Some("1300"), Some("1000"), Some("6100")) => Some("VNFLN"),
+                (Some("1100"), _, _) => Some("LH"),
+                (Some("1200"), _, _) => Some("NH"),
+                (Some("1300"), _, _) => Some("LNH"),
+                (_, Some("3000"), Some("6100")) => Some("WABFVLN"),
+                (_, Some("1000"), Some("6100")) => Some("VNPF"),
+                (_, Some("1000"), _) => Some("FWF"),
+                (_, Some("3000"), _) => Some("WABF"),
+                _ => Some("WALD"),
+            },
+            "AX_IndustrieUndGewerbeflaeche" => match (funktion, primaerenergie, foerdergut) {
+                (Some("2500"), Some("1000"), _) => Some("VSWA"), // VSWA
+                (Some("2500"), Some("2000"), _) => Some("VSKK"), // VSKK
+                (Some("2500"), Some("3000"), _) => Some("VSSO"), // VSSO
+                (Some("2500"), Some("4000"), _) => Some("VSWI"), // VSWI
+                (Some("2500"), Some("7000"), _) => Some("VSVE"), // VSVE
+                (Some("2500"), Some("7100"), _) => Some("VSKO"), // VSKO
+                (Some("2700"), _, Some("2000")) => Some("FÖG"), // FÖG
+                (Some("2530"), Some("1000"), _) => Some("VSKWA"), // VSKWA
+                (Some("2530"), Some("2000"), _) => Some("VSKKK"), // VSKKK
+                (Some("2530"), Some("3000"), _) => Some("VSKSO"), // VSKSO
+                (Some("2530"), Some("4000"), _) => Some("VSKWI"), // VSKWI
+                (Some("2530"), Some("7000"), _) => Some("VSKVE"), // VSKVE
+                (Some("2530"), Some("7100"), _) => Some("VSKKO"), // VSKKO
+                (Some("2570"), Some("1000"), _) => Some("VSHWA"), // VSHWA
+                (Some("2570"), Some("2000"), _) => Some("VSHKK"), // VSHKK
+                (Some("2570"), Some("3000"), _) => Some("VSHSO"), // VSHSO
+                (Some("2570"), Some("4000"), _) => Some("VSHWI"), // VSHWI // Heizwerk - Wind fehlt?
+                (Some("2570"), Some("7000"), _) => Some("VSHVE"), // VSHVE
+                (Some("2570"), Some("7100"), _) => Some("VSHKO"), // VSHKO
+                (Some("2700"), _, _) => Some("FÖ"), // FÖ
+                (Some("2520"), _, _) => Some("VSW"), // VSW
+                (Some("2530"), _, _) => Some("VSK"), // VSK
+                (Some("2540"), _, _) => Some("VSU"), // VSU
+                (Some("2570"), _, _) => Some("VSH"), // VSH
+                (Some("1200"), _, _) => Some("IGFPA"), // Parken,
+                (Some("1400"), _, _) => Some("HD"), // HD,
+                (Some("1440"), _, _) => Some("HDH"), // HDH
+                (Some("1450"), _, _) => Some("HDM"), // HDM
+                (Some("1490"), _, _) => Some("HDG"), // HDG
+                (Some("2500"), _, _) => Some("VS"), // VS
+                (Some("2600"), _, _) => Some("ES"), // ES
+                (Some("2610"), _, _) => Some("ESA"), // ESA
+                (Some("2630"), _, _) => Some("ESDO"), // ESDO
+                (Some("2640"), _, _) => Some("ESDU"), // ESDU
+                _ => Some("IG")
+            },
+            "AX_TagebauGrubeSteinbruch" => match (abbaugut, funktion, zustand) {
+                (Some("1001"), _, Some("2100")) => Some("TGTAB"),
+                (Some("1001"), _, _) => Some("TGT"),
+                (Some("1004"), _, Some("2100")) => Some("TGLAB"),
+                (Some("1004"), _, _) => Some("TGL"),
+                (Some("1008"), _, Some("2100")) => Some("TGSAB"),
+                (Some("1008"), _, _) => Some("TGS"),
+                (Some("1009"), _, Some("2100")) => Some("TGKIAB"),
+                (Some("1009"), _, _) => Some("TGKI"),
+                (Some("1012"), _, Some("2100")) => Some("TGQAB"),
+                (Some("1012"), _, _) => Some("TGQ"),
+                (Some("2005"), _, Some("2100")) => Some("TGKSAB"),
+                (Some("2005"), _, _) => Some("TGKS"),
+                (Some("2010"), _, Some("2100")) => Some("TGGAB"),
+                (Some("2010"), _, _) => Some("TGG"),
+                (Some("4010"), _, Some("2100")) => Some("TGTFAB"),
+                (Some("4010"), _, _) => Some("TGTF"),
+                (Some("4021"), _, Some("2100")) => Some("TGBAB"),
+                (Some("4021"), _, _) => Some("TGB"),
+                (_, Some("1200"), _) => Some("TGPA"),
+                _ => Some("TG"),
+            },
+            "AX_Bergbaubetrieb" => match zustand {
+                Some("2100") => Some("BEAB"),
+                _ => Some("BE"),
+            },
+            // Attribute unklar - Kletterpark, Reitsport, ...?
+            "AX_SportFreizeitUndErholungsflaeche" => match funktion {
+                Some("4100") => Some("SFS"),
+                Some("4110") => Some("SFG"),
+                Some("4200") => Some("SFZ"),
+                Some("4220") => Some("SFWP"),
+                Some("4240") => Some("SFB"),
+                Some("4250") => Some("SFM"),
+                Some("4260") => Some("SFA"),
+                Some("4290") => Some("SFMO"),
+                Some("4300") => Some("EH"),
+                Some("4310") => Some("WFH"),
+                Some("4320") => Some("SCHW"),
+                Some("4330") => Some("CAM"),
+                Some("4400") => Some("GRÜ"),
+                Some("4420") => Some("PARK"),
+                Some("4440") => Some("SFPA"),
+                _ => Some("SF"),
+            },
+            "AX_FlaecheGemischterNutzung" => match funktion {
+                Some("1200") => Some("MIPA"),
+                Some("6800") => Some("MILB"),
+                Some("7600") => Some("MIFB"),
+                Some("3000") => Some("MIFW"),
+                _ => Some("MI"),
+            },
+            "AX_FlaecheBesondererFunktionalerPraegung" => match funktion {
+                Some("1100") => Some("BPÖ"),
+                Some("1110") => Some("BPV"),
+                Some("1120") => Some("BPB"),
+                Some("1130") => Some("BPK"),
+                Some("1140") => Some("BPR"),
+                Some("1150") => Some("BPG2"),
+                Some("1160") => Some("BPS"),
+                Some("1170") => Some("BPO2"),
+                Some("1200") => Some("BPPA"),
+                Some("1300") => Some("BPHA"),
+                _ => Some("BP"),
+            },
+            "AX_Friedhof" => match funktion {
+                Some("1200") => Some("FPA"),
+                _ => Some("F"),
+            },
+            "AX_Strassenverkehr" => match funktion {
+                Some("2312") => Some("SB"),
+                Some("5130") => Some("FUß"),
+                _ => Some("S"),
+            },
+            "AX_Weg" => Some("WEG"),
+            "AX_Platz" => match funktion {
+                Some("5310") => Some("P"),
+                Some("5320") => Some("RAP"),
+                Some("5330") => Some("RAS"),
+                Some("5350") => Some("FP"),
+                _ => Some("PL")
+            },
+            "AX_Bahnverkehr" => match funktion {
+                Some("1200") => Some("BAPA"),
+                Some("2322") => Some("BAB"),
+                _ => Some("BA"),
+            },
+            "AX_Flugverkehr" => match (art, funktion) {
+                (Some("5511"), _) => Some("IFH"),
+                (Some("5512"), _) => Some("RFH"),
+                (Some("5513"), _) => Some("SFH"),
+                (Some("5521"), _) => Some("VLP"),
+                (Some("5522"), _) => Some("SLP"),
+                (Some("5530"), _) => Some("HLP"),
+                (Some("5550"), _) => Some("SFLG"),
+                (_, Some("1200")) => Some("FLPA"),
+                _ => Some("FL"),
+            },
+            "AX_Schiffsverkehr" => match funktion {
+                Some("1200") => Some("SVPA"),
+                Some("5610") => Some("SVH"),
+                Some("5620") => Some("SVS"),
+                _ => Some("SV")
+            }
             "AX_Gehoelz" => Some("GHÖ"),
             "AX_Heide" => Some("HEI"),
+            "AX_Moor" => Some("MOOR"),
             "AX_Sumpf" => Some("SUM"),
-            "AX_UnlandVegetationsloseFlaeche" => Some("UV"),
-            "AX_Wohnbauflaeche" => Some("WBF"),
-            "AX_IndustrieUndGewerbeflaeche" => Some("IG"),
             "AX_Halde" => Some("HAL"),
-            "AX_TagebauGrubeSteinbruch" => Some("TG"),
-            "AX_FlaecheGemischterNutzung" => Some("MI"),
-            "AX_FlaecheBesondererFunktionalerPraegung" => Some("BP"),
-            "AX_SportFreizeitUndErholungsflaeche" => Some("SF"),
-            "AX_Friedhof" => Some("F"),
-            "AX_Strassenverkehr" => Some("S"),
-            "AX_Weg" => Some("WEG"),
-            "AX_Platz" => Some("PL"),
-            "AX_Bahnverkehr" => Some("BA"),
-            "AX_BauwerkOderAnlageFuerIndustrieUndGewerbe" => Some("IG"),
-            "AX_Fliessgewaesser" => Some("WAF"),
-            "AX_StehendesGewaesser" => Some("WAS"),
-            "AX_Meer" => Some("WAF"),
+            "AX_UnlandVegetationsloseFlaeche" => match (funktion, oberflaechenmaterial) {
+                (Some("1000"), Some("1020")) => Some("UVS"),
+                (Some("1000"), Some("1030")) => Some("UVS"),
+                (Some("1000"), Some("1040")) => Some("UVSA"),
+                (Some("1100"), _) => Some("WAB"),
+                (Some("1300"), _) => Some("NF"),
+                _ => Some("UV"),
+            },
+            "AX_Fliessgewaesser" => match funktion {
+                Some("8300") => Some("KAN"),
+                _ => Some("WAF"),
+            },
+            "AX_Hafenbecken" => Some("WAH"),
+            "AX_StehendesGewaesser" => match funktion {
+                Some("8630") => Some("STS"),
+                Some("8631") => Some("SPB"),
+                _ => Some("WAS")
+            },
             _ => None,
         }.map(|s| s.to_string())
     }

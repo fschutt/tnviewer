@@ -425,11 +425,17 @@ fn write_border(
     add_rect(riss.width_mm - border_width_mm, 0.0, border_width_mm, riss.height_mm, PaintMode::Fill);
 
 
-    add_rect(border_width_mm, border_width_mm, riss.width_mm - border_width_mm, riss.height_mm - border_width_mm, PaintMode::Stroke);
+    add_rect(
+        border_width_mm, 
+        border_width_mm, 
+        riss.width_mm - (border_width_mm * 2.0), 
+        riss.height_mm - (border_width_mm * 2.0), 
+        PaintMode::Stroke
+    );
 
     add_rect(
         border_width_mm,
-        riss.height_mm - border_width_mm,
+        riss.height_mm - border_width_mm - 35.0,
         175.0,
         35.0,
         PaintMode::Fill
