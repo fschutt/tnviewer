@@ -12,27 +12,93 @@ pub type Risse = BTreeMap<String, RissConfig>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EbenenStyle {
+    #[serde(default, alias = "name")]
+    pub name: String,
     #[serde(default, alias = "fillColor")]
-    fill_color: Option<String>,
+    pub fill_color: Option<String>,
     #[serde(default, alias = "outlineColor")]
-    outline_color: Option<String>,
+    pub outline_color: Option<String>,
     #[serde(default, alias = "outlineThickness")]
-    outline_thickness: Option<f32>,
-    #[serde(default, alias = "outlineDash")]
-    outline_dash: Option<String>,
-    #[serde(default, alias = "outlineOverprint")]
-    outline_overprint: bool,
-    #[serde(default, alias = "patternSvg")]
-    pattern_svg: Option<String>,
+    pub outline_thickness: Option<f32>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct StyleConfig {
-    pub nutzungsartengrenze_col: Option<String>,
-    pub nutzungsartengrenze_thickness: Option<f32>,
+pub struct Konfiguration {
+    pub map: MapKonfiguration,
+    #[serde(default)]
+    pub style: BTreeMap<String, EbenenStyle>,
+    #[serde(default)]
+    pub pdf: PdfStyleConfig,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct MapKonfiguration {
+    #[serde(default)]
+    pub basemap: Option<String>,
+    #[serde(default)]
+    pub dop_source: Option<String>,
+    #[serde(default)]
+    pub dop_layers: Option<String>,
+}
+
+pub type Kuerzel = String;
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct PdfStyleConfig {
     pub grenzpunkt_svg: Option<String>,
+    pub pfeil_svg: Option<PpoStil>,
+    pub nordpfeil_svg: Option<PpoStil>,
     pub gebauede_loeschen_svg: Option<String>,
-    pub ebenen: BTreeMap<String, EbenenStyle>,
+    pub ax_flur_stil: Option<PdfEbenenStyle>,
+    pub ax_bauraum_stil: Option<PdfEbenenStyle>,
+    pub lagebez_mit_hsnr: Option<PtoStil>,
+    pub layer_ordnung: Vec<String>,
+    pub nutzungsarten: BTreeMap<String, PdfEbenenStyle>,
+    pub beschriftungen: BTreeMap<String, PtoStil>,
+    pub symbole: BTreeMap<String, PpoStil>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdfEbenenStyle {
+    pub kuerzel: String,
+    #[serde(default, alias = "fillColor")]
+    pub fill_color: Option<String>,
+    #[serde(default, alias = "outlineColor")]
+    pub outline_color: Option<String>,
+    #[serde(default, alias = "outlineThickness")]
+    pub outline_thickness: Option<f32>,
+    #[serde(default, alias = "outlineDash")]
+    pub outline_dash: Option<String>,
+    #[serde(default, alias = "outlineOverprint")]
+    pub outline_overprint: bool,
+    #[serde(default, alias = "patternSvg")]
+    pub pattern_svg: Option<String>,
+    #[serde(default, alias = "patternPlacement")]
+    pub pattern_placement: Option<String>,
+    #[serde(default, alias = "lagebezOhneHsnr")]
+    pub lagebez_ohne_hsnr: Option<PtoStil>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PtoStil {
+    #[serde(default, alias = "art")]
+    pub art: String, // BEZ, Gewanne
+    #[serde(default, alias = "fontsize")]
+    pub fontsize: Option<f32>, // 12
+    #[serde(default, alias = "font")]
+    pub font: Option<String>, // Arial
+    #[serde(default, alias = "color")]
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PpoStil {
+    #[serde(default, alias = "art")]
+    pub art: String, // VEG, ...
+    #[serde(default, alias = "fontsize")]
+    pub svgname: Option<String>, // wald.svg
+    #[serde(default, alias = "font")]
+    pub svg_base64: Option<String>, // ...
 }
 
 pub type RissMap = BTreeMap<String, RissExtent>;
@@ -151,7 +217,7 @@ pub enum Aenderung {
 // + Änderungen
 pub fn generate_pdf(
     projekt_info: &ProjektInfo,
-    style: &StyleConfig,
+    style: &Konfiguration,
     csv: &CsvDataType, 
     xml: &NasXMLFile,
     split_flurstuecke: &SplitNasXml,
@@ -448,28 +514,52 @@ fn write_border(
 fn write_split_flurstuecke_into_layer(
     layer: &mut PdfLayerReference,
     split_flurstuecke: &SplitNasXml,
-    style: &StyleConfig,
+    style: &Konfiguration,
     log: &mut Vec<String>,
 ) -> Option<()> {
-    log.push(format!("writing split flurstuecke: "));
-    log.push(format!("found style {}", serde_json::to_string(&style.ebenen.keys().collect::<Vec<_>>()).unwrap_or_default()));
-    let flurstueck_nutzungen_grouped_by_ebene = style.ebenen.iter().filter_map(|(ebene_key, ebenen_style)| {
-        
-        let polygone = split_flurstuecke.flurstuecke_nutzungen.iter()
-        .flat_map(|(flst_id, flst_parts)| {
-            flst_parts.iter().filter(|f| f.attributes.get("AX_Ebene") == Some(ebene_key)).collect::<Vec<_>>()
-        }).cloned().collect::<Vec<_>>();
 
-        if polygone.is_empty() {
-            None
-        } else {
-            Some((ebene_key.clone(), ebenen_style.clone(), polygone))
-        }
+    let mut flurstueck_nutzungen_grouped_by_ebene = BTreeMap::new();
+    for (flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
+        for f in flst_parts.iter() {
+            let flst_ebene = match f.attributes.get("AX_Ebene") {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let flst_kuerzel_alt = match f.get_auto_kuerzel(&flst_ebene) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let flst_style =  style.pdf.nutzungsarten
+            .iter()
+            .find_map(|(k, v)|{
+                if v.kuerzel != flst_kuerzel_alt {
+                    None
+                } else {
+                    Some((k.clone(), v.clone()))
+                }
+            });
+
+            let (flst_style_id, flst_style) = match flst_style {
+                Some(s) => s,
+                None => continue,
+            };
+
+            flurstueck_nutzungen_grouped_by_ebene.entry(flst_style_id).or_insert_with(|| Vec::new()).push(f);
+        }        
+    }
+
+    let flurstueck_nutzungen_grouped_by_ebene = style.pdf.layer_ordnung.iter().filter_map(|s| {
+        let polys = flurstueck_nutzungen_grouped_by_ebene.get(s)?;
+        let style = style.pdf.nutzungsarten.get(s)?;
+        Some((style, polys))
     }).collect::<Vec<_>>();
 
     log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
 
-    for (k, style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
+    for (style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
+
         layer.save_graphics_state();
     
         let mut paintmode = PaintMode::Fill;
@@ -495,6 +585,7 @@ fn write_split_flurstuecke_into_layer(
         for poly in polys.iter() {
             layer.add_polygon(translate_poly(&poly.poly, paintmode));
         }
+
         layer.restore_graphics_state();
     }
     Some(())

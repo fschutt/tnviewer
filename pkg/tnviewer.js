@@ -245,6 +245,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -352,11 +353,12 @@ export function fixup_polyline(xml, split_flurstuecke, points) {
 * @param {string} uidata
 * @param {string} csv
 * @param {string} aenderungen
+* @param {string} konfiguration
 * @returns {string}
 */
-export function ui_render_entire_screen(projektinfo, risse, uidata, csv, aenderungen) {
-    let deferred6_0;
-    let deferred6_1;
+export function ui_render_entire_screen(projektinfo, risse, uidata, csv, aenderungen, konfiguration) {
+    let deferred7_0;
+    let deferred7_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(projektinfo, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -369,15 +371,17 @@ export function ui_render_entire_screen(projektinfo, risse, uidata, csv, aenderu
         const len3 = WASM_VECTOR_LEN;
         const ptr4 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len4 = WASM_VECTOR_LEN;
-        wasm.ui_render_entire_screen(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        const ptr5 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len5 = WASM_VECTOR_LEN;
+        wasm.ui_render_entire_screen(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred6_0 = r0;
-        deferred6_1 = r1;
+        deferred7_0 = r0;
+        deferred7_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_2(deferred6_0, deferred6_1, 1);
+        wasm.__wbindgen_export_2(deferred7_0, deferred7_1, 1);
     }
 }
 
@@ -406,56 +410,27 @@ export function ui_render_ribbon(decoded) {
 
 /**
 * @param {string} decoded
+* @param {string} konfiguration
 * @returns {string}
 */
-export function ui_render_popover_content(decoded) {
-    let deferred2_0;
-    let deferred2_1;
+export function ui_render_popover_content(decoded, konfiguration) {
+    let deferred3_0;
+    let deferred3_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(decoded, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
-        wasm.ui_render_popover_content(retptr, ptr0, len0);
-        var r0 = getInt32Memory0()[retptr / 4 + 0];
-        var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred2_0 = r0;
-        deferred2_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_2(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
-* @param {string} projekt_info
-* @param {string} risse
-* @param {string} csv_data
-* @param {string} aenderungen
-* @returns {string}
-*/
-export function stringify_savefile(projekt_info, risse, csv_data, aenderungen) {
-    let deferred5_0;
-    let deferred5_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(projekt_info, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(risse, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr1 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len2 = WASM_VECTOR_LEN;
-        const ptr3 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len3 = WASM_VECTOR_LEN;
-        wasm.stringify_savefile(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        wasm.ui_render_popover_content(retptr, ptr0, len0, ptr1, len1);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred5_0 = r0;
-        deferred5_1 = r1;
+        deferred3_0 = r0;
+        deferred3_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_2(deferred5_0, deferred5_1, 1);
+        wasm.__wbindgen_export_2(deferred3_0, deferred3_1, 1);
     }
 }
 
@@ -838,10 +813,10 @@ export function export_flst_id_nach_eigentuemer(s) {
 * @param {string} aenderungen
 * @param {string | undefined} split_flurstuecke
 * @param {string} risse_extente
-* @param {string} style_config
+* @param {string} konfiguration
 * @returns {string}
 */
-export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flurstuecke, risse_extente, style_config) {
+export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flurstuecke, risse_extente, konfiguration) {
     let deferred9_0;
     let deferred9_1;
     try {
@@ -860,7 +835,7 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flu
         var len5 = WASM_VECTOR_LEN;
         const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len6 = WASM_VECTOR_LEN;
-        const ptr7 = passStringToWasm0(style_config, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr7 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len7 = WASM_VECTOR_LEN;
         wasm.export_pdf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
@@ -873,8 +848,6 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flu
         wasm.__wbindgen_export_2(deferred9_0, deferred9_1, 1);
     }
 }
-
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }

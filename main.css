@@ -799,3 +799,10 @@ img {
     font-weight: bold;
 }
 
+.konfiguration-editfield1 {
+    font-size: 12px;
+    font-weight: bold;
+    border-bottom: 1px solid black;
+    cursor: text;
+    min-width: 300px;
+}

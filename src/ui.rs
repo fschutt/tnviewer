@@ -2,7 +2,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_derive::{Serialize, Deserialize};
 
-use crate::{csv::{CsvDataType, Status}, nas::{SplitNasXml, SvgPolygon}, pdf::{ProjektInfo, Risse}, search::NutzungsArt, xlsx::FlstIdParsed};
+use crate::{
+    csv::{CsvDataType, Status},
+    nas::{SplitNasXml, SvgPolygon}, 
+    pdf::{ProjektInfo, Risse, Konfiguration},
+    search::NutzungsArt, 
+    xlsx::FlstIdParsed
+};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct UiData {
@@ -56,8 +62,10 @@ fn test1() {
 pub enum ConfigurationView {
     #[serde(rename = "allgemein")]
     Allgemein,
-    #[serde(rename = "kartenstile")]
-    Kartenstile,
+    #[serde(rename = "darstellung-bearbeitung")]
+    DarstellungBearbeitung,
+    #[serde(rename = "darstellung-pdf")]
+    DarstellungPdf,
 }
 
 #[derive(Debug, Copy, Serialize, Deserialize, PartialEq, PartialOrd, Clone)]
@@ -72,7 +80,8 @@ pub fn render_entire_screen(
     risse: &Risse,
     rpc_data: &UiData, 
     csv: &CsvDataType, 
-    aenderungen: &Aenderungen
+    aenderungen: &Aenderungen,
+    konfiguration: &Konfiguration,
 ) -> String {
     normalize_for_js(format!(
         "
@@ -84,13 +93,13 @@ pub fn render_entire_screen(
                 {main}
             </div>
         ",
-        popover = render_popover(rpc_data),
+        popover = render_popover(rpc_data, konfiguration),
         ribbon_ui = render_ribbon(rpc_data, csv.is_empty()),
         main = render_main(projekt_info, risse, rpc_data, csv, aenderungen),
     ))
 }
 
-pub fn render_popover(rpc_data: &UiData) -> String {
+pub fn render_popover(rpc_data: &UiData, konfiguration: &Konfiguration) -> String {
     let should_render_popover = rpc_data.popover_state.is_some();
 
     if !should_render_popover {
@@ -115,7 +124,7 @@ pub fn render_popover(rpc_data: &UiData) -> String {
         position: fixed;
         z-index:999;
     '>{}</div>",
-        render_popover_content(rpc_data)
+        render_popover_content(rpc_data, konfiguration)
     );
 
     normalize_for_js(popover)
@@ -125,7 +134,7 @@ pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
     base64::encode(input)
 }
 
-pub fn render_popover_content(rpc_data: &UiData) -> String {
+pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) -> String {
     const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
 
     if rpc_data.popover_state.is_none() {
@@ -218,8 +227,9 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
             let img_fx = base64_encode(IMG_FX);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
-            let active_kartenstile = if *cw == Kartenstile { " active" } else { "" };
- 
+            let active_darstellung_pdf = if *cw == DarstellungPdf { " active" } else { "" };
+            let active_darstellung_bearbeitung = if *cw == DarstellungBearbeitung { " active" } else { "" };
+
             let sidebar = format!("
                 <div class='__application_configuration_sidebar' style='display:flex;flex-direction:column;width:160px;min-height:750px;'>
                     
@@ -230,9 +240,14 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                     
                     <hr/>
                     
-                    <div class='__application_configuration_sidebar_section{active_kartenstile}' onmouseup='activateConfigurationView(event, \"kartenstile\")'>
+                    <div class='__application_configuration_sidebar_section{active_darstellung_bearbeitung}' onmouseup='activateConfigurationView(event, \"darstellung-bearbeitung\")'>
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
-                        <p>Kartenstile</p>
+                        <p>Darstellung Bearbeitung</p>
+                    </div>
+
+                    <div class='__application_configuration_sidebar_section{active_darstellung_pdf}' onmouseup='activateConfigurationView(event, \"darstellung-pdf\")'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
+                        <p>Darstellung PDF</p>
                     </div>
 
                 </div>
@@ -242,52 +257,174 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                 Allgemein => format!("
                     <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
                         <div>
-                            <div style='display:flex;flex-direction:row;'>
-                                <input style='width:20px;height:20px;cursor:pointer;' type='checkbox' id='__application_konfiguration_spalten_ausblenden' {spalten_einblenden} data-checkBoxId='konfiguration-spalten-ausblenden' onchange='toggleCheckbox(event)'>
-                                <label style='font-size:20px;font-style:italic;' for='__application_konfiguration_spalten_ausblenden'>Formularspalten einblenden</label>
-                            </div>
-                            
-                            <div style='display:flex;flex-direction:row;'>
-                                <input style='width:20px;height:20px;cursor:pointer;' type='checkbox' id='__application_konfiguration_zeilenumbrueche-in-ocr-text' data-checkBoxId='konfiguration-zeilenumbrueche-in-ocr-text' {zeilenumbrueche_in_ocr_text} onchange='toggleCheckbox(event)'>
-                                <label style='font-size:20px;font-style:italic;' for='__application_konfiguration_zeilenumbrueche-in-ocr-text'>Beim Kopieren von OCR-Text Zeilenumbrüche beibehalten</label>
-                            </div>
-                            
-                            <div style='display:flex;flex-direction:row;'>
-                                <input style='width:20px;height:20px;cursor:pointer;' type='checkbox' id='__application_konfiguration_hide_red_lines' data-checkBoxId='konfiguration-keine-roten-linien' {vorschau_ohne_geroetet} onchange='toggleCheckbox(event)'>
-                                <label style='font-size:20px;font-style:italic;' for='__application_konfiguration_hide_red_lines'>PDF ohne geröteten Linien darstellen</label>
-                            </div>
-                        </div>
-                        
-                        <div style='margin-top:25px;'>
-                            <h2 style='font-size:20px;'>Datenbank</h2>
+                            <h2 style='font-size:20px;'>Allgemein</h2>
                             
                             <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                <label style='font-size:20px;font-style:italic;'>Server-URL</label>
-                                <input type='text' id='__application_konfiguration_datenbank_server' style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;min-width:300px;' value='{server_url}' data-konfiguration-textfield='server-url' onchange='editKonfigurationTextField(event)'></input>
+                                <label style='font-size:20px;font-style:italic;'>Basiskarte</label>
+                                <input type='text' class='konfiguration-editfield1' value='{basiskarte}' data-konfiguration-textfield='map-basiskarte' onchange='editKonfigurationTextField(event)'></input>
                             </div>
                     
                             <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                <label style='font-size:20px;font-style:italic;'>E-Mail</label>
-                                <input type='text' id='__application_konfiguration_datenbank_email' style='font-size:20px;font-weight:bold;border-bottom:1px solid black;cursor:text;min-width:300px;' value='{server_email}' data-konfiguration-textfield='email' onchange='editKonfigurationTextField(event)'></input>
+                                <label style='font-size:20px;font-style:italic;'>DOP Quelle</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dop_source}' data-konfiguration-textfield='map-dop-source' onchange='editKonfigurationTextField(event)'></input>
                             </div>
-                            
-                            <div style='display:flex;flex-direction:row;justify-content:space-between;padding:10px 0px;font-size:16px;'>
-                                <label style='font-size:20px;font-style:italic;'>Zertifikatsdatei</label>
-                                <div style='width:200px;'><p>{cert_sig}</p></div>
-                                <input type='file' class='btn btn_neu' id='__application_konfiguration_datenbank_private_key' onchange='editKonfigurationSchluesseldatei(event)' accept='.pfx'></input>
-                                <input type='button' value='Datei auswählen...' class='btn btn_neu' data-file-input-id='__application_konfiguration_datenbank_private_key' onclick='document.getElementById(event.target.dataset.fileInputId).click();' />
+
+                            <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                <label style='font-size:20px;font-style:italic;'>DOP Ebene</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dop_layer}' data-konfiguration-textfield='map-dop-layer' onchange='editKonfigurationTextField(event)'></input>
                             </div>
                         </div>
                     </div>
                 ",
-                    server_url = String::new(), // rpc_data.konfiguration.server_url,
-                    server_email = String::new(), // rpc_data.konfiguration.server_email,
-                    cert_sig = String::new(), // rpc_data.konfiguration.get_cert().map(|cert| cert.fingerprint().to_spaced_hex()).unwrap_or_default(),
-                    vorschau_ohne_geroetet = "", // if rpc_data.konfiguration.vorschau_ohne_geroetet { "checked" } else { "" },
-                    spalten_einblenden = "", // if !rpc_data.konfiguration.spalten_ausblenden { "checked" } else { "" },
-                    zeilenumbrueche_in_ocr_text = "", // if rpc_data.konfiguration.zeilenumbrueche_in_ocr_text { "checked" } else { "" },
+                    basiskarte = konfiguration.map.basemap.clone().unwrap_or_default().trim(),
+                    dop_source = konfiguration.map.dop_source.clone().unwrap_or_default().trim(),
+                    dop_layer = konfiguration.map.dop_layers.clone().unwrap_or_default().trim(),
                 ),
-                _ => String::new(),
+                DarstellungBearbeitung => {
+                    format!("
+                        <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
+                            <div>
+                                <h2 style='font-size:20px;'>Darstellung Bearbeitung</h2>
+                                
+                                <button onclick='konfigurationLayerNeu(event)' data-konfiguration-type='style' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Neue Ebene anlegen</button>
+
+                                <div style='max-height:500px;overflow-y:scroll'>
+                                {edit_fields_bearbeitung}
+                                </div>
+                            </div>
+                        </div>
+                    ", edit_fields_bearbeitung = konfiguration.style.iter().map(|(k, v)| {
+                        format!("
+                            <div style='padding:10px;margin-bottom:5px;background:#ccc;'>
+                                <div style='display: flex;flex-direction: row;justify-content: flex-end;'>
+                                    <input type='text' class='konfiguration-editfield1' value='{name}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-style-name' onchange='editKonfigurationTextField(event)' style='flex-grow:1;'></input>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-up' data-konfiguration-type='style' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>^ Layer anheben</button>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-down'  data-konfiguration-type='style' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>v Layer absenken</button>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='delete' data-konfiguration-type='style' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>Layer löschen</button>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Füllung</label>
+                                    <input type='color' class='konfiguration-editfield1' value='{fill_color}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-style-fillcolor' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Umrandung</label>
+                                    <input type='color' class='konfiguration-editfield1' value='{outline_color}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-style-outlinecolor' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Umrandung</label>
+                                    <input type='number' class='konfiguration-editfield1' value='{outline_thickness}' minval='0' maxval='10' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-style-outlinethickness' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                            </div>
+                            ", 
+                                name = v.name.trim(),
+                                fill_color = v.fill_color.clone().unwrap_or("#000".to_string()),
+                                outline_color = v.outline_color.clone().unwrap_or("#000".to_string()),
+                                outline_thickness = v.outline_thickness.clone().unwrap_or(0.0),
+                            )
+                        }).collect::<Vec<_>>().join("")
+                    )
+                },
+                DarstellungPdf => {
+                    format!("
+                        <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
+                            <div>
+                                <h2 style='font-size:20px;'>Darstellung PDF</h2>
+                                
+                                <!-- NORDPFEIL SVG ... -->
+
+                                <button onclick='konfigurationLayerNeu(event)' data-konfiguration-type='pdf-nutzungsarten' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Neue Ebene anlegen</button>
+
+                                <div style='max-height:500px;overflow-y:scroll'>
+                                {edit_fields_pdf}
+                                </div>
+                                
+                            </div>
+                        </div>
+                    ", edit_fields_pdf = konfiguration.pdf.nutzungsarten.iter().map(|(k, v)| {
+                        format!("
+                            <div style='padding:10px;margin-bottom:5px;background:ccc;'>
+                                <div style='display: flex;flex-direction: row;justify-content: flex-end;'>
+                                    <input type='text' class='konfiguration-editfield1' value='{name}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-name' onchange='editKonfigurationTextField(event)' style='flex-grow:1;'></input>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-up'  data-konfiguration-type='pdf-nutzungsarten' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>^ Layer anheben</button>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='move-down'  data-konfiguration-type='pdf-nutzungsarten' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>v Layer absenken</button>
+                                    <button onclick='moveOrDeleteKonfigurationField(event);' data-move-type='delete'  data-konfiguration-type='pdf-nutzungsarten' data-konfiguration-style-id='{k}' style='padding: 2px 5px;margin-left: 5px;cursor: pointer;border-radius: 3px;'>Layer löschen</button>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Füllung</label>
+                                    <input type='color' class='konfiguration-editfield1' value='{fill_color}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-fillcolor' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Umrandung</label>
+                                    <input type='color' class='konfiguration-editfield1' value='{outline_color}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outlinecolor' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Umrandung</label>
+                                    <input type='number' class='konfiguration-editfield1' value='{outline_thickness}' minval='0' maxval='10' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outlinethickness' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Strichelung Umrandung</label>
+                                    <input type='text' class='konfiguration-editfield1' value='{outline_dash}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outlinedash' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Umrandung überdrucken (Overprint)</label>
+                                    <input type='checkbox' checked='{outline_overprint}' class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-outline-overprint' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:12px;font-style:italic;'>Muster</label>
+                                    <input id='__application_pdf_nutzungsart_pattern_{k}' type='hidden' style='display:none;' onchange='editKonfigurationTextField(event)' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' data-konfiguration-style-id='{k}' value='{pattern_svg}'></input>
+                                    <input type='file' class='konfiguration-editfield1' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-pattern-svg' onchange='editKonfigurationInputFile(event)'></input>
+                                </div>
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:20px;font-style:italic;'>Platzierung Muster</label>
+                                    <select value='{pattern_placement}'>
+                                        {pattern_type_select_options}
+                                    </select>
+                                </div>
+
+                                <hr/>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
+                                    <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftart}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftart' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
+                                    <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftgroesse}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftgroesse' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+
+                                <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                    <label style='font-size:20px;font-style:italic;'>Beschriftung Schrift</label>
+                                    <input type='text' class='konfiguration-editfield1' value='{beschriftung_schriftfarbe}' data-konfiguration-style-id='{k}' data-konfiguration-textfield='map-pdf-nutzungsart-beschriftung-schriftfarbe' onchange='editKonfigurationTextField(event)'></input>
+                                </div>
+                            </div>
+                            ", 
+                                k = k,
+                                name = v.kuerzel.clone(),
+                                fill_color = v.fill_color.clone().unwrap_or("#000".to_string()),
+                                outline_color = v.outline_color.clone().unwrap_or("#000".to_string()),
+                                outline_thickness = v.outline_thickness.clone().unwrap_or(0.0),
+                                outline_dash = v.outline_dash.clone().unwrap_or_default(),
+                                outline_overprint = if v.outline_overprint { "checked" } else { "" },
+                                pattern_svg = v.pattern_svg.clone().unwrap_or_default(),
+                                pattern_placement = v.pattern_placement.clone().unwrap_or_default(),
+                                pattern_type_select_options = {
+                                    vec![
+                                        ("none", "Kein Muster"),
+                                        ("mitte", "mittig platzieren"),
+                                        ("pattern", "Wiederholen (kein Versatz)"),
+                                        ("pattern-alternate", "Mit Versatz wiederholen"),
+                                    ].iter().map(|(k, v)| {
+                                        format!("<option value='{k}'>{v}</option>")
+                                    }).collect::<Vec<_>>().join("")
+                                },
+                                beschriftung_schriftart = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.font.clone()).clone().unwrap_or_default(),
+                                beschriftung_schriftgroesse = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.fontsize).clone().unwrap_or(0.0),
+                                beschriftung_schriftfarbe = v.lagebez_ohne_hsnr.as_ref().and_then(|s| s.color.clone()).unwrap_or("#000".to_string()),
+                            )
+                        }).collect::<Vec<_>>().join("")
+                    )
+                },
             };
 
             let main = format!("<div style='display:flex;flex-grow:1;padding:0px 20px;line-height: 1.2;'>{main_content}</div>");
@@ -298,15 +435,13 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                     {close_button}
                     
                     <h2 style='font-size:24px;margin-bottom:15px;font-family:sans-serif;'>Konfiguration</h2>
-                    <p style='font-size:12px;padding-bottom:10px;'>Pfad: {konfig_pfad}</p>
-                    
+
                     <div style='display:flex;flex-direction:row;flex-grow:1;width:100%;'>
                         {sidebar}
                         {main}
                     </div>
                 </div>
-            ", 
-                konfig_pfad = String::new(), // Konfiguration::konfiguration_pfad(),
+            "
             )
         }
         Some(PopoverState::ContextMenu(cm)) => {
@@ -317,64 +452,6 @@ pub fn render_popover_content(rpc_data: &UiData) -> String {
                         <div style='line-height:1.5;cursor:pointer;'>
                             <div class='kontextmenü-eintrag' data-seite-neu='bv-horz' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
                                 Bestandsverzeichnis (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='bv-horz-zu-und-abschreibungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Bestandsverzeichnis Zu- und Abschreibungen (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='bv-vert' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Bestandsverzeichnis (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='bv-vert-typ2' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Bestandsverzeichnis Variante 2 (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='bv-vert-zu-und-abschreibungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Bestandsverzeichnis Zu- und Abschreibungen (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='bv-vert-zu-und-abschreibungen-alt' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Bestandsverzeichnis Zu- und Abschreibungen Variante 2(Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt1-horz' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 1 (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt1-vert' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 1 (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt1-vert-typ2' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 1 Typ 2 (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt2-horz-veraenderungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 2 Veränderungen (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt2-horz' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 2 (Querformat)
-                            </div>
-
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt2-vert' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 2 (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt2-vert-typ2' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 2 Variante 2 (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt2-vert-veraenderungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 2 Veränderungen (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-horz-veraenderungen-loeschungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 3 Veränderungen / Löschungen (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-horz' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 3 (Querformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-vert-veraenderungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                <p>Abteilung 3 Veränderungen (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-vert-loeschungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 3 Löschungen (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-vert-veraenderungen-loeschungen' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 3 Veränderungen / Löschungen (Hochformat)
-                            </div>
-                            <div class='kontextmenü-eintrag' data-seite-neu='abt3-vert' data-seite='{seite}' onmousedown='klassifiziereSeiteNeu(event);'>
-                                Abteilung 3 (Hochformat)
                             </div>
                         </div>
                     </div>
