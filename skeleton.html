@@ -757,7 +757,7 @@
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
 
-          var converted = load_nas_xml(readerEvent.target.result, JSON.serialize(window.configuration.style));
+          var converted = load_nas_xml(readerEvent.target.result, JSON.stringify(window.configuration.style));
           var parsed = JSON.parse(converted);
           
           window.xml_data = parsed.xml_parsed;
