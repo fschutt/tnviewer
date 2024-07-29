@@ -783,7 +783,6 @@
           // remove old LeafLet layers
           for (var [layer_name, layer_obj] of Object.entries(geojson_layers)) {
             layers.removeLayer(layer_obj);
-            layer_obj.remove();
           }
           geojson_layers = [];
           var arr = JSON.parse(get_ebenen_darstellung(JSON.stringify(window.configuration)));
