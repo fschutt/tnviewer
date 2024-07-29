@@ -1487,6 +1487,16 @@
         downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
     }
 
+    function exportDxf() {
+      if (!window.xml_data) {
+          return;
+        }
+        var xlsx = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.xml_data));
+        downloadBlob(xlsx, "Projekt.dxf", 'application/octet-stream');
+    }
+
+    window.exportDxf = exportDxf;
+    
     function exportFlstNachEigentuemer() {
         if (!window.csv_data) {
           return;
@@ -1588,6 +1598,7 @@
         export_alle_flst: function(event) { exportAlleFlst(); },
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
+        export_dxf: function(event) { exportDxf(); },
         export_david: function(event) { },
         undo: function(event) { },
         redo: function(event) { },

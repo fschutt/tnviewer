@@ -14,7 +14,7 @@ pub struct NutzungsArt {
 
 pub type NutzungsArtMap = BTreeMap<String, NutzungsArt>;
 
-pub fn search_map(term: &str) -> BTreeMap<String, NutzungsArt> {
+pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {
     let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
     let mut target = BTreeMap::new();
     let s = term.to_lowercase();
@@ -36,5 +36,15 @@ pub fn search_map(term: &str) -> BTreeMap<String, NutzungsArt> {
             continue;
         }
     }
-    target
+    let mut direct_match = BTreeMap::new();
+    for (k, v) in map.iter() {
+        if k.to_lowercase() == s {
+            direct_match.insert(k.clone(), v.clone());
+            continue;
+        }
+    }
+
+    let mut preferred = direct_match.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>();
+    preferred.extend(target.iter().map(|(k, v)| (k.clone(), v.clone())));
+    preferred
 }

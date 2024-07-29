@@ -19,10 +19,20 @@ pub mod search;
 pub mod pdf;
 pub mod uuid_wasm;
 pub mod analyze;
+pub mod dxf;
 
 #[wasm_bindgen]
 pub fn get_new_poly_id() -> String {
     crate::uuid_wasm::uuid()
+}
+
+#[wasm_bindgen]
+pub fn aenderungen_zu_dxf(aenderungen: String, _xml: String) -> Vec<u8> {
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    crate::dxf::export_aenderungen_dxf(&aenderungen)
 }
 
 #[wasm_bindgen]

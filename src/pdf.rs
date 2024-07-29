@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
@@ -330,8 +330,6 @@ pub fn generate_pdf(
 
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
-        log.push(format!("Rendering Riss {ri}"));
-
         let riss_extent = match riss_map.get(ri).and_then(|r| r.reproject(&xml.crs, log)) {
             Some(s) => s,
             None => continue,
@@ -378,6 +376,8 @@ pub fn generate_pdf(
 
         let _ = write_flurstuecke(&mut layer, &flst, &konfiguration, log);
 
+        // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
+
         let fluren = get_fluren_in_pdf_space(
             &flst,
             &riss_extent,
@@ -386,6 +386,9 @@ pub fn generate_pdf(
         );
         
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
+
+        log.push(format!("Rendering Riss {ri} (Seite {i}) - hat Fluren {}", flst.get_fluren(&flst)));
+        log.push(format!("Rendering Riss {ri} (Seite {i}) - hat beschriftete Objekte {}", aenderungen_in_pdf_space.get_beschriftete_objekte(&xml)));
 
         let _ = write_border(&mut layer, 16.5, &rc);
 
@@ -709,6 +712,35 @@ pub fn get_flurstuecke_in_pdf_space(
 
 struct FlurenInPdfSpace {
     pub fluren: Vec<TaggedPolygon>,
+}
+
+impl FlurstueckeInPdfSpace {
+    pub fn get_fluren(&self, flst: &FlurstueckeInPdfSpace) -> String {
+        let mut fluren_map = BTreeMap::new();
+        for v in flst.flst.iter() {
+            
+            let flst = v.attributes
+            .get("flurstueckskennzeichen")
+            .and_then(|s| FlstIdParsed::from_str(s).parse_num());
+    
+            let flst = match flst {
+                Some(s) => s,
+                None => continue,
+            };
+    
+            fluren_map.entry(flst.gemarkung).or_insert_with(|| BTreeSet::new()).insert(flst.flur);
+        }
+
+
+        let mut s = String::new();
+
+        for (gemarkung, flur) in fluren_map {
+            s.push_str(&format!("  Gemarkung {gemarkung} Flur {flur:?},  "));
+        }
+        
+        s
+        
+    }
 }
 
 fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {

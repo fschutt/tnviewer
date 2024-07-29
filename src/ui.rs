@@ -4,8 +4,8 @@ use serde_derive::{Serialize, Deserialize};
 
 use crate::{
     csv::{CsvDataType, Status},
-    nas::{SplitNasXml, SvgPolygon}, 
-    pdf::{ProjektInfo, Risse, Konfiguration},
+    nas::{NasXMLFile, SplitNasXml, SvgPolygon}, 
+    pdf::{FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse},
     search::NutzungsArt, 
     xlsx::FlstIdParsed
 };
@@ -150,10 +150,11 @@ pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
 
 pub fn ui_render_search_popover_content(term: &str) -> String {
     let mut pc = crate::search::search_map(term).into_iter().take(4).map(|(k, v)| {
+        let bez = &v.bez;
         format!("
-        <p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>{k}</p>
+        <p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>{k} ({bez})</p>
         <div style='line-height:1.5;cursor:pointer;'>
-            <div class='kontextmenü-eintrag' data-seite-neu='bv-horz' onmousedown='klassifiziereSeiteNeu(event);'>
+            <div class='kontextmenü-eintrag' data-seite-neu='bv-horz'>
                 {}
             </div>
         </div>", v.def + " " + v.ehb.as_str()
@@ -897,6 +898,22 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
+    let export_dxf = {
+        format!("
+        <div class='__application-ribbon-section-content'>
+            <label onmouseup='tab_functions.export_dxf(event)' class='__application-ribbon-action-vertical-large'>
+                <div class='icon-wrapper'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                </div>
+                <div>
+                    <p>Export</p>
+                    <p>Änderungen (.dxf)</p>
+                </div>
+            </label>
+        </div>   
+        ")
+    };
+
     let export_alle_flurstuecke = {
         format!("
             <div class='__application-ribbon-section-content'>
@@ -1024,6 +1041,12 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     </div>
                 </div>
 
+                <div class='__application-ribbon-section 5'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {projekt_speichern}
+                    </div>
+                </div>
+
                 <div style='display:flex;flex-grow:1;'></div>
                 
                 <div class='__application-ribbon-section 6'>
@@ -1058,6 +1081,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         {export_excel}
                         {export_eigentuemer}
                         {export_pdf}
+                        {export_dxf}
                     </div>
                 </div>
 
@@ -1116,6 +1140,13 @@ pub struct Aenderungen {
     pub gebaeude_loeschen: BTreeSet<GebauedeId>,
     pub na_definiert: BTreeMap<FlstPartId, Kuerzel>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
+}
+
+impl Aenderungen {
+    pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
+        // TODO: Welche beschrifteten Objekte gibt es?
+        String::new()
+    }
 }
 
 pub fn render_main(
