@@ -330,7 +330,8 @@
         JSON.stringify(window.configuration), 
         JSON.stringify(window.xml_data)
       ));
-      window.configuration = json;
+      window.configuration = json.result;
+      window.layer_log = json.log;
       replacePopOver();
     }
 

@@ -341,7 +341,7 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
 pub fn get_layer_style(konfiguration: String, layer_name: String) -> String {
     let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
     let ls = konfiguration.style.ebenen.iter()
-    .find(|(_, s)| s.name == layer_name).map(|(k, v)| v.clone())
+    .find(|(_, s)| s.name.trim() == layer_name.trim()).map(|(_, v)| v.clone())
     .unwrap_or(EbenenStyle::default());
     serde_json::to_string(&ls).unwrap_or_default()
 }
@@ -428,12 +428,19 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
     crate::xlsx::generate_report(&data)
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct KonfigurationLayerAlle {
+    pub result: Konfiguration, 
+    pub log: Vec<String>,
+}
+
 #[wasm_bindgen]
 pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> String {
 
     let mut config = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
     let nas_projected = serde_json::from_str::<Vec<XmlNode>>(&konfiguration).unwrap_or_default();
 
+    let mut log = Vec::new();
 
     let kuerzel = crate::xml::get_all_nodes_in_tree(&nas_projected)
         .iter()
@@ -441,10 +448,17 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
         .map(|n| n.node_type.clone())
         .collect::<Vec<_>>();
 
+    log.push(format!("alle_ax: {:?}", kuerzel));
+
     let nas_parsed_complete = match parse_nas_xml(nas_projected, &kuerzel, &mut Vec::new()) {
         Ok(s) => s,
         Err(_) => NasXMLFile::default(),
     };
+
+    let tp_count = nas_parsed_complete.ebenen.iter()
+    .map(|(k, s)| (k.clone(), s.len()))
+    .collect::<BTreeMap<_, _>>(); 
+    log.push(format!("tp_count: {:?}", tp_count));
 
     let alle_auto_kuerzel = nas_parsed_complete.ebenen.iter().flat_map(|(k, s)| {
         s.into_iter().filter_map(|tp| tp.get_auto_kuerzel(k))
@@ -497,8 +511,8 @@ pub fn edit_konfiguration_move_layer(konfiguration: String, layer_type: String, 
                     config.style.ebenen_ordnung.retain(|s| *s != ebene_id);
                 },
                 "pdf-nutzungsarten" => {
-                    config.style.ebenen.remove(ebene_id.as_str());
-                    config.style.ebenen_ordnung.retain(|s| *s != ebene_id);
+                    config.pdf.nutzungsarten.remove(ebene_id.as_str());
+                    config.pdf.layer_ordnung.retain(|s| *s != ebene_id);
                 },
                 _ => { },
             }
