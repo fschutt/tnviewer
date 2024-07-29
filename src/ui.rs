@@ -310,7 +310,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 <h2 style='font-size:20px;'>Bearbeitung</h2>
                                 
                                 <button onclick='konfigurationLayerNeu(event)' data-konfiguration-type='style' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Neue Ebene anlegen</button>
-
+                                
                                 <div style='max-height:500px;overflow-y:scroll'>
                                 {edit_fields_bearbeitung}
                                 </div>
@@ -356,6 +356,8 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 <!-- NORDPFEIL SVG ... -->
 
                                 <button onclick='konfigurationLayerNeu(event)' data-konfiguration-type='pdf-nutzungsarten' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Neue Ebene anlegen</button>
+
+                                <button onclick='konfigurationLayerAlle(event)' data-konfiguration-type='style' style='display: flex;width: 100%;margin-bottom: 10px;margin-top: 10px;cursor: pointer;background: #d1e9d7;padding: 10px;border-radius: 5px;'>Alle sichtbaren Kürzel übernehmen</button>
 
                                 <div style='max-height:500px;overflow-y:scroll'>
                                 {edit_fields_pdf}

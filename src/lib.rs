@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use nas::{parse_nas_xml, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
@@ -251,7 +251,7 @@ pub struct LoadNasReturn {
 
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String, style: String) -> String {
-    let style = match serde_json::from_str::<StyleConfig>() {
+    let style = match serde_json::from_str::<StyleConfig>(&style) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
@@ -261,7 +261,7 @@ pub fn load_nas_xml(s: String, style: String) -> String {
 
     let mut log = Vec::new();
     log.push(format!("parsing XML: types = {t:?}"));
-    
+
     let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
         Ok(o) => o,
         Err(e) => return format!("XML parse error: {e:?}"),
@@ -382,6 +382,37 @@ pub fn export_xlsx(s: String) -> Vec<u8> {
     };
 
     crate::xlsx::generate_report(&data)
+}
+
+#[wasm_bindgen]
+pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> String {
+
+    let mut config = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    let nas_projected = serde_json::from_str::<Vec<XmlNode>>(&konfiguration).unwrap_or_default();
+
+
+    let kuerzel = crate::xml::get_all_nodes_in_tree(&nas_projected)
+        .iter()
+        .filter(|n| n.node_type.starts_with("AX_"))
+        .map(|n| n.node_type.clone())
+        .collect::<Vec<_>>();
+
+    let nas_parsed_complete = match parse_nas_xml(nas_projected, &kuerzel, &mut Vec::new()) {
+        Ok(s) => s,
+        Err(_) => NasXMLFile::default(),
+    };
+
+    let alle_auto_kuerzel = nas_parsed_complete.ebenen.iter().flat_map(|(k, s)| {
+        s.into_iter().filter_map(|tp| tp.get_auto_kuerzel(k))
+    }).collect::<BTreeSet<_>>();
+
+    let neue_ebenen = alle_auto_kuerzel.into_iter().map(|ak| {
+        (get_new_poly_id(), PdfEbenenStyle::default())
+    }).collect::<Vec<_>>();
+
+    config.pdf.nutzungsarten = neue_ebenen.iter().cloned().collect();
+    config.pdf.layer_ordnung = neue_ebenen.iter().map(|(k, _)| k.clone()).collect();
+    serde_json::to_string(&config).unwrap_or_default()
 }
 
 #[wasm_bindgen]

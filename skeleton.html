@@ -325,6 +325,17 @@
 
     window.editKonfigurationInputFile = editKonfigurationInputFile;
 
+    function konfigurationLayerAlle(event) {
+      var json = JSON.parse(edit_konfiguration_layer_alle(
+        JSON.stringify(window.configuration), 
+        JSON.stringify(window.xml_data)
+      ));
+      window.configuration = json;
+      replacePopOver();
+    }
+
+    window.konfigurationLayerAlle = konfigurationLayerAlle;
+
     function konfigurationLayerNeu(event) {
       var konfiguration_type = event.target.dataset.konfigurationType;
       var json = JSON.parse(edit_konfiguration_layer_neu(JSON.stringify(window.configuration), konfiguration_type));
@@ -746,9 +757,7 @@
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
 
-          var styles_keys = Object.keys(window.configuration.style);
-          var styles_keys = styles_keys.join(", ");
-          var converted = load_nas_xml(readerEvent.target.result, styles_keys);
+          var converted = load_nas_xml(readerEvent.target.result, JSON.serialize(window.configuration.style));
           var parsed = JSON.parse(converted);
           
           window.xml_data = parsed.xml_parsed;

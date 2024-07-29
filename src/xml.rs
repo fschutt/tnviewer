@@ -33,6 +33,11 @@ pub fn get_all_nodes_in_subtree<'a>(xml: &'a [XmlNode], node_type_searched: &'st
     )
 }
 
+
+pub fn get_all_nodes_in_tree<'a>(xml: &'a [XmlNode]) -> Vec<&'a XmlNode> {
+    get_all_nodes_in_subtree_comparator(xml, |_| true)
+}
+
 pub fn get_all_nodes_in_subtree_comparator<'a, F: Fn(&XmlNode) -> bool>(
     xml: &'a [XmlNode], 
     search_fn: F,

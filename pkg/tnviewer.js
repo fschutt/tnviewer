@@ -572,17 +572,17 @@ export function search_for_gebauede(s, gebaeude_id) {
 
 /**
 * @param {string} s
-* @param {string} types
+* @param {string} style
 * @returns {string}
 */
-export function load_nas_xml(s, types) {
+export function load_nas_xml(s, style) {
     let deferred3_0;
     let deferred3_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(s, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(types, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr1 = passStringToWasm0(style, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len1 = WASM_VECTOR_LEN;
         wasm.load_nas_xml(retptr, ptr0, len0, ptr1, len1);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
@@ -782,6 +782,32 @@ export function export_xlsx(s) {
         return v2;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
+* @param {string} konfiguration
+* @param {string} xml_nas
+* @returns {string}
+*/
+export function edit_konfiguration_layer_alle(konfiguration, xml_nas) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(xml_nas, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.edit_konfiguration_layer_alle(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getInt32Memory0()[retptr / 4 + 0];
+        var r1 = getInt32Memory0()[retptr / 4 + 1];
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_2(deferred3_0, deferred3_1, 1);
     }
 }
 
