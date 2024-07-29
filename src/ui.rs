@@ -91,6 +91,14 @@ pub fn render_entire_screen(
 ) -> String {
     normalize_for_js(format!(
         "
+            <div id='__application_popover_search' style='
+                pointer-events:none;
+                width: 100%;
+                height: 100%;
+                min-height: 100%;
+                position: fixed;
+                z-index:999;
+            '></div>
             {popover}
             <div id='__application-ribbon'>
                 {ribbon_ui}
@@ -138,6 +146,37 @@ pub fn render_popover(rpc_data: &UiData, konfiguration: &Konfiguration) -> Strin
 
 pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
     base64::encode(input)
+}
+
+pub fn ui_render_search_popover_content(term: &str) -> String {
+    let mut pc = crate::search::search_map(term).into_iter().take(4).map(|(k, v)| {
+        format!("
+        <p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>{k}</p>
+        <div style='line-height:1.5;cursor:pointer;'>
+            <div class='kontextmenü-eintrag' data-seite-neu='bv-horz' onmousedown='klassifiziereSeiteNeu(event);'>
+                {}
+            </div>
+        </div>", v.def + " " + v.ehb.as_str()
+    )
+    }).collect::<Vec<_>>().join("");
+
+    
+
+    if pc.is_empty() {
+        pc = "<p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>Keine Suchergebnisse</p>".to_string();
+    }
+
+    let pc = format!("
+        <div style='background:transparent;width: 100%;height: 100%;min-height: 100%;z-index:1001;pointer-events:all;' onmouseup='closePopOver()'>
+            <div style='pointer-events: unset;padding: 1px;position: absolute;right: 5px;top: 30px;max-width: 302px;background: white;border-radius: 0px;'>
+                <div style='border:1px solid #efefef;border-radius:5px;'>
+                    {pc}
+                </div>
+            </div>
+        </div>", 
+    );
+
+    normalize_for_js(pc)
 }
 
 pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) -> String {

@@ -337,7 +337,7 @@
       }
       window.layer_log = json.log;
       console.log(json.log);
-      replacePopOver();
+      replacePopOver("config");
     }
 
     window.konfigurationLayerAlle = konfigurationLayerAlle;
@@ -346,7 +346,7 @@
       var konfiguration_type = event.target.dataset.konfigurationType;
       var json = JSON.parse(edit_konfiguration_layer_neu(JSON.stringify(window.configuration), konfiguration_type));
       window.configuration = json;
-      replacePopOver();
+      replacePopOver("config");
     }
 
     window.konfigurationLayerNeu = konfigurationLayerNeu;
@@ -362,7 +362,7 @@
       move_type,
     ));
     window.configuration = json;
-    replacePopOver();
+    replacePopOver("config");
   }
 
   window.moveOrDeleteKonfigurationField = moveOrDeleteKonfigurationField;
@@ -752,6 +752,8 @@
     }
   }
 
+  window.get_layer_style = get_layer_style;
+  
   function replaceDataNasXML() {
     var input = document.createElement('input');
     input.type = 'file';
@@ -807,14 +809,27 @@
             if (geojson == null) {
               continue;
             }
-            var layer_style = JSON.parse(get_layer_style(JSON.stringify(window.configuration), ln));
+            console.log(window.configuration);
+            console.log(ln);
+            var layer_style = null;
+            var ls = get_layer_style(JSON.stringify(window.configuration), ln);
+            try {
+                layer_style = JSON.parse(ls);
+            } catch (e) {
+              console.log(e);
+              console.log(window.configuration);
+              console.log(ln);
+              console.log(ls);
+              continue;
+            }
+            console.log(ls);
             var myLayer = null;
             if (L.geoJson) {
               myLayer = L.geoJson(geojson, {
                 "style": {
-                  "color": layer_style.outlineColor,
-                  "fillColor": layer_style.fillColor,
-                  "weight": layer_style.outlineThickness,
+                  "color": layer_style.outline_color,
+                  "fillColor": layer_style.fill_color,
+                  "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
                 }
@@ -822,9 +837,9 @@
             } else if (L.geoJSON) {
               myLayer = L.geoJSON(geojson, {
                 "style": {
-                  "color": layer_style.outlineColor,
-                  "fillColor": layer_style.fillColor,
-                  "weight": layer_style.outlineThickness,
+                  "color": layer_style.outline_color,
+                  "fillColor": layer_style.fill_color,
+                  "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
                 }
@@ -1096,7 +1111,19 @@
       }
     }
 
-    function replacePopOver() {
+    function replacePopOverSearch(val) {
+      let d = document.getElementById("__application_popover_search");
+      d.innerHTML = ui_render_search_popover_content(val);
+    }
+
+    function closePopOverSearch() {
+      let s = document.getElementById("__application_popover_search");
+      if (s) {
+        s.innerHTML = "";
+      }
+    }
+
+    function replacePopOver(e) {
       let d = document.getElementById("__application_popover");
       if (d) {
         d.innerHTML = ui_render_popover_content(
@@ -1377,32 +1404,32 @@
 
     function closePopOver() {
       window.uidata.popover_state = null;
-      replacePopOver();
+      replacePopOver("config");
+      closePopOverSearch();
     }
 
     function openHelp() {
       window.uidata.popover_state = "Help";
-      replacePopOver();
+      replacePopOver("config");
     }
 
     function searchNA(event) {
-      window.uidata.popover_state = { "Search": { "text": event.target.value } };
-      replacePopOver();
+      replacePopOverSearch(event.target.value);
     }
 
     function openInfo() {
       window.uidata.popover_state = "Info";
-      replacePopOver();
+      replacePopOver("config");
     }
 
     function openConfiguration() {
       window.uidata.popover_state = { "Configuration": "allgemein" };
-      replacePopOver();
+      replacePopOver("config");
     }
 
     function activateConfigurationView(event, id) {
       window.uidata.popover_state = { "Configuration": id };
-      replacePopOver();
+      replacePopOver("config");
     }
 
     function exportExcel() {

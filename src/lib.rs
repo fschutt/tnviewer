@@ -152,6 +152,12 @@ pub fn ui_render_ribbon(decoded: String) -> String {
     crate::ui::render_ribbon(&uidata, false)
 }
 
+
+#[wasm_bindgen]
+pub fn ui_render_search_popover_content(search_term: String) -> String {
+    crate::ui::ui_render_search_popover_content(&search_term)
+}
+
 #[wasm_bindgen]
 pub fn ui_render_popover_content(decoded: String, konfiguration: String) -> String {
     let uidata = UiData::from_string(&decoded);
@@ -339,10 +345,17 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
 
 #[wasm_bindgen]
 pub fn get_layer_style(konfiguration: String, layer_name: String) -> String {
-    let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&konfiguration) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
     let ls = konfiguration.style.ebenen.iter()
-    .find(|(_, s)| s.name.trim() == layer_name.trim()).map(|(_, v)| v.clone())
-    .unwrap_or(EbenenStyle::default());
+    .find(|(_, s)| s.name.trim() == layer_name.trim())
+    .map(|(_, v)| v.clone());
+    let ls = match ls {
+        Some(s) => s,
+        None => return format!("style für {layer_name} nicht gefunden"),
+    };
     serde_json::to_string(&ls).unwrap_or_default()
 }
 
@@ -465,7 +478,11 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
     }).collect::<BTreeSet<_>>();
 
     let neue_ebenen = alle_auto_kuerzel.into_iter().map(|ak| {
-        (get_new_poly_id(), PdfEbenenStyle::default())
+        (get_new_poly_id(), {
+            let mut m = PdfEbenenStyle::default();
+            m.kuerzel = ak;
+            m
+        })
     }).collect::<Vec<_>>();
 
     config.pdf.nutzungsarten = neue_ebenen.iter().cloned().collect();
