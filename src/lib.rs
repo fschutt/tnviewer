@@ -621,9 +621,8 @@ pub fn export_pdf(
     projekt_info: String,
     risse: String, 
     csv: String, 
-    xml: String, // original projection
+    xml: String, // parsed XML objects
     aenderungen: String, 
-    split_flurstuecke: Option<String>, // original projection
     risse_extente: String, // latlon projection
     konfiguration: String,
 ) -> String {
@@ -635,10 +634,9 @@ pub fn export_pdf(
     let projekt_info = serde_json::from_str::<ProjektInfo>(&projekt_info).unwrap_or_default();
     let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
     let csv = serde_json::from_str::<CsvDataType>(&csv).unwrap_or_default();
-    let xml  = serde_json::from_str::<NasXMLFile>(&xml).unwrap_or_default();
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
-    let split_flurstuecke = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
     let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    let xml_nodes = serde_json::from_str::<Vec<XmlNode>>(&xml).unwrap_or_default();
     let mut riss_extente = serde_json::from_str::<RissMap>(&risse_extente).unwrap_or_default();
     let mut log = Vec::new();
     for r in riss_extente.values_mut() {
@@ -648,8 +646,7 @@ pub fn export_pdf(
         &projekt_info, 
         &konfiguration, 
         &csv, 
-        &xml, 
-        &split_flurstuecke, 
+        xml_nodes,
         &aenderungen, 
         &risse,
         &riss_extente,

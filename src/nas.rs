@@ -911,7 +911,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
     })
 }
 
-fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
+pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = translate_to_geo_poly(a);
     let b = translate_to_geo_poly(b);
@@ -919,7 +919,7 @@ fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     translate_from_geo_poly(&intersect)
 }
 
-fn translate_to_geo_poly(a: &SvgPolygon) -> geo::MultiPolygon<f64> {
+pub fn translate_to_geo_poly(a: &SvgPolygon) -> geo::MultiPolygon<f64> {
     geo::MultiPolygon(a.outer_rings.iter().map(|outer| {
         let outer = translate_geoline(outer);
         let inner = a.inner_rings.iter().map(translate_geoline).collect::<Vec<_>>();
@@ -934,7 +934,7 @@ fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
     }).collect())
 }
 
-fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygon> {
+pub fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygon> {
     a.0.iter().map(|s| {
         SvgPolygon {
             outer_rings: vec![translate_ring(s.exterior())],

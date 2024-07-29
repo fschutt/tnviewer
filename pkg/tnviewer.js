@@ -990,14 +990,13 @@ export function export_flst_id_nach_eigentuemer(s) {
 * @param {string} csv
 * @param {string} xml
 * @param {string} aenderungen
-* @param {string | undefined} split_flurstuecke
 * @param {string} risse_extente
 * @param {string} konfiguration
 * @returns {string}
 */
-export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flurstuecke, risse_extente, konfiguration) {
-    let deferred9_0;
-    let deferred9_1;
+export function export_pdf(projekt_info, risse, csv, xml, aenderungen, risse_extente, konfiguration) {
+    let deferred8_0;
+    let deferred8_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(projekt_info, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -1010,21 +1009,19 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, split_flu
         const len3 = WASM_VECTOR_LEN;
         const ptr4 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len4 = WASM_VECTOR_LEN;
-        var ptr5 = isLikeNone(split_flurstuecke) ? 0 : passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        var len5 = WASM_VECTOR_LEN;
-        const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr5 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len5 = WASM_VECTOR_LEN;
+        const ptr6 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len6 = WASM_VECTOR_LEN;
-        const ptr7 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len7 = WASM_VECTOR_LEN;
-        wasm.export_pdf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7);
+        wasm.export_pdf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred9_0 = r0;
-        deferred9_1 = r1;
+        deferred8_0 = r0;
+        deferred8_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_2(deferred9_0, deferred9_1, 1);
+        wasm.__wbindgen_export_2(deferred8_0, deferred8_1, 1);
     }
 }
 
@@ -1343,11 +1340,11 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_new0_7d84e5b2cd9fdc73 = function() {
         const ret = new Date();
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
     };

@@ -5,8 +5,10 @@ use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerRe
 use serde_derive::{Deserialize, Serialize};
 use crate::analyze::LatLng;
 use crate::csv::CsvDataType;
-use crate::nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon};
+use crate::nas::{parse_nas_xml, reproject_poly, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon};
 use crate::ui::{Aenderungen, PolyNeu};
+use crate::xlsx::FlstIdParsed;
+use crate::xml::{self, XmlNode};
 
 pub type Risse = BTreeMap<String, RissConfig>;
 
@@ -224,6 +226,14 @@ impl RissExtentReprojected {
     pub fn height_m(&self) -> f64 {
         (self.max_y - self.min_y).abs()
     }
+    pub fn get_rect(&self) -> quadtree_f32::Rect {
+        quadtree_f32::Rect {
+            min_x: self.min_x,
+            min_y: self.min_y,
+            max_x: self.max_x,
+            max_y: self.max_y,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -272,10 +282,9 @@ pub enum Aenderung {
 // + Änderungen
 pub fn generate_pdf(
     projekt_info: &ProjektInfo,
-    style: &Konfiguration,
+    konfiguration: &Konfiguration,
     csv: &CsvDataType, 
-    xml: &NasXMLFile,
-    split_flurstuecke: &SplitNasXml,
+    xml_original: Vec<XmlNode>,
     aenderungen: &Aenderungen, 
     risse: &Risse,
     riss_map: &RissMap,
@@ -283,6 +292,28 @@ pub fn generate_pdf(
 ) -> Vec<u8> {
 
     let len = risse.len();
+    if len == 0 {
+        return Vec::new();
+    }
+
+    let whitelist = crate::xml::get_all_nodes_in_tree(&xml_original)
+        .iter()
+        .filter(|n| n.node_type.starts_with("AX_"))
+        .map(|n| n.node_type.clone())
+        .collect::<Vec<_>>();
+
+    let xml = match parse_nas_xml(xml_original, &whitelist, log) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&xml, log) {
+        Ok(o) => o,
+        Err(e) => return Vec::new(),
+    };
+
+    // AX_Flurstueck, AX_Flur, AX_BauRaumBodenOrdnungsRecht
+
     let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Riss",
@@ -296,7 +327,6 @@ pub fn generate_pdf(
         requires_xmp_metadata: false,
         .. Default::default()
     }));
-
 
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
@@ -328,22 +358,34 @@ pub fn generate_pdf(
             Err(_) => continue,
         };
 
-        log.push(format!("aenderungen ok---"));
-
-        log.push(format!("Rendering Riss {ri}: 2 ok"));
-
-        let split_flurstuecke_in_pdf_space = reproject_splitnas_into_pdf_space(
-            &split_flurstuecke,
+        let nutzungsarten = reproject_splitnas_into_pdf_space(
+            &nas_cut_original,
             &riss_extent,
             rc,
             log
         );
 
-        log.push(format!("Rendering Riss {ri}: 3 ok"));
-
         // log.push(serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default());
 
-        let _ = write_split_flurstuecke_into_layer(&mut layer, &split_flurstuecke_in_pdf_space, &style, log);
+        let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
+
+        let flst = get_flurstuecke_in_pdf_space(
+            &xml,
+            &riss_extent,
+            rc,
+            log
+        );
+
+        let _ = write_flurstuecke(&mut layer, &flst, &konfiguration, log);
+
+        let fluren = get_fluren_in_pdf_space(
+            &flst,
+            &riss_extent,
+            rc,
+            log
+        );
+        
+        let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
 
         let _ = write_border(&mut layer, 16.5, &rc);
 
@@ -356,7 +398,6 @@ pub fn generate_pdf(
 
         // log.push(format!("nas xml in pdf space {}", serde_json::to_string(&nas_xml_in_pdf_space).unwrap_or_default()));
 
-        log.push(format!("Rendering Riss {ri}: 4 ok"));
     }
 
 
@@ -381,12 +422,7 @@ fn reproject_aenderungen_into_pdf_space(
     let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
     .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
 
-    let target_riss = quadtree_f32::Rect {
-        min_x: riss.min_x,
-        min_y: riss.min_y,
-        max_x: riss.max_x,
-        max_y: riss.max_y,
-    };
+    let target_riss = riss.get_rect();
     Ok(Aenderungen {
         gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
         na_definiert: aenderungen.na_definiert.clone(),
@@ -566,7 +602,7 @@ fn write_border(
     Some(())
 }
 
-fn write_split_flurstuecke_into_layer(
+fn write_nutzungsarten(
     layer: &mut PdfLayerReference,
     split_flurstuecke: &SplitNasXml,
     style: &Konfiguration,
@@ -643,6 +679,165 @@ fn write_split_flurstuecke_into_layer(
 
         layer.restore_graphics_state();
     }
+    Some(())
+}
+
+pub struct FlurstueckeInPdfSpace {
+    pub flst: Vec<TaggedPolygon>,
+}
+
+pub fn get_flurstuecke_in_pdf_space(
+    xml: &NasXMLFile,
+    riss: &RissExtentReprojected,
+    riss_config: &RissConfig,
+    log: &mut Vec<String>
+) -> FlurstueckeInPdfSpace {
+
+    let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
+    flst.retain(|s| {
+        let rb = riss.get_rect();
+        rb.overlaps_rect(&s.get_rect())
+    });
+
+    FlurstueckeInPdfSpace {
+        flst: flst.into_iter().map(|s| TaggedPolygon {
+            attributes: s.attributes,
+            poly: poly_into_pdf_space(&s.poly, riss, riss_config, log)
+        }).collect()
+    }
+}
+
+struct FlurenInPdfSpace {
+    pub fluren: Vec<TaggedPolygon>,
+}
+
+fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
+    use geo::BooleanOps;
+    let mut first = match polys.get(0) {
+        Some(s) => s.clone(),
+        None => return SvgPolygon::default(),
+    };
+    for i in polys.iter().skip(1) {
+        let a = translate_to_geo_poly(&first);
+        let b = translate_to_geo_poly(i);
+        let join = a.union(&b);
+        let s = translate_from_geo_poly(&join);
+        let mut new = SvgPolygon {
+            outer_rings: s.iter().flat_map(|s| {
+                s.outer_rings.clone().into_iter()
+            }).collect(),
+            inner_rings: s.iter().flat_map(|s| {
+                s.inner_rings.clone().into_iter()
+            }).collect(),
+        };
+        first = new;
+    }
+
+    first
+}
+
+fn get_fluren_in_pdf_space(
+    flst: &FlurstueckeInPdfSpace,
+    riss: &RissExtentReprojected,
+    riss_config: &RissConfig,
+    log: &mut Vec<String>
+) -> FlurenInPdfSpace {
+
+    let mut fluren_map = BTreeMap::new();
+    for v in flst.flst.iter() {
+        
+        let flst = v.attributes
+        .get("flurstueckskennzeichen")
+        .and_then(|s| FlstIdParsed::from_str(s).parse_num());
+
+        let flst = match flst {
+            Some(s) => s,
+            None => continue,
+        };
+
+        fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
+    }
+
+
+    FlurenInPdfSpace {
+        fluren: fluren_map.iter().map(|(k, v)| {
+            let polys = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
+            let joined = join_polys(&polys);
+            TaggedPolygon {
+                attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
+                poly: joined,
+            }
+        }).collect()
+    }
+}
+
+fn write_flurstuecke(
+    layer: &mut PdfLayerReference,
+    flst: &FlurstueckeInPdfSpace,
+    style: &Konfiguration,
+    log: &mut Vec<String>,
+) -> Option<()> {
+
+    layer.save_graphics_state();
+
+    layer.set_fill_color(printpdf::Color::Rgb(Rgb {
+        r: 255.0,
+        g: 255.0,
+        b: 255.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_thickness(1.0);
+
+    for tp in flst.flst.iter() {
+        let poly = translate_poly(&tp.poly, PaintMode::Stroke);
+        layer.add_polygon(poly);
+    }
+
+    layer.restore_graphics_state();
+
+    Some(())
+}
+
+fn write_fluren(
+    layer: &mut PdfLayerReference,
+    fluren: &FlurenInPdfSpace,
+    style: &Konfiguration,
+    log: &mut Vec<String>,
+) -> Option<()> {
+
+    layer.save_graphics_state();
+
+    layer.set_fill_color(printpdf::Color::Rgb(Rgb {
+        r: 255.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_thickness(3.0);
+
+    for tp in fluren.fluren.iter() {
+        let poly = translate_poly(&tp.poly, PaintMode::Stroke);
+        layer.add_polygon(poly);
+    }
+
+    layer.restore_graphics_state();
+
     Some(())
 }
 
