@@ -12,13 +12,13 @@ pub type Risse = BTreeMap<String, RissConfig>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct EbenenStyle {
-    #[serde(default, alias = "name")]
+    #[serde(default)]
     pub name: String,
-    #[serde(default, alias = "fillColor")]
+    #[serde(default)]
     pub fill_color: Option<String>,
-    #[serde(default, alias = "outlineColor")]
+    #[serde(default)]
     pub outline_color: Option<String>,
-    #[serde(default, alias = "outlineThickness")]
+    #[serde(default)]
     pub outline_thickness: Option<f32>,
 }
 
@@ -95,23 +95,23 @@ impl PdfStyleConfig {
 pub struct PdfEbenenStyle {
     #[serde(default)]
     pub kuerzel: String,
-    #[serde(default, alias = "fillColor")]
+    #[serde(default)]
     pub fill_color: Option<String>,
-    #[serde(default = "default_fill", alias = "fill")]
+    #[serde(default = "default_fill")]
     pub fill: bool,
-    #[serde(default, alias = "outlineColor")]
+    #[serde(default)]
     pub outline_color: Option<String>,
-    #[serde(default, alias = "outlineThickness")]
+    #[serde(default)]
     pub outline_thickness: Option<f32>,
-    #[serde(default, alias = "outlineDash")]
+    #[serde(default)]
     pub outline_dash: Option<String>,
-    #[serde(default, alias = "outlineOverprint")]
+    #[serde(default)]
     pub outline_overprint: bool,
-    #[serde(default, alias = "patternSvg")]
+    #[serde(default)]
     pub pattern_svg: Option<String>,
-    #[serde(default, alias = "patternPlacement")]
+    #[serde(default)]
     pub pattern_placement: Option<String>,
-    #[serde(default, alias = "lagebezOhneHsnr")]
+    #[serde(default)]
     pub lagebez_ohne_hsnr: PtoStil,
 }
 
@@ -136,23 +136,23 @@ impl Default for PdfEbenenStyle {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PtoStil {
-    #[serde(default, alias = "art")]
+    #[serde(default)]
     pub art: String, // BEZ, Gewanne
-    #[serde(default, alias = "fontsize")]
+    #[serde(default)]
     pub fontsize: Option<f32>, // 12
-    #[serde(default, alias = "font")]
+    #[serde(default)]
     pub font: Option<String>, // Arial
-    #[serde(default, alias = "color")]
+    #[serde(default)]
     pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PpoStil {
-    #[serde(default, alias = "art")]
+    #[serde(default)]
     pub art: String, // VEG, ...
-    #[serde(default, alias = "fontsize")]
+    #[serde(default)]
     pub svgname: Option<String>, // wald.svg
-    #[serde(default, alias = "font")]
+    #[serde(default)]
     pub svg_base64: Option<String>, // ...
 }
 
