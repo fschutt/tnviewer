@@ -469,6 +469,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "random_color"
+version = "0.8.0"
+source = "git+https://github.com/fschutt/random_color?rev=b14528ce854f2dfc2f9763708eb1d015b4822470#b14528ce854f2dfc2f9763708eb1d015b4822470"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "regex-automata"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -639,6 +647,7 @@ dependencies = [
  "quick-xml",
  "rand",
  "rand_xorshift",
+ "random_color",
  "serde",
  "serde_derive",
  "serde_json",

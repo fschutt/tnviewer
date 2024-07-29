@@ -229,7 +229,7 @@ pub fn search_for_polyneu(aenderungen: String, poly_id: String) -> String {
     });
 
     match tp {
-        Some(s) => serde_json::to_string(&s.get_fit_bounds()).unwrap_or_default(),
+        Some(s) => serde_json::to_string(&s).unwrap_or_default(),
         None => String::new(),
     }
 }
@@ -249,7 +249,7 @@ pub fn search_for_gebauede(s: String, gebaeude_id: String) -> String {
     .find(|f| f.attributes.get("id") == Some(&gebaeude_id));
     
     match r {
-        Some(s) => serde_json::to_string(&s.get_fit_bounds()).unwrap_or_default(),
+        Some(s) => serde_json::to_string(&s).unwrap_or_default(),
         None => String::new(),
     }
 }
@@ -490,6 +490,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
         (get_new_poly_id(), {
             let mut m = PdfEbenenStyle::default();
             m.kuerzel = ak;
+            m.fill_color = Some(crate::uuid_wasm::random_color());
             m
         })
     }).collect::<Vec<_>>();

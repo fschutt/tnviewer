@@ -14,6 +14,16 @@ pub fn uuid() -> String {
     gen_uuid_with_xorshift(seed)
 }
 
+pub fn random_color() -> String {
+    use random_color::color_dictionary::{ColorDictionary, ColorInformation};
+    use random_color::{Color, Luminosity, RandomColor};
+
+    RandomColor::new()
+    .luminosity(Luminosity::Light) // Optional
+    .seed((random() * 1000.0) as i64) // Optional
+    .to_hex()
+}
+
 enum UuidElements {
     Random09AF,
     Random89AB,
