@@ -778,14 +778,14 @@
             layer_obj.remove();
           }
           geojson_layers = [];
-          var arr =  window.configuration.style.ebenen_ordnung;
-          arr.reverse();
+          var arr = JSON.parse(get_ebenen_darstellung(JSON.stringify(window.configuration)));
           for (var layer_name in arr) {
             var json = null;
             try {
               var f = get_geojson_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
               json = f;
             } catch (error) {
+              console.log(error);
               continue;
             }
 
@@ -793,6 +793,8 @@
             try {
               geojson = JSON.parse(json);
             } catch (error) {
+              console.log(error);
+              console.log(json);
               continue;
             }
             if (geojson == null) {

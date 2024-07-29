@@ -249,6 +249,20 @@ pub struct LoadNasReturn {
     pub nas_cut_projected: SplitNasXml,
 }
 
+#[wasm_bindgen]
+pub fn get_ebenen_darstellung(
+    konfiguration: String,
+) -> String {
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&konfiguration) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let arr = konfiguration.style.get_styles_sorted().iter().map(|(k, v)| {
+        v.name.clone()
+    }).collect::<Vec<_>>();
+    serde_json::to_string(&arr).unwrap_or_default()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct NasParseError {
     error: String, 
