@@ -381,7 +381,9 @@
     function konfigurationLayerNeu(event) {
       var konfiguration_type = event.target.dataset.konfigurationType;
       var json = JSON.parse(edit_konfiguration_layer_neu(JSON.stringify(window.configuration), konfiguration_type));
-      window.configuration = json;
+      if (json) {
+        window.configuration = json;
+      }
       replacePopOver("config");
     }
 
@@ -397,7 +399,9 @@
       style_id,
       move_type,
     ));
-    window.configuration = json;
+    if (json) {
+      window.configuration = json;
+    }
     replacePopOver("config");
   }
 
