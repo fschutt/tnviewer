@@ -337,6 +337,14 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
     xml.get_geojson_ebene(&layer)
 }
 
+pub fn get_layer_style(konfiguration: String, layer_name: String) -> String {
+    let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
+    let ls = konfiguration.style.ebenen.iter()
+    .find(|(_, s)| s.name == layer_name).map(|(k, v)| v.clone())
+    .unwrap_or(EbenenStyle::default());
+    serde_json::to_string(&ls).unwrap_or_default()
+}
+
 #[wasm_bindgen]
 pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderungen: String) -> String {
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {

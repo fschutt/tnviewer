@@ -801,7 +801,7 @@
             if (geojson == null) {
               continue;
             }
-            var layer_style = window.configuration.style.ebenen[layer_name];
+            var layer_style = JSON.parse(get_layer_style(JSON.stringify(window.configuration), ln));
             var myLayer = null;
             if (L.geoJson) {
               myLayer = L.geoJson(geojson, {
@@ -845,11 +845,6 @@
                 direction: 'center', 
                 permanent: true,
                 interactive: true,
-              });
-              t.on({
-                  click: function() {
-
-                  }
               });
               t.addTo(myLayer);
             }
