@@ -438,7 +438,7 @@ struct KonfigurationLayerAlle {
 pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> String {
 
     let mut config = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
-    let nas_projected = serde_json::from_str::<Vec<XmlNode>>(&konfiguration).unwrap_or_default();
+    let nas_projected = serde_json::from_str::<Vec<XmlNode>>(&xml_nas).unwrap_or_default();
 
     let mut log = Vec::new();
 
@@ -470,7 +470,10 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
 
     config.pdf.nutzungsarten = neue_ebenen.iter().cloned().collect();
     config.pdf.layer_ordnung = neue_ebenen.iter().map(|(k, _)| k.clone()).collect();
-    serde_json::to_string(&config).unwrap_or_default()
+    serde_json::to_string(&KonfigurationLayerAlle {
+        result: config,
+        log,
+    }).unwrap_or_default()
 }
 
 #[wasm_bindgen]

@@ -326,12 +326,17 @@
     window.editKonfigurationInputFile = editKonfigurationInputFile;
 
     function konfigurationLayerAlle(event) {
-      var json = JSON.parse(edit_konfiguration_layer_alle(
+      var l = edit_konfiguration_layer_alle(
         JSON.stringify(window.configuration), 
         JSON.stringify(window.xml_data)
-      ));
-      window.configuration = json.result;
+      );
+      console.log(l);
+      var json = JSON.parse(l);
+      if (json.result) {
+        window.configuration = json.result;
+      }
       window.layer_log = json.log;
+      console.log(json.log);
       replacePopOver();
     }
 
