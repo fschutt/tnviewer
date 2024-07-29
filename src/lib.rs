@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use nas::{NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse};
+use pdf::{EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
@@ -250,15 +250,18 @@ pub struct LoadNasReturn {
 }
 
 #[wasm_bindgen]
-pub fn load_nas_xml(s: String, types: String) -> String {
-    let mut t = types.split(",").filter_map(|s| {
-        let s = s.trim();
-        if s.is_empty() { None } else { Some(s.to_string()) }
-    }).collect::<Vec<_>>();
+pub fn load_nas_xml(s: String, style: String) -> String {
+    let style = match serde_json::from_str::<StyleConfig>() {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let mut t = style.ebenen.keys().cloned().collect::<Vec<_>>();
     t.sort();
     t.dedup();
+
     let mut log = Vec::new();
     log.push(format!("parsing XML: types = {t:?}"));
+    
     let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
         Ok(o) => o,
         Err(e) => return format!("XML parse error: {e:?}"),
