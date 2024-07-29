@@ -779,10 +779,11 @@
           }
           geojson_layers = [];
           var arr = JSON.parse(get_ebenen_darstellung(JSON.stringify(window.configuration)));
-          for (var layer_name in arr) {
+          for(var i = 0; i < arr.length; i++) {
+            var ln = arr[i];
             var json = null;
             try {
-              var f = get_geojson_fuer_ebene(JSON.stringify(window.projectdata), layer_name);
+              var f = get_geojson_fuer_ebene(JSON.stringify(window.projectdata), ln);
               json = f;
             } catch (error) {
               console.log(error);
