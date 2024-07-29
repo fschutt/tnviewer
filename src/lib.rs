@@ -249,13 +249,19 @@ pub struct LoadNasReturn {
     pub nas_cut_projected: SplitNasXml,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct NasParseError {
+    error: String, 
+    log: Vec<String>,
+}
+
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String, style: String) -> String {
-    let style = match serde_json::from_str::<StyleConfig>(&style) {
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&style) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    let mut t = style.ebenen.keys().cloned().collect::<Vec<_>>();
+    let mut t = konfiguration.style.ebenen.values().map(|s| s.name.clone()).collect::<Vec<_>>();
     t.sort();
     t.dedup();
 
@@ -264,23 +270,38 @@ pub fn load_nas_xml(s: String, style: String) -> String {
 
     let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
         Ok(o) => o,
-        Err(e) => return format!("XML parse error: {e:?}"),
+        Err(e) => return serde_json::to_string(&NasParseError {
+            error: format!("XML parse error: {e:?}"),
+            log: log,
+        }).unwrap_or_default(),
     };
     let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t, &mut log) {
         Ok(o) => o,
-        Err(e) => return e,
+        Err(e) => return serde_json::to_string(&NasParseError {
+            error: e,
+            log: log,
+        }).unwrap_or_default(),
     };
     let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&nas_original, &mut log) {
         Ok(o) => o,
-        Err(e) => return e,
+        Err(e) => return serde_json::to_string(&NasParseError {
+            error: e,
+            log: log,
+        }).unwrap_or_default(),
     };
     let nas_projected = match crate::nas::transform_nas_xml_to_lat_lon(&nas_original, &mut log) {
         Ok(o) => o,
-        Err(e) => return e,
+        Err(e) => return serde_json::to_string(&NasParseError {
+            error: e,
+            log: log,
+        }).unwrap_or_default(),
     };
     let mut nas_cut_projected = match crate::nas::transform_split_nas_xml_to_lat_lon(&nas_cut_original, &mut log) {
         Ok(o) => o,
-        Err(e) => return e,
+        Err(e) => return serde_json::to_string(&NasParseError {
+            error: e,
+            log: log,
+        }).unwrap_or_default(),
     };
     crate::nas::fixup_flst_groesse(&nas_cut_original, &mut nas_cut_projected);
     serde_json::to_string(&LoadNasReturn {
