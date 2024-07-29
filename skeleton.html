@@ -40,10 +40,12 @@
     });
 
     var map = null;
+    var search_geojson_layer = null;
     var geojson_layers = [];
     var geojson_repaint_layers = [];
     var leaflet_risse = {};
     var layers = null;
+    var highlight_layer = null;
     var nutzung_einzeichnen_layer = null;
     var gebaeude_loeschen_layer = null;
     var current_edit_layer = null;
@@ -298,6 +300,48 @@
   }; // default config object
 
     // INJECT_SELECT_MAP_JS
+
+    function highlightPolygon(poly) {
+
+      let bounds = JSON.parse(get_fit_bounds(JSON.stringify(poly)));
+      map.fitBounds(bounds);
+
+      if (highlight_layer) {
+        map.removeLayer(highlight_layer);
+        highlight_layer = null;
+      }
+
+      let geojson = JSON.parse(get_geojson_polygon(JSON.stringify(poly)));
+      var myLayer = null;
+      if (L.geoJson) {
+        myLayer = L.geoJson(geojson, {
+          "style": {
+            "color": "red",
+            "fillColor": "transparent",
+            "weight": 5,
+            "opacity": 1.0,
+            "fillOpacity": 0.3,
+          }
+        });
+      } else if (L.geoJSON) {
+        myLayer = L.geoJSON(geojson, {
+          "style": {
+            "color": "red",
+            "fillColor": "transparent",
+            "weight": 5,
+            "opacity": 1.0,
+            "fillOpacity": 0.3,
+          }
+        });
+      }
+
+      if (myLayer == null) {
+        return;
+      }
+
+      myLayer.addTo(map);
+      highlight_layer = myLayer;
+    }
 
     function editKonfigurationInputFile(e) {
       if (e.target.files.length < 1) {
@@ -653,7 +697,7 @@
     }
     var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
     var extent_json = JSON.parse(extent);
-    map.fitBounds(extent_json);
+    highlightPolygon(extent_json);
   }
   
   function gebaeudeLoeschenUndo(event) {
@@ -700,7 +744,7 @@
     }
     var extent = search_for_polyneu(JSON.stringify(window.aenderungen), id);
     var extent_json = JSON.parse(extent);
-    map.fitBounds(extent_json);
+    highlightPolygon(extent_json);
   }
   
   function polyNeuUndo(event) {
@@ -884,8 +928,7 @@
       var found = searchFlst(id, window.projectdata);
       if (found) {
         selectFlst(id);
-        let bounds = JSON.parse(get_fit_bounds(JSON.stringify(found.flst)));
-        map.fitBounds(bounds);
+        highlightPolygon(found.flst);
       } else {
         alert("Flurstück " + id + " nicht in XML-Daten gefunden!");
       }

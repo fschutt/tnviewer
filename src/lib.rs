@@ -193,6 +193,15 @@ pub fn ui_render_secondary_content(aenderungen: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn get_geojson_polygon(s: String) -> String {
+    let flst = match serde_json::from_str::<TaggedPolygon>(&s) {
+        Ok(o) => o,
+        Err(e) => return e.to_string()
+    };
+    crate::nas::tagged_polys_to_featurecollection(&[flst])
+}
+
+#[wasm_bindgen]
 pub fn get_fit_bounds(s: String) -> String {
     let flst = match serde_json::from_str::<TaggedPolygon>(&s) {
         Ok(o) => o,
