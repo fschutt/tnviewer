@@ -337,6 +337,7 @@ pub fn get_geojson_fuer_ebene(json: String, layer: String) -> String {
     xml.get_geojson_ebene(&layer)
 }
 
+#[wasm_bindgen]
 pub fn get_layer_style(konfiguration: String, layer_name: String) -> String {
     let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
     let ls = konfiguration.style.ebenen.iter()
