@@ -20,6 +20,7 @@ pub mod pdf;
 pub mod uuid_wasm;
 pub mod analyze;
 pub mod dxf;
+pub mod zip;
 
 #[wasm_bindgen]
 pub fn get_new_poly_id() -> String {
@@ -27,12 +28,31 @@ pub fn get_new_poly_id() -> String {
 }
 
 #[wasm_bindgen]
-pub fn aenderungen_zu_dxf(aenderungen: String, _xml: String) -> Vec<u8> {
+pub fn aenderungen_zu_dxf(aenderungen: String, xml: String) -> Vec<u8> {
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
         Err(_) => return Vec::new(),
     };
-    crate::dxf::export_aenderungen_dxf(&aenderungen)
+    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+    crate::dxf::export_aenderungen_dxf(&aenderungen, &xml)
+}
+
+
+#[wasm_bindgen]
+pub fn aenderungen_zu_shp(aenderungen: String, xml: String) -> Vec<u8> {
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    crate::dxf::export_aenderungen_shp(&aenderungen, &xml)
 }
 
 #[wasm_bindgen]

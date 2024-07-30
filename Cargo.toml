@@ -44,4 +44,7 @@ rand_xorshift = "0.3.0"
 csscolorparser = { version = "0.6.2", default-features = false }
 random_color = { git = "https://github.com/fschutt/random_color", rev = "b14528ce854f2dfc2f9763708eb1d015b4822470" }
 dxf = { git = "https://github.com/fschutt/dxf-rs", rev = "68b8ab4b4b4f43033cb9aae5e041702484f7b016" }
+shapefile = { git = "https://github.com/fschutt/shapefile-rs", rev = "af49c4a93e9304174c4e62d8bb0942fcd1d4822a" }
+zip = { version = "2.1.5", default-features = false, features = ["deflate"] }
+dbase = { git = "https://github.com/fschutt/dbase-rs", default-features = false, rev = "e76b8aa74e97febc07a4eac39868d727bfccfa41" }
 

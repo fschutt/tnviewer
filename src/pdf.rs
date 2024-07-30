@@ -409,23 +409,21 @@ pub fn generate_pdf(
     doc.save_to_bytes().unwrap_or_default()
 }
 
-#[inline(always)]
-fn reproject_aenderungen_into_pdf_space(
+
+
+pub fn reproject_aenderungen_into_target_space(
     aenderungen: &Aenderungen,
-    riss: &RissExtentReprojected,
-    riss_config: &RissConfig,
-    original_crs: &str,
-    log: &mut Vec<String>
+    target_proj: &str,
 ) -> Result<Aenderungen, String> {
+
     use crate::nas::LATLON_STRING;
 
-    let target_proj = proj4rs::Proj::from_proj_string(&original_crs)
-    .map_err(|e| format!("source_proj_string: {e}: {:?}", original_crs))?;
+    let target_proj = proj4rs::Proj::from_proj_string(&target_proj)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", target_proj))?;
 
     let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
     .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
 
-    let target_riss = riss.get_rect();
     Ok(Aenderungen {
         gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
         na_definiert: aenderungen.na_definiert.clone(),
@@ -433,15 +431,35 @@ fn reproject_aenderungen_into_pdf_space(
         .iter()
         .map(|(k, v)| {
             (k.clone(), PolyNeu {
-                poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj),
+                poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj, true),
                 nutzung: v.nutzung.clone(),
             })
         })
+        .collect()
+    })
+}
+
+pub fn reproject_aenderungen_into_pdf_space(
+    aenderungen: &Aenderungen,
+    riss: &RissExtentReprojected,
+    riss_config: &RissConfig,
+    original_crs: &str,
+    log: &mut Vec<String>
+) -> Result<Aenderungen, String> {
+
+    let aenderungen = reproject_aenderungen_into_target_space(aenderungen, original_crs)?;
+
+    let target_riss = riss.get_rect();
+    Ok(Aenderungen {
+        gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
+        na_definiert: aenderungen.na_definiert.clone(),
+        na_polygone_neu: aenderungen.na_polygone_neu
+        .iter()
         .filter_map(|(k, v)| {
             if v.poly.get_rect().overlaps_rect(&target_riss) {
                 Some((k.clone(), PolyNeu {
                     poly: poly_into_pdf_space(&v.poly, &riss, riss_config, log),
-                    nutzung: v.nutzung,
+                    nutzung: v.nutzung.clone(),
                 }))
             } else {
                 None

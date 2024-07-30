@@ -914,6 +914,23 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
+    
+    let export_shp = {
+        format!("
+        <div class='__application-ribbon-section-content'>
+            <label onmouseup='tab_functions.export_shp(event)' class='__application-ribbon-action-vertical-large'>
+                <div class='icon-wrapper'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                </div>
+                <div>
+                    <p>Export</p>
+                    <p>Änderungen (.shp)</p>
+                </div>
+            </label>
+        </div>   
+        ")
+    };
+
     let export_alle_flurstuecke = {
         format!("
             <div class='__application-ribbon-section-content'>
@@ -1082,6 +1099,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         {export_eigentuemer}
                         {export_pdf}
                         {export_dxf}
+                        {export_shp}
                     </div>
                 </div>
 

@@ -1488,14 +1488,20 @@
     }
 
     function exportDxf() {
-      if (!window.xml_data) {
+      if (!window.nas_original) {
           return;
         }
-        var xlsx = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.xml_data));
+        var xlsx = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.nas_original));
         downloadBlob(xlsx, "Projekt.dxf", 'application/octet-stream');
     }
 
-    window.exportDxf = exportDxf;
+    function exportShp() {
+      if (!window.nas_original) {
+        return;
+      }
+      var xlsx = aenderungen_zu_shp(JSON.stringify(window.aenderungen), JSON.stringify(window.nas_original));
+      downloadBlob(xlsx, window.info.antragsnr + ".shp.zip", 'application/octet-stream');
+    }
     
     function exportFlstNachEigentuemer() {
         if (!window.csv_data) {
@@ -1599,6 +1605,7 @@
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
         export_dxf: function(event) { exportDxf(); },
+        export_shp: function(event) { exportShp(); },
         export_david: function(event) { },
         undo: function(event) { },
         redo: function(event) { },

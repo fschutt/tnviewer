@@ -711,10 +711,14 @@ fn get_proj_string(input: &str) -> Option<String> {
 }
 
 
-pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj) -> SvgLine {
+pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: bool) -> SvgLine {
     SvgLine {
         points: line.points.iter().filter_map(|p| {
-            let mut point3d = (p.x, p.y, 0.0_f64);
+            let mut point3d = if use_radians {
+                (p.x.to_radians(), p.y.to_radians(), 0.0_f64) 
+            } else {
+                (p.x, p.y, 0.0_f64) 
+            };
             proj4rs::transform::transform(source, target, &mut point3d).ok()?;
             Some(SvgPoint {
                 x: point3d.0.to_degrees(), 
@@ -728,13 +732,14 @@ pub fn reproject_poly(
     poly: &SvgPolygon,
     source_proj: &proj4rs::Proj,
     target_proj: &proj4rs::Proj,
+    use_radians: bool,
 ) -> SvgPolygon {
     SvgPolygon {
         outer_rings: poly.outer_rings.iter()
-        .map(|l| reproject_line(l, &source_proj, &target_proj))
+        .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
         .collect(),
         inner_rings: poly.inner_rings.iter()
-        .map(|l| reproject_line(l, &source_proj, &target_proj))
+        .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
         .collect(),
     }
 }
@@ -751,7 +756,7 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -
         (k.clone(), v.iter().map(|v| {
             TaggedPolygon {
                 attributes: v.attributes.clone(),
-                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj)
+                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, false)
             }
         }).collect())
     }).collect();
@@ -774,10 +779,10 @@ pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<Str
                 attributes: v.attributes.clone(),
                 poly: SvgPolygon {
                     outer_rings: v.poly.outer_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, false))
                     .collect(),
                     inner_rings: v.poly.inner_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, false))
                     .collect(),
                 }
             }
