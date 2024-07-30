@@ -1,6 +1,8 @@
 use std::{io::BufWriter, path::PathBuf};
 
 use dxf::{Vector, XData, XDataItem};
+use wasm_bindgen::JsValue;
+use web_sys::js_sys::JsString;
 
 use crate::{nas::{NasXMLFile, LATLON_STRING}, ui::Aenderungen};
 
@@ -15,36 +17,41 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
 
     let texte = aenderungen.get_texte(xml);
 
+    web_sys::console::log_1(&"TEXTE: ".into());
+    web_sys::console::log(&texte.iter().filter_map(|s| serde_json::to_string(s).ok()).map(JsString::from).map(JsValue::from).collect());
+
     let mut drawing = Drawing::new();
 
     for text in texte {
-        let entity = Entity::new(EntityType::RText(RText {
-            insertion_point: dxf::Point {
-                x: text.pos.x,
-                y: text.pos.y,
-                z: 0.0,
-            },
-            extrusion_direction: dxf::Vector {
-                x: 1.0,
-                y: 0.0, 
-                z: 0.0,
-            },
-            rotation_angle: 0.0,
+        let entity = Entity::new(EntityType::Text(dxf::entities::Text {
+            thickness: 1.0,
+            location: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
             text_height: 10.0,
-            text_style: match text.status {
+            value: text.kuerzel.clone(),
+            rotation: 0.0,
+            relative_x_scale_factor: 0.0,
+            oblique_angle: 0.0,
+            text_style_name: match text.status {
                 crate::ui::TextStatus::Old => "old",
                 crate::ui::TextStatus::New => "new",
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
-            type_flags: 0,
-            contents: text.kuerzel.to_uppercase(),
+            text_generation_flags: 0,
+            second_alignment_point: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
+            normal: Vector {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
+            vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
         }));
         let _entity_ref = drawing.add_entity(entity);
     }
 
     let v = Vec::new();
     let mut buf = BufWriter::new(v);
-    let _ = drawing.save_binary(&mut buf);
+    let _ = drawing.save(&mut buf);
     buf.into_inner().unwrap_or_default()
 }
 

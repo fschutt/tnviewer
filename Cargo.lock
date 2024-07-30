@@ -1131,6 +1131,7 @@ dependencies = [
  "simple_excel_writer",
  "uneval",
  "wasm-bindgen",
+ "web-sys",
  "xmlparser",
  "zip 2.1.5",
 ]
