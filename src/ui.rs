@@ -4,7 +4,7 @@ use serde_derive::{Serialize, Deserialize};
 
 use crate::{
     csv::{CsvDataType, Status},
-    nas::{NasXMLFile, SplitNasXml, SvgPolygon}, 
+    nas::{NasXMLFile, SplitNasXml, SvgPoint, SvgPolygon}, 
     pdf::{FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse},
     search::NutzungsArt, 
     xlsx::FlstIdParsed
@@ -906,8 +906,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                 </div>
                 <div>
-                    <p>Export</p>
-                    <p>Änderungen (.dxf)</p>
+                    <p>Export Änderung</p>
+                    <p>Texte (.dxf)</p>
                 </div>
             </label>
         </div>   
@@ -923,8 +923,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                 </div>
                 <div>
-                    <p>Export</p>
-                    <p>Änderungen (.shp)</p>
+                    <p>Export Änderung</p>
+                    <p>Linien (.shp)</p>
                 </div>
             </label>
         </div>   
@@ -1160,10 +1160,51 @@ pub struct Aenderungen {
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct TextPlacement {
+    pub kuerzel: String,
+    pub status: TextStatus,
+    pub pos: SvgPoint,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum TextStatus {
+    Old,
+    New,
+    StaysAsIs,
+}
+
 impl Aenderungen {
     pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
         // TODO: Welche beschrifteten Objekte gibt es?
         String::new()
+    }
+
+    pub fn get_texte(&self, xml: &NasXMLFile) -> Vec<TextPlacement> {
+        self.na_polygone_neu.values().flat_map(|poly| {
+            let nutzung = match poly.nutzung.clone() {
+                Some(s) => s,
+                None => return Vec::new().into_iter(),
+            };
+
+            let old_label_pos = poly.poly.get_label_pos(1.0);
+            let new_label_pos = SvgPoint {
+                x: old_label_pos.x + 10.0,
+                y: old_label_pos.y,
+            };
+            vec![
+                TextPlacement {
+                    kuerzel: nutzung.clone(),
+                    status: TextStatus::Old,
+                    pos: old_label_pos,
+                },
+                TextPlacement {
+                    kuerzel: nutzung.clone(),
+                    status: TextStatus::New,
+                    pos: new_label_pos,
+                },
+            ].into_iter()
+        }).collect()
     }
 }
 

@@ -167,25 +167,7 @@ impl NasXMLFile {
                 None => continue,
             };
 
-            let coords_outer = o.poly.outer_rings.iter().flat_map(|line| {
-                 line.points.iter().map(|p| (p.x, p.y))
-            }).collect::<Vec<_>>();
-
-            let polygon = Polygon {
-                exterior: LineString {
-                    points: coords_outer.iter().map(|(x, y)| Point {
-                        x: *x,
-                        y: *y,
-                    }).collect()
-                },
-                interiors: o.poly.inner_rings.iter().map(|l| LineString {
-                    points: l.points.iter().map(|p| Point {
-                        x: p.x,
-                        y: p.y,
-                    }).collect()
-                }).collect()
-            };
-            let label_pos = polylabel_mini::polylabel(&polygon, 0.01);
+            let label_pos = o.poly.get_label_pos(0.001);
 
             let label = Label {
                 lon: label_pos.x, 
@@ -538,6 +520,37 @@ impl SvgPolygon {
 pub struct SvgPolygon {
     pub outer_rings: Vec<SvgLine>,
     pub inner_rings: Vec<SvgLine>,
+}
+
+impl SvgPolygon {
+    pub fn get_label_pos(&self, tolerance: f64) -> SvgPoint {
+        
+        let coords_outer = self.outer_rings.iter().flat_map(|line| {
+            line.points.iter().map(|p| (p.x, p.y))
+       }).collect::<Vec<_>>();
+
+       let polygon = polylabel_mini::Polygon {
+           exterior: polylabel_mini::LineString {
+               points: coords_outer.iter().map(|(x, y)| polylabel_mini::Point {
+                   x: *x,
+                   y: *y,
+               }).collect()
+           },
+           interiors: self.inner_rings.iter().map(|l| polylabel_mini::LineString {
+               points: l.points.iter().map(|p| polylabel_mini::Point {
+                   x: p.x,
+                   y: p.y,
+               }).collect()
+           }).collect()
+       };
+
+       let label_pos = polylabel_mini::polylabel(&polygon, tolerance);
+       
+       SvgPoint {
+            x: label_pos.x,
+            y: label_pos.y,
+       }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

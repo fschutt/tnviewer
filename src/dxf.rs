@@ -13,36 +13,33 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
         Err(e) => return e.as_bytes().to_vec(),
     };
 
+    let texte = aenderungen.get_texte(xml);
+
     let mut drawing = Drawing::new();
-    for (k, v) in aenderungen.na_polygone_neu.iter() {
-        let mut lines = v.poly.outer_rings.clone();
-        lines.append(&mut v.poly.inner_rings.clone());
-        
-        for l in lines {
-            for ab in l.points.windows(2) {
-                match &ab {
-                    &[a, b] => { 
-                        let mut entity = Entity::new(EntityType::Line(Line {
-                            thickness: 1.0,
-                            p1: dxf::Point { x: a.x, y: a.y, z: 0.0 },
-                            p2: dxf::Point { x: b.x, y: b.y, z: 0.0 },
-                            extrusion_direction: Vector::x_axis(),
-                        }));
 
-                        entity.common.x_data = vec![XData {
-                            application_name: "tnviewer".to_string(),
-                            items: vec![
-                                XDataItem::Str(format!("category:{}", v.nutzung.clone().unwrap_or_default())),
-                                XDataItem::Str(format!("changeset:polynew:{}", k.clone())),
-                            ],
-                        }];
-
-                        let _entity_ref = drawing.add_entity(entity);
-                    },
-                    _ => { },
-                }
-            }
-        }
+    for text in texte {
+        let entity = Entity::new(EntityType::RText(RText {
+            insertion_point: dxf::Point {
+                x: text.pos.x,
+                y: text.pos.y,
+                z: 0.0,
+            },
+            extrusion_direction: dxf::Vector {
+                x: 1.0,
+                y: 0.0, 
+                z: 0.0,
+            },
+            rotation_angle: 0.0,
+            text_height: 10.0,
+            text_style: match text.status {
+                crate::ui::TextStatus::Old => "old",
+                crate::ui::TextStatus::New => "new",
+                crate::ui::TextStatus::StaysAsIs => "stayasis",
+            }.to_string(),
+            type_flags: 0,
+            contents: text.kuerzel.to_uppercase(),
+        }));
+        let _entity_ref = drawing.add_entity(entity);
     }
 
     let v = Vec::new();
