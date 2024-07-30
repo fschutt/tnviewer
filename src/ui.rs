@@ -1187,7 +1187,7 @@ impl Aenderungen {
                 None => return Vec::new().into_iter(),
             };
 
-            let old_label_pos = poly.poly.get_label_pos(1.0);
+            let old_label_pos = poly.poly.get_label_pos(0.01);
             let new_label_pos = SvgPoint {
                 x: old_label_pos.x + 10.0,
                 y: old_label_pos.y,

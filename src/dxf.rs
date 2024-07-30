@@ -23,6 +23,9 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
     let mut drawing = Drawing::new();
 
     for text in texte {
+        if text.pos.x == 0.0 || text.pos.y == 0.0 {
+            continue; // TODO: why????
+        }
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 1.0,
             location: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
