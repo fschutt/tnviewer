@@ -30,7 +30,7 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
         let newx = update_x(33, text.pos.x);
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 0.0,
-            location: dxf::Point { x: 999.0, y: 998.0, z: 997.0 },
+            location: dxf::Point { x: 999.0, y: 998.0, z: 0.0 },
             text_height: 15.0,
             value: text.kuerzel.clone(),
             rotation: 0.0,
