@@ -22,10 +22,15 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
 
     let mut drawing = Drawing::new();
 
+    fn update_x(zone: usize, pos: f64) -> f64 {
+        format!("{zone}{pos}").parse().unwrap_or_default()
+    }
+
     for text in texte {
+        let newx = update_x(33, text.pos.x);
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 1.0,
-            location: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
+            location: dxf::Point { x: newx, y: text.pos.y, z: 0.0 },
             text_height: 10.0,
             value: text.kuerzel.clone(),
             rotation: 0.0,
@@ -37,7 +42,7 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
             text_generation_flags: 0,
-            second_alignment_point: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
+            second_alignment_point: dxf::Point { x: newx, y: text.pos.y, z: 0.0 },
             normal: Vector {
                 x: 1.0,
                 y: 0.0,
