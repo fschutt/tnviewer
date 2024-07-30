@@ -558,10 +558,30 @@ pub struct SvgLine {
     pub points: Vec<SvgPoint>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+impl SvgLine {
+    pub fn get_rect(&self) -> quadtree_f32::Rect {
+        SvgPolygon {
+            outer_rings: vec![self.clone()],
+            inner_rings: Vec::new(),
+        }.get_rect()
+    }
+}
+
+#[derive(Debug, Copy, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPoint {
     pub x: f64,
     pub y: f64,
+}
+
+impl SvgPoint {
+    pub fn get_rect(&self, dst: f64) -> quadtree_f32::Rect {
+        quadtree_f32::Rect {
+            max_x: self.x + dst,
+            min_x: self.x - dst,
+            max_y: self.y + dst,
+            min_y: self.y - dst,
+        }
+    }
 }
 
 impl Eq for SvgPoint { }
@@ -831,6 +851,30 @@ pub struct SplitNasXml {
 }
 
 impl SplitNasXml {
+    pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
+        let split = flstpartid.split(":").collect::<Vec<_>>();
+        let (ax_flurstueck, ax_ebene, cut_obj_id) = match &split[..] {
+            &[a, e, o] => (a, e, o),
+            _ => return None,
+        };
+        self.flurstuecke_nutzungen.get(ax_flurstueck)?
+        .iter()
+        .find(|p| {
+            p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
+            p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SplitNasXmlQuadTree {
+    items: usize,
+    original: SplitNasXml,
+    qt: quadtree_f32::QuadTree,
+    flst_nutzungen_map: BTreeMap<ItemId, (FlstId, usize)>,
+}
+
+impl SplitNasXml {
     pub fn get_polyline_guides_in_bounds(&self, search_bounds: quadtree_f32::Rect) -> Vec<SvgLine> {
         let mut b = Vec::new();
         for (_k, v) in self.flurstuecke_nutzungen.iter() {
@@ -849,6 +893,41 @@ impl SplitNasXml {
             }
         }
         b
+    }
+
+    pub fn create_quadtree(&self) -> SplitNasXmlQuadTree {
+
+        let mut flst_nutzungen_map = BTreeMap::new();
+        let mut items = BTreeMap::new();
+        let mut itemid = 0;
+        for (flst_id, polys) in self.flurstuecke_nutzungen.iter() {
+            for (i, p) in polys.iter().enumerate() {
+                let id = ItemId(itemid);
+                itemid += 1;
+                items.insert(id, Item::Rect(p.get_rect()));
+                flst_nutzungen_map.insert(id, (flst_id.clone(), i));
+            }
+        }
+        
+        let qt = QuadTree::new(items.into_iter());
+
+        SplitNasXmlQuadTree {
+            items: itemid + 1,
+            original: self.clone(),
+            qt: qt,
+            flst_nutzungen_map,
+        }
+    }
+}
+
+impl SplitNasXmlQuadTree {
+    pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<TaggedPolygon> {
+        self.qt.get_ids_that_overlap(rect)
+        .into_iter()
+        .filter_map(|itemid| {
+            let (flst_id, i) = self.flst_nutzungen_map.get(&itemid)?;
+            self.original.flurstuecke_nutzungen.get(flst_id)?.get(*i).cloned()
+        }).collect()
     }
 }
 

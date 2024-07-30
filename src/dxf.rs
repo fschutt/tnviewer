@@ -4,9 +4,9 @@ use dxf::{Vector, XData, XDataItem};
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::JsString;
 
-use crate::{nas::{NasXMLFile, LATLON_STRING}, ui::Aenderungen};
+use crate::{nas::{NasXMLFile, SplitNasXml, LATLON_STRING}, ui::Aenderungen};
 
-pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Vec<u8> {
+pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &SplitNasXml) -> Vec<u8> {
     use dxf::Drawing;
     use dxf::entities::*;
 
@@ -31,7 +31,7 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 0.0,
             location: dxf::Point { x: newx, y: text.pos.y, z: 0.0 },
-            text_height: 15.0,
+            text_height: 5.0,
             value: text.kuerzel.clone(),
             rotation: 0.0,
             relative_x_scale_factor: 1.0,

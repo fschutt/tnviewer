@@ -1484,15 +1484,15 @@
           return;
         }
         var xlsx = export_xlsx(JSON.stringify(window.csv_data));
-        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
+        downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
     }
 
     function exportDxf() {
-      if (!window.nas_original) {
+      if (!window.split_flurstuecke_original) {
           return;
         }
-        var xlsx = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.nas_original));
-        downloadBlob(xlsx, "Projekt.dxf", 'application/octet-stream');
+        var dxf = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.split_flurstuecke_original));
+        downloadBlob(dxf, window.info.antragsnr + ".dxf", 'application/octet-stream');
     }
 
     function exportShp() {
@@ -1500,7 +1500,7 @@
         return;
       }
       var xlsx = aenderungen_zu_shp(JSON.stringify(window.aenderungen), JSON.stringify(window.nas_original));
-      downloadBlob(xlsx, window.info.antragsnr + ".shp.zip", 'application/octet-stream');
+      downloadBlob(xlsx, window.info.antragsnr + ".Aenderungen.shp.zip", 'application/octet-stream');
     }
     
     function exportFlstNachEigentuemer() {
@@ -1508,7 +1508,7 @@
           return;
         }
         var xlsx = export_flst_id_nach_eigentuemer(JSON.stringify(window.csv_data));
-        downloadBlob(xlsx, "Projekt.xlsx", 'application/octet-stream');
+        downloadBlob(xlsx, window.info.antragsnr + ".FlstNachEigentuemer.xlsx", 'application/octet-stream');
     }
 
     function exportPdf() {

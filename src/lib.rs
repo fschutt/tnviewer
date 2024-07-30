@@ -33,7 +33,7 @@ pub fn aenderungen_zu_dxf(aenderungen: String, xml: String) -> Vec<u8> {
         Ok(o) => o,
         Err(_) => return Vec::new(),
     };
-    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
+    let xml = match serde_json::from_str::<SplitNasXml>(&xml) {
         Ok(o) => o,
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };

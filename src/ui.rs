@@ -4,10 +4,10 @@ use serde_derive::{Serialize, Deserialize};
 
 use crate::{
     csv::{CsvDataType, Status},
-    nas::{NasXMLFile, SplitNasXml, SvgPoint, SvgPolygon}, 
-    pdf::{FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse},
+    nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgPoint, SvgPolygon}, 
+    pdf::{difference_polys, join_polys, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse},
     search::NutzungsArt, 
-    xlsx::FlstIdParsed
+    xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -906,7 +906,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                 </div>
                 <div>
-                    <p>Export Änderung</p>
+                    <p>Export</p>
                     <p>Texte (.dxf)</p>
                 </div>
             </label>
@@ -923,7 +923,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                 </div>
                 <div>
-                    <p>Export Änderung</p>
+                    <p>Export</p>
                     <p>Linien (.shp)</p>
                 </div>
             </label>
@@ -1160,6 +1160,53 @@ pub struct Aenderungen {
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AenderungenClean {
+    pub nas_xml_quadtree: SplitNasXmlQuadTree,
+    pub map: BTreeMap<String, SvgPolygon>, 
+}
+
+impl AenderungenClean {
+    pub fn get_aenderungen_intersections(&self) -> Vec<AenderungenIntersection> {
+        let mut is = Vec::new();
+        for (neu_kuerzel, megapoly) in self.map.iter() {
+            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&megapoly.get_rect());
+            for potentially_intersecting in all_touching_flst_parts {
+                let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let flurstueck_id = match potentially_intersecting.attributes.get("AX_Flurstueck") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel(&ebene) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                for intersect_poly in intersect_polys(&potentially_intersecting.poly, megapoly) {
+                    is.push(AenderungenIntersection {
+                        alt: alt_kuerzel.clone(),
+                        neu: neu_kuerzel.clone(),
+                        flst_id: flurstueck_id.clone(),
+                        poly_cut: intersect_poly,
+                    });
+                }
+                
+            }
+        }
+        is
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct AenderungenIntersection {
+    pub alt: Kuerzel,
+    pub neu: Kuerzel,
+    pub flst_id: FlstId,
+    pub poly_cut: SvgPolygon,
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct TextPlacement {
     pub kuerzel: String,
@@ -1174,13 +1221,165 @@ pub enum TextStatus {
     StaysAsIs,
 }
 
+pub struct DstToLine {
+    pub nearest_point: SvgPoint,
+    pub distance: f64,
+}
+
+#[inline] fn sqr(x: f64) -> f64 { x * x }
+#[inline] fn dist2(v: SvgPoint, w: SvgPoint) -> f64 { sqr(v.x - w.x) + sqr(v.y - w.y) }
+#[inline] fn dist(v: SvgPoint, w: SvgPoint) -> f64 { dist2(v, w).sqrt() }
+#[inline] fn dist_to_segment(p: SvgPoint, v: SvgPoint, w: SvgPoint) -> DstToLine { 
+    
+    let l2 = dist2(v, w);
+    if (l2.abs() < 0.0001) {
+        let dst = dist(p, v.clone());
+        return DstToLine {
+            nearest_point: v,
+            distance: dst,
+        };
+    }
+
+    let mut t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = 0.0_f64.max(1.0_f64.min(t));
+    let nearest_point_on_line = SvgPoint { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+    DstToLine {
+        nearest_point: nearest_point_on_line,
+        distance: dist(p, nearest_point_on_line),
+    }
+}
+
 impl Aenderungen {
     pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
         // TODO: Welche beschrifteten Objekte gibt es?
         String::new()
     }
 
-    pub fn get_texte(&self, xml: &NasXMLFile) -> Vec<TextPlacement> {
+    pub fn clean(&self, split_nas: &SplitNasXml) -> AenderungenClean {
+
+        use crate::nas::SvgLine;
+
+        let qt = split_nas.create_quadtree();
+
+        let max_dst_point = 2.0; // meter
+
+        macro_rules! correct_point { 
+            ($i:expr, $p:expr) => {
+                for line in $i.iter() {
+                    let line: &SvgLine = line;
+                    for ab in line.points.windows(2) {
+                        match &ab {
+                            &[a, b] => {
+                                let point_is_near_a = dist(*a, *$p) < max_dst_point;
+                                let point_is_near_b = dist(*b, *$p) < max_dst_point;
+                                if point_is_near_a {
+                                    *$p = *a;
+                                } else if point_is_near_b {
+                                    *$p = *b;
+                                } else {
+                                    let nearest_point_on_line = dist_to_segment(*$p, *a, *b);
+                                    if nearest_point_on_line.distance < max_dst_point {
+                                        *$p = nearest_point_on_line.nearest_point;
+                                    }
+                                }
+                            },
+                            _ => { },
+                        }
+                    }
+                }  
+            };
+        }
+
+        // 1. Naheliegende Punktkoordinaten mergen und Punkte auf Linien ziehen
+        let mut changed_mut = self.clone();
+        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            for line in polyneu.poly.outer_rings.iter_mut() {
+                for p in line.points.iter_mut() {
+                    let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(max_dst_point));
+                    for poly in overlapping_flst_nutzungen.iter() {
+                        correct_point!(poly.poly.outer_rings, p);
+                        correct_point!(poly.poly.inner_rings, p);
+                    }
+                }
+            }
+        }
+
+        let aenderungen_self_merge_lines = changed_mut.na_polygone_neu.values().flat_map(|p| {
+            let mut m = p.poly.outer_rings.clone();
+            m.append(&mut p.poly.inner_rings.clone());
+            m.into_iter()
+        }).collect::<Vec<_>>();
+
+        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            for line in polyneu.poly.outer_rings.iter_mut() {
+                for p in line.points.iter_mut() {
+
+                    let overlapping_aenderungen_lines = aenderungen_self_merge_lines.iter()
+                    .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(max_dst_point)))
+                    .collect::<Vec<_>>();
+
+                    correct_point!(overlapping_aenderungen_lines, p);
+                }
+            }
+        }
+
+        // 2. Änderungen mergen und kombinieren nach Typ
+        let mut aenderungen_merged_by_typ = BTreeMap::new();
+        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            let kuerzel = match polyneu.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+            
+            aenderungen_merged_by_typ
+            .entry(kuerzel)
+            .and_modify(|ep: &mut SvgPolygon| { *ep = join_polys(&[ep.clone(), polyneu.poly.clone()]); })
+            .or_insert_with(|| polyneu.poly.clone());
+        }
+
+        // 3. Alle Teilflächen oder komplett geänderte Flächen: In Änderungen einfügen
+        for (flst_part, neue_nutzung) in self.na_definiert.iter() {
+            let flst_part = match split_nas.get_flst_part_by_id(&flst_part) {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            aenderungen_merged_by_typ
+            .entry(neue_nutzung.clone())
+            .and_modify(|ep: &mut SvgPolygon| { *ep = join_polys(&[ep.clone(), flst_part.poly.clone()]); })
+            .or_insert_with(|| flst_part.poly.clone());
+        }
+
+        // 4. Änderungen mit sich selber veschneiden nach Typ (z.B. GEWÄSSER > ACKER)
+        let higher_ranked_polys = aenderungen_merged_by_typ.keys()
+        .map(|k| (k.clone(), get_higher_ranked_polys(k, &aenderungen_merged_by_typ)))
+        .collect::<BTreeMap<_, _>>();
+
+        let default = Vec::new();
+        for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
+            for p in higher_ranked_polys.get(kuerzel).unwrap_or(&default) {
+                *megapoly = difference_polys(&[megapoly.clone(), p.clone()]);
+            }
+        }
+
+        AenderungenClean {
+            nas_xml_quadtree: qt,
+            map: aenderungen_merged_by_typ,
+        }
+    }
+
+    // NOTIZ: SplitNasXML sollte ALLE Ebenen drin haben
+    pub fn get_texte(&self, split_nas: &SplitNasXml) -> Vec<TextPlacement> {
+
+        // 5. Für alle Flächen, die halb oder ganz überlappt werden von Änderungen:
+        // - Flurstück auswählen
+        // - alle Teilflächen selektieren
+
+        // 6. Für alle selektierten Teilflächen:
+        // - ALle Teilflächen mit Änderungen überschneiden 
+        // -> keine Menge: bleibt so
+        // -> hat Differenz: alt / neu beschriften
+
         self.na_polygone_neu.values().flat_map(|poly| {
             let nutzung = match poly.nutzung.clone() {
                 Some(s) => s,
@@ -1210,6 +1409,28 @@ impl Aenderungen {
                 },
             ].into_iter()
         }).collect()
+    }
+}
+
+fn get_higher_ranked_polys(
+    kuerzel: &str, 
+    map: &BTreeMap<String, SvgPolygon>
+) -> Vec<SvgPolygon> {
+    let ranking = get_ranking(kuerzel);
+    map.iter()
+    .filter_map(|(k, v)| {
+        if get_ranking(&k) > ranking { 
+            Some(v.clone()) 
+        } else { None }
+    }).collect()
+}
+
+fn get_ranking(s: &str) -> usize {
+    match s {
+        "A" => 1,
+        "WALD" => 2,
+        "WAS" | "WAF" => 4,
+        _ => 0,
     }
 }
 
