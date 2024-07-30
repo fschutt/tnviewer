@@ -1187,11 +1187,16 @@ impl Aenderungen {
                 None => return Vec::new().into_iter(),
             };
 
-            let old_label_pos = poly.poly.get_label_pos(0.01);
+            let old_label_pos = poly.poly.get_label_pos(0.001);
             let new_label_pos = SvgPoint {
                 x: old_label_pos.x + 10.0,
                 y: old_label_pos.y,
             };
+
+            if old_label_pos.x == 0.0 || old_label_pos.y == 0.0 {
+                return Vec::new().into_iter(); // TODO: why????
+            }
+
             vec![
                 TextPlacement {
                     kuerzel: nutzung.clone(),

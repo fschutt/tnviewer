@@ -17,15 +17,12 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
 
     let texte = aenderungen.get_texte(xml);
 
-    web_sys::console::log_1(&"TEXTE: ".into());
+    web_sys::console::log_1(&format!("TEXTE: {}", texte.len()).as_str().into());
     web_sys::console::log(&texte.iter().filter_map(|s| serde_json::to_string(s).ok()).map(JsString::from).map(JsValue::from).collect());
 
     let mut drawing = Drawing::new();
 
     for text in texte {
-        if text.pos.x == 0.0 || text.pos.y == 0.0 {
-            continue; // TODO: why????
-        }
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 1.0,
             location: dxf::Point { x: text.pos.x, y: text.pos.y, z: 0.0 },
