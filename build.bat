@@ -1,2 +1,2 @@
-wasm-pack build --target web --no-pack --no-typescript && del pkg/.gitignore
+wasm-pack build --target web --no-pack --no-typescript --release && del pkg/.gitignore
 python ./postbuild.py

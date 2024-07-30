@@ -2,7 +2,7 @@ use std::{io::BufWriter, path::PathBuf};
 
 use dxf::{Vector, XData, XDataItem};
 
-use crate::{nas::NasXMLFile, ui::Aenderungen};
+use crate::{nas::{NasXMLFile, LATLON_STRING}, ui::Aenderungen};
 
 pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Vec<u8> {
     use dxf::Drawing;

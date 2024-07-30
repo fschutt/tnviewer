@@ -721,8 +721,8 @@ pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians:
             };
             proj4rs::transform::transform(source, target, &mut point3d).ok()?;
             Some(SvgPoint {
-                x: point3d.0.to_degrees(), 
-                y: point3d.1.to_degrees()
+                x: if use_radians { point3d.0 } else { point3d.0.to_degrees() }, 
+                y: if use_radians { point3d.1 } else { point3d.1.to_degrees() },
             })
         }).collect()
     }
