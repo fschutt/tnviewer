@@ -35,19 +35,15 @@ pub fn export_aenderungen_dxf(aenderungen: &Aenderungen, xml: &NasXMLFile) -> Ve
             value: text.kuerzel.clone(),
             rotation: 0.0,
             relative_x_scale_factor: 1.0,
-            oblique_angle: 33.0,
+            oblique_angle: 0.0,
             text_style_name: match text.status {
                 crate::ui::TextStatus::Old => "old",
                 crate::ui::TextStatus::New => "new",
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
-            text_generation_flags: 44,
-            second_alignment_point: dxf::Point { x: 996.0, y: 995.0, z: 994.0 },
-            normal: Vector {
-                x: 993.0,
-                y: 992.0,
-                z: 991.0,
-            },
+            text_generation_flags: 0,
+            second_alignment_point: dxf::Point::origin(),
+            normal: Vector::z_axis(),
             horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
             vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
         }));
