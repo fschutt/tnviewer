@@ -1411,7 +1411,7 @@ pub fn render_main(
                     {render_switch_content}
                 </div>
                 <div style='background:white;padding:20px;pointer-events:all;min-width:400px;display:flex;flex-grow:1'>
-                    <div id='__application_project_content' class='csv-scrollbox' style='max-height:80vh;flex-grow: 1;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>
+                    <div id='__application_project_content' class='csv-scrollbox' style='max-height:80vh;flex-grow: 1;overflow: scroll;display: flex;flex-direction: column;'>
                         {content}
                     </div>
                 </div>
