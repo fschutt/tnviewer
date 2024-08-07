@@ -1649,29 +1649,33 @@ fn render_csv_editable(
         selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
         selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
         selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
-        split_nas = match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
-            None => String::new(),
-            Some(s) => {
-                format!(
-                    "<div class='nutzung-veraendern'>{}</div>", 
-                    s.iter().filter_map(|tp| {
-                        let ax_ebene = tp.attributes.get("AX_Ebene")?;
-                        let ax_flurstueck = flstidparsed.format_start_str();
-                        let cut_obj_id = tp.attributes.get("id")?;
-                        let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
-                        let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
-                        let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
-                        let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
-                        Some(format!(
-                            "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
-                            render_select(&
-                                aenderungen.na_definiert.get(&objid_total).cloned()
-                                .or(auto_kuerzel.clone())
-                            , "nutzungsArtAendern", &objid_total, "nutzungsart-aendern")
-                        ))
-                    }).collect::<Vec<_>>().join("")
-                )
+        split_nas = if selected {
+            match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
+                None => String::new(),
+                Some(s) => {
+                    format!(
+                        "<div class='nutzung-veraendern'>{}</div>", 
+                        s.iter().filter_map(|tp| {
+                            let ax_ebene = tp.attributes.get("AX_Ebene")?;
+                            let ax_flurstueck = flstidparsed.format_start_str();
+                            let cut_obj_id = tp.attributes.get("id")?;
+                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
+                            let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
+                            let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
+                            let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
+                            Some(format!(
+                                "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
+                                render_select(&
+                                    aenderungen.na_definiert.get(&objid_total).cloned()
+                                    .or(auto_kuerzel.clone())
+                                , "nutzungsArtAendern", &objid_total, "nutzungsart-aendern")
+                            ))
+                        }).collect::<Vec<_>>().join("")
+                    )
+                }
             }
+        } else {
+            String::new()
         }
     ))
     }).collect::<Vec<_>>().join("");
