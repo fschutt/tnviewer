@@ -526,7 +526,7 @@
 
   function rissNeu(event) {
     let center = map.getCenter();
-    window.risse[get_new_poly_id()] = {
+    window.risse["ri_" + Date.now()] = {
       lat: center.lat,
       lon: center.lng,
       crs: "latlon",
