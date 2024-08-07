@@ -60,9 +60,11 @@
       tab: null, 
       tool: null,
       selected_edit_flst: "",
+      secondary_content: false,
+      render_out: null,
     };
     window.aenderungen = {
-      gebaeude_loeschen: [],
+      gebaeude_loeschen: {},
       na_definiert: {},
       na_polygone_neu: {},
     };
@@ -412,10 +414,6 @@
     var textfield_type = event.target.dataset.konfigurationTextfield;
     var style_id = event.target.dataset.konfigurationStyleId;
     var value = event.target.value;
-
-    console.log(textfield_type);
-    console.log(style_id);
-    console.log(value);
     
     switch (textfield_type) {
       case "map-basiskarte":
@@ -708,11 +706,11 @@
   
   function gebaeudeLoeschenUndo(event) {
       var gebaeude_id = event.target.dataset.gebaeudeId;
-      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
-      if (index > -1) {
-        window.aenderungen.gebaeude_loeschen.splice(index, 1);
+      var index = window.aenderungen.gebaeude_loeschen[gebaeude_id];
+      if (index) {
+        delete window.aenderungen.gebaeude_loeschen[gebaeude_id];
         reinitGebaeudeLoeschenLayer();
-        replaceSecondaryProjectContent();
+        replaceProjectContent();
       }
   }
   
@@ -759,7 +757,7 @@
       return;
     }
     delete window.aenderungen.na_polygone_neu[id];
-    replaceSecondaryProjectContent();
+    replaceProjectContent();
     reinitMapDrawnStaticLayers();
   }
 
@@ -1091,10 +1089,7 @@
             window.info = json.info;
           }
           replaceProjectContent();
-          if (window.uidata.tab == '1') {
-            replaceSecondaryProjectContent();
-            reinitMapDrawnStaticLayers();
-          }
+          reinitMapDrawnStaticLayers();
         }
       }
       input.click();
@@ -1177,20 +1172,34 @@
       } else {
         q.style.zIndex = "1";
       }
-
-      
-      let z = document.getElementById("__application_secondary-overlay-container");
-      if (z && window.uidata.popover_state == null) {
-        z.style.zIndex = "999";
-      } else {
-        z.style.zIndex = "1";
-      }
     }
+
+    function toggleRenderOut() {
+      if (window.uidata.render_out) {
+        window.uidata.render_out = !window.uidata.render_out;
+      } else {
+        window.uidata.render_out = true;
+      }
+      replaceProjectContent();
+    }
+
+    window.toggleRenderOut = toggleRenderOut;
+
+    function selectContent(id) {
+      if (id == 0) {
+        window.uidata.secondary_content = false;
+      } else {
+        window.uidata.secondary_content = true;
+      }
+      replaceProjectContent();
+    }
+
+    window.selectContent = selectContent;
 
     function replaceProjectContent() {
       let d = document.getElementById("__application_project_content");
       if (d) {
-        var f = ui_render_project_content(
+        var qq = ui_render_project_content(
           JSON.stringify(window.info),
           JSON.stringify(window.risse),
           JSON.stringify(window.uidata), 
@@ -1198,33 +1207,24 @@
           JSON.stringify(window.aenderungen),
           JSON.stringify(window.split_flurstuecke)
         );
-        d.innerHTML = f;
+        d.innerHTML = qq;
       }
-    }
-
-    function replaceSecondaryProjectContent() {
-      let d = document.getElementById("__application_secondary-overlay-container");
-      if (!d) {
-        return;
+      let q = document.getElementById("switch-content");
+      if (q) {
+        q.innerHTML = ui_render_switch_content(
+          JSON.stringify(window.uidata), 
+        );
       }
-      if (window.uidata.tab == 1) {
-        d.style.display = "flex";
-      } else {
-        d.style.display = "none";
-        return;
-      }
-      let q = document.getElementById("__application_secondary_content");
-      if (!q) {
-        return;
-      }
-      let aenderungen_html = ui_render_secondary_content(JSON.stringify(window.aenderungen));
-      q.innerHTML = aenderungen_html;
     }
 
     function removeAllExtraLayers() {
       removeGebaeudeLoeschenLayer();
       removeNutzungEinzeichnenLayer();
       removeRisseLayer();
+      if (highlight_layer) {
+        map.removeLayer(highlight_layer);
+        highlight_layer = null;
+      }
     }
 
     // Gebäude löschen
@@ -1253,18 +1253,23 @@
       if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
         return;
       }
-      var index = window.aenderungen.gebaeude_loeschen.indexOf(gebaeude_id);
-      if (index > -1) {
+      var index = null;
+      for (const [key, value] of Object.entries(window.aenderungen.gebaeude_loeschen)) {
+        if (value == gebaeude_id) {
+          index = key;
+        }
+      }
+      if (index) {
         if (window.uidata.tool == 'gebaeude-loeschen') {
-          window.aenderungen.gebaeude_loeschen.splice(index, 1); // loeschen rückgängig
+          delete window.aenderungen.gebaeude_loeschen[index];
         } else {
           alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
         }
       } else {
-        window.aenderungen.gebaeude_loeschen.push(gebaeude_id); // loeschen
+        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = gebaeude_id; // loeschen
       }
       reinitGebaeudeLoeschenLayer();
-      replaceSecondaryProjectContent();
+      replaceProjectContent();
     }
 
     function gebaeudeFeatureClick(feature, layer) {
@@ -1285,15 +1290,6 @@
     }
 
     function reinitGebaeudeLoeschenLayer() {
-      if (!window.projectdata || window.projectdata == null) {
-        return;
-      }
-      if (!window.csv_data || window.csv_data == null) {
-        return;
-      }
-      if (!window.aenderungen || window.aenderungen == null) {
-        return;
-      }
       if (!window.uidata || window.uidata.tool != 'gebaeude-loeschen') {
         return;
       }
@@ -1324,92 +1320,87 @@
     // Nutzung einzeichnen
 
     function reinitNutzungEinzeichnenLayer() {
-      if (!window.projectdata || window.projectdata == null) {
-        return;
-      }
-      if (!window.csv_data || window.csv_data == null) {
-        return;
-      }
-      if (!window.aenderungen || window.aenderungen == null) {
-        return;
-      }
       if (!window.uidata || window.uidata.tool != 'nutzung-einzeichnen') {
         return;
       }
 
       var lines = JSON.parse(get_polyline_guides_in_current_bounds(
-      JSON.stringify(window.split_flurstuecke),
-      JSON.stringify(aenderungen),
-      JSON.stringify(map.getBounds())
-    ));
-    for (var o = 0; o < guideLayers.length; o++) {
-      map.removeLayer(guideLayers[o]);
-    }
-    guideLayers = [];
-    for (var q = 0; q < lines.length; q++) {
-      let pl = L.polyline(lines[q], {
-          weight: 5,
-          color: 'red',
-          opacity: 1.0
-      });
-      pl.addTo(map);
-      guideLayers.push(pl)
-    }
-
-    var snapEdit = new L.EditToolbar.SnapEdit(map, {
-        featureGroup: L.featureGroup([]),
-        snapOptions: {
-            guideLayers: guideLayers
-        }
-    });
-
-    map.drawControl.setDrawingOptions({
-        polyline: {
-            guideLayers: guideLayers
-        },
-        polygon: {
-            guideLayers: guideLayers,
-            snapDistance: 5
-        },
-        marker: {
-            guideLayers: guideLayers,
-            snapVertices: false
-        },
-        rectangle: false,
-        circle: false
-    });
-
-    map.on('draw:created', function(e) {
-        var layer = e.layer;
-        current_edit_layer = layer;
-        map.addLayer(layer);
-        guideLayers.push(layer);
-    });
-
-    map.on('draw:drawstop', function (e) {
-      if (e.layerType != 'polyline') {
-        return;
-      }
-      var layers = e.target._layers;
-      var keys = Object.keys(layers);
-      var lastkey = keys[keys.length - 1];
-      var l = layers[lastkey];
-      if ((!l) || (!l.editing)) {
-        return;
-      }
-      var points = l.editing.latlngs[0];
-      if (points.length == 0) {
-        return;
-      }
-      var newpolyid = get_new_poly_id();
-      window.aenderungen.na_polygone_neu[newpolyid] = JSON.parse(fixup_polyline(
-        JSON.stringify(window.projectdata), 
-        JSON.stringify(window.split_flurstuecke), 
-        JSON.stringify(points),
+        JSON.stringify(window.split_flurstuecke),
+        JSON.stringify(aenderungen),
+        JSON.stringify(map.getBounds())
       ));
-      replaceSecondaryProjectContent();
-      reinitMapDrawnStaticLayers();
-    });
+
+      for (var o = 0; o < guideLayers.length; o++) {
+        map.removeLayer(guideLayers[o]);
+      }
+
+      guideLayers = [];
+      for (var q = 0; q < lines.length; q++) {
+        let pl = L.polyline(lines[q], {
+            weight: 5,
+            color: 'red',
+            opacity: 1.0
+        });
+        pl.addTo(map);
+        guideLayers.push(pl)
+      }
+
+      var snapEdit = new L.EditToolbar.SnapEdit(map, {
+          featureGroup: L.featureGroup([]),
+          snapOptions: {
+              guideLayers: guideLayers
+          }
+      });
+
+      map.drawControl.setDrawingOptions({
+          polyline: {
+              guideLayers: guideLayers
+          },
+          polygon: {
+              guideLayers: guideLayers,
+              snapDistance: 5
+          },
+          marker: {
+              guideLayers: guideLayers,
+              snapVertices: false
+          },
+          rectangle: false,
+          circle: false
+      });
+
+      map.on('draw:created', function(e) {
+          var layer = e.layer;
+          current_edit_layer = layer;
+          map.addLayer(layer);
+          guideLayers.push(layer);
+      });
+
+      map.on('draw:drawstop', function (e) {
+        if (e.layerType != 'polyline') {
+          return;
+        }
+        var layers = e.target._layers;
+        var keys = Object.keys(layers);
+        var lastkey = keys[keys.length - 1];
+        var l = layers[lastkey];
+        if ((!l) || (!l.editing)) {
+          return;
+        }
+        var points = l.editing.latlngs[0];
+        if (points.length == 0) {
+          return;
+        }
+        var newpolyid = "np_" + Date.now();
+        var f = JSON.parse(fixup_polyline(
+          JSON.stringify(window.projectdata), 
+          JSON.stringify(window.split_flurstuecke), 
+          JSON.stringify(points),
+        ));
+        window.aenderungen.na_polygone_neu[newpolyid] = f;
+        replaceProjectContent();
+        reinitMapDrawnStaticLayers();
+      });
+
     }
 
     function showHideNutzungEinzeichnenLayer() {
@@ -1440,7 +1431,6 @@
       window.uidata.tab = id;
       replaceRibbon();
       replaceProjectContent();
-      replaceSecondaryProjectContent();
       reinitMapDrawnStaticLayers();
       if (id == 2) {
         rerenderRisse();
@@ -1531,14 +1521,6 @@
           riss_config.lat
         );
       }
-
-      console.log(window.info);
-      console.log(window.risse);
-      console.log(window.xml_data);
-      console.log(window.csv_data);
-      console.log(window.aenderungen);
-      console.log(risse_extent);
-      console.log(window.configuration);
 
       var pdf = JSON.parse(export_pdf(
         JSON.stringify(window.info),

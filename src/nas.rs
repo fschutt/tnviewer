@@ -102,7 +102,7 @@ impl NasXMLFile {
         .flat_map(|(flst_id, flst_rect)| {
             buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
                 let building = ax_gebaeude_map.get(&building_itemid)?;
-                let already_deleted = aenderungen.gebaeude_loeschen.contains(&building.0);
+                let already_deleted = aenderungen.gebaeude_loeschen.values().any(|s| s == &building.0);
                 Some((building.0.clone(), GebaeudeInfo {
                     flst_id: flst_id.clone(),
                     deleted: already_deleted,

@@ -809,3 +809,20 @@ img {
     cursor: text;
     min-width: 300px;
 }
+
+.project-content-switch {
+    color: green;
+    background: white;
+    display: flex;
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.project-content-switch.active {
+    background: green;
+    color: white;
+}

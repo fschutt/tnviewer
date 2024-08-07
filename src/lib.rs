@@ -111,30 +111,31 @@ pub fn get_polyline_guides_in_current_bounds(
         _southWest: crate::analyze::LatLng,
     }
     
+    let mut pl = Vec::new();
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
-    let MapBounds { _northEast, _southWest } = match serde_json::from_str::<MapBounds>(&map_bounds) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    let rect = quadtree_f32::Rect {
-        min_x: _southWest.lng,
-        min_y: _southWest.lat,
-        max_x: _northEast.lng,
-        max_y: _northEast.lat,
-    };
-    let mut ringe = split_fs.get_polyline_guides_in_bounds(rect);
-    let mut aenderungen_ringe = aenderungen.na_polygone_neu.values().flat_map(|p| {
-        let mut v = p.poly.outer_rings.clone();
-        v.append(&mut p.poly.inner_rings.clone());
-        v.into_iter()
-    }).collect::<Vec<_>>();
-    ringe.append(&mut aenderungen_ringe);
+    match serde_json::from_str::<MapBounds>(&map_bounds) {
+        Ok(MapBounds { _northEast, _southWest }) => {
 
-    let pl = ringe.iter().map(|svg_line| {
-        svg_line.points.iter().map(|p| [p.y, p.x]).collect::<Vec<_>>()
-    }).collect::<Vec<_>>();
-
+            let rect = quadtree_f32::Rect {
+                min_x: _southWest.lng,
+                min_y: _southWest.lat,
+                max_x: _northEast.lng,
+                max_y: _northEast.lat,
+            };
+            let mut ringe = split_fs.get_polyline_guides_in_bounds(rect);
+            let mut aenderungen_ringe = aenderungen.na_polygone_neu.values().flat_map(|p| {
+                let mut v = p.poly.outer_rings.clone();
+                v.append(&mut p.poly.inner_rings.clone());
+                v.into_iter()
+            }).collect::<Vec<_>>();
+            ringe.append(&mut aenderungen_ringe);
+            pl = ringe.iter().map(|svg_line| {
+                svg_line.points.iter().map(|p| [p.y, p.x]).collect::<Vec<_>>()
+            }).collect::<Vec<_>>();
+        },
+        Err(e) => { },
+    }
     serde_json::to_string(&pl).unwrap_or_default()
 }
 
@@ -199,6 +200,14 @@ pub fn ui_render_popover_content(decoded: String, konfiguration: String) -> Stri
 }
 
 #[wasm_bindgen]
+pub fn ui_render_switch_content(
+    uidata: String, 
+) -> String {
+    let uidata = UiData::from_string(&uidata);
+    crate::ui::render_switch_content(&uidata)
+}
+
+#[wasm_bindgen]
 pub fn ui_render_project_content(
     projektinfo: String,
     risse: String,
@@ -209,17 +218,18 @@ pub fn ui_render_project_content(
 ) -> String {
     let projektinfo = serde_json::from_str::<ProjektInfo>(&projektinfo).unwrap_or_default();
     let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
-    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
+    let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
     let uidata = UiData::from_string(&uidata);
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or(CsvDataType::default());
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke.unwrap_or_default()).unwrap_or_default();
-    crate::ui::render_project_content(&projektinfo, &risse, &csv_data, &aenderungen, &uidata, &split_fs)
-}
-
-#[wasm_bindgen]
-pub fn ui_render_secondary_content(aenderungen: String) -> String {
-    let aenderungen = serde_json::from_str(&aenderungen).unwrap_or_default();
-    crate::ui::render_secondary_content(&aenderungen)
+    if uidata.secondary_content.unwrap_or_default() {
+        crate::ui::render_secondary_content(&aenderungen)
+    } else {
+        crate::ui::render_project_content(&projektinfo, &risse, &csv_data, &aenderungen, &uidata, &split_fs)
+    }
 }
 
 #[wasm_bindgen]
@@ -400,17 +410,18 @@ pub fn get_layer_style(konfiguration: String, layer_name: String) -> String {
 
 #[wasm_bindgen]
 pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderungen: String) -> String {
+    let default = format!("{{ \"type\": \"FeatureCollection\", \"features\": [] }}");
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {
         Ok(o) => o,
-        Err(e) => return e.to_string(),
+        Err(e) => return default.clone(),
     };
     let csv = match serde_json::from_str::<CsvDataType>(&csv) {
         Ok(o) => o,
-        Err(e) => return e.to_string(),
+        Err(e) => return default.clone(),
     };
     let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
         Ok(o) => o,
-        Err(e) => return e.to_string(),
+        Err(e) => return default.clone(),
     };
     xml.get_gebaeude(&csv, &aenderungen)
 }

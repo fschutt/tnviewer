@@ -624,7 +624,7 @@ L.Draw.Feature.SnapMixin = {
             var mdOrigin = this._map.unproject(this._mouseDownOrigin, z);
             var closestMDO = this._manuallyCorrectClick(mdOrigin);
             
-            if (closestMDO.latlng) {
+            if (closestMDO && closestMDO.latlng) {
                 this._mouseMarker.setLatLng(closestMDO.latlng);
                 this._mouseDownOrigin = this._map.project(closestMDO.latlng, z);
             }
@@ -633,7 +633,7 @@ L.Draw.Feature.SnapMixin = {
                 var oeOrigin = this._map.unproject([e.originalEvent.clientX, e.originalEvent.clientY], z);
                 var closestOE = this._manuallyCorrectClick(oeOrigin);
                 
-                if (closestOE.latlng) {
+                if (closestOE && closestOE.latlng) {
                     e.originalEvent = this._map.project(closestOE.latlng, z);
                 }
             }

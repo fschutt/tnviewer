@@ -3,11 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status},
-    nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgPoint, SvgPolygon}, 
-    pdf::{difference_polys, join_polys, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse},
-    search::NutzungsArt, 
-    xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgPoint, SvgPolygon}, pdf::{difference_polys, join_polys, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -20,6 +16,10 @@ pub struct UiData {
     pub tool: Option<Tool>,
     #[serde(default)]
     pub selected_edit_flst: String,
+    #[serde(default)]
+    pub secondary_content: Option<bool>,
+    #[serde(default)]
+    pub render_out: Option<bool>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -195,7 +195,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
 
     let icon_close_base64 = base64_encode(ICON_CLOSE);
 
-    let close_button = format!("
+    let close_button = format!("f
     <div style='position:absolute;top:50px;z-index:9999;right:-25px;background:white;border-radius:10px;box-shadow: 0px 0px 10px #cccccc88;cursor:pointer;' onmouseup='closePopOver()'>
         <img src='data:image/png;base64,{icon_close_base64}' style='width:50px;height:50px;cursor:pointer;' />
     </div>");
@@ -985,7 +985,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 "
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);' class='active'>START</p>
-                <p onmouseup='selectTab(1);'>KORREKTUR</p>
                 <p onmouseup='selectTab(2);'>EXPORT</p>
                 <div style='flex-grow:1;'></div>
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
@@ -1016,41 +1015,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     </div>
                 </div>
 
-                <div class='__application-ribbon-section 5'>
-                    <div style='display:flex;flex-direction:row;'>
-                        {projekt_speichern}
-                    </div>
-                </div>
-
-                <div style='display:flex;flex-grow:1;'></div>
-                
-                <div class='__application-ribbon-section 6'>
-                    <div style='display:flex;flex-direction:row;'>
-
-                        {einstellungen}
-
-                        {hilfe}
-
-                        {info}
-
-                    </div>
-                </div>
-            </div>
-            "
-            )
-        },
-        1 => {
-            format!(
-                "
-            <div class='__application-ribbon-header'>
-                <p onmouseup='selectTab(0);'>START</p>
-                <p onmouseup='selectTab(1);' class='active'>KORREKTUR</p>
-                <p onmouseup='selectTab(2);'>EXPORT</p>
-                <div style='flex-grow:1;'></div>
-                <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
-            </div>
-            <div class='__application-ribbon-body'>
-
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {gebaeude_loeschen}
@@ -1076,17 +1040,16 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         {info}
 
                     </div>
-                </div>           
+                </div>
             </div>
             "
             )
-        }
+        },
         _ => {
             format!(
                 "
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);'>START</p>
-                <p onmouseup='selectTab(1);'>KORREKTUR</p>
                 <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
                 <div style='flex-grow:1;'></div>
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
@@ -1155,7 +1118,7 @@ pub struct PolyNeu {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
-    pub gebaeude_loeschen: BTreeSet<GebauedeId>,
+    pub gebaeude_loeschen: BTreeMap<String, GebauedeId>,
     pub na_definiert: BTreeMap<FlstPartId, Kuerzel>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
@@ -1439,18 +1402,18 @@ pub fn render_main(
     risse: &Risse,
     uidata: &UiData,
     csv: &CsvDataType, 
-    aenderungen: &Aenderungen
+    aenderungen: &Aenderungen,
 ) -> String {
     let map = format!("
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
-            <div id='__application_main-overlay-container' style='width:400px;max-width:400px;min-width:400px;display:flex;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
-                <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
-                    <div id='__application_project_content' class='csv-scrollbox' style='scrollbar-width:none;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{primary}</div>
+            <div id='__application_main-overlay-container' style='width:400px;max-width:400px;min-width:400px;display:flex;flex-grow:1;flex-direction:column;box-shadow:0px 0px 10px black;z-index:999;'>
+                <div id='switch-content' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 30px;'>
+                    {render_switch_content}
                 </div>
-            </div>
-            <div id='__application_secondary-overlay-container' style='display:{display_secondary};width:400px;max-width:400px;min-width:400px;flex-grow:0;flex-direction:row;box-shadow:0px 0px 10px black;z-index:999;'>
-                <div style='background:white;padding:20px;pointer-events:all;min-width:400px;box-shadow:0px 0px 10px black;'>
-                    <div id='__application_secondary_content' class='csv-scrollbox' style='scrollbar-width:none;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>{secondary}</div>
+                <div style='background:white;padding:20px;pointer-events:all;min-width:400px;display:flex;flex-grow:1'>
+                    <div id='__application_project_content' class='csv-scrollbox' style='flex-grow: 1;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>
+                        {content}
+                    </div>
                 </div>
             </div>
             <div id='mapcontainer' style='display:flex;flex-grow:1;flex-direction:row;z-index:0;'>
@@ -1458,14 +1421,26 @@ pub fn render_main(
             </div>
         </div>
     ",
-        primary = render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default()),
-        display_secondary = match uidata.tab {
-            Some(1) => "flex",
-            _ => "none",
+        render_switch_content = render_switch_content(uidata),
+        content = if uidata.secondary_content.unwrap_or_default() {
+            render_secondary_content(&aenderungen)
+        } else {
+            render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default()) 
         },
-        secondary = render_secondary_content(&aenderungen),
     );
     normalize_for_js(map) // TODO
+}
+
+pub fn render_switch_content(uidata: &UiData) -> String {
+    if uidata.tab.unwrap_or_default() != 0 {
+        return String::new();
+    }
+    let sec_active = if uidata.secondary_content.unwrap_or_default() { "active" } else { "" };
+    let prim_active = if !uidata.secondary_content.unwrap_or_default() { "active" } else { "" };
+    format!("
+        <div class='project-content-switch {prim_active}' onclick='selectContent(0);'>Flurstücke</div>
+        <div class='project-content-switch {sec_active}' onclick='selectContent(1);'>Änderungen</div>
+    ")
 }
 
 pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
@@ -1474,14 +1449,14 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     
     html += "<h2>Gebäude löschen</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
-    for gebaeude_id in aenderungen.gebaeude_loeschen.iter() {
+    for (k, gebaeude_id) in aenderungen.gebaeude_loeschen.iter().rev() {
         html.push_str(&format!(
             "<div class='__application-aenderung-container' id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
                 <div style='display:flex;'>
                     <p class='__application-zoom-to' onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>[Karte]</p>
                     <p style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}'>{gebaeude_id}</p>
                 </div>
-                <p class='__application-secondary-undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{gebaeude_id}'>X</p>
+                <p class='__application-secondary-undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{k}'>X</p>
             </div>"
         ));
     }
@@ -1489,7 +1464,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 
     html += "<h2>Neue Nutzungen</h2>";
     html += "<div id='neue-na'>";
-    for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter() {
+    for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter().rev() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
         let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
         html.push_str(&format!(
@@ -1532,10 +1507,8 @@ pub fn render_project_content(
     split_fs: &SplitNasXml
 ) -> String {
     let s = match uidata.tab {
-        None | Some(0) => render_csv_editable(&csv, aenderungen, false, &uidata.selected_edit_flst, None),
-        Some(1) => render_csv_editable(&csv, aenderungen, true, &uidata.selected_edit_flst, Some(split_fs)),
         Some(2) => render_risse_ui(projekt_info, risse, &csv, aenderungen),
-        s => format!("Falscher TAB {s:?}"),
+        _ => render_csv_editable(&csv, aenderungen, uidata.render_out.unwrap_or_default(), &uidata.selected_edit_flst, Some(split_fs)),
     };
     normalize_for_js(s)
 }
@@ -1605,10 +1578,12 @@ fn render_risse_ui(
                     <input id='riss-{id}-scale' type='number' value='{scale}' style='display:flex;flex-grow:1;margin-right:0px;' data-riss-id='{id}' data-input-id='scale' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
                 </div>
 
+                <!--
                 <button id='riss-{id}-flm-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideFlurMarker(event);'>Flurmarker setzen</button>
                 <button id='riss-{id}-np-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideNordpfeil(event);'>Nordpfeil setzen</button>
                 <button id='riss-{id}-anschluss-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideAnschlussRisse(event);'>Anschlussrisse setzen</button>
                 <button id='riss-{id}-label-verschieben' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideLabel(event);'>Label verschieben</button>
+                -->
             </div>",
                 width = rc.width_mm,
                 height = rc.height_mm,
@@ -1629,7 +1604,7 @@ fn render_csv_editable(
 
     let selected_edit_flst = selected_edit_flst.replace("_", "");
 
-    csv.iter()
+    let content = csv.iter()
     .filter_map(|(k, v)| {
         if filter_out_bleibt && v.iter().any(|f| f.status == Status::Bleibt) {
             None
@@ -1699,7 +1674,14 @@ fn render_csv_editable(
             }
         }
     ))
-    }).collect::<Vec<_>>().join("")
+    }).collect::<Vec<_>>().join("");
+
+    format!("
+        <div id='toggle-visible-flst' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 20px;'>
+            <input onchange='toggleRenderOut(event);' type='checkbox'>Filter bearbeitete Flurstücke</input>
+        </div>
+        {content}
+    ")
 }
 
 pub fn normalize_for_js(s: String) -> String {
