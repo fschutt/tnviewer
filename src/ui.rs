@@ -1407,11 +1407,11 @@ pub fn render_main(
     let map = format!("
         <div id='__application-main-container' style='display:flex;flex-grow:1;position:relative;overflow:hidden;'>
             <div id='__application_main-overlay-container' style='width:400px;max-width:400px;min-width:400px;display:flex;flex-grow:1;flex-direction:column;box-shadow:0px 0px 10px black;z-index:999;'>
-                <div id='switch-content' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 30px;'>
+                <div id='switch-content' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 30px;min-height:30px;'>
                     {render_switch_content}
                 </div>
                 <div style='background:white;padding:20px;pointer-events:all;min-width:400px;display:flex;flex-grow:1'>
-                    <div id='__application_project_content' class='csv-scrollbox' style='flex-grow: 1;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>
+                    <div id='__application_project_content' class='csv-scrollbox' style='max-height:80vh;flex-grow: 1;overflow: scroll;display: flex;flex-direction: column;max-height: 100%;'>
                         {content}
                     </div>
                 </div>
