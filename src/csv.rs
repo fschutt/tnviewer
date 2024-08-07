@@ -19,7 +19,6 @@ pub enum Status {
 pub struct CsvDatensatz {
     pub eigentuemer: String,
     pub nutzung: String,
-    pub attribute: BTreeMap<String, String>,
     pub notiz: String,
     pub status: Status,
 }
@@ -61,7 +60,6 @@ pub fn parse_csv(
         .push(CsvDatensatz {
             eigentuemer,
             nutzung,
-            attribute: attributes,
             notiz: String::new(),
             status: Status::Bleibt,
         });
