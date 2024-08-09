@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::Split;
+use float_cmp::approx_eq;
 use geo::Area;
 use geo::CoordsIter;
 use polylabel_mini::LineString;
@@ -12,6 +13,7 @@ use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
 use crate::csv::CsvDataType;
 use crate::csv::Status;
+use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
@@ -24,6 +26,33 @@ pub const LATLON_STRING: &str = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_def
 pub struct NasXMLFile {
     pub ebenen: BTreeMap<String, Vec<TaggedPolygon>>,
     pub crs: String,
+}
+
+impl NasXMLFile {
+
+    pub fn create_quadtree(&self) -> NasXmlQuadTree {
+
+        let mut ebenen_map = BTreeMap::new();
+        let mut items = BTreeMap::new();
+        let mut itemid = 0;
+        for (flst_id, polys) in self.ebenen.iter() {
+            for (i, p) in polys.iter().enumerate() {
+                let id = ItemId(itemid);
+                itemid += 1;
+                items.insert(id, Item::Rect(p.get_rect()));
+                ebenen_map.insert(id, (flst_id.clone(), i));
+            }
+        }
+        
+        let qt = QuadTree::new(items.into_iter());
+
+        NasXmlQuadTree {
+            items: itemid + 1,
+            original: self.clone(),
+            qt: qt,
+            ebenen_map,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -242,6 +271,156 @@ pub struct TaggedPolygon {
 }
 
 impl TaggedPolygon {
+
+    fn check_line_for_points(l: &SvgLine, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
+
+        let start = start.round_to_3dec();
+        let end = end.round_to_3dec();
+
+        let mut start_is_on_line = None;
+        let mut end_is_on_line = None;
+        let mut pos_start_extra = None;
+        let mut pos_end_extra = None;
+
+        let mut pos_start = match l.points.iter().position(|p| p.equals(&start)) {
+            Some(s) => {
+                pos_start_extra = Some((s, l.points[s]));
+                s
+            },
+            None => {
+                
+                let starting_point_on_lines = 
+                l.points.iter().enumerate().zip(l.points.iter().skip(1))
+                .map(|((pos, s0), e0)| {
+                    (pos, s0.clone(), e0.clone(), crate::ui::dist_to_segment(start, *s0, *e0))
+                }).collect::<Vec<_>>();
+
+                let nearest_line = starting_point_on_lines
+                    .into_iter()
+                    .min_by_key(|f| (f.3.distance * 100000.0).round().abs() as usize)
+                    .map(|s| s.clone());
+                
+                let nearest_line = match nearest_line {
+                    Some(s) => s,
+                    None => return Vec::new(),
+                };
+
+                if nearest_line.3.distance > crate::ui::MAX_DST_POINT * 10.0 {
+                    return Vec::new();
+                }
+
+                start_is_on_line = Some(nearest_line.clone());
+
+                nearest_line.0
+            },
+        };
+
+        let mut pos_end = match l.points.iter().position(|p| p.equals(&end)) {
+            Some(s) => {
+                pos_end_extra = Some((s, l.points[s]));
+                s
+            },
+            None => {
+
+                let ending_point_on_lines = 
+                l.points.iter().enumerate().zip(l.points.iter().skip(1))
+                .map(|((pos, s0), e0)| {
+                    let p_is_on_line = crate::ui::dist_to_segment(end, *s0, *e0);
+                    (pos, s0.clone(), e0.clone(), p_is_on_line)
+                }).collect::<Vec<_>>();
+
+                let nearest_line = ending_point_on_lines
+                    .into_iter()
+                    .min_by_key(|f| (f.3.distance * 100000.0).round().abs() as usize)
+                    .map(|s| s.clone());
+                
+                let nearest_line = match nearest_line {
+                    Some(s) => s,
+                    None => return Vec::new(),
+                };
+                
+                if nearest_line.3.distance > crate::ui::MAX_DST_POINT * 10.0 {
+                    return Vec::new();
+                }
+
+                end_is_on_line = Some(nearest_line.clone());
+
+                nearest_line.0
+            },
+        };
+        
+        if start_is_on_line.is_some() && end_is_on_line.is_some() {
+            return Vec::new(); // TODO - technically wrong, but produces OK results
+        }
+
+        if pos_end < pos_start {
+            std::mem::swap(&mut pos_start, &mut pos_end);
+        }
+
+        if pos_end.abs_diff(pos_start) < 2 {
+            return Vec::new(); // common for regular copied lines
+        }
+
+        let normal_direction = pos_end.saturating_sub(pos_start);
+        let reverse_direction = pos_start.saturating_add(l.points.len().saturating_sub(pos_end));
+        
+        if reverse_direction.min(normal_direction) < 2 {
+            return Vec::new(); // shared line between two points
+        }
+
+        let normal = l.points.iter()
+        .skip(pos_start.saturating_add(1))
+        .take(normal_direction.saturating_sub(1)).cloned()
+        .collect::<Vec<_>>();
+
+        let mut rev = l.points.iter().skip(pos_end.saturating_add(1)).cloned().collect::<Vec<_>>();
+        rev.extend(l.points.iter().cloned().take(pos_start));
+        rev.reverse();
+
+        let normal_error = normal.iter()
+        .map(|s| dist_to_segment(*s, start, end).distance.abs())
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or(0.0);
+
+        let reverse_error = rev.iter()
+        .map(|s| dist_to_segment(*s, start, end).distance.abs())
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or(0.0);
+    
+        let reverse = reverse_error < normal_error;
+
+        let mut ret = if reverse {
+            rev
+        } else {
+            normal
+        };
+
+        ret.dedup_by(|a, b| a.equals(b));
+                
+        ret
+    }
+
+    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
+        for l in l {
+            let v = Self::check_line_for_points(l, start, end, log);
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        Vec::new()
+    }
+
+    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log);
+        if !v.is_empty() {
+            return v;
+        }
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log);
+        if !v.is_empty() {
+            return v;
+        }
+        Vec::new()
+    }
 
     pub fn get_groesse(&self) -> f64 {
         translate_to_geo_poly(&self.poly).0.iter().map(|p| p.signed_area()).sum()
@@ -523,6 +702,25 @@ pub struct SvgPolygon {
 }
 
 impl SvgPolygon {
+
+    pub fn equals(&self, other: &Self) -> bool {
+        self.outer_rings.len() == other.outer_rings.len() &&
+        self.inner_rings.len() == other.inner_rings.len() &&
+        self.outer_rings.iter().zip(other.outer_rings.iter()).all(|(a, b)| a.equals(b)) &&
+        self.inner_rings.iter().zip(other.inner_rings.iter()).all(|(a, b)| a.equals(b))
+    }
+
+    fn round_line(s: &SvgLine) -> SvgLine {
+        SvgLine { points: s.points.iter().map(SvgPoint::round_to_3dec).collect() }
+    }
+
+    pub fn round_to_3dec(&self) -> Self {
+        Self {
+            outer_rings: self.outer_rings.iter().map(Self::round_line).collect(),
+            inner_rings: self.inner_rings.iter().map(Self::round_line).collect(),
+        }
+    }
+
     pub fn get_label_pos(&self, tolerance: f64) -> SvgPoint {
         
         let coords_outer = self.outer_rings.iter().flat_map(|line| {
@@ -559,6 +757,12 @@ pub struct SvgLine {
 }
 
 impl SvgLine {
+
+    pub fn equals(&self, other: &Self) -> bool {
+        self.points.len() == other.points.len() &&
+        self.points.iter().zip(other.points.iter()).all(|(a, b)| a.equals(b))
+    }
+
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         SvgPolygon {
             outer_rings: vec![self.clone()],
@@ -574,6 +778,25 @@ pub struct SvgPoint {
 }
 
 impl SvgPoint {
+
+    #[inline]
+    pub fn round_f64(f: f64) -> f64 {
+        (f * 1000.0).round() / 1000.0
+    }
+
+    #[inline]
+    pub fn round_to_3dec(&self) -> Self {
+        Self {
+            x: Self::round_f64(self.x),
+            y: Self::round_f64(self.y),
+        }
+    }
+
+    pub fn equals(&self, other: &Self) -> bool {
+        approx_eq!(f64, self.x, other.x, epsilon = 0.001) &&
+        approx_eq!(f64, self.y, other.y, epsilon = 0.001)
+    }
+
     pub fn get_rect(&self, dst: f64) -> quadtree_f32::Rect {
         quadtree_f32::Rect {
             max_x: self.x + dst,
@@ -744,18 +967,44 @@ fn get_proj_string(input: &str) -> Option<String> {
 }
 
 
-pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: bool) -> SvgLine {
+#[derive(Debug, Copy, Clone)]
+pub enum UseRadians {
+    ForSourceAndTarget,
+    ForSource,
+    ForTarget,
+    None,
+}
+
+impl UseRadians {
+    fn for_source(&self) -> bool {
+        match self {
+            UseRadians::ForSourceAndTarget => true,
+            UseRadians::ForSource => true,
+            UseRadians::ForTarget => false,
+            UseRadians::None => false,
+        }
+    }
+    fn for_target(&self) -> bool {
+        match self {
+            UseRadians::ForSourceAndTarget => true,
+            UseRadians::ForSource => false,
+            UseRadians::ForTarget => true,
+            UseRadians::None => false,
+        }
+    }
+}
+pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: UseRadians) -> SvgLine {
     SvgLine {
         points: line.points.iter().filter_map(|p| {
-            let mut point3d = if use_radians {
+            let mut point3d = if use_radians.for_source()  {
                 (p.x.to_radians(), p.y.to_radians(), 0.0_f64) 
             } else {
                 (p.x, p.y, 0.0_f64) 
             };
             proj4rs::transform::transform(source, target, &mut point3d).ok()?;
             Some(SvgPoint {
-                x: if use_radians { point3d.0 } else { point3d.0.to_degrees() }, 
-                y: if use_radians { point3d.1 } else { point3d.1.to_degrees() },
+                x: if use_radians.for_target() { point3d.0 } else { point3d.0.to_degrees() }, 
+                y: if use_radians.for_target() { point3d.1 } else { point3d.1.to_degrees() },
             })
         }).collect()
     }
@@ -765,7 +1014,7 @@ pub fn reproject_poly(
     poly: &SvgPolygon,
     source_proj: &proj4rs::Proj,
     target_proj: &proj4rs::Proj,
-    use_radians: bool,
+    use_radians: UseRadians,
 ) -> SvgPolygon {
     SvgPolygon {
         outer_rings: poly.outer_rings.iter()
@@ -789,7 +1038,7 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -
         (k.clone(), v.iter().map(|v| {
             TaggedPolygon {
                 attributes: v.attributes.clone(),
-                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, false)
+                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None)
             }
         }).collect())
     }).collect();
@@ -812,10 +1061,10 @@ pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<Str
                 attributes: v.attributes.clone(),
                 poly: SvgPolygon {
                     outer_rings: v.poly.outer_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, false))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, UseRadians::None))
                     .collect(),
                     inner_rings: v.poly.inner_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, false))
+                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, UseRadians::None))
                     .collect(),
                 }
             }
@@ -866,9 +1115,43 @@ impl SplitNasXml {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct NasXmlQuadTree {
+    pub items: usize,
+    original: NasXMLFile,
+    qt: quadtree_f32::QuadTree,
+    ebenen_map: BTreeMap<ItemId, (FlstId, usize)>,
+}
+
+impl NasXmlQuadTree {
+    pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<TaggedPolygon> {
+        self.qt.get_ids_that_overlap(rect)
+        .into_iter()
+        .filter_map(|itemid| {
+            let (flst_id, i) = self.ebenen_map.get(&itemid)?;
+            self.original.ebenen.get(flst_id)?.get(*i).cloned()
+        }).collect()
+    }
+
+    // return = empty if points not on any flst line
+    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, delta: f64, log: &mut Vec<String>) -> Vec<SvgPoint> {
+        let mut polys = self.get_overlapping_flst(&start.get_rect(delta));
+        polys.extend(self.get_overlapping_flst(&end.get_rect(delta)));
+        polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
+        polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
+        for p in polys {
+            let v = p.get_line_between_points(start, end, log);
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        Vec::new()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SplitNasXmlQuadTree {
-    items: usize,
+    pub items: usize,
     original: SplitNasXml,
     qt: quadtree_f32::QuadTree,
     flst_nutzungen_map: BTreeMap<ItemId, (FlstId, usize)>,

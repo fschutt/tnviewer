@@ -3,9 +3,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
 use serde_derive::{Deserialize, Serialize};
-use crate::analyze::LatLng;
+use crate::LatLng;
 use crate::csv::CsvDataType;
-use crate::nas::{parse_nas_xml, reproject_poly, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon};
+use crate::nas::{
+    parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, 
+    NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians
+};
 use crate::ui::{Aenderungen, PolyNeu};
 use crate::xlsx::FlstIdParsed;
 use crate::xml::{self, XmlNode};
@@ -431,13 +434,43 @@ pub fn reproject_aenderungen_into_target_space(
         .iter()
         .map(|(k, v)| {
             (k.clone(), PolyNeu {
-                poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj, true),
+                poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj, UseRadians::ForSourceAndTarget),
                 nutzung: v.nutzung.clone(),
             })
         })
         .collect()
     })
 }
+
+
+pub fn reproject_aenderungen_back_into_latlon(
+    aenderungen: &Aenderungen,
+    source_proj: &str,
+) -> Result<Aenderungen, String> {
+
+    use crate::nas::LATLON_STRING;
+
+    let source_proj = proj4rs::Proj::from_proj_string(&source_proj)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", source_proj))?;
+
+    let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
+    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+
+    Ok(Aenderungen {
+        gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
+        na_definiert: aenderungen.na_definiert.clone(),
+        na_polygone_neu: aenderungen.na_polygone_neu
+        .iter()
+        .map(|(k, v)| {
+            (k.clone(), PolyNeu {
+                poly: crate::nas::reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
+                nutzung: v.nutzung.clone(),
+            })
+        })
+        .collect()
+    })
+}
+
 
 pub fn reproject_aenderungen_into_pdf_space(
     aenderungen: &Aenderungen,
@@ -668,7 +701,7 @@ fn write_nutzungsarten(
         Some((style, polys))
     }).collect::<Vec<_>>();
 
-    log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
+    // log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
 
     for (style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
 
@@ -768,6 +801,9 @@ pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
         None => return SvgPolygon::default(),
     };
     for i in polys.iter().skip(1) {
+        if first.equals(i) {
+            continue;
+        }
         let a = translate_to_geo_poly(&first);
         let b = translate_to_geo_poly(i);
         let join = a.union(&b);

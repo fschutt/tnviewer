@@ -1,30 +1,30 @@
 
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 
-pub fn get_veraenderte_flst(datensaetze: &CsvDataType) -> Vec<u8> {
+pub fn get_alle_flst(datensaetze: &CsvDataType) -> String {
     let all = get_alle_flst_internal(datensaetze);
-    let all = all.iter()
+
+    let alle_flst = all.iter()
+    .map(|(v, _)| v.clone())
+    .collect::<Vec<_>>();
+    
+    let veraendert = all.iter()
     .filter_map(|(v, b)| if *b {
         Some(v.clone())
     } else {
         None
     }).collect::<Vec<FlstIdParsedNumber>>();
-    format_flst_liste(all)
+
+    let s1 = format_flst_liste(alle_flst);
+    let s2 = format_flst_liste(veraendert);
+
+    format!("FLURSTUECKE:\r\n{s1}\r\n\r\nVERAENDERT:\r\n\r\n{s2}\r\n")
 }
 
-pub fn get_alle_flst(datensaetze: &CsvDataType) -> Vec<u8> {
-    let all = get_alle_flst_internal(datensaetze);
-    let all = all.iter()
-    .map(|(v, _)| v.clone())
-    .collect::<Vec<_>>();
-    format_flst_liste(all)
-}
-
-fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> Vec<u8> {
+fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> String {
 
     let mut grouped = BTreeMap::new();
     for f in all {
@@ -49,7 +49,6 @@ fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> Vec<u8> {
             .join(",")
         )}).collect::<Vec<String>>()
         .join("\r\n")
-        .into()
     }
 }
 

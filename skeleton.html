@@ -927,6 +927,7 @@
       var id = event.target.dataset.id;
       if (!window.projectdata || window.projectdata == null) {
         alert("Keine Daten geladen");
+        return;
       }
 
       var found = searchFlst(id, window.projectdata);
@@ -1055,7 +1056,6 @@
         risse: window.risse,
         csv: window.csv_data,
         aenderungen: window.aenderungen,
-        konfiguration: window.configuration,
       };
       var b = JSON.stringify(s, null, 4);
       downloadBlob(b, window.info.antragsnr + ".json", 'application/octet-stream');
@@ -1477,20 +1477,25 @@
         downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
     }
 
-    function exportDxf() {
+    function exportDavid() {
       if (!window.split_flurstuecke_original) {
-          return;
-        }
-        var dxf = aenderungen_zu_dxf(JSON.stringify(window.aenderungen), JSON.stringify(window.split_flurstuecke_original));
-        downloadBlob(dxf, window.info.antragsnr + ".dxf", 'application/octet-stream');
-    }
-
-    function exportShp() {
-      if (!window.nas_original) {
+        alert("Keine Projektdaten geladen!");
         return;
       }
-      var xlsx = aenderungen_zu_shp(JSON.stringify(window.aenderungen), JSON.stringify(window.nas_original));
-      downloadBlob(xlsx, window.info.antragsnr + ".Aenderungen.shp.zip", 'application/octet-stream');
+      var xml = aenderungen_zu_david(
+        JSON.stringify(window.aenderungen), 
+        JSON.stringify(window.split_flurstuecke_original)
+      );
+      downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
+    }
+
+    function exportGeoGraf() {
+      if (!window.split_flurstuecke_original) {
+        alert("Keine Projektdaten geladen!");
+        return;
+      }
+      var xlsx = aenderungen_zu_geograf(JSON.stringify(window.aenderungen), JSON.stringify(window.split_flurstuecke_original));
+      downloadBlob(xlsx, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');
     }
     
     function exportFlstNachEigentuemer() {
@@ -1502,10 +1507,6 @@
     }
 
     function exportPdf() {
-      if (!csv_data) {
-        alert("Keine CSV Daten geladen!");
-        return;
-      }
       if (!window.projectdata) {
         alert("Keine Projektdaten geladen!");
         return;
@@ -1535,20 +1536,64 @@
       downloadBlob(new Uint8Array(pdf.bytes), window.info.antragsnr + ".pdf", 'application/pdf');
     }
 
-    function exportVeraenderteFlst() {
-        if (!window.csv_data) {
-          return;
-        }
-        var txt = export_veraenderte_flst(JSON.stringify(window.csv_data));
-        downloadBlob(txt, "veraenderte_flst.txt", 'text/plain');
-    }
-
     function exportAlleFlst() {
         if (!window.csv_data) {
           return;
         }
         var txt = export_alle_flst(JSON.stringify(window.csv_data));
-        downloadBlob(txt, "alle_flst.txt", 'text/plain');
+        downloadBlob(txt, window.info.antragsnr + "Flurstuecke.txt", 'text/plain');
+    }
+
+    function nutzungenSaeubern(id) {
+      if (!window.split_flurstuecke_original) {
+        return;
+      }
+
+      var f = lib_nutzungen_saeubern(
+        id, 
+        JSON.stringify(window.aenderungen), 
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.nas_original),
+      );
+
+      try {
+        n = JSON.parse(f);
+      } catch (error) {
+        console.error(error);
+        console.log(n);
+        return;
+      }
+
+      if (n != null) {
+        window.aenderungen = n.aenderungen;
+        console.log(n.log);
+        reinitMapDrawnStaticLayers();
+      }
+    }
+    
+    function cleanStage(id) {
+      var n = null;
+      if (!window.split_flurstuecke_original) {
+        return;
+      }
+      var f = lib_get_aenderungen_clean(
+        "" + id, 
+        JSON.stringify(window.aenderungen), 
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.nas_original),
+      );
+      try {
+        n = JSON.parse(f);
+      } catch (error) {
+        console.error(error);
+        console.log(n);
+        return;
+      }
+      if (n != null) {
+        window.aenderungen = n.aenderungen;
+        console.log(n.log);
+        replaceProjectContent();
+      }
     }
 
     window.changeStatus = changeStatus;
@@ -1562,6 +1607,7 @@
     window.focusFlst = focusFlst;
     window.searchNA = searchNA;
     window.exportPdf = exportPdf;
+    window.exportDavid = exportDavid;
     window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
     window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
     window.nutzungsArtAendern = nutzungsArtAendern;
@@ -1570,6 +1616,7 @@
     window.polyNeuUndo = polyNeuUndo;
     window.projectInfoEdit = projectInfoEdit;
     window.setInterval(colorFlurstuecke, 200);
+    window.nutzungenSaeubern = nutzungenSaeubern;
 
     var tab_functions = {
         load_project: function(event) { loadProjectDataFromFile(); },
@@ -1582,13 +1629,12 @@
         export_pdf: function(event) { exportPdf(); },
         export_excel: function(event) { exportExcel(); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
-        export_veraenderte_flst: function(event) { exportVeraenderteFlst(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
+        export_geograf: function(event) { exportGeoGraf(); },
+        export_david: function(event) { exportDavid(); },
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
-        export_dxf: function(event) { exportDxf(); },
-        export_shp: function(event) { exportShp(); },
-        export_david: function(event) { },
+        clean_stage7_test: function(event) { cleanStage(7); },
         undo: function(event) { },
         redo: function(event) { },
     };

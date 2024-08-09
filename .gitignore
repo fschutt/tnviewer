@@ -1,6 +1,6 @@
 /target
-test.xml
-test.json
-test.csv
-save.json
+*.xml
+*.csv
+*.json
 *.pdf
+*.zip

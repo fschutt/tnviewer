@@ -1,7 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{collections::{BTreeMap, BTreeSet}, process::id};
 
 use nas::{parse_nas_xml, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
@@ -18,41 +18,160 @@ pub mod xlsx;
 pub mod search;
 pub mod pdf;
 pub mod uuid_wasm;
-pub mod analyze;
-pub mod dxf;
 pub mod zip;
+pub mod geograf;
+pub mod david;
 
 #[wasm_bindgen]
 pub fn get_new_poly_id() -> String {
     crate::uuid_wasm::uuid()
 }
 
-#[wasm_bindgen]
-pub fn aenderungen_zu_dxf(aenderungen: String, xml: String) -> Vec<u8> {
-    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-    let xml = match serde_json::from_str::<SplitNasXml>(&xml) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-    crate::dxf::export_aenderungen_dxf(&aenderungen, &xml)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CleanStageResult {
+    pub aenderungen: Aenderungen,
+    pub log: Vec<String>,
 }
 
 
 #[wasm_bindgen]
-pub fn aenderungen_zu_shp(aenderungen: String, xml: String) -> Vec<u8> {
+pub fn lib_nutzungen_saeubern(id: Option<String>, aenderungen: String, split_nas_xml: String, nas_original: String) -> String {
+    let id = id.and_then(|s| if s.is_empty() { None } else { Some(s.trim().to_string())});
+
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let split_nas_xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let nas_original = match serde_json::from_str::<NasXMLFile>(&nas_original) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas_xml.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let mut log = Vec::new();
+
+    log.push(format!("cleaning {} aenderungen, id poly = {id:?}", aenderungen.na_polygone_neu.len()));
+
+    let clean = aenderungen
+    .clean_stage1(&split_nas_xml, &mut log)
+    .clean_stage2(&split_nas_xml, &mut log)
+    .clean_stage3(&nas_original, &mut log);
+
+    
+    log.push(format!("cleaned {} aenderungen!", aenderungen.na_polygone_neu.len()));
+
+    let clean = match id {
+        Some(s) => match clean.na_polygone_neu.get(&s) {
+            Some(q) => {
+                let mut aenderungen_clone = aenderungen.clone();
+                aenderungen_clone.na_polygone_neu.insert(s.clone(), q.clone());
+                aenderungen_clone
+            },
+            None => aenderungen,
+        },
+        None => clean,
+    };
+
+    let clean = match reproject_aenderungen_back_into_latlon(&clean, &split_nas_xml.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    serde_json::to_string(&CleanStageResult {
+        aenderungen: clean,
+        log,
+    }).unwrap_or_default()
+}
+
+#[wasm_bindgen]
+pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml: String, nas_original: String) -> String {
+    
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };    
+    
+    let split_nas_xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let nas_original = match serde_json::from_str::<NasXMLFile>(&nas_original) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas_xml.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let mut log = Vec::new();
+
+    log.push(format!("cleaning {} aenderungen, stage = {id}", aenderungen.na_polygone_neu.len()));
+
+    let clean = match id.as_str() {
+        "13" => {
+            aenderungen
+            .clean_stage1(&split_nas_xml, &mut log)
+            .clean_stage2(&split_nas_xml, &mut log)
+            .clean_stage3(&nas_original, &mut log)
+        },
+        "4" => aenderungen.clean_stage4(&split_nas_xml, &mut log),
+        "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
+        "6" => aenderungen.clean_stage6(&split_nas_xml, &mut log),
+        "7" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log),
+        _ => return format!("wrong id {id}"),
+    };
+
+    log.push(format!("cleaned {} aenderungen!", aenderungen.na_polygone_neu.len()));
+
+    let clean = match reproject_aenderungen_back_into_latlon(&clean, &split_nas_xml.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    serde_json::to_string(&CleanStageResult {
+        aenderungen: clean,
+        log,
+    }).unwrap_or_default()
+}
+
+#[wasm_bindgen]
+pub fn aenderungen_zu_geograf(aenderungen: String, split_nas_xml: String) -> Vec<u8> {
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
         Err(_) => return Vec::new(),
     };
-    let xml = match serde_json::from_str::<NasXMLFile>(&xml) {
+    let xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
         Ok(o) => o,
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };
+    crate::geograf::export_aenderungen_geograf(&aenderungen, &xml)
+}
 
-    crate::dxf::export_aenderungen_shp(&aenderungen, &xml)
+
+#[wasm_bindgen]
+pub fn aenderungen_zu_david(aenderungen: String, split_nas_xml: String) -> String {
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &xml)
 }
 
 #[wasm_bindgen]
@@ -107,8 +226,8 @@ pub fn get_polyline_guides_in_current_bounds(
 
     #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
     struct MapBounds {
-        _northEast: crate::analyze::LatLng,
-        _southWest: crate::analyze::LatLng,
+        _northEast: crate::LatLng,
+        _southWest: crate::LatLng,
     }
     
     let mut pl = Vec::new();
@@ -139,20 +258,53 @@ pub fn get_polyline_guides_in_current_bounds(
     serde_json::to_string(&pl).unwrap_or_default()
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct LatLng {
+    pub lat: f64,
+    pub lng: f64,
+}
+
 #[wasm_bindgen]
 pub fn fixup_polyline(
     xml: String,
     split_flurstuecke: String,
     points: String,
 ) -> String {
-    use crate::analyze::LatLng;
+
+    use crate::nas::SplitNasXml;
+    use crate::nas::SvgLine;
+    use crate::nas::SvgPoint;
+
     let xml = serde_json::from_str::<NasXMLFile>(&xml).unwrap_or_default();
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
     let points = serde_json::from_str::<Vec<LatLng>>(&points).unwrap_or_default();
-    let poly = match crate::analyze::fixup_polyline_internal(&points, &split_fs) {
+
+    fn fixup_polyline_internal(points: &[LatLng], split_fs: &SplitNasXml) -> Option<SvgPolygon> {
+        
+        let mut points = points.to_vec();
+        
+        if points.first()? != points.last()? {
+            points.push(points.first()?.clone());
+        }
+
+        Some(SvgPolygon {
+            outer_rings: vec![SvgLine {
+                points: points.iter().map(|p| {
+                    SvgPoint {
+                        x: p.lng,
+                        y: p.lat,
+                    }
+                }).collect(),
+            }],
+            inner_rings: Vec::new()
+        })
+    }
+
+    let poly = match fixup_polyline_internal(&points, &split_fs) {
         Some(s) => s,
         None => return format!("failed to create poly from points {points:?}"),
     };
+
     serde_json::to_string(&crate::ui::PolyNeu {
         poly: poly,
         nutzung: None,
@@ -462,20 +614,10 @@ pub fn parse_csv_dataset_to_json(
 }
 
 #[wasm_bindgen]
-pub fn export_veraenderte_flst(s: String) -> Vec<u8> {
+pub fn export_alle_flst(s: String) -> String {
     let data = match serde_json::from_str::<CsvDataType>(&s) {
         Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    crate::xlsx::get_veraenderte_flst(&data)
-}
-
-#[wasm_bindgen]
-pub fn export_alle_flst(s: String) -> Vec<u8> {
-    let data = match serde_json::from_str::<CsvDataType>(&s) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
+        Err(e) => return e.to_string(),
     };
 
     crate::xlsx::get_alle_flst(&data)
