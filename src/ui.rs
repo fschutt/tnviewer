@@ -1143,6 +1143,46 @@ pub struct AenderungenIntersection {
     pub poly_cut: SvgPolygon,
 }
 
+impl AenderungenIntersection {
+    
+    pub fn get_text_alt(&self) -> Option<TextPlacement> {
+        if self.alt != self.neu {
+            return None;
+        }
+        Some(TextPlacement {
+            status: TextStatus::StaysAsIs,
+            kuerzel: self.alt.clone(),
+            pos: self.poly_cut.get_label_pos(0.001)
+        })
+    }
+
+    pub fn get_text_neu(&self) -> Option<TextPlacement> {
+        if self.alt != self.neu {
+            return None;
+        }
+        Some(TextPlacement {
+            status: TextStatus::StaysAsIs,
+            kuerzel: self.neu.clone(),
+            pos: {
+                let mut pos = self.poly_cut.get_label_pos(0.001);
+                pos.y -= 6.0;
+                pos
+            }
+        })
+    }
+
+    pub fn get_text_bleibt(&self) -> Option<TextPlacement> {
+        if self.alt != self.neu {
+            return None;
+        }
+        Some(TextPlacement {
+            status: TextStatus::StaysAsIs,
+            kuerzel: self.alt.clone(),
+            pos: self.poly_cut.get_label_pos(0.001)
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct TextPlacement {
     pub kuerzel: String,

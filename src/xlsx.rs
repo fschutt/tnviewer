@@ -89,35 +89,35 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     // Eigentümer
     sheet.add_column(Column { width: 60.0 });
 
-        let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
-            let sw = sheet_writer;
-            sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer"])?;
-            for (flst_id, ds) in datensaetze.iter() {
-                let ds_0 = match ds.get(0) {
-                    Some(s) => s,
-                    None => continue
-                };
-                let notiz = ds_0.notiz.clone();
-                let status = ds_0.status.clone();
-                let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
-                eigentuemer.sort();
-                eigentuemer.dedup();
-                let eig: String = eigentuemer.join("; ");
-                let nutzung = ds_0.nutzung.clone();
-                sw.append_row(row![
-                    FlstIdParsed::from_str(&flst_id).to_nice_string(),
-                    nutzung.to_string(),
-                    match status {
-                        crate::csv::Status::Bleibt => "bleibt".to_string(),
-                        crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
-                        crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (mit Benachrichtigung)",
-                    },
-                    eig.to_string()
-                ])?;
-            }
+    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
+        let sw = sheet_writer;
+        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer"])?;
+        for (flst_id, ds) in datensaetze.iter() {
+            let ds_0 = match ds.get(0) {
+                Some(s) => s,
+                None => continue
+            };
+            let notiz = ds_0.notiz.clone();
+            let status = ds_0.status.clone();
+            let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
+            eigentuemer.sort();
+            eigentuemer.dedup();
+            let eig: String = eigentuemer.join("; ");
+            let nutzung = ds_0.nutzung.clone();
+            sw.append_row(row![
+                FlstIdParsed::from_str(&flst_id).to_nice_string(),
+                nutzung.to_string(),
+                match status {
+                    crate::csv::Status::Bleibt => "bleibt".to_string(),
+                    crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
+                    crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (mit Benachrichtigung)",
+                },
+                eig.to_string()
+            ])?;
+        }
 
-            Ok(())
-        });
+        Ok(())
+    });
 
     match wb.close() {
         Ok(Some(o)) => o,

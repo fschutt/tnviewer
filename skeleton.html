@@ -1494,8 +1494,29 @@
         alert("Keine Projektdaten geladen!");
         return;
       }
-      var xlsx = aenderungen_zu_geograf(JSON.stringify(window.aenderungen), JSON.stringify(window.split_flurstuecke_original));
-      downloadBlob(xlsx, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');
+
+      var risse_extent = {};
+      for (var [riss_id, riss_config] of Object.entries(window.risse)) {
+        risse_extent[riss_id] = calculate_coords(
+          riss_config.width_mm, 
+          riss_config.height_mm, 
+          riss_config.scale, 
+          riss_config.lon, 
+          riss_config.lat
+        );
+      }
+
+      var zip = aenderungen_zu_geograf(
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.info),
+        JSON.stringify(window.configuration),
+        JSON.stringify(window.aenderungen),
+        JSON.stringify(window.risse),
+        JSON.stringify(risse_extent),
+      );
+      
+      downloadBlob(zip, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');
     }
     
     function exportFlstNachEigentuemer() {

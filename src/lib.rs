@@ -1,7 +1,7 @@
 use std::{collections::{BTreeMap, BTreeSet}, process::id};
 
 use nas::{parse_nas_xml, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissExtent, RissMap, Risse, StyleConfig};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
 use wasm_bindgen::prelude::*;
@@ -148,16 +148,59 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
 }
 
 #[wasm_bindgen]
-pub fn aenderungen_zu_geograf(aenderungen: String, split_nas_xml: String) -> Vec<u8> {
-    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-    let xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
+pub fn aenderungen_zu_geograf(
+    split_nas_xml: String,
+    nas_xml: String,
+    projekt_info: String,
+    konfiguration: String,
+    aenderungen: String,
+    risse: String,
+    risse_extente: String,
+) -> Vec<u8> {
+    let split_nas_xml = match serde_json::from_str::<SplitNasXml>(split_nas_xml.as_str()) {
         Ok(o) => o,
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };
-    crate::geograf::export_aenderungen_geograf(&aenderungen, &xml)
+
+    let nas_xml = match serde_json::from_str::<NasXMLFile>(nas_xml.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    let projekt_info = match serde_json::from_str::<ProjektInfo>(projekt_info.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    let konfiguration = match serde_json::from_str::<Konfiguration>(konfiguration.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    let risse = match serde_json::from_str::<Risse>(&risse) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    let risse_extente = match serde_json::from_str::<RissMap>(&risse_extente) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
+    crate::geograf::export_aenderungen_geograf(
+        &split_nas_xml,
+        &nas_xml,
+        &projekt_info,
+        &konfiguration,
+        &aenderungen,
+        &risse,
+        &risse_extente,
+    )
 }
 
 
