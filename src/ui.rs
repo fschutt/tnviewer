@@ -1126,33 +1126,46 @@ impl AenderungenClean {
                     None => continue,
                 };
 
+                web_sys::console::log_1(&format!("is 1").as_str().into());
+
                 let q = intersect_polys(&potentially_intersecting.poly, megapoly)
                 .iter().map(|v| v.round_to_3dec()).collect::<Vec<_>>();
                 
+                web_sys::console::log_1(&format!("is 2").as_str().into());
+
                 let mut subtract_polys = Vec::new();
                 for intersect_poly in q.iter() {
-                    subtract_polys.push(intersect_poly);
+                    subtract_polys.push(intersect_poly.round_to_3dec());
                     is.push(AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
-                        poly_cut: intersect_poly.clone(),
+                        poly_cut: intersect_poly.round_to_3dec(),
                     });
                 }
 
+                let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
                 stay_polys.entry(flurstueck_id)
                 .and_modify(|sp: &mut TaggedPolygon| {
-                    sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
+                    web_sys::console::log_1(&format!("is 2.1").as_str().into());
+                    sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
+                    web_sys::console::log_1(&format!("is 2.2").as_str().into());
                 })
                 .or_insert_with(|| {
-                    TaggedPolygon {
+                    web_sys::console::log_1(&format!("is 2.3").as_str().into());
+                    let s = TaggedPolygon {
                         attributes: potentially_intersecting.attributes.clone(),
                         poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
-                    }
+                    };
+                    web_sys::console::log_1(&format!("is 2.4").as_str().into());
+                    s
                 });
             }
         }
 
+        web_sys::console::log_1(&format!("is 5").as_str().into());
+
+        
         for (flurstueck_id, flst_rest) in stay_polys {
             if flst_rest.poly.is_empty() {
                 continue;
@@ -1172,6 +1185,8 @@ impl AenderungenClean {
                 poly_cut: flst_rest.poly.round_to_3dec(),
             });
         }
+
+        web_sys::console::log_1(&format!("is 6").as_str().into());
 
         is
     }
