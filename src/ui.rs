@@ -1667,7 +1667,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     }
     html += "</div>";
 
-    html += "<h2><span style='display: flex;flex-direction: row;justify-content: space-between;flex-grow: 1;'>Neue Nutzungen <p style='text-decoration:underline;cursor:pointer;' onclick='nutzungenSaeubern('');'>[alle bereinigen]</p></span></h2>";
+    html += "<h2><span style='display: flex;flex-direction: row;justify-content: space-between;flex-grow: 1;'>Neue Nutzungen <p style='text-decoration:underline;cursor:pointer;' onclick='nutzungenSaeubern(event);' data-nutzung-id=''>[alle bereinigen]</p></span></h2>";
     html += "<div id='neue-na'>";
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter().rev() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
@@ -1677,7 +1677,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <div style='display:flex;'>
                     <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' data-poly-neu-id='{new_poly_id}'>[Karte]</p>
-                    <p class='__application-zoom-to' onclick='nutzungenSaeubern('{new_poly_id}');' data-poly-neu-id='{new_poly_id}'>[bereinigen]</p>
+                    <p class='__application-zoom-to' onclick='nutzungenSaeubern(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'>[bereinigen]</p>
                     <p style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
                 </div>
                 <div style='display:flex;'>

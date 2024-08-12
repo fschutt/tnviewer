@@ -1565,7 +1565,12 @@
         downloadBlob(txt, window.info.antragsnr + "Flurstuecke.txt", 'text/plain');
     }
 
-    function nutzungenSaeubern(id) {
+    function nutzungenSaeubern(event) {
+      var id = '';
+      if (event.target.dataset.nutzungId) {
+        id = event.target.dataset.nutzungId;
+        return;
+      }
       if (!window.split_flurstuecke_original) {
         return;
       }
@@ -1577,6 +1582,7 @@
         JSON.stringify(window.nas_original),
       );
 
+      var n = null;
       try {
         n = JSON.parse(f);
       } catch (error) {
