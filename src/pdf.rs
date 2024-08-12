@@ -829,17 +829,22 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
 
 pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
+    web_sys::console::log_1(&format!("join_polys 1!").as_str().into());            
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
         None => return SvgPolygon::default(),
     };
+    web_sys::console::log_1(&format!("join_polys 2!").as_str().into());            
     for i in polys.iter().skip(1) {
         if first.equals(i) {
             continue;
         }
+        web_sys::console::log_1(&format!("join_polys 3!").as_str().into());            
         let a = translate_to_geo_poly(&first);
         let b = translate_to_geo_poly(i);
+        web_sys::console::log_1(&format!("join_polys 4!").as_str().into());            
         let join = a.union(&b);
+        web_sys::console::log_1(&format!("join_polys 5!").as_str().into());            
         let s = translate_from_geo_poly(&join);
         let mut new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -849,9 +854,11 @@ pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
+        web_sys::console::log_1(&format!("join_polys 6!").as_str().into());            
         first = new;
     }
 
+    web_sys::console::log_1(&format!("join_polys 7!").as_str().into());            
     first
 }
 
