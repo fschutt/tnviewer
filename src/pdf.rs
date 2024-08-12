@@ -7,7 +7,7 @@ use crate::LatLng;
 use crate::csv::CsvDataType;
 use crate::nas::{
     parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, 
-    NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians
+    NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, PolyNeu};
 use crate::xlsx::FlstIdParsed;
@@ -180,7 +180,7 @@ impl RissExtent {
             return None;
         }
 
-        let source = proj4rs::Proj::from_proj_string(&self.projection).ok()?;
+        let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
         let target = proj4rs::Proj::from_proj_string(&target_crs).ok()?;
         proj4rs::transform::transform(&source, &target, coords.as_mut_slice()).ok()?;
         let points = coords.iter().map(|p| {

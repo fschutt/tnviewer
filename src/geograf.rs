@@ -1,12 +1,12 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
 use dxf::{Vector, XData, XDataItem};
-use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument};
+use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::JsString;
 
-use crate::{nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
+use crate::{nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
 pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
@@ -117,6 +117,11 @@ pub fn export_aenderungen_geograf(
 
     let mut files = Vec::new();
 
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas.crs) {
+        Ok(o) => o,
+        Err(e) => return Vec::new(),
+    };
+
     // RISSE -> risse.shp
     if !risse.is_empty() {
         append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse_extente, &split_nas.crs));
@@ -132,7 +137,9 @@ pub fn export_aenderungen_geograf(
         files.push((None, format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
     }
 
-    let splitflaechen = calc_splitflaechen(aenderungen, split_nas);
+    let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
+    web_sys::console::log_1(&format!("RISSE ::: {risse:?}").as_str().into());
+    web_sys::console::log_1(&format!("RISSE EXTENTE ::: {risse_extente:?}").as_str().into());
 
     if risse.is_empty() {
         export_splitflaechen(
@@ -146,7 +153,11 @@ pub fn export_aenderungen_geograf(
         );
     } else {
         for (id, r) in risse.iter() {
-            let ex = risse_extente.get(id).and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
+            web_sys::console::log_1(&format!("RISSE EXTENTE 1 {id}").as_str().into());
+            let ex = risse_extente.get(id);
+            web_sys::console::log_1(&format!("EX 1 {ex:?}").as_str().into());
+            let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
+            web_sys::console::log_1(&format!("EX 2 {ex:?}").as_str().into());
             let extent = match ex {
                 Some(s) => s,
                 None => continue,
@@ -157,6 +168,12 @@ pub fn export_aenderungen_geograf(
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
             
+            web_sys::console::log_1(&format!("SPLITFLAECHEN RISSE {id}").as_str().into());
+            for c in splitflaechen_for_riss.iter() {
+                web_sys::console::log_1(&format!("{c:?}").as_str().into());
+            }
+            web_sys::console::log_1(&format!("-----").as_str().into());
+
             export_splitflaechen(
                 &mut files, 
                 projekt_info, 
@@ -169,17 +186,52 @@ pub fn export_aenderungen_geograf(
         }
     }
 
-    write_files_to_zip(&files)
+    let dirs = files.iter().filter_map(|(dir, _, _)| dir.clone()).collect::<BTreeSet<_>>();
+    let mut files_2 = dirs.iter().map(|d| (Some(d.clone()), PathBuf::new(), Vec::new())).collect::<Vec<_>>();
+    files_2.extend(files.into_iter());
+    let files_names = files_2.iter().map(|(d, p, c)| format!("{d:?} - {p:?}: {} bytes", c.len())).collect::<Vec<_>>();
+    web_sys::console::log_1(&format!("ZIP FILE").as_str().into());
+    for f in files_names {
+        web_sys::console::log_1(&format!("  {f}").as_str().into());
+    }
+    write_files_to_zip(&files_2)
 }
 
 pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
+    original_xml: &NasXMLFile,
 ) -> Vec<AenderungenIntersection> {
 
+    let changed_mut = aenderungen.clean_stage1(split_nas, &mut Vec::new());
+
+    let changed_mut = changed_mut.clean_stage2(split_nas, &mut Vec::new());
+
+    let changed_mut = changed_mut.clean_stage3(original_xml, &mut Vec::new());
+    
+    let changed_mut = changed_mut.clean_stage4(split_nas, &mut Vec::new());
+
+    let changed_mut = changed_mut.clean_stage5(split_nas, &mut Vec::new());
+
+    let changed_mut = changed_mut.clean_stage6(split_nas, &mut Vec::new());
+
+    let qt = split_nas.create_quadtree();
+
+    let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
+    .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
+    .collect::<BTreeMap<_, _>>();
+
+    let aenderungen = AenderungenClean {
+        nas_xml_quadtree: qt,
+        map: aenderungen_merged_by_typ,
+    };
+
+    /*
     let aenderungen = aenderungen
+        .clean_stage3(split_nas, &mut Vec::new())
         .clean_stage4(split_nas, &mut Vec::new())
-        .clean_stage5(split_nas, &mut Vec::new());
+        .clean_stage5(split_nas, &mut Vec::new())
+        .clean_stage6(split_nas, &mut Vec::new());
 
     let qt = split_nas.create_quadtree();
 
@@ -190,9 +242,16 @@ pub fn calc_splitflaechen(
     let aenderungen = AenderungenClean {
         nas_xml_quadtree: qt,
         map: aenderungen_merged_by_typ,
-    };
+    };*/
 
-    aenderungen.get_aenderungen_intersections()
+    let cs = aenderungen.get_aenderungen_intersections();
+
+    web_sys::console::log_1(&format!("CALC SPLITFLAECHEN").as_str().into());
+    for c in cs.iter() {
+        web_sys::console::log_1(&format!("{c:?}").as_str().into());
+    }
+
+    cs
 }
 
 pub fn generate_risse_shp(
@@ -285,9 +344,13 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
 
     let text = format!("s. Anschlussriss ({num} / {total})");
 
+    let text_w = 35.0; // Mm
+    let text_h = 3.0; // Mm
+    let padding = 1.0;
+
     let (w, h) = match vert {
-        true => (10.0, 50.0),
-        false => (50.0, 10.0),
+        true => (text_h + padding + padding, text_w + padding + padding),
+        false => (text_w + padding + padding, text_h + padding + padding),
     };
 
     let (mut doc, page1, layer1) = PdfDocument::new(
@@ -301,19 +364,45 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
         requires_xmp_metadata: false,
         .. Default::default()
     }));
+
+
     let helvetica = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
     let page1 = doc.get_page(page1);
     let layer1 = page1.get_layer(layer1);
-    layer1.set_text_cursor(Mm(10.0), Mm(10.0));
-    if vert {
-        layer1.set_ctm(printpdf::CurTransMat::Rotate(270.0));
-    }
-    layer1.write_text(
-        &text,
-        &helvetica,
-    );
-    doc.save_to_bytes().unwrap_or_default()
 
+    layer1.set_outline_thickness(Mm(1.0).into_pt().0);
+    layer1.set_outline_color(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let points = vec![
+        (printpdf::Point { x: Mm(0.0).into(), y: Mm(0.0).into() }, false),
+        (printpdf::Point { x: Mm(w).into(), y: Mm(0.0).into() }, false),
+        (printpdf::Point { x: Mm(w).into(), y: Mm(h).into() }, false),
+        (printpdf::Point { x: Mm(0.0).into(), y: Mm(h).into() }, false),
+    ];
+
+    let poly = printpdf::Polygon {
+        rings: vec![points],
+        mode: printpdf::path::PaintMode::Stroke,
+        winding_order: printpdf::path::WindingOrder::NonZero,
+    };
+
+    layer1.add_polygon(poly);
+
+    layer1.begin_text_section();
+    layer1.set_font(&helvetica, Mm(text_h).into_pt().0);
+
+    if vert {
+        layer1.set_text_matrix(printpdf::TextMatrix::TranslateRotate(
+            Mm(w - (padding * 1.5)).into_pt(), Mm(padding * 1.5).into_pt(), 90.0)
+        );
+    } else {
+        layer1.set_text_cursor(Mm(padding * 1.5), Mm(padding * 1.5));
+    }
+
+    layer1.write_text(&text, &helvetica);
+    layer1.end_text_section();
+
+    doc.save_to_bytes().unwrap_or_default()
 }
 
 pub fn generate_header_pdf(
@@ -355,14 +444,12 @@ pub fn generate_header_pdf(
         .. Default::default()
     }));
 
-    let helvetica = doc.add_builtin_font(BuiltinFont::HelveticaBold).unwrap();
+    let times_roman = doc.add_builtin_font(BuiltinFont::TimesRoman).unwrap();
     let page1 = doc.get_page(page1);
     let layer1 = page1.get_layer(layer1);
+    let text = format!("Flur {}", fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "));
+    layer1.use_text(&text, Mm(3.0).into_pt().0, Mm(10.0), Mm(10.0), &times_roman);
     layer1.set_text_cursor(Mm(10.0), Mm(10.0));
-    layer1.write_text(
-        format!("Flur {}", fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ")),
-        &helvetica,
-    );
     doc.save_to_bytes().unwrap_or_default()
 }
 
@@ -374,7 +461,9 @@ pub fn generate_legende_xlsx(
 
     let alle_kuerzel = splitflaechen
     .iter()
-    .flat_map(|s| vec![s.alt.clone(), s.neu.clone()].into_iter())
+    .flat_map(|s| {
+        vec![s.alt.clone(), s.neu.clone()].into_iter()
+    })
     .collect::<BTreeSet<_>>();
 
     let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
@@ -396,7 +485,7 @@ pub fn generate_legende_xlsx(
     let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
         
         let sw = sheet_writer;
-        sw.append_row(row!["Legende"])?;
+        sw.append_row(row!["Legende Abkürzungen"])?;
 
         for l in lines.iter() {
             sw.append_row(row![l.to_string()])?;

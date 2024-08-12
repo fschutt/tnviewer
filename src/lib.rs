@@ -608,15 +608,15 @@ pub fn get_gebaeude_geojson_fuer_aktive_flst(json: String, csv: String, aenderun
     let default = format!("{{ \"type\": \"FeatureCollection\", \"features\": [] }}");
     let xml = match serde_json::from_str::<NasXMLFile>(&json) {
         Ok(o) => o,
-        Err(e) => return default.clone(),
+        Err(_) => return default.clone(),
     };
     let csv = match serde_json::from_str::<CsvDataType>(&csv) {
         Ok(o) => o,
-        Err(e) => return default.clone(),
+        Err(_) => return default.clone(),
     };
     let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {
         Ok(o) => o,
-        Err(e) => return default.clone(),
+        Err(_) => return default.clone(),
     };
     xml.get_gebaeude(&csv, &aenderungen)
 }

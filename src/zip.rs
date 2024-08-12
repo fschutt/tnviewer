@@ -31,15 +31,15 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
 
             if let Some(dir) = option_dir {
                 #[allow(deprecated)]
-                zip.add_directory(dir, options);
+                let _ = zip.add_directory(dir, options);
             }
 
             #[allow(deprecated)]
-            zip.start_file_from_path(name, options);
-            zip.write_all(&file_contents);
+            let _ = zip.start_file_from_path(name, options);
+            let _ = zip.write_all(&file_contents);
         }
 
-        zip.finish();
+        let _ = zip.finish();
     }
 
     cursor.into_inner()

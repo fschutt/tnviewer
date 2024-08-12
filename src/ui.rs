@@ -1780,7 +1780,7 @@ fn render_risse_ui(
     let render_config_field = |(name, value, id): (&str, &str, &str)| {
         format!("<div class='ri-config-field'>
             <label for='projekt-info-{id}' style='bold'>{name}</label>
-            <input type='text' id='projekt-info-{id}' oninput='projectInfoEdit(event);' onchange='projectInfoEdit(event);' dataset-id='{id}' value='{value}'>
+            <input type='text' id='projekt-info-{id}' oninput='projectInfoEdit(event);' onchange='projectInfoEdit(event);' data-id='{id}' value='{value}'>
         </div>")
     };
 
