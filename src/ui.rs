@@ -1438,7 +1438,11 @@ impl Aenderungen {
             
             aenderungen_merged_by_typ
             .entry(kuerzel)
-            .and_modify(|ep: &mut SvgPolygon| { *ep = join_polys(&[ep.clone(), polyneu.poly.clone()]); })
+            .and_modify(|ep: &mut SvgPolygon| { 
+                if let Some(e) = join_polys(&[ep.clone(), polyneu.poly.clone()]) {
+                    *ep = e;
+                }
+            })
             .or_insert_with(|| polyneu.poly.clone());
         }
 
@@ -1497,7 +1501,9 @@ impl Aenderungen {
             .entry(neue_nutzung.clone())
             .and_modify(|ep: &mut SvgPolygon| { 
                 web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
-                *ep = join_polys(&[ep.clone(), poly.clone()]); 
+                if let Some(e) = join_polys(&[ep.clone(), poly.clone()]) {
+                    *ep = e;
+                }
                 web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());            
             })
             .or_insert_with(|| poly);

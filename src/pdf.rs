@@ -827,22 +827,27 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     first
 }
 
-pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
+pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     web_sys::console::log_1(&format!("join_polys 1!").as_str().into());            
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
-        None => return SvgPolygon::default(),
+        None => return None,
     };
     web_sys::console::log_1(&format!("join_polys 2!").as_str().into());            
     for i in polys.iter().skip(1) {
         if first.equals(i) {
             continue;
         }
-        web_sys::console::log_1(&format!("join_polys 3!").as_str().into());            
+        if i.is_empty() {
+            continue;
+        }
+        web_sys::console::log_1(&format!("join_polys 3!").as_str().into());              
         let a = translate_to_geo_poly(&first);
         let b = translate_to_geo_poly(i);
-        web_sys::console::log_1(&format!("join_polys 4!").as_str().into());            
+        web_sys::console::log_1(&format!("join_polys 4!").as_str().into());     
+        web_sys::console::log_1(&serde_json::to_string(&first).unwrap_or_default().as_str().into());            
+        web_sys::console::log_1(&serde_json::to_string(&i).unwrap_or_default().as_str().into());       
         let join = a.union(&b);
         web_sys::console::log_1(&format!("join_polys 5!").as_str().into());            
         let s = translate_from_geo_poly(&join);
@@ -859,14 +864,14 @@ pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
     }
 
     web_sys::console::log_1(&format!("join_polys 7!").as_str().into());            
-    first
+    Some(first)
 }
 
-pub fn difference_polys(polys: &[SvgPolygon]) -> SvgPolygon {
+pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
-        None => return SvgPolygon::default(),
+        None => return None,
     };
     for i in polys.iter().skip(1) {
         let a = translate_to_geo_poly(&first);
@@ -884,7 +889,7 @@ pub fn difference_polys(polys: &[SvgPolygon]) -> SvgPolygon {
         first = new;
     }
 
-    first
+    Some(first)
 }
 
 fn get_fluren_in_pdf_space(
@@ -911,13 +916,13 @@ fn get_fluren_in_pdf_space(
 
 
     FlurenInPdfSpace {
-        fluren: fluren_map.iter().map(|(k, v)| {
+        fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-            let joined = join_polys(&polys);
-            TaggedPolygon {
+            let joined = join_polys(&polys)?;
+            Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
                 poly: joined,
-            }
+            })
         }).collect()
     }
 }
