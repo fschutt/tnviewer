@@ -115,6 +115,8 @@ pub fn export_aenderungen_geograf(
     risse_extente: &RissMap,
 ) -> Vec<u8> {
 
+    web_sys::console::log_1(&format!("ok 1").as_str().into());
+
     let mut files = Vec::new();
 
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas.crs) {
@@ -122,10 +124,14 @@ pub fn export_aenderungen_geograf(
         Err(e) => return Vec::new(),
     };
 
+    web_sys::console::log_1(&format!("ok 2").as_str().into());
+
     // RISSE -> risse.shp
     if !risse.is_empty() {
         append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse_extente, &split_nas.crs));
     }
+
+    web_sys::console::log_1(&format!("ok 3").as_str().into());
 
     // Anschlussrisse PDFs
     let len = risse.len();
@@ -136,6 +142,8 @@ pub fn export_aenderungen_geograf(
         files.push((None, format!("HORZ_{i}_von_{len}.pdf").into(), pdf_horz));
         files.push((None, format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
     }
+
+    web_sys::console::log_1(&format!("ok 4").as_str().into());
 
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
     web_sys::console::log_1(&format!("RISSE ::: {risse:?}").as_str().into());
@@ -207,10 +215,19 @@ pub fn calc_splitflaechen(
     original_xml: &NasXMLFile,
 ) -> Vec<AenderungenIntersection> {
 
-    let aenderungen = aenderungen
-        .clean_stage4(split_nas, &mut Vec::new())
-        .clean_stage5(split_nas, &mut Vec::new())
-        .clean_stage6(split_nas, &mut Vec::new());
+    web_sys::console::log_1(&format!("cleaning stage 4...").as_str().into());
+
+    let aenderungen = aenderungen.clean_stage4(split_nas, &mut Vec::new());
+
+    web_sys::console::log_1(&format!("cleaning stage 5...").as_str().into());
+
+    let aenderungen = aenderungen.clean_stage5(split_nas, &mut Vec::new());
+
+    web_sys::console::log_1(&format!("cleaning stage 6...").as_str().into());
+
+    let aenderungen = aenderungen.clean_stage6(split_nas, &mut Vec::new());
+
+    web_sys::console::log_1(&format!("ok!").as_str().into());
 
     let qt = split_nas.create_quadtree();
 
@@ -223,12 +240,13 @@ pub fn calc_splitflaechen(
         map: aenderungen_merged_by_typ,
     };
 
+    web_sys::console::log_1(&format!("getting intersections...").as_str().into());
+
     let cs = aenderungen.get_aenderungen_intersections();
 
-    web_sys::console::log_1(&format!("CALC SPLITFLAECHEN").as_str().into());
-    for c in cs.iter() {
-        web_sys::console::log_1(&format!("{c:?}").as_str().into());
-    }
+    web_sys::console::log_1(&format!("intersections ok!").as_str().into());
+
+    web_sys::console::log_1(&format!("{} SPLITFLAECHEN", cs.len()).as_str().into());
 
     cs
 }
@@ -451,8 +469,14 @@ pub fn generate_header_pdf(
         .. Default::default()
     }));
 
-    let times_roman = doc.add_builtin_font(BuiltinFont::TimesRoman).unwrap();
-    let times_roman_bold = doc.add_builtin_font(BuiltinFont::TimesBold).unwrap();
+    let times_roman = match doc.add_builtin_font(BuiltinFont::TimesRoman) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    let times_roman_bold = match doc.add_builtin_font(BuiltinFont::TimesBold) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
     let page1 = doc.get_page(page1);
     let layer1 = page1.get_layer(layer1);
 

@@ -1466,6 +1466,8 @@ impl Aenderungen {
 
         let aenderungen_merged_by_typ_clone = aenderungen_merged_by_typ.clone();
         
+        web_sys::console::log_1(&format!("clean stage 5 1!").as_str().into());
+
         // 3. Alle komplett geänderte Flächen: In Änderungen einfügen
         for (flst_part_id, neue_nutzung) in changed_mut.na_definiert.iter() {
             let flst_part = match split_nas.get_flst_part_by_id(&flst_part_id) {
@@ -1477,24 +1479,33 @@ impl Aenderungen {
 
             let flst_part_rect = flst_part.get_rect();
 
+            web_sys::console::log_1(&format!("clean stage 5 2!").as_str().into());
+
             // Teilflächen abziehen vom Flurstück, die von Änderungen überlappt werden
             let aenderungen_overlaps_polygon = 
                 aenderungen_merged_by_typ_clone.values()
                 .filter(|f| f.get_rect().overlaps_rect(&flst_part_rect))
                 .collect::<Vec<_>>();
 
+            web_sys::console::log_1(&format!("clean stage 5 3!").as_str().into());
+
             let poly = subtract_from_poly(&flst_part.poly, &aenderungen_overlaps_polygon);
+
+            web_sys::console::log_1(&format!("clean stage 5 4!").as_str().into());
 
             aenderungen_merged_by_typ
             .entry(neue_nutzung.clone())
             .and_modify(|ep: &mut SvgPolygon| { 
                 web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
                 *ep = join_polys(&[ep.clone(), poly.clone()]); 
-                web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());
-            
+                web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());            
             })
             .or_insert_with(|| poly);
+
+            web_sys::console::log_1(&format!("clean stage 5 5!").as_str().into());
         }
+
+        web_sys::console::log_1(&format!("clean stage 5 done!").as_str().into());
 
         Aenderungen {
             gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
