@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AX_Fortfuehrungsauftrag
+	xmlns="http://www.adv-online.de/namespaces/adv/gid/7.1"
+	xmlns:adv="http://www.adv-online.de/namespaces/adv/gid/7.1"
+	xmlns:fes="http://www.opengis.net/fes/2.0"
+	xmlns:gco="http://www.isotc211.org/2005/gco"
+	xmlns:gmd="http://www.isotc211.org/2005/gmd"
+	xmlns:gml="http://www.opengis.net/gml/3.2"
+	xmlns:wfs="http://www.opengis.net/wfs/2.0"
+	xmlns:wfsext="http://www.adv-online.de/namespaces/adv/gid/wfsext/2.0"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.adv-online.de/namespaces/adv/gid/7.1 NAS-Operationen.xsd ">
+	<empfaenger>
+		<AA_Empfaenger>
+			<direkt>true</direkt>
+		</AA_Empfaenger>
+	</empfaenger>
+	<ausgabeform>application/xml</ausgabeform>
+	<koordinatenangaben>
+		<AA_Koordinatenreferenzsystemangaben>
+			<crs xlink:href="urn:adv:crs:{crs}"></crs>
+			<anzahlDerNachkommastellen>3</anzahlDerNachkommastellen>
+			<standard>true</standard>
+		</AA_Koordinatenreferenzsystemangaben>
+	</koordinatenangaben>
+	<geaenderteObjekte>
+		<wfs:Transaction version="2.0.2" service="WFS">
+    
+            {wfs_delete}
+			
+            {wfs_replace}
+ 
+            {wfs_insert} 
+            
+		</wfs:Transaction>
+	</geaenderteObjekte>
+	
+	<profilkennung>{profilkennung}</profilkennung>
+	<antragsnummer>{antragsnr}</antragsnummer>
+	<auftragsnummer>{antragsnr}</auftragsnummer>
+	<impliziteLoeschungDerReservierung>4000</impliziteLoeschungDerReservierung>
+	<verarbeitungsart>2000</verarbeitungsart>
+	<geometriebehandlung>true</geometriebehandlung>
+	<mitTemporaeremArbeitsbereich>false</mitTemporaeremArbeitsbereich>
+	<mitObjektenImFortfuehrungsgebiet>false</mitObjektenImFortfuehrungsgebiet>
+	<mitFortfuehrungsnachweis>true</mitFortfuehrungsnachweis>
+</AX_Fortfuehrungsauftrag>
