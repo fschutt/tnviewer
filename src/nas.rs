@@ -1298,8 +1298,8 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
-    let a = translate_to_geo_poly(a);
-    let b = translate_to_geo_poly(b);
+    let a = translate_to_geo_poly(&a.round_to_3dec());
+    let b = translate_to_geo_poly(&b.round_to_3dec());
     let intersect = a.intersection(&b);
     translate_from_geo_poly(&intersect)
 }

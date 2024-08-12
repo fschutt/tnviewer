@@ -809,11 +809,11 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if first.equals(i) {
             continue;
         }
-        let a = translate_to_geo_poly(&first);
-        let b = translate_to_geo_poly(i);
+        let a = translate_to_geo_poly(&first.round_to_3dec());
+        let b = translate_to_geo_poly(&i.round_to_3dec());
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
-        let mut new = SvgPolygon {
+        let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
                 s.outer_rings.clone().into_iter()
             }).collect(),
@@ -829,12 +829,10 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
 
 pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
     use geo::BooleanOps;
-    web_sys::console::log_1(&format!("join_polys 1!").as_str().into());            
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
         None => return None,
     };
-    web_sys::console::log_1(&format!("join_polys 2!").as_str().into());            
     for i in polys.iter().skip(1) {
         if first.equals(i) {
             continue;
@@ -844,16 +842,11 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         }
         let fi = first.round_to_3dec();
         let ii = i.round_to_3dec();
-        web_sys::console::log_1(&format!("join_polys 3!").as_str().into());              
         let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&ii);
-        web_sys::console::log_1(&format!("join_polys 4!").as_str().into());     
-        web_sys::console::log_1(&serde_json::to_string(&fi).unwrap_or_default().as_str().into());            
-        web_sys::console::log_1(&serde_json::to_string(&ii).unwrap_or_default().as_str().into());       
+        let b = translate_to_geo_poly(&ii);     
         let join = a.union(&b);
-        web_sys::console::log_1(&format!("join_polys 5!").as_str().into());            
         let s = translate_from_geo_poly(&join);
-        let mut new = SvgPolygon {
+        let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
                 s.outer_rings.clone().into_iter()
             }).collect(),
@@ -861,11 +854,9 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        web_sys::console::log_1(&format!("join_polys 6!").as_str().into());            
         first = new;
     }
 
-    web_sys::console::log_1(&format!("join_polys 7!").as_str().into());            
     Some(first)
 }
 
@@ -876,11 +867,11 @@ pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        let a = translate_to_geo_poly(&first);
-        let b = translate_to_geo_poly(i);
+        let a = translate_to_geo_poly(&first.round_to_3dec());
+        let b = translate_to_geo_poly(&i.round_to_3dec());
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
-        let mut new = SvgPolygon {
+        let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
                 s.outer_rings.clone().into_iter()
             }).collect(),
