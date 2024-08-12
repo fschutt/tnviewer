@@ -794,6 +794,31 @@ impl FlurstueckeInPdfSpace {
     }
 }
 
+pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
+    use geo::BooleanOps;
+    let mut first = original.clone();
+    for i in subtract.iter() {
+        if first.equals(i) {
+            continue;
+        }
+        let a = translate_to_geo_poly(&first);
+        let b = translate_to_geo_poly(i);
+        let join = a.difference(&b);
+        let s = translate_from_geo_poly(&join);
+        let mut new = SvgPolygon {
+            outer_rings: s.iter().flat_map(|s| {
+                s.outer_rings.clone().into_iter()
+            }).collect(),
+            inner_rings: s.iter().flat_map(|s| {
+                s.inner_rings.clone().into_iter()
+            }).collect(),
+        };
+        first = new;
+    }
+
+    first
+}
+
 pub fn join_polys(polys: &[SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {

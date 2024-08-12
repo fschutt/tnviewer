@@ -3,7 +3,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon}, pdf::{difference_polys, join_polys, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{difference_polys, join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1104,10 +1104,15 @@ pub struct AenderungenClean {
 
 impl AenderungenClean {
     pub fn get_aenderungen_intersections(&self) -> Vec<AenderungenIntersection> {
+        
         let mut is = Vec::new();
+        let mut stay_polys = BTreeMap::new();
+        
         for (neu_kuerzel, megapoly) in self.map.iter() {
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&megapoly.get_rect());
+            
             for potentially_intersecting in all_touching_flst_parts {
+                
                 let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
                     Some(s) => s.clone(),
                     None => continue,
@@ -1120,17 +1125,54 @@ impl AenderungenClean {
                     Some(s) => s,
                     None => continue,
                 };
-                for intersect_poly in intersect_polys(&potentially_intersecting.poly, megapoly) {
+
+                let q = intersect_polys(&potentially_intersecting.poly, megapoly)
+                .iter().map(|v| v.round_to_3dec()).collect::<Vec<_>>();
+                
+                let mut subtract_polys = Vec::new();
+                for intersect_poly in q.iter() {
+                    subtract_polys.push(intersect_poly);
                     is.push(AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
-                        poly_cut: intersect_poly,
+                        poly_cut: intersect_poly.clone(),
                     });
                 }
-                
+
+                stay_polys.entry(flurstueck_id)
+                .and_modify(|sp: &mut TaggedPolygon| {
+                    sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
+                })
+                .or_insert_with(|| {
+                    TaggedPolygon {
+                        attributes: potentially_intersecting.attributes.clone(),
+                        poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
+                    }
+                });
             }
         }
+
+        for (flurstueck_id, flst_rest) in stay_polys {
+            if flst_rest.poly.is_empty() {
+                continue;
+            }
+            let ebene = match flst_rest.attributes.get("AX_Ebene") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+            let alt_kuerzel = match flst_rest.get_auto_kuerzel(&ebene) {
+                Some(s) => s,
+                None => continue,
+            };
+            is.push(AenderungenIntersection {
+                alt: alt_kuerzel.clone(),
+                neu: alt_kuerzel.clone(),
+                flst_id: flurstueck_id.clone(),
+                poly_cut: flst_rest.poly.round_to_3dec(),
+            });
+        }
+
         is
     }
 }
@@ -1347,6 +1389,7 @@ impl Aenderungen {
 
     }
 
+    // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
     pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
@@ -1383,7 +1426,7 @@ impl Aenderungen {
 
     pub fn clean_stage4(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
-        let mut changed_mut = self.clone();
+        let mut changed_mut = self.round_to_3decimal();
 
         // 2. Änderungen mergen und kombinieren nach Typ
         let mut aenderungen_merged_by_typ = BTreeMap::new();
@@ -1414,18 +1457,16 @@ impl Aenderungen {
     pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
         web_sys::console::log_1(&format!("STAGE 5").as_str().into());
-
-        let mut changed_mut = self.clone();
+        
+        let mut changed_mut = self.round_to_3decimal();
 
         let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
         .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
         .collect::<BTreeMap<_, _>>();
 
-        web_sys::console::log_1(&
-            format!("aenderungen_merged_by_typ: {:?}", aenderungen_merged_by_typ.keys().collect::<Vec<_>>()
-        ).as_str().into());
-
-        // 3. Alle Teilflächen oder komplett geänderte Flächen: In Änderungen einfügen
+        let aenderungen_merged_by_typ_clone = aenderungen_merged_by_typ.clone();
+        
+        // 3. Alle komplett geänderte Flächen: In Änderungen einfügen
         for (flst_part_id, neue_nutzung) in changed_mut.na_definiert.iter() {
             let flst_part = match split_nas.get_flst_part_by_id(&flst_part_id) {
                 Some(s) => s.clone(),
@@ -1434,18 +1475,26 @@ impl Aenderungen {
 
             web_sys::console::log_1(&format!("getting flst part {flst_part_id}!").as_str().into());
 
+            let flst_part_rect = flst_part.get_rect();
+
+            // Teilflächen abziehen vom Flurstück, die von Änderungen überlappt werden
+            let aenderungen_overlaps_polygon = 
+                aenderungen_merged_by_typ_clone.values()
+                .filter(|f| f.get_rect().overlaps_rect(&flst_part_rect))
+                .collect::<Vec<_>>();
+
+            let poly = subtract_from_poly(&flst_part.poly, &aenderungen_overlaps_polygon);
+
             aenderungen_merged_by_typ
             .entry(neue_nutzung.clone())
             .and_modify(|ep: &mut SvgPolygon| { 
                 web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
-                *ep = join_polys(&[ep.clone(), flst_part.poly.clone()]); 
+                *ep = join_polys(&[ep.clone(), poly.clone()]); 
                 web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());
             
             })
-            .or_insert_with(|| flst_part.poly.clone());
+            .or_insert_with(|| poly);
         }
-
-        web_sys::console::log_1(&format!("ok finished: keys = {:?}", aenderungen_merged_by_typ.keys().collect::<Vec<_>>()).as_str().into());
 
         Aenderungen {
             gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
@@ -1462,7 +1511,7 @@ impl Aenderungen {
 
     pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
-        let mut changed_mut = self.clone();
+        let mut changed_mut = self.round_to_3decimal();
 
         let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
         .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
@@ -1475,9 +1524,9 @@ impl Aenderungen {
 
         let default = Vec::new();
         for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
-            for p in higher_ranked_polys.get(kuerzel).unwrap_or(&default) {
-                *megapoly = difference_polys(&[megapoly.clone(), p.clone()]);
-            }
+            let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
+            let hr = hr.iter().collect::<Vec<_>>();
+            *megapoly = subtract_from_poly(&megapoly, &hr);
         }
 
         Aenderungen {
@@ -1523,6 +1572,8 @@ impl Aenderungen {
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 
         let changed_mut = changed_mut.clean_stage5(split_nas, log);
+
+        let changed_mut = changed_mut.clean_stage6(split_nas, log);
 
         let qt = split_nas.create_quadtree();
 
@@ -1672,7 +1723,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter().rev() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
         let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
-        let new_poly_id_first_chars = new_poly_id_first_chars.chars().rev().take(6).collect::<String>();
+        // let new_poly_id_first_chars = new_poly_id_first_chars.chars().rev().take(6).collect::<String>();
         html.push_str(&format!(
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <div style='display:flex;'>

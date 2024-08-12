@@ -703,6 +703,11 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn is_empty(&self) -> bool {
+        self.outer_rings.is_empty() &&
+        self.inner_rings.is_empty()
+    }
+    
     pub fn equals(&self, other: &Self) -> bool {
         self.outer_rings.len() == other.outer_rings.len() &&
         self.inner_rings.len() == other.inner_rings.len() &&
