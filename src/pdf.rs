@@ -249,6 +249,14 @@ pub struct ProjektInfo {
     pub gemeinde: String,
     pub gemarkung: String,
     pub gemarkung_nr: String,
+    #[serde(default)]
+    pub bearbeitung_beendet_am: String,
+    #[serde(default)]
+    pub alkis_aktualitaet: String,
+    #[serde(default)]
+    pub orthofoto_datum: String,
+    #[serde(default)]
+    pub gis_feldbloecke_datum: String,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]

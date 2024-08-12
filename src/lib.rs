@@ -22,6 +22,8 @@ pub mod zip;
 pub mod geograf;
 pub mod david;
 
+pub const ARIAL_TTF: &[u8] = include_bytes!("./Arial.ttf");
+
 #[wasm_bindgen]
 pub fn get_new_poly_id() -> String {
     crate::uuid_wasm::uuid()

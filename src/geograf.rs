@@ -1,7 +1,7 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
 use dxf::{Vector, XData, XDataItem};
-use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, Rgb};
+use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::JsString;
@@ -149,10 +149,12 @@ pub fn export_aenderungen_geograf(
             &splitflaechen, 
             &split_nas, 
             &nas_xml,
-            None
+            None,
+            1,
+            1,
         );
     } else {
-        for (id, r) in risse.iter() {
+        for (i, (id, r)) in risse.iter().enumerate() {
             web_sys::console::log_1(&format!("RISSE EXTENTE 1 {id}").as_str().into());
             let ex = risse_extente.get(id);
             web_sys::console::log_1(&format!("EX 1 {ex:?}").as_str().into());
@@ -181,7 +183,9 @@ pub fn export_aenderungen_geograf(
                 &splitflaechen_for_riss, 
                 &split_nas, 
                 &nas_xml,
-                Some(extent_rect.clone())
+                Some(extent_rect.clone()),
+                i + 1,
+                risse.len(),
             );
         }
     }
@@ -203,32 +207,7 @@ pub fn calc_splitflaechen(
     original_xml: &NasXMLFile,
 ) -> Vec<AenderungenIntersection> {
 
-    let changed_mut = aenderungen.clean_stage1(split_nas, &mut Vec::new());
-
-    let changed_mut = changed_mut.clean_stage2(split_nas, &mut Vec::new());
-
-    let changed_mut = changed_mut.clean_stage3(original_xml, &mut Vec::new());
-    
-    let changed_mut = changed_mut.clean_stage4(split_nas, &mut Vec::new());
-
-    let changed_mut = changed_mut.clean_stage5(split_nas, &mut Vec::new());
-
-    let changed_mut = changed_mut.clean_stage6(split_nas, &mut Vec::new());
-
-    let qt = split_nas.create_quadtree();
-
-    let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-    .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-    .collect::<BTreeMap<_, _>>();
-
-    let aenderungen = AenderungenClean {
-        nas_xml_quadtree: qt,
-        map: aenderungen_merged_by_typ,
-    };
-
-    /*
     let aenderungen = aenderungen
-        .clean_stage3(split_nas, &mut Vec::new())
         .clean_stage4(split_nas, &mut Vec::new())
         .clean_stage5(split_nas, &mut Vec::new())
         .clean_stage6(split_nas, &mut Vec::new());
@@ -242,7 +221,7 @@ pub fn calc_splitflaechen(
     let aenderungen = AenderungenClean {
         nas_xml_quadtree: qt,
         map: aenderungen_merged_by_typ,
-    };*/
+    };
 
     let cs = aenderungen.get_aenderungen_intersections();
 
@@ -296,12 +275,11 @@ pub fn export_splitflaechen(
     split_nas: &SplitNasXml,
     nas_xml: &NasXMLFile,
     extent_rect: Option<Rect>,
+    num_riss: usize,
+    total_risse: usize,
 ) {
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
-
-    let header = generate_header_pdf(info, split_nas, extent_rect);
-    files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
     let aenderungen_texte_bleibt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_bleibt()).collect::<Vec<_>>();
@@ -314,6 +292,9 @@ pub fn export_splitflaechen(
     let aenderungen_texte_neu = splitflaechen
         .iter().filter_map(|sf| sf.get_text_neu()).collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Neu_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
+
+    let header = generate_header_pdf(info, split_nas, extent_rect, num_riss, total_risse);
+    files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, nas_xml, split_nas);
     if !aenderungen_rote_linien.is_empty() {
@@ -340,12 +321,33 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     Vec::new()
 }
 
+fn calc_text_width_pt(text: &String, font_scale: f32, font: &dyn ab_glyph::Font) -> Pt {
+    // vertical scale of one text box
+    let vert_scale = font.height_unscaled();
+
+    // calculate the width of the text in unscaled units
+    let sum_width: f32 = text
+        .chars()
+        .map(|ch| font.h_advance_unscaled(font.glyph_id(ch)))
+        .sum();
+
+    Pt(sum_width as f32 / (vert_scale as f32 / font_scale))
+}
+
 pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u8> {
+
+    use ab_glyph::FontRef;
 
     let text = format!("s. Anschlussriss ({num} / {total})");
 
-    let text_w = 35.0; // Mm
+    let face = match FontRef::try_from_slice(crate::ARIAL_TTF) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
     let text_h = 3.0; // Mm
+    let text_width: Mm = calc_text_width_pt(&text, Mm(text_h).into_pt().0, &face).into();
+    let text_w = text_width.0 + 4.0; // Mm
     let padding = 1.0;
 
     let (w, h) = match vert {
@@ -365,8 +367,11 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
         .. Default::default()
     }));
 
+    let arial = match doc.add_external_font(crate::ARIAL_TTF) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
 
-    let helvetica = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
     let page1 = doc.get_page(page1);
     let layer1 = page1.get_layer(layer1);
 
@@ -389,7 +394,7 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
     layer1.add_polygon(poly);
 
     layer1.begin_text_section();
-    layer1.set_font(&helvetica, Mm(text_h).into_pt().0);
+    layer1.set_font(&arial, Mm(text_h).into_pt().0);
 
     if vert {
         layer1.set_text_matrix(printpdf::TextMatrix::TranslateRotate(
@@ -399,7 +404,7 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
         layer1.set_text_cursor(Mm(padding * 1.5), Mm(padding * 1.5));
     }
 
-    layer1.write_text(&text, &helvetica);
+    layer1.write_text(&text, &arial);
     layer1.end_text_section();
 
     doc.save_to_bytes().unwrap_or_default()
@@ -409,6 +414,8 @@ pub fn generate_header_pdf(
     info: &ProjektInfo,
     split_nas: &SplitNasXml,
     extent_rect: Option<Rect>,
+    num_riss: usize,
+    total_risse: usize,
 ) -> Vec<u8> {
 
     let target_gemarkung_nr = info.gemarkung_nr.parse::<usize>().unwrap_or(0);
@@ -445,11 +452,114 @@ pub fn generate_header_pdf(
     }));
 
     let times_roman = doc.add_builtin_font(BuiltinFont::TimesRoman).unwrap();
+    let times_roman_bold = doc.add_builtin_font(BuiltinFont::TimesBold).unwrap();
     let page1 = doc.get_page(page1);
     let layer1 = page1.get_layer(layer1);
-    let text = format!("Flur {}", fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "));
-    layer1.use_text(&text, Mm(3.0).into_pt().0, Mm(10.0), Mm(10.0), &times_roman);
-    layer1.set_text_cursor(Mm(10.0), Mm(10.0));
+
+    let header_font_size = 14.0; // pt
+    let medium_font_size = 10.0; // pt
+    let small_font_size = 8.0; // pt
+
+    let text = format!("Ergänzungsriss: Tatsächliche Nutzung ( {num_riss} / {total_risse} )");
+    layer1.use_text(&text, header_font_size, Mm(2.0), Mm(30.0), &times_roman_bold);    
+
+    let text = "Gemeinde:";
+    layer1.use_text(text, small_font_size, Mm(2.0), Mm(25.0), &times_roman);    
+
+    let text = "Gemarkung:";
+    layer1.use_text(text, small_font_size, Mm(2.0), Mm(17.0), &times_roman);    
+
+    let text = "Flur";
+    layer1.use_text(text, small_font_size, Mm(2.0), Mm(10.0), &times_roman);    
+
+    let text = "Instrument/Nr.";
+    layer1.use_text(text, small_font_size, Mm(2.0), Mm(3.0), &times_roman);    
+
+    let text = "Flurstücke";
+    layer1.use_text(text, small_font_size, Mm(20.0), Mm(10.0), &times_roman);    
+
+    let text = "Bearbeitung beendet am:";
+    layer1.use_text(text, small_font_size, Mm(62.0), Mm(25.0), &times_roman);    
+
+    let text = format!("Erstellt durch: {} ({})", info.erstellt_durch, info.beruf_kuerzel);
+    layer1.use_text(text, small_font_size, Mm(62.0), Mm(17.0), &times_roman);    
+
+    let text = "Vermessungsstelle";
+    layer1.use_text(text, small_font_size, Mm(62.0), Mm(10.0), &times_roman);    
+
+    let text = "Grenztermin vom";
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(25.0), &times_roman);    
+
+    let text = "Verwendete Vermessungsun-";
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(17.0), &times_roman);    
+    let text = "terlagen";
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(14.0), &times_roman);    
+
+    let text = format!("ALKIS ({})", info.alkis_aktualitaet);
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(10.0), &times_roman);    
+    let text = format!("Orthophoto ({})", info.orthofoto_datum);
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(6.0), &times_roman);    
+    let text = format!("GIS-Feldblöcke ({})", info.gis_feldbloecke_datum);
+    layer1.use_text(text, small_font_size, Mm(104.0), Mm(3.0), &times_roman);    
+
+    let text = "Archivblatt: *";
+    layer1.use_text(text, small_font_size, Mm(140.0), Mm(25.0), &times_roman);    
+
+    let text = "Antrags-Nr.: *";
+    layer1.use_text(text, small_font_size, Mm(140.0), Mm(17.0), &times_roman);    
+
+    let text = "Katasteramt:";
+    layer1.use_text(text, small_font_size, Mm(140.0), Mm(10.0), &times_roman);    
+
+    let text = info.gemeinde.trim();
+    layer1.use_text(text, medium_font_size, Mm(20.0), Mm(22.0), &times_roman);    
+
+    let text = format!("{} ({})", info.gemarkung.trim(), info.gemarkung_nr);
+    layer1.use_text(text, medium_font_size, Mm(20.0), Mm(14.0), &times_roman);    
+
+    let text = "diverse";
+    layer1.use_text(text, medium_font_size, Mm(37.0), Mm(7.0), &times_roman);    
+
+    let text = info.bearbeitung_beendet_am.trim();
+    layer1.use_text(text, medium_font_size, Mm(73.0), Mm(22.0), &times_roman);    
+
+    let text = info.vermessungsstelle.trim();
+    layer1.use_text(text, medium_font_size, Mm(68.0), Mm(2.0), &times_roman);    
+
+    let text = fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ");
+    layer1.use_text(&text, medium_font_size, Mm(10.0), Mm(10.0), &times_roman);    
+    
+    let lines = &[
+        ((0.0, 28.0), (139.0, 28.0)),
+        ((0.0, 20.0), (175.0, 20.0)),
+        ((0.0, 13.0), (105.0, 13.0)),
+        ((0.0, 6.0), (60.0, 6.0)),
+        ((139.0, 20.0), (175.0, 20.0)),
+
+        ((20.0, 13.0), (20.0, 6.0)),
+        ((60.0, 28.0), (60.0, 0.0)),
+        ((102.0, 28.0), (102.0, 0.0)),
+        ((139.0, 28.0), (139.0, 0.0)),
+    ];
+
+    layer1.set_outline_thickness(0.5);
+    layer1.set_outline_color(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+    for ((x0, y0), (x1, y1)) in lines.iter() {
+        layer1.add_line(printpdf::Line {
+            points: vec![
+                (printpdf::Point {
+                    x: Mm(*x0).into(),
+                    y: Mm(*y0).into(),
+                }, false),
+                (printpdf::Point {
+                    x: Mm(*x1).into(),
+                    y: Mm(*y1).into(),
+                }, false),
+            ],
+            is_closed: false,
+        })
+    }
+
     doc.save_to_bytes().unwrap_or_default()
 }
 

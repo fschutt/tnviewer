@@ -49,4 +49,5 @@ zip = { version = "2.1.5", default-features = false, features = ["deflate"] }
 dbase = { git = "https://github.com/fschutt/dbase-rs", default-features = false, rev = "e76b8aa74e97febc07a4eac39868d727bfccfa41" }
 web-sys = { version = "0.3.69", features = ["console"] }
 float-cmp = "0.9.0"
+ab_glyph = "0.2.28"
 
