@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet}, process::id};
+use std::{backtrace, collections::{BTreeMap, BTreeSet}, process::id};
 
 use nas::{parse_nas_xml, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
@@ -194,15 +194,22 @@ pub fn aenderungen_zu_geograf(
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };
 
-    crate::geograf::export_aenderungen_geograf(
-        &split_nas_xml,
-        &nas_xml,
-        &projekt_info,
-        &konfiguration,
-        &aenderungen,
-        &risse,
-        &risse_extente,
-    )
+    let result = std::panic::catch_unwind(|| {
+        crate::geograf::export_aenderungen_geograf(
+            &split_nas_xml,
+            &nas_xml,
+            &projekt_info,
+            &konfiguration,
+            &aenderungen,
+            &risse,
+            &risse_extente,
+        )
+    });
+
+    match result {
+        Ok(o) => o,
+        Err(e) => format!("{:?}", e).as_bytes().to_vec(),
+    }
 }
 
 
