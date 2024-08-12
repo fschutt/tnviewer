@@ -842,12 +842,14 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         if i.is_empty() {
             continue;
         }
+        let fi = first.round_to_3dec();
+        let ii = i.round_to_3dec();
         web_sys::console::log_1(&format!("join_polys 3!").as_str().into());              
-        let a = translate_to_geo_poly(&first);
-        let b = translate_to_geo_poly(i);
+        let a = translate_to_geo_poly(&fi);
+        let b = translate_to_geo_poly(&ii);
         web_sys::console::log_1(&format!("join_polys 4!").as_str().into());     
-        web_sys::console::log_1(&serde_json::to_string(&first).unwrap_or_default().as_str().into());            
-        web_sys::console::log_1(&serde_json::to_string(&i).unwrap_or_default().as_str().into());       
+        web_sys::console::log_1(&serde_json::to_string(&fi).unwrap_or_default().as_str().into());            
+        web_sys::console::log_1(&serde_json::to_string(&ii).unwrap_or_default().as_str().into());       
         let join = a.union(&b);
         web_sys::console::log_1(&format!("join_polys 5!").as_str().into());            
         let s = translate_from_geo_poly(&join);
