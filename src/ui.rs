@@ -1339,8 +1339,8 @@ pub struct DstToLine {
 }
 
 #[inline] fn sqr(x: f64) -> f64 { x * x }
-#[inline] fn dist2(v: SvgPoint, w: SvgPoint) -> f64 { sqr(v.x - w.x) + sqr(v.y - w.y) }
-#[inline] fn dist(v: SvgPoint, w: SvgPoint) -> f64 { dist2(v, w).sqrt() }
+#[inline] pub fn dist2(v: SvgPoint, w: SvgPoint) -> f64 { sqr(v.x - w.x) + sqr(v.y - w.y) }
+#[inline] pub fn dist(v: SvgPoint, w: SvgPoint) -> f64 { dist2(v, w).sqrt() }
 #[inline] pub fn dist_to_segment(p: SvgPoint, v: SvgPoint, w: SvgPoint) -> DstToLine { 
     
     let l2 = dist2(v, w);
@@ -1500,7 +1500,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line2).into_iter());
+                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2).into_iter());
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
@@ -1831,7 +1831,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter().rev() {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
         let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
-        // let new_poly_id_first_chars = new_poly_id_first_chars.chars().rev().take(6).collect::<String>();
+        let new_poly_id_first_chars = new_poly_id_first_chars.chars().take(10).collect::<String>();
         html.push_str(&format!(
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <div style='display:flex;'>

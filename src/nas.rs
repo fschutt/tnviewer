@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::io::Split;
 use float_cmp::approx_eq;
+use float_cmp::ApproxEq;
+use float_cmp::F64Margin;
 use geo::Area;
 use geo::CoordsIter;
 use polylabel_mini::LineString;
@@ -11,6 +13,7 @@ use quadtree_f32::ItemId;
 use quadtree_f32::QuadTree;
 use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
+use web_sys::console::log_1;
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 use crate::ui::dist_to_segment;
@@ -359,8 +362,10 @@ impl TaggedPolygon {
             return Vec::new(); // TODO - technically wrong, but produces OK results
         }
 
+        let mut startend_swapped = false;
         if pos_end < pos_start {
             std::mem::swap(&mut pos_start, &mut pos_end);
+            startend_swapped = true;
         }
 
         if pos_end.abs_diff(pos_start) < 2 {
@@ -402,7 +407,58 @@ impl TaggedPolygon {
         };
 
         ret.dedup_by(|a, b| a.equals(b));
-                
+        
+        if pos_end == pos_start {
+            return Vec::new();
+        }
+
+        if ret.len() > 1 {
+            match (l.points.get(pos_start), l.points.get(pos_end)) {
+                (
+                    Some(l_start), 
+                    Some(l_end), 
+                ) => {
+                    
+                    if l_start.equals(l_end) {
+                        return Vec::new();
+                    }
+    
+                    let mut line_normal = vec![*l_start];
+                    for p in ret.iter() {
+                        line_normal.push(*p);
+                    }
+                    line_normal.push(*l_end);
+                    let line_normal_length = line_normal.windows(2)
+                    .map(|pts| match &pts {
+                        &[a, b] => a.dist(b),
+                        _ => 0.0,
+                    }).sum::<f64>();
+
+                    let mut line_reverse = vec![*l_start];
+                    for p in ret.iter().rev() {
+                        line_reverse.push(*p);
+                    }
+                    line_reverse.push(*l_end);
+                    let line_reverse_length = line_reverse.windows(2)
+                    .map(|pts| match &pts {
+                        &[a, b] => a.dist(b),
+                        _ => 0.0,
+                    }).sum::<f64>();
+
+                    if startend_swapped {
+                        if line_normal_length < line_reverse_length {
+                            ret.reverse();
+                        }
+                    } else {
+                        if line_reverse_length < line_normal_length {
+                            ret.reverse();
+                        }
+                    }
+                },
+                _ => { }
+            }    
+        }
+
         ret
     }
 
@@ -790,6 +846,10 @@ pub struct SvgPoint {
 
 impl SvgPoint {
 
+    pub fn dist(&self, other: &Self) -> f64 {
+        crate::ui::dist(*self, *other)
+    }
+
     #[inline]
     pub fn round_f64(f: f64) -> f64 {
         (f * 1000.0).round() / 1000.0
@@ -1145,13 +1205,13 @@ impl NasXmlQuadTree {
     }
 
     // return = empty if points not on any flst line
-    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64) -> Vec<SvgPoint> {
+    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64, maxdst_line2: f64) -> Vec<SvgPoint> {
         let mut polys = self.get_overlapping_flst(&start.get_rect(maxdst_line));
         polys.extend(self.get_overlapping_flst(&end.get_rect(maxdst_line)));
         polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
         polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
         for p in polys {
-            let v = p.get_line_between_points(start, end, log, maxdst_line);
+            let v = p.get_line_between_points(start, end, log, maxdst_line2);
             if !v.is_empty() {
                 return v;
             }
