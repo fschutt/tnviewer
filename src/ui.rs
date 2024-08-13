@@ -1377,17 +1377,17 @@ impl Aenderungen {
                         let point_is_near_a = dist(*a, *p) < maxdst_point;
                         let point_is_near_b = dist(*b, *p) < maxdst_point;
                         if point_is_near_a {
-                            // log.push(format!("correcting point {:?} -> {:?}", *p, *a));
+                            log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
                             *p = *a;
                             modified = true;
                         } else if point_is_near_b {
-                            // log.push(format!("correcting point {:?} -> {:?}", *p, *b));
+                            log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *b));
                             *p = *b;
                             modified = true;
                         } else {
                             let nearest_point_on_line = dist_to_segment(*p, *a, *b);
                             if nearest_point_on_line.distance < maxdst_line {
-                                // log.push(format!("point on line {:?} -> {:?}", *p, nearest_point_on_line));
+                                log.push(format!("point on line {:?} -> {:?} (maxdst_line = {maxdst_line})", *p, nearest_point_on_line));
                                 *p = nearest_point_on_line.nearest_point;
                                 modified = true;
                             }
@@ -1421,6 +1421,8 @@ impl Aenderungen {
             (k.clone(), p.poly.outer_rings.clone())
         }).collect::<BTreeMap<_, _>>();
 
+        log.push(format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
+        let mut modified_counter = 0;
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
@@ -1450,10 +1452,13 @@ impl Aenderungen {
             }
             
             if (modified) {
+                modified_counter += 1;
                 *aenderungen_self_merge_lines.entry(id.clone())
                 .or_insert_with(|| Vec::new()) = polyneu.poly.outer_rings.clone();
             }
         }
+
+        log.push(format!("moved {modified_counter} points"));
         changed_mut.round_to_3decimal()
     }
 
