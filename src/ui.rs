@@ -1281,22 +1281,22 @@ pub struct AenderungenIntersection {
 impl AenderungenIntersection {
     
     pub fn get_text_alt(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
+        if self.alt == self.neu {
             return None;
         }
         Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
+            status: TextStatus::Old,
             kuerzel: self.alt.clone(),
             pos: self.poly_cut.get_label_pos(0.001)
         })
     }
 
     pub fn get_text_neu(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
+        if self.alt == self.neu {
             return None;
         }
         Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
+            status: TextStatus::New,
             kuerzel: self.neu.clone(),
             pos: {
                 let mut pos = self.poly_cut.get_label_pos(0.001);
@@ -1481,7 +1481,7 @@ impl Aenderungen {
     }
 
     // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
-    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>, maxdst_line: f64) -> Aenderungen {
+    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>, maxdst_line: f64, maxdst_line2: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
@@ -1500,7 +1500,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line).into_iter());
+                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line2).into_iter());
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
@@ -1675,7 +1675,7 @@ impl Aenderungen {
 
         let changed_mut = changed_mut.clean_stage2(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
 
-        let changed_mut = changed_mut.clean_stage3(original_xml, log, konfiguration.merge.stage3_maxdst_line);
+        let changed_mut = changed_mut.clean_stage3(original_xml, log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2);
         
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 

@@ -78,7 +78,7 @@ pub fn lib_nutzungen_saeubern(
     let clean = aenderungen
     .clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line)
     .clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line)
-    .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line);
+    .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2);
     
     log.push(format!("cleaned {} aenderungen!", aenderungen.na_polygone_neu.len()));
 
@@ -140,12 +140,12 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
     let clean = match id.as_str() {
         "1" => aenderungen.clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line),
         "2" => aenderungen.clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line),
-        "3" => aenderungen.clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line),
+        "3" => aenderungen.clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2),
         "13" => {
             aenderungen
             .clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line)
             .clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line)
-            .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line)
+            .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2)
         },
         "4" => aenderungen.clean_stage4(&split_nas_xml, &mut log),
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
