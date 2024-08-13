@@ -1367,37 +1367,42 @@ impl Aenderungen {
         String::new()
     }
 
-    fn correct_point(i: &[SvgLine], p: &mut SvgPoint, maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
-        let mut modified = false;
+    fn correct_point(p: &mut SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
+        let mut nearest_point = None;
         for line in i.iter() {
             let line: &crate::nas::SvgLine = line;
             for ab in line.points.windows(2) {
                 match &ab {
                     &[a, b] => {
-                        let point_is_near_a = dist(*a, *p) < maxdst_point;
-                        let point_is_near_b = dist(*b, *p) < maxdst_point;
-                        if point_is_near_a {
+                        let dist_ap = dist(*a, *p);
+                        let dist_bp = dist(*b, *p);
+                        let distance_to_current_nearest = nearest_point.as_ref()
+                        .map(|cur_near_p| dist(*cur_near_p, *p)).unwrap_or(0.0);
+
+                        if dist_ap < distance_to_current_nearest && dist_ap < maxdst_point {
                             log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
-                            *p = *a;
-                            modified = true;
-                        } else if point_is_near_b {
+                            nearest_point = Some(*a);
+                        } else if dist_bp < distance_to_current_nearest && dist_bp < maxdst_point {
                             log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *b));
-                            *p = *b;
-                            modified = true;
+                            nearest_point = Some(*b);
                         } else {
                             let nearest_point_on_line = dist_to_segment(*p, *a, *b);
-                            if nearest_point_on_line.distance < maxdst_line {
+                            if nearest_point_on_line.distance < distance_to_current_nearest && nearest_point_on_line.distance < maxdst_line {
                                 log.push(format!("point on line {:?} -> {:?} (maxdst_line = {maxdst_line})", *p, nearest_point_on_line));
-                                *p = nearest_point_on_line.nearest_point;
-                                modified = true;
+                                nearest_point = Some(nearest_point_on_line.nearest_point);
                             }
                         }
                     },
                     _ => { },
                 }
             }
-        }  
-        modified
+        }
+
+        if let Some(np) = nearest_point {
+            *p = np;
+        }
+
+        nearest_point.is_some()
     }
 
     pub fn round_to_3decimal(&self) -> Aenderungen {
@@ -1445,7 +1450,7 @@ impl Aenderungen {
                     .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(maxdst_point.max(maxdst_line))))
                     .collect::<Vec<SvgLine>>();
 
-                    if Self::correct_point(&overlapping_aenderungen_lines, p, maxdst_point, maxdst_line, log) {
+                    if Self::correct_point(p, &overlapping_aenderungen_lines, maxdst_point, maxdst_line, log) {
                         modified = true;
                     }
                 }
@@ -1474,8 +1479,8 @@ impl Aenderungen {
                 for p in line.points.iter_mut() {
                     let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
                     for poly in overlapping_flst_nutzungen.iter() {
-                        Self::correct_point(&poly.poly.outer_rings, p, maxdst_point, maxdst_line, log);
-                        Self::correct_point(&poly.poly.inner_rings, p, maxdst_point, maxdst_line, log);
+                        Self::correct_point(p, &poly.poly.outer_rings, maxdst_point, maxdst_line, log);
+                        Self::correct_point(p, &poly.poly.inner_rings, maxdst_point, maxdst_line, log);
                     }
                 }
             }
