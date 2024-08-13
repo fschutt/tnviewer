@@ -272,7 +272,13 @@ pub struct TaggedPolygon {
 
 impl TaggedPolygon {
 
-    fn check_line_for_points(l: &SvgLine, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
+    fn check_line_for_points(
+        l: &SvgLine, 
+        start: &SvgPoint, 
+        end: &SvgPoint, 
+        log: &mut Vec<String>,
+        dst: f64,
+    ) -> Vec<SvgPoint> {
 
         let start = start.round_to_3dec();
         let end = end.round_to_3dec();
@@ -305,7 +311,7 @@ impl TaggedPolygon {
                     None => return Vec::new(),
                 };
 
-                if nearest_line.3.distance > crate::ui::MAX_DST_POINT * 10.0 {
+                if nearest_line.3.distance > dst {
                     return Vec::new();
                 }
 
@@ -339,7 +345,7 @@ impl TaggedPolygon {
                     None => return Vec::new(),
                 };
                 
-                if nearest_line.3.distance > crate::ui::MAX_DST_POINT * 10.0 {
+                if nearest_line.3.distance > dst {
                     return Vec::new();
                 }
 
@@ -400,9 +406,9 @@ impl TaggedPolygon {
         ret
     }
 
-    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
+    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, dst: f64) -> Vec<SvgPoint> {
         for l in l {
-            let v = Self::check_line_for_points(l, start, end, log);
+            let v = Self::check_line_for_points(l, start, end, log, dst);
             if !v.is_empty() {
                 return v;
             }
@@ -410,12 +416,12 @@ impl TaggedPolygon {
         Vec::new()
     }
 
-    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>) -> Vec<SvgPoint> {
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log);
+    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64) -> Vec<SvgPoint> {
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line);
         if !v.is_empty() {
             return v;
         }
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log);
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line);
         if !v.is_empty() {
             return v;
         }
@@ -1139,13 +1145,13 @@ impl NasXmlQuadTree {
     }
 
     // return = empty if points not on any flst line
-    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, delta: f64, log: &mut Vec<String>) -> Vec<SvgPoint> {
-        let mut polys = self.get_overlapping_flst(&start.get_rect(delta));
-        polys.extend(self.get_overlapping_flst(&end.get_rect(delta)));
+    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64) -> Vec<SvgPoint> {
+        let mut polys = self.get_overlapping_flst(&start.get_rect(maxdst_line));
+        polys.extend(self.get_overlapping_flst(&end.get_rect(maxdst_line)));
         polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
         polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
         for p in polys {
-            let v = p.get_line_between_points(start, end, log);
+            let v = p.get_line_between_points(start, end, log, maxdst_line);
             if !v.is_empty() {
                 return v;
             }

@@ -940,6 +940,79 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
     let clean_stage7_test = {
         format!("
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 1</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(2);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 2</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(3);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 3</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 4</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 5</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(6);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 5</p>
+                    </div>
+                </label>
+            </div>
+
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.clean_stage7_test(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
@@ -1127,6 +1200,11 @@ impl AenderungenClean {
                 };
 
                 web_sys::console::log_1(&format!("is 1").as_str().into());
+                web_sys::console::log_1(&flurstueck_id.as_str().into());
+                web_sys::console::log_1(&ebene.as_str().into());
+                web_sys::console::log_1(&alt_kuerzel.as_str().into());
+                web_sys::console::log_1(&serde_json::to_string(&potentially_intersecting.poly).unwrap_or_default().as_str().into());
+                web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
 
                 let q = intersect_polys(&potentially_intersecting.poly, megapoly)
                 .iter().map(|v| v.round_to_3dec()).collect::<Vec<_>>();
@@ -1283,8 +1361,6 @@ pub struct DstToLine {
     }
 }
 
-pub const MAX_DST_POINT: f64 = 2.0;
-
 impl Aenderungen {
     pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
         // TODO: Welche beschrifteten Objekte gibt es?
@@ -1337,7 +1413,7 @@ impl Aenderungen {
         }
     }
 
-    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
 
         let mut aenderungen_self_merge_lines = 
@@ -1364,10 +1440,10 @@ impl Aenderungen {
                     .flat_map(|v| v.into_iter())
                     .collect::<Vec<_>>()
                     .into_iter()
-                    .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(MAX_DST_POINT * 2.0)))
+                    .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(maxdst_point.max(maxdst_line))))
                     .collect::<Vec<SvgLine>>();
 
-                    if Self::correct_point(&overlapping_aenderungen_lines, p, MAX_DST_POINT * 2.0, MAX_DST_POINT, log) {
+                    if Self::correct_point(&overlapping_aenderungen_lines, p, maxdst_point, maxdst_line, log) {
                         modified = true;
                     }
                 }
@@ -1381,7 +1457,7 @@ impl Aenderungen {
         changed_mut.round_to_3decimal()
     }
 
-    pub fn clean_stage2(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage2(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
 
         // log.push(format!("created split nas quadtree over {} items", qt.items));
@@ -1391,10 +1467,10 @@ impl Aenderungen {
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
-                    let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(MAX_DST_POINT * 2.0));
+                    let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
                     for poly in overlapping_flst_nutzungen.iter() {
-                        Self::correct_point(&poly.poly.outer_rings, p, MAX_DST_POINT * 2.0, MAX_DST_POINT,  log);
-                        Self::correct_point(&poly.poly.inner_rings, p, MAX_DST_POINT * 2.0, MAX_DST_POINT, log);
+                        Self::correct_point(&poly.poly.outer_rings, p, maxdst_point, maxdst_line, log);
+                        Self::correct_point(&poly.poly.inner_rings, p, maxdst_point, maxdst_line, log);
                     }
                 }
             }
@@ -1405,7 +1481,7 @@ impl Aenderungen {
     }
 
     // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
-    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>, maxdst_line: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
@@ -1424,7 +1500,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, MAX_DST_POINT, log).into_iter());
+                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line).into_iter());
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
@@ -1574,9 +1650,9 @@ impl Aenderungen {
     }
 
 
-    pub fn clean_stage7_test(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage7_test(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>, konfiguration: &Konfiguration) -> Aenderungen {
 
-        let aenderungen = self.clean(split_nas, original_xml, log);
+        let aenderungen = self.clean(split_nas, original_xml, log, konfiguration);
 
         let intersections = aenderungen.get_aenderungen_intersections();
 
@@ -1593,13 +1669,13 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
-    pub fn clean(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>) -> AenderungenClean {
+    pub fn clean(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>, konfiguration: &Konfiguration) -> AenderungenClean {
 
-        let changed_mut = self.clean_stage1(split_nas, log);
+        let changed_mut = self.clean_stage1(split_nas, log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
 
-        let changed_mut = changed_mut.clean_stage2(split_nas, log);
+        let changed_mut = changed_mut.clean_stage2(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
 
-        let changed_mut = changed_mut.clean_stage3(original_xml, log);
+        let changed_mut = changed_mut.clean_stage3(original_xml, log, konfiguration.merge.stage3_maxdst_line);
         
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 

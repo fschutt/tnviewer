@@ -34,6 +34,22 @@ pub struct Konfiguration {
     pub style: StyleConfig,
     #[serde(default)]
     pub pdf: PdfStyleConfig,
+    #[serde(default)]
+    pub merge: MergeConfig,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct MergeConfig {
+    #[serde(default)]
+    pub stage1_maxdst_point: f64,
+    #[serde(default)]
+    pub stage1_maxdst_line: f64,
+    #[serde(default)]
+    pub stage2_maxdst_point: f64,
+    #[serde(default)]
+    pub stage2_maxdst_line: f64,
+    #[serde(default)]
+    pub stage3_maxdst_line: f64,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

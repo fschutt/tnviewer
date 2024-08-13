@@ -85,6 +85,13 @@
         dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
         dop_layers: "bebb_dop20c"
       },
+      merge: {
+        stage1_maxdst_point: 4.0,
+        stage1_maxdst_line: 2.0,
+        stage2_maxdst_point: 4.0,
+        stage2_maxdst_line: 2.0,
+        stage3_maxdst_line: 20.0,
+      },
       style: {
         ebenen_ordnung: ["b","c","d","e","f","g","h","i","j","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","za","zb","zc","zd"],
           ebenen: {
@@ -1580,6 +1587,7 @@
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.configuration),
       );
 
       var n = null;
@@ -1603,17 +1611,20 @@
       if (!window.split_flurstuecke_original) {
         return;
       }
+      console.log("JS: CLEANING STAGE " + id);
       var f = lib_get_aenderungen_clean(
         "" + id, 
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.configuration),
       );
       try {
         n = JSON.parse(f);
       } catch (error) {
         console.error(error);
         console.log(n);
+        console.log(f);
         return;
       }
       if (n != null) {
@@ -1623,6 +1634,7 @@
       }
     }
 
+    window.cleanStage = cleanStage;
     window.changeStatus = changeStatus;
     window.changeNotiz = changeNotiz;
     window.activateConfigurationView = activateConfigurationView;

@@ -1,4 +1,4 @@
-use std::{backtrace, collections::{BTreeMap, BTreeSet}, process::id};
+use std::collections::{BTreeMap, BTreeSet};
 
 use nas::{parse_nas_xml, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
@@ -37,7 +37,13 @@ struct CleanStageResult {
 
 
 #[wasm_bindgen]
-pub fn lib_nutzungen_saeubern(id: Option<String>, aenderungen: String, split_nas_xml: String, nas_original: String) -> String {
+pub fn lib_nutzungen_saeubern(
+    id: Option<String>, 
+    aenderungen: String, 
+    split_nas_xml: String, 
+    nas_original: String,
+    konfiguration: String,
+) -> String {
     let id = id.and_then(|s| if s.is_empty() { None } else { Some(s.trim().to_string())});
 
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
@@ -55,6 +61,11 @@ pub fn lib_nutzungen_saeubern(id: Option<String>, aenderungen: String, split_nas
         Err(e) => return e.to_string(),
     };
 
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&konfiguration) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas_xml.crs) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
@@ -65,10 +76,9 @@ pub fn lib_nutzungen_saeubern(id: Option<String>, aenderungen: String, split_nas
     log.push(format!("cleaning {} aenderungen, id poly = {id:?}", aenderungen.na_polygone_neu.len()));
 
     let clean = aenderungen
-    .clean_stage1(&split_nas_xml, &mut log)
-    .clean_stage2(&split_nas_xml, &mut log)
-    .clean_stage3(&nas_original, &mut log);
-
+    .clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line)
+    .clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line)
+    .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line);
     
     log.push(format!("cleaned {} aenderungen!", aenderungen.na_polygone_neu.len()));
 
@@ -96,7 +106,7 @@ pub fn lib_nutzungen_saeubern(id: Option<String>, aenderungen: String, split_nas
 }
 
 #[wasm_bindgen]
-pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml: String, nas_original: String) -> String {
+pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml: String, nas_original: String, konfiguration: String) -> String {
     
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
@@ -113,6 +123,11 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
         Err(e) => return e.to_string(),
     };
 
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&konfiguration) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas_xml.crs) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
@@ -123,16 +138,19 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
     log.push(format!("cleaning {} aenderungen, stage = {id}", aenderungen.na_polygone_neu.len()));
 
     let clean = match id.as_str() {
+        "1" => aenderungen.clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line),
+        "2" => aenderungen.clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line),
+        "3" => aenderungen.clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line),
         "13" => {
             aenderungen
-            .clean_stage1(&split_nas_xml, &mut log)
-            .clean_stage2(&split_nas_xml, &mut log)
-            .clean_stage3(&nas_original, &mut log)
+            .clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line)
+            .clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line)
+            .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line)
         },
         "4" => aenderungen.clean_stage4(&split_nas_xml, &mut log),
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "6" => aenderungen.clean_stage6(&split_nas_xml, &mut log),
-        "7" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log),
+        "7" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
         _ => return format!("wrong id {id}"),
     };
 

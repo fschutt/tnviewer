@@ -181,6 +181,8 @@ function isLikeNone(x) {
     return x === undefined || x === null;
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
+
 function handleError(f, args) {
     try {
         return f.apply(this, args);
@@ -253,7 +255,6 @@ export function add_nadgrid(key, view) {
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -279,11 +280,12 @@ export function get_new_poly_id() {
 * @param {string} aenderungen
 * @param {string} split_nas_xml
 * @param {string} nas_original
+* @param {string} konfiguration
 * @returns {string}
 */
-export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_original) {
-    let deferred5_0;
-    let deferred5_1;
+export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_original, konfiguration) {
+    let deferred6_0;
+    let deferred6_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -294,15 +296,17 @@ export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_origi
         const len2 = WASM_VECTOR_LEN;
         const ptr3 = passStringToWasm0(nas_original, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len3 = WASM_VECTOR_LEN;
-        wasm.lib_nutzungen_saeubern(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        const ptr4 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len4 = WASM_VECTOR_LEN;
+        wasm.lib_nutzungen_saeubern(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred5_0 = r0;
-        deferred5_1 = r1;
+        deferred6_0 = r0;
+        deferred6_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_3(deferred5_0, deferred5_1, 1);
+        wasm.__wbindgen_export_3(deferred6_0, deferred6_1, 1);
     }
 }
 
@@ -311,11 +315,12 @@ export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_origi
 * @param {string} aenderungen
 * @param {string} split_nas_xml
 * @param {string} nas_original
+* @param {string} konfiguration
 * @returns {string}
 */
-export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original) {
-    let deferred5_0;
-    let deferred5_1;
+export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original, konfiguration) {
+    let deferred6_0;
+    let deferred6_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -326,15 +331,17 @@ export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_or
         const len2 = WASM_VECTOR_LEN;
         const ptr3 = passStringToWasm0(nas_original, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len3 = WASM_VECTOR_LEN;
-        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        const ptr4 = passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len4 = WASM_VECTOR_LEN;
+        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        deferred5_0 = r0;
-        deferred5_1 = r1;
+        deferred6_0 = r0;
+        deferred6_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_3(deferred5_0, deferred5_1, 1);
+        wasm.__wbindgen_export_3(deferred6_0, deferred6_1, 1);
     }
 }
 
@@ -1373,6 +1380,7 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_number_new = function(arg0) {
         const ret = arg0;
         return addHeapObject(ret);
@@ -1559,7 +1567,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_log_5bb5f88f245d7762 = function(arg0) {
         console.log(getObject(arg0));
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_memory = function() {
         const ret = wasm.memory;
         return addHeapObject(ret);
