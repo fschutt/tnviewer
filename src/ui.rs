@@ -1,3 +1,4 @@
+use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX};
 
 use serde_derive::{Serialize, Deserialize};
@@ -1377,7 +1378,7 @@ impl Aenderungen {
                         let dist_ap = dist(*a, *p);
                         let dist_bp = dist(*b, *p);
                         let distance_to_current_nearest = nearest_point.as_ref()
-                        .map(|cur_near_p| dist(*cur_near_p, *p)).unwrap_or(0.0);
+                        .map(|cur_near_p| dist(*cur_near_p, *p)).unwrap_or(f64::MAX);
 
                         if dist_ap < distance_to_current_nearest && dist_ap < maxdst_point {
                             log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
