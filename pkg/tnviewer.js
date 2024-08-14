@@ -253,6 +253,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -1168,8 +1169,6 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, risse_ext
         wasm.__wbindgen_export_3(deferred8_0, deferred8_1, 1);
     }
 }
-
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }

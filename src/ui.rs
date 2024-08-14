@@ -1200,17 +1200,9 @@ impl AenderungenClean {
                     None => continue,
                 };
 
-                web_sys::console::log_1(&format!("is 1").as_str().into());
-                web_sys::console::log_1(&flurstueck_id.as_str().into());
-                web_sys::console::log_1(&ebene.as_str().into());
-                web_sys::console::log_1(&alt_kuerzel.as_str().into());
-                web_sys::console::log_1(&serde_json::to_string(&potentially_intersecting.poly).unwrap_or_default().as_str().into());
-                web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
-
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = megapoly.round_to_3dec();
                 let only_touches = crate::nas::only_touches(&anew, &bnew);
-                web_sys::console::log_1(&format!("only touches: {only_touches:?}").as_str().into());
 
                 let mut q = Vec::new();
                 if !only_touches {
@@ -1219,8 +1211,6 @@ impl AenderungenClean {
                     .map(|v| v.round_to_3dec())
                     .collect();
                 }
-
-                web_sys::console::log_1(&format!("is 2").as_str().into());
 
                 let mut subtract_polys = Vec::new();
                 for intersect_poly in q.iter() {
@@ -1236,24 +1226,17 @@ impl AenderungenClean {
                 let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
                 stay_polys.entry(flurstueck_id)
                 .and_modify(|sp: &mut TaggedPolygon| {
-                    web_sys::console::log_1(&format!("is 2.1").as_str().into());
                     sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
-                    web_sys::console::log_1(&format!("is 2.2").as_str().into());
                 })
                 .or_insert_with(|| {
-                    web_sys::console::log_1(&format!("is 2.3").as_str().into());
                     let s = TaggedPolygon {
                         attributes: potentially_intersecting.attributes.clone(),
                         poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
                     };
-                    web_sys::console::log_1(&format!("is 2.4").as_str().into());
                     s
                 });
             }
         }
-
-        web_sys::console::log_1(&format!("is 5").as_str().into());
-
         
         for (flurstueck_id, flst_rest) in stay_polys {
             if flst_rest.poly.is_empty() {
@@ -1607,26 +1590,21 @@ impl Aenderungen {
                 None => continue,
             };
             
-            web_sys::console::log_1(&format!("stage 4 2").as_str().into());
-
             aenderungen_merged_by_typ
             .entry(kuerzel)
             .and_modify(|ep: &mut SvgPolygon| {
-                web_sys::console::log_1(&format!("stage 4 4").as_str().into());
                 let a = ep.round_to_3dec();
                 let b = polyneu.poly.round_to_3dec();
-                web_sys::console::log_1(&serde_json::to_string(&a).unwrap_or_default().as_str().into());
-                web_sys::console::log_1(&serde_json::to_string(&b).unwrap_or_default().as_str().into());
                 if let Some(e) = join_polys(&[a, b]) {
                     *ep = e;
                 }
-                web_sys::console::log_1(&format!("stage 4 5").as_str().into());
             })
             .or_insert_with(|| {
-                web_sys::console::log_1(&format!("stage 4 3").as_str().into());
                 polyneu.poly.round_to_3dec()
             });
         }
+
+        web_sys::console::log_1(&format!("stage 4 fertig").as_str().into());
 
         Aenderungen {
             gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
@@ -1652,8 +1630,6 @@ impl Aenderungen {
 
         let aenderungen_merged_by_typ_clone = aenderungen_merged_by_typ.clone();
         
-        web_sys::console::log_1(&format!("clean stage 5 1!").as_str().into());
-
         // 3. Alle komplett geänderte Flächen: In Änderungen einfügen
         for (flst_part_id, neue_nutzung) in changed_mut.na_definiert.iter() {
             let flst_part = match split_nas.get_flst_part_by_id(&flst_part_id) {
@@ -1661,11 +1637,7 @@ impl Aenderungen {
                 None => continue,
             };
 
-            web_sys::console::log_1(&format!("getting flst part {flst_part_id}!").as_str().into());
-
             let flst_part_rect = flst_part.get_rect();
-
-            web_sys::console::log_1(&format!("clean stage 5 2!").as_str().into());
 
             // Teilflächen abziehen vom Flurstück, die von Änderungen überlappt werden
             let aenderungen_overlaps_polygon = 
@@ -1673,24 +1645,16 @@ impl Aenderungen {
                 .filter(|f| f.get_rect().overlaps_rect(&flst_part_rect))
                 .collect::<Vec<_>>();
 
-            web_sys::console::log_1(&format!("clean stage 5 3!").as_str().into());
-
             let poly = subtract_from_poly(&flst_part.poly, &aenderungen_overlaps_polygon);
-
-            web_sys::console::log_1(&format!("clean stage 5 4!").as_str().into());
 
             aenderungen_merged_by_typ
             .entry(neue_nutzung.clone())
             .and_modify(|ep: &mut SvgPolygon| { 
-                web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
                 if let Some(e) = join_polys(&[ep.round_to_3dec(), poly.round_to_3dec()]) {
                     *ep = e;
                 }
-                web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());            
             })
             .or_insert_with(|| poly.round_to_3dec());
-
-            web_sys::console::log_1(&format!("clean stage 5 5!").as_str().into());
         }
 
         web_sys::console::log_1(&format!("clean stage 5 done!").as_str().into());

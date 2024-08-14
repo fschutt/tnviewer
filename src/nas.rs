@@ -1431,7 +1431,6 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
-    web_sys::console::log_1(&"func start...".into());
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
     // TODO: nas::only_touches crashes here???
@@ -1443,9 +1442,7 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
-    web_sys::console::log_1(&"intersecting...".into());
     let intersect = a.intersection(&b);
-    web_sys::console::log_1(&"intersected!".into());
     translate_from_geo_poly(&intersect)
 }
 
@@ -1511,15 +1508,6 @@ fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
 pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
     let is_1 = only_touches_internal(a, b);
     let is_2 = only_touches_internal(b, a);
-
-    web_sys::console::log_1(&format!("is1").as_str().into());
-    web_sys::console::log_1(&serde_json::to_string(&is_1).unwrap_or_default().as_str().into());
-
-    web_sys::console::log_1(&format!("is2").as_str().into());
-    web_sys::console::log_1(&serde_json::to_string(&is_2).unwrap_or_default().as_str().into());
-
-    web_sys::console::log_1(&format!("relations").as_str().into());
-
     // no intersection of the two polygons possible
     is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0
 }
@@ -1533,8 +1521,6 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     let mut points_touching_lines = 0;
     let mut points_inside_other_poly = 0;
 
-    web_sys::console::log_1(&format!("is3").as_str().into());
-
     for start_a in points_a.iter() {
         if point_is_on_any_line(start_a, &b) {
             points_touching_lines += 1;
@@ -1542,8 +1528,6 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
             points_inside_other_poly += 1;
         }
     }
-
-    web_sys::console::log_1(&format!("is4").as_str().into());
 
     SvgPolyInternalResult {
         points_touching_lines,

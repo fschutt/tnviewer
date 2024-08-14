@@ -178,11 +178,7 @@ pub fn export_aenderungen_geograf(
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
             
-            web_sys::console::log_1(&format!("SPLITFLAECHEN RISSE {id}").as_str().into());
-            for c in splitflaechen_for_riss.iter() {
-                web_sys::console::log_1(&format!("{c:?}").as_str().into());
-            }
-            web_sys::console::log_1(&format!("-----").as_str().into());
+            web_sys::console::log_1(&format!("EXPORTING SPLITFLAECHEN RISSE {id}: {} flächen", splitflaechen_for_riss.len()).as_str().into());
 
             export_splitflaechen(
                 &mut files, 
@@ -195,8 +191,11 @@ pub fn export_aenderungen_geograf(
                 i + 1,
                 risse.len(),
             );
+            web_sys::console::log_1(&format!("files exported for RISS {id}!").as_str().into());
         }
     }
+
+    web_sys::console::log_1(&format!("loop finished!").as_str().into());
 
     let dirs = files.iter().filter_map(|(dir, _, _)| dir.clone()).collect::<BTreeSet<_>>();
     let mut files_2 = dirs.iter().map(|d| (Some(d.clone()), PathBuf::new(), Vec::new())).collect::<Vec<_>>();
@@ -206,7 +205,13 @@ pub fn export_aenderungen_geograf(
     for f in files_names {
         web_sys::console::log_1(&format!("  {f}").as_str().into());
     }
-    write_files_to_zip(&files_2)
+    web_sys::console::log_1(&format!("writing {} files to zip!", files_2.len()).as_str().into());
+
+    let s = write_files_to_zip(&files_2);
+
+    web_sys::console::log_1(&format!("writing files to zip finished!").as_str().into());
+
+    s
 }
 
 pub fn calc_splitflaechen(
