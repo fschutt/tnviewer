@@ -1441,15 +1441,6 @@ pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
 
     web_sys::console::log_1(&format!("relations").as_str().into());
 
-    let a_geo = translate_to_geo_poly(a);
-    let b_geo = translate_to_geo_poly(b);
-    let relation = a_geo.relate(&b_geo);
-    web_sys::console::log_1(&format!("touches: {}", relation.is_touches()).as_str().into());
-    web_sys::console::log_1(&format!("equal: {}", relation.is_equal_topo()).as_str().into());
-    web_sys::console::log_1(&format!("overlaps: {}", relation.is_overlaps()).as_str().into());
-    web_sys::console::log_1(&format!("crosses: {}", relation.is_crosses()).as_str().into());
-    web_sys::console::log_1(&format!("disjoint: {}", relation.is_disjoint()).as_str().into());
-
     // no intersection of the two polygons possible
     is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0
 }
