@@ -301,33 +301,41 @@ pub fn export_splitflaechen(
     num_riss: usize,
     total_risse: usize,
 ) {
+    web_sys::console::log_1(&"legende...".into());
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
+    web_sys::console::log_1(&"texte bleibt...".into());
     let aenderungen_texte_bleibt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_bleibt()).collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Bleibt_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
 
+    web_sys::console::log_1(&"texte alt...".into());
     let aenderungen_texte_alt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_alt()).collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Alt_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
 
+    web_sys::console::log_1(&"texte neu...".into());
     let aenderungen_texte_neu = splitflaechen
         .iter().filter_map(|sf| sf.get_text_neu()).collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Neu_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
 
+    web_sys::console::log_1(&"blattkopf...".into());
     let header = generate_header_pdf(info, split_nas, extent_rect, num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
+    web_sys::console::log_1(&"rote linien...".into());
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, nas_xml, split_nas);
     if !aenderungen_rote_linien.is_empty() {
         append_shp(files, &format!("Rote_Linien_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }
     
+    web_sys::console::log_1(&"gexte linien...".into());
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&splitflaechen, nas_xml, split_nas);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("GeXte_Linien_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
+    web_sys::console::log_1(&"ok done!".into());
 }
 
 pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], nas: &NasXMLFile, split_nas: &SplitNasXml) -> Vec<SvgLine> {
