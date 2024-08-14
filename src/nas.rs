@@ -1410,29 +1410,52 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
-    if a.relate(&b).is_disjoint() {
+    let relate = a.relate(&b);
+    if relate.is_disjoint() {
+        return Vec::new();
+    }
+    if relate.is_touches() {
         return Vec::new();
     }
     let intersect = a.intersection(&b);
     translate_from_geo_poly(&intersect)
 }
 
-struct SvgPolyInternalResult {
-    points_touching_lines: usize,
-    points_outside_other_poly: usize,
-    points_inside_other_poly: usize,
-    points_exactly_on_other_poly: usize,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SvgPolyInternalResult {
+    pub points_touching_lines: usize,
+    pub points_outside_other_poly: usize,
+    pub points_inside_other_poly: usize,
+    pub points_exactly_on_other_poly: usize,
 }
 
 pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
     let is_1 = only_touches_internal(a, b);
     let is_2 = only_touches_internal(b, a);
+
+    web_sys::console::log_1(&format!("is1").as_str().into());
+    web_sys::console::log_1(&serde_json::to_string(&is_1).unwrap_or_default().as_str().into());
+
+    web_sys::console::log_1(&format!("is2").as_str().into());
+    web_sys::console::log_1(&serde_json::to_string(&is_2).unwrap_or_default().as_str().into());
+
+    web_sys::console::log_1(&format!("relations").as_str().into());
+
+    let a_geo = translate_to_geo_poly(a);
+    let b_geo = translate_to_geo_poly(b);
+    let relation = a_geo.relate(&b_geo);
+    web_sys::console::log_1(&format!("touches: {}", relation.is_touches()).as_str().into());
+    web_sys::console::log_1(&format!("equal: {}", relation.is_equal_topo()).as_str().into());
+    web_sys::console::log_1(&format!("overlaps: {}", relation.is_overlaps()).as_str().into());
+    web_sys::console::log_1(&format!("crosses: {}", relation.is_crosses()).as_str().into());
+    web_sys::console::log_1(&format!("disjoint: {}", relation.is_disjoint()).as_str().into());
+
     // no intersection of the two polygons possible
     is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0
 }
 
 // Only touches the other polygon but does not intersect
-fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalResult {
+pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalResult {
 
     let points_a = a.outer_rings.iter().flat_map(|l| l.points.iter()).collect::<Vec<_>>();
     let b_geo = translate_to_geo_poly(b);
