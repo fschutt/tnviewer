@@ -1535,6 +1535,8 @@ impl Aenderungen {
 
         let mut changed_mut = self.round_to_3decimal();
 
+        web_sys::console::log_1(&format!("stage 4 1").as_str().into());
+
         // 2. Änderungen mergen und kombinieren nach Typ
         let mut aenderungen_merged_by_typ = BTreeMap::new();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
@@ -1543,14 +1545,21 @@ impl Aenderungen {
                 None => continue,
             };
             
+            web_sys::console::log_1(&format!("stage 4 2").as_str().into());
+
             aenderungen_merged_by_typ
             .entry(kuerzel)
-            .and_modify(|ep: &mut SvgPolygon| { 
-                if let Some(e) = join_polys(&[ep.clone(), polyneu.poly.clone()]) {
+            .and_modify(|ep: &mut SvgPolygon| {
+                web_sys::console::log_1(&format!("stage 4 4").as_str().into());
+                if let Some(e) = join_polys(&[ep.round_to_3dec(), polyneu.poly.round_to_3dec()]) {
                     *ep = e;
                 }
+                web_sys::console::log_1(&format!("stage 4 5").as_str().into());
             })
-            .or_insert_with(|| polyneu.poly.clone());
+            .or_insert_with(|| {
+                web_sys::console::log_1(&format!("stage 4 3").as_str().into());
+                polyneu.poly.round_to_3dec()
+            });
         }
 
         Aenderungen {
@@ -1608,12 +1617,12 @@ impl Aenderungen {
             .entry(neue_nutzung.clone())
             .and_modify(|ep: &mut SvgPolygon| { 
                 web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
-                if let Some(e) = join_polys(&[ep.clone(), poly.clone()]) {
+                if let Some(e) = join_polys(&[ep.round_to_3dec(), poly.round_to_3dec()]) {
                     *ep = e;
                 }
                 web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());            
             })
-            .or_insert_with(|| poly);
+            .or_insert_with(|| poly.round_to_3dec());
 
             web_sys::console::log_1(&format!("clean stage 5 5!").as_str().into());
         }
