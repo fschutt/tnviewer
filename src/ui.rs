@@ -1424,8 +1424,65 @@ impl Aenderungen {
         }
     }
 
-    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
+    pub fn clean_stage0(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
+        
+        // deduplicate aenderungen
+        let mut na_polygone_neu = BTreeMap::new();
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter() {
+            let json = match serde_json::to_string(&polyneu) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+            na_polygone_neu.insert(json, (id.clone(), polyneu.clone()));
+        }
+        changed_mut.na_polygone_neu = na_polygone_neu.values().map(|(k, v)| (k.clone(), v.clone())).collect();
+
+        // join sequential points if 
+
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            for ol in polyneu.poly.outer_rings.iter_mut() {
+                *ol = clean_line(ol, maxdst_point);
+            }
+            for il in polyneu.poly.outer_rings.iter_mut() {
+                *il = clean_line(il, maxdst_point);
+            }
+        }
+
+        fn clean_line(l: &SvgLine, dst: f64) -> SvgLine {
+            let mut first_point = match l.points.get(0) {
+                Some(s) => s.clone(),
+                None => return SvgLine::default(),
+            };
+            let first_point_copy = first_point.clone();
+
+            let mut all_points = vec![first_point.clone()];
+            for p in l.points.iter().skip(1) {
+                if p.dist(&first_point) > dst {
+                    all_points.push(*p);
+                    first_point = *p;
+                }
+            }
+
+            // handle last point
+            if first_point.dist(&first_point_copy) > dst {
+                all_points.push(first_point.clone());
+            }
+
+            all_points.push(first_point_copy.clone());
+
+            all_points.dedup_by(|a, b| a.equals(b));
+            
+            SvgLine {
+                points: all_points,
+            }
+        }
+
+        changed_mut.round_to_3decimal()
+    }
+
+    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
+        let mut changed_mut = self.clean_stage0(split_nas, log, maxdst_point);
 
         let mut aenderungen_self_merge_lines = 
         changed_mut.na_polygone_neu.iter().map(|(k, p)| {

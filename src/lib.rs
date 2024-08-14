@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nas::{parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
@@ -42,30 +42,25 @@ struct GeoJSONResult {
     pub bounds: [[f64;2];2],
     pub touches1: bool,
     pub touches2: bool,
-    pub touches3: bool, 
-    pub touches4: bool, 
 }
 
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":426234.6351835563,"y":5919559.592510324},{"x":426255.3645130713,"y":5919596.348906284},{"x":426127.469,"y":5919683.694},{"x":426096.637,"y":5919640.835},{"x":426234.6351835563,"y":5919559.592510324}]}],"inner_rings":[]}"#;
-    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":421829.465,"y":5918236.943},{"x":421833.276,"y":5918235.546},{"x":421835.378,"y":5918238.625},{"x":421838.618,"y":5918245.866},{"x":421838.991,"y":5918257.692},{"x":421834.815,"y":5918258.561},{"x":421832.017,"y":5918256.561},{"x":421829.606,"y":5918250.907},{"x":421828.901,"y":5918246.026},{"x":421828.113,"y":5918241.503},{"x":421829.465,"y":5918236.943}]},{"points":[{"x":425010.081,"y":5920092.033},{"x":425017.025,"y":5920131.014},{"x":425024.609,"y":5920169.648},{"x":424960.226,"y":5920180.291},{"x":424942.959,"y":5920181.802},{"x":424939.324,"y":5920176.496},{"x":424932.504,"y":5920161.409},{"x":424924.187,"y":5920133.53},{"x":424917.659,"y":5920106.252},{"x":425010.081,"y":5920092.033}]},{"points":[{"x":426145.6,"y":5919597.265},{"x":426159.012,"y":5919588.43},{"x":426175.486,"y":5919575.901},{"x":426182.33,"y":5919563.167},{"x":426179.948,"y":5919554.362},{"x":426179.967,"y":5919554.353},{"x":426220.937,"y":5919535.308},{"x":426229.95,"y":5919551.286},{"x":426224.024,"y":5919550.067},{"x":426216.763,"y":5919553.204},{"x":426201.463,"y":5919566.782},{"x":426168.363,"y":5919593.62},{"x":426149.943,"y":5919609.453},{"x":426145.163,"y":5919609.278},{"x":426141.522,"y":5919604.443},{"x":426145.6,"y":5919597.265}]}],"inner_rings":[]}"#;
-    
-    let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1).unwrap_or_default();
-    let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2).unwrap_or_default();
-    let s3 = s1.translate_y(-10.0);
+    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423764.291,"y":5919196.118},{"x":423775.522,"y":5919197.725},{"x":423792.203,"y":5919190.111},{"x":423809.157,"y":5919222.507},{"x":423803.388,"y":5919223.28},{"x":423792.142,"y":5919224.942},{"x":423738.189,"y":5919234.985},{"x":423733.427,"y":5919220.915},{"x":423732.251,"y":5919217.019},{"x":423732.175,"y":5919216.699},{"x":423729.44,"y":5919208.092},{"x":423764.291,"y":5919196.118}]}],"inner_rings":[]}"#;
+    let poly_string2 = "".trim();
+    let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
     let touches1 = nas::only_touches(&s1, &s2);
     let touches2 = nas::only_touches(&s2, &s1);
-    let touches3 = nas::only_touches(&s2, &s3);
-    let touches4 = nas::only_touches(&s3, &s2);
+
+    // let intersection = nas::intersect_polys(&s1, &s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
-    let s3 = crate::pdf::reproject_poly_back_into_latlon(&s3, proj).unwrap_or_default();
 
-    let s = crate::nas::tagged_polys_to_featurecollection(&[
+    let mut v = vec![
         TaggedPolygon {
             poly: s1.clone(),
             attributes: BTreeMap::new(),
@@ -74,19 +69,21 @@ pub fn get_problem_geojson() -> String {
             poly: s2,
             attributes: BTreeMap::new(),
         },
-        TaggedPolygon {
-            poly: s3,
-            attributes: BTreeMap::new(),
-        },
-    ]);
+    ];
+
+    /*
+    for q in intersection.iter() {
+        v.push(TaggedPolygon { poly: q.clone(), attributes: BTreeMap::new() });
+    }
+    */
+
+    let s = crate::nas::tagged_polys_to_featurecollection(&v);
 
     serde_json::to_string(&GeoJSONResult {
         geojson: s,
         bounds: s1.get_fit_bounds(),
         touches1,
         touches2,
-        touches3,
-        touches4,
     }).unwrap_or_default()
 }
 
