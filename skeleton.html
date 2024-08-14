@@ -1130,9 +1130,39 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
+
+    function addProblemGeoJSON(map) {
+      let j = JSON.parse(get_problem_geojson());
+      let geojson = JSON.parse(j.geojson);
+      let bounds = j.bounds;
+      console.log(j.touches1);
+      console.log(j.touches2);
+      console.log(j.touches3);
+      console.log(j.touches4);
+      var ml = null;
+      var style = {
+        "color": "#ff0000",
+        "fillColor": "#ff0000",
+        "weight": 0.0,
+        "opacity": 0.8,
+        "fillOpacity": 0.8
+      };
+      if (L.geoJSON) {
+        ml = L.geoJSON(geojson, {
+          "style": style,
+        });
+      } else if (L.geoJson) {
+        ml = L.geoJson(geojson, {
+          "style": style,
+        });
+      }
+      map.addLayer(ml);
+      map.fitBounds(bounds);
+    }
 
     function replaceRibbon() {
       if (window.uidata.tab == '1' && (!window.split_flurstuecke || window.split_flurstuecke == null)) {

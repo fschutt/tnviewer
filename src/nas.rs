@@ -5,6 +5,7 @@ use float_cmp::ApproxEq;
 use float_cmp::F64Margin;
 use geo::Area;
 use geo::CoordsIter;
+use geo::Relate;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
@@ -765,6 +766,17 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn translate_y(&self, newy: f64) -> Self {
+        Self {
+            outer_rings: self.outer_rings.iter().map(|s| SvgLine {
+                points: s.points.iter().map(|p| SvgPoint { x: p.x, y: p.y + newy }).collect()
+            }).collect(),
+            inner_rings: self.inner_rings.iter().map(|s| SvgLine {
+                points: s.points.iter().map(|p| SvgPoint { x: p.x, y: p.y + newy }).collect()
+            }).collect(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.outer_rings.is_empty() &&
         self.inner_rings.is_empty()
@@ -1364,10 +1376,88 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
-    let a = translate_to_geo_poly(&a.round_to_3dec());
-    let b = translate_to_geo_poly(&b.round_to_3dec());
+    let a = a.round_to_3dec();
+    let b = b.round_to_3dec();
+    if only_touches(&a, &b) {
+        // no intersection if a only touches b
+        // prevents crash in intersection() function
+        return vec![];
+    }
+    let a = translate_to_geo_poly(&a);
+    let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
     translate_from_geo_poly(&intersect)
+}
+
+struct SvgPolyInternalResult {
+    points_touching_lines: usize,
+    points_outside_other_poly: usize,
+    points_inside_other_poly: usize,
+    points_exactly_on_other_poly: usize,
+}
+
+pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
+    let is_1 = only_touches_internal(a, b);
+    let is_2 = only_touches_internal(b, a);
+    // no intersection of the two polygons possible
+    is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0
+}
+
+// Only touches the other polygon but does not intersect
+fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalResult {
+
+    let points_a = a.outer_rings.iter().flat_map(|l| l.points.iter()).collect::<Vec<_>>();
+    let b_geo = translate_to_geo_poly(b);
+
+    let mut points_touching_lines = 0;
+    let mut points_outside_other_poly = 0;
+    let mut points_inside_other_poly = 0;
+    let mut points_exactly_on_other_poly = 0;
+
+    for start_a in points_a.iter() {
+        if point_is_on_any_line(start_a, &b) {
+            points_touching_lines += 1;
+            continue;
+        }
+        let relation = b_geo.relate(&geo::Point::new(start_a.x, start_a.y));
+        if relation.is_touches() {
+            points_touching_lines += 1;
+            continue;
+        }
+        if relation.is_equal_topo() {
+            points_exactly_on_other_poly += 1;
+            continue;
+        }
+        if relation.is_contains() {
+            points_inside_other_poly += 1;
+            // return false;
+        } else {
+            points_outside_other_poly += 1; 
+        }
+    }
+
+    SvgPolyInternalResult {
+        points_touching_lines,
+        points_outside_other_poly,
+        points_inside_other_poly,
+        points_exactly_on_other_poly,
+    }
+}
+
+fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon) -> bool {
+    for line in poly.outer_rings.iter() {
+        for q in line.points.windows(2) {
+            match &q {
+                &[sa, eb] => {
+                    if dist_to_segment(*p, *sa, *eb).distance < 0.01 {
+                        return true;
+                    }
+                },
+                _ => { }
+            }
+        }
+    }
+    false
 }
 
 pub fn translate_to_geo_poly(a: &SvgPolygon) -> geo::MultiPolygon<f64> {

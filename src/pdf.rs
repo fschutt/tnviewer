@@ -472,6 +472,19 @@ pub fn reproject_aenderungen_into_target_space(
     })
 }
 
+pub fn reproject_poly_back_into_latlon(
+    poly: &SvgPolygon,
+    source_proj: &str,
+) -> Result<SvgPolygon, String> {
+
+    let source_proj = proj4rs::Proj::from_proj_string(&source_proj)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", source_proj))?;
+
+    let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
+    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+
+    Ok(crate::nas::reproject_poly(poly, &source_proj, &latlon_proj, UseRadians::None))
+}
 
 pub fn reproject_aenderungen_back_into_latlon(
     aenderungen: &Aenderungen,
