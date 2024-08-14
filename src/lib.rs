@@ -38,52 +38,48 @@ struct CleanStageResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct GeoJSONResult {
-    pub geojson: String,
+    pub geojson1: String,
+    pub geojson2: String,
     pub bounds: [[f64;2];2],
-    pub touches1: bool,
-    pub touches2: bool,
+    pub equalsanyring1: bool,
+    pub equalsanyring2: bool,
+    pub is_disjoint1: bool,
+    pub is_disjoint2: bool,
 }
 
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423764.291,"y":5919196.118},{"x":423775.522,"y":5919197.725},{"x":423792.203,"y":5919190.111},{"x":423809.157,"y":5919222.507},{"x":423803.388,"y":5919223.28},{"x":423792.142,"y":5919224.942},{"x":423738.189,"y":5919234.985},{"x":423733.427,"y":5919220.915},{"x":423732.251,"y":5919217.019},{"x":423732.175,"y":5919216.699},{"x":423729.44,"y":5919208.092},{"x":423764.291,"y":5919196.118}]}],"inner_rings":[]}"#;
-    let poly_string2 = "".trim();
+    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423996.913,"y":5920502.73},{"x":423995.415,"y":5920495.092},{"x":424009.347,"y":5920492.495},{"x":424010.826,"y":5920500.277},{"x":424025.732,"y":5920497.877},{"x":424026.806,"y":5920502.625},{"x":424031.68,"y":5920524.166},{"x":424025.894,"y":5920525.348},{"x":424025.781,"y":5920525.427},{"x":424015.853,"y":5920527.327},{"x":424015.656,"y":5920527.365},{"x":424009.313,"y":5920531.646},{"x":424009.117,"y":5920531.658},{"x":424003.181,"y":5920532.804},{"x":424002.921,"y":5920532.853},{"x":423999.206,"y":5920533.563},{"x":423997.347,"y":5920533.889},{"x":423994.239,"y":5920517.382},{"x":423996.913,"y":5920502.73}]}],"inner_rings":[]}"#;
+    let poly_string2 = "";
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
-
-    let touches1 = nas::only_touches(&s1, &s2);
-    let touches2 = nas::only_touches(&s2, &s1);
-
-    // let intersection = nas::intersect_polys(&s1, &s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
 
-    let mut v = vec![
+    let v1 = vec![
         TaggedPolygon {
             poly: s1.clone(),
             attributes: BTreeMap::new(),
         },
+    ];
+
+    let v2 = vec![
         TaggedPolygon {
-            poly: s2,
+            poly: s2.clone(),
             attributes: BTreeMap::new(),
         },
     ];
 
-    /*
-    for q in intersection.iter() {
-        v.push(TaggedPolygon { poly: q.clone(), attributes: BTreeMap::new() });
-    }
-    */
-
-    let s = crate::nas::tagged_polys_to_featurecollection(&v);
-
     serde_json::to_string(&GeoJSONResult {
-        geojson: s,
+        geojson1: crate::nas::tagged_polys_to_featurecollection(&v1),
+        geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
         bounds: s1.get_fit_bounds(),
-        touches1,
-        touches2,
+        equalsanyring1: false,
+        equalsanyring2: false,
+        is_disjoint1: false,
+        is_disjoint2: false,
     }).unwrap_or_default()
 }
 

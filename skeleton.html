@@ -1137,30 +1137,56 @@
 
     function addProblemGeoJSON(map) {
       let j = JSON.parse(get_problem_geojson());
-      let geojson = JSON.parse(j.geojson);
+      let geojson1 = JSON.parse(j.geojson1);
+      let geojson2 = JSON.parse(j.geojson2);
       let bounds = j.bounds;
-      console.log(j.touches1);
-      console.log(j.touches2);
-      console.log(j.touches3);
-      console.log(j.touches4);
+      console.log(j.equalsanyring1);
+      console.log(j.equalsanyring2);
+      
+      console.log(geojson1);
+      console.log(geojson2);
+      
+      console.log(j.is_disjoint1);
+      console.log(j.is_disjoint2);
+
       var ml = null;
       var style = {
-        "color": "#00ff00",
+        "color": "#ff0000",
         "fillColor": "#ff0000",
         "weight": 0.0,
         "opacity": 0.8,
         "fillOpacity": 0.5
       };
       if (L.geoJSON) {
-        ml = L.geoJSON(geojson, {
+        ml = L.geoJSON(geojson1, {
           "style": style,
         });
       } else if (L.geoJson) {
-        ml = L.geoJson(geojson, {
+        ml = L.geoJson(geojson1, {
           "style": style,
         });
       }
       map.addLayer(ml);
+
+      var ml = null;
+      var style = {
+        "color": "#0000ff",
+        "fillColor": "#0000ff",
+        "weight": 0.0,
+        "opacity": 0.8,
+        "fillOpacity": 0.5
+      };
+      if (L.geoJSON) {
+        ml = L.geoJSON(geojson2, {
+          "style": style,
+        });
+      } else if (L.geoJson) {
+        ml = L.geoJson(geojson2, {
+          "style": style,
+        });
+      }
+      map.addLayer(ml);
+
       map.fitBounds(bounds);
     }
 
