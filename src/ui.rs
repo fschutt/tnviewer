@@ -1278,10 +1278,14 @@ impl AenderungenIntersection {
         if self.alt == self.neu {
             return None;
         }
+        
+        web_sys::console::log_1(&serde_json::to_string(&self.poly_cut).unwrap_or_default().as_str().into());
+        let pos = self.poly_cut.get_label_pos(0.001);
+        web_sys::console::log_1(&format!("text pos: {:?}", (pos.x, pos.y)).as_str().into());
         Some(TextPlacement {
             status: TextStatus::Old,
             kuerzel: self.alt.clone(),
-            pos: self.poly_cut.get_label_pos(0.001)
+            pos: pos,
         })
     }
 
