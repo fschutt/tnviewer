@@ -773,8 +773,6 @@ impl SvgPolygon {
         let first_ring = &self.outer_rings[0];
 
         for or in other.outer_rings.iter() {
-            web_sys::console::log_1(&serde_json::to_string(&or).unwrap_or_default().as_str().into());
-
             if or.equals(first_ring) {
                 return true;
             }
@@ -1433,6 +1431,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
+    web_sys::console::log_1(&"func start...".into());
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
     // TODO: nas::only_touches crashes here???
@@ -1444,14 +1443,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
-    let relate = a.relate(&b);
-    if relate.is_disjoint() {
-        return Vec::new();
-    }
-    if relate.is_touches() {
-        return Vec::new();
-    }
+    web_sys::console::log_1(&"intersecting...".into());
     let intersect = a.intersection(&b);
+    web_sys::console::log_1(&"intersected!".into());
     translate_from_geo_poly(&intersect)
 }
 
