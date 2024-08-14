@@ -308,16 +308,19 @@ pub fn export_splitflaechen(
     web_sys::console::log_1(&"texte bleibt...".into());
     let aenderungen_texte_bleibt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_bleibt()).collect::<Vec<_>>();
+    web_sys::console::log_1(&format!("ok {} texte bleibt", aenderungen_texte_bleibt.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Bleibt_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
 
     web_sys::console::log_1(&"texte alt...".into());
     let aenderungen_texte_alt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_alt()).collect::<Vec<_>>();
+    web_sys::console::log_1(&format!("ok {} texte alt", aenderungen_texte_alt.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Alt_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
 
     web_sys::console::log_1(&"texte neu...".into());
     let aenderungen_texte_neu = splitflaechen
         .iter().filter_map(|sf| sf.get_text_neu()).collect::<Vec<_>>();
+    web_sys::console::log_1(&format!("ok {} texte neu", aenderungen_texte_neu.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Neu_Texte_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
 
     web_sys::console::log_1(&"blattkopf...".into());
