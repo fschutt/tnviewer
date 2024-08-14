@@ -771,21 +771,15 @@ impl SvgPolygon {
             return false;
         }
         let first_ring = &self.outer_rings[0];
-        web_sys::console::log_1(&serde_json::to_string(&first_ring).unwrap_or_default().as_str().into());
-
-        web_sys::console::log_1(&format!("testing...").as_str().into());
-
+        
         for or in other.outer_rings.iter() {
             web_sys::console::log_1(&serde_json::to_string(&or).unwrap_or_default().as_str().into());
 
             if or.equals(first_ring) {
-                web_sys::console::log_1(&format!("succeeded, lines are equal!").as_str().into());
                 return true;
             }
-            web_sys::console::log_1(&format!("failed!").as_str().into());
         }
 
-        web_sys::console::log_1(&format!("returning false 2").as_str().into());
         false
     }
 

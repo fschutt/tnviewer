@@ -47,7 +47,7 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423415.496,"y":5918830.077},{"x":423419.962,"y":5918827.798},{"x":423430.091,"y":5918823.241},{"x":423438.996,"y":5918818.631},{"x":423440.43,"y":5918821.211},{"x":423414.0439572641,"y":5918835.5359555585},{"x":423411.213,"y":5918832.592},{"x":423411.2129685612,"y":5918832.591944234},{"x":423415.496,"y":5918830.077}]}],"inner_rings":[]}"#;
+    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423371.188,"y":5918780.322},{"x":423382.657,"y":5918812.595},{"x":423363.784,"y":5918819.121},{"x":423314.25,"y":5918836.247},{"x":423306.578,"y":5918802.688},{"x":423371.188,"y":5918780.322}]}],"inner_rings":[]}"#;
     let poly_string2 = include_str!("./test.txt");
     
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
