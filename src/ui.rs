@@ -1260,7 +1260,15 @@ impl AenderungenClean {
 
         web_sys::console::log_1(&format!("is 6").as_str().into());
 
-        is
+        is.into_iter().filter_map(|s| {
+            use geo::Area;
+            let area_m2 = crate::nas::translate_to_geo_poly(&s.poly_cut).0.iter().map(|p| p.signed_area()).sum::<f64>();
+            if area_m2 < 1.0 {
+                None
+            } else {
+                Some(s)
+            }
+        }).collect()
     }
 }
 
