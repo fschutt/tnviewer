@@ -718,7 +718,7 @@ impl TaggedPolygon {
 }
 
 impl SvgPolygon {
-    
+
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         let [[min_y, min_x], [max_y, max_x]] = self.get_fit_bounds();
         quadtree_f32::Rect {
@@ -771,7 +771,7 @@ impl SvgPolygon {
             return false;
         }
         let first_ring = &self.outer_rings[0];
-        
+
         for or in other.outer_rings.iter() {
             web_sys::console::log_1(&serde_json::to_string(&or).unwrap_or_default().as_str().into());
 
@@ -854,6 +854,19 @@ pub struct SvgLine {
 
 impl SvgLine {
 
+    /// Return the two points describing a side of this polygon. Indexing from zero.
+    pub fn get_side(&self, i: usize) -> (SvgPoint, SvgPoint) {
+        let p1 = self.points.get(i).cloned().unwrap_or_default();
+        // handle that the polygon wraps around back to the start.
+        let p2: SvgPoint = if i + 1 >= self.points.len() {
+            self.points.get(0).cloned().unwrap_or_default()
+        } else {
+            self.points.get(i + 1).cloned().unwrap_or_default()
+        };
+
+        (p1, p2)
+    }
+    
     pub fn equals(&self, other: &Self) -> bool {
         self.points.len() == other.points.len() &&
         self.points.iter().zip(other.points.iter()).all(|(a, b)| a.equals(b))
@@ -874,6 +887,33 @@ pub struct SvgPoint {
 }
 
 impl SvgPoint {
+
+    /// Return the angle in radians to another point
+    pub fn angle_to(&self, other: &SvgPoint) -> f64 {
+        let translated = other.translate(&self.invert());
+
+        let result = translated.y.atan2(translated.x);
+        if result < 0.0 {
+            return result + 360.0_f64.to_radians();
+        }
+        result
+    }
+
+    /// offset / translate this point by another one.
+    pub fn translate(&self, by: &Point) -> Point {
+        Point {
+            x: self.x + by.x,
+            y: self.y + by.y,
+        }
+    }
+
+    /// Flip the sign of both x and y coords
+    pub fn invert(&self) -> Point {
+        Point {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
 
     pub fn dist(&self, other: &Self) -> f64 {
         crate::ui::dist(*self, *other)
@@ -1418,9 +1458,60 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {
     pub points_touching_lines: usize,
-    pub points_outside_other_poly: usize,
     pub points_inside_other_poly: usize,
-    pub points_exactly_on_other_poly: usize,
+}
+
+
+fn point_in_line(p: &SvgPoint, l: &SvgLine) -> bool {
+
+    // work out the sum of the angles between adjacent points and the point we are checking.
+    // if the sum is equal to 360 degrees then we are inside the polygon.
+    let mut total = 0.0;
+
+    for i in 0..l.points.len() {
+        let (p1, p2) = l.get_side(i);
+        let angle_a = p.angle_to(&p2);
+        let angle_b = p.angle_to(&p1);
+
+        // handle rolling around over the 360/0 degree line reasonably
+        let result = if angle_a > angle_b {
+            -((360.0_f64.to_radians() - angle_a) + angle_b)
+        } else {
+            angle_a - angle_b
+        };
+
+        total += result;
+    }
+    approx_eq!(f64, total.abs(), 360.0_f64.to_radians(), ulps = 2)
+}
+
+fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
+    
+    if !poly.get_rect().contains_point(&quadtree_f32::Point {
+        x: p.x,
+        y: p.y,
+    }) {
+        return false;
+    }
+
+    let mut c_in_outer = false;
+    for o in poly.outer_rings.iter() {
+        if point_in_line(p, o) {
+            c_in_outer = true;
+            break;
+        }
+    }
+
+    if (c_in_outer) {
+        for i in poly.inner_rings.iter() {
+            if point_in_line(p, i) {
+                c_in_outer = false;
+                break;
+            }
+        }
+    }
+
+    c_in_outer
 }
 
 pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
@@ -1446,37 +1537,23 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     let b_geo = translate_to_geo_poly(b);
 
     let mut points_touching_lines = 0;
-    let mut points_outside_other_poly = 0;
     let mut points_inside_other_poly = 0;
-    let mut points_exactly_on_other_poly = 0;
+
+    web_sys::console::log_1(&format!("is3").as_str().into());
 
     for start_a in points_a.iter() {
         if point_is_on_any_line(start_a, &b) {
             points_touching_lines += 1;
-            continue;
-        }
-        let relation = b_geo.relate(&geo::Point::new(start_a.x, start_a.y));
-        if relation.is_touches() {
-            points_touching_lines += 1;
-            continue;
-        }
-        if relation.is_equal_topo() {
-            points_exactly_on_other_poly += 1;
-            continue;
-        }
-        if relation.is_contains() {
+        } else if point_is_in_polygon(*start_a, &b) {
             points_inside_other_poly += 1;
-            // return false;
-        } else {
-            points_outside_other_poly += 1; 
         }
     }
 
+    web_sys::console::log_1(&format!("is4").as_str().into());
+
     SvgPolyInternalResult {
         points_touching_lines,
-        points_outside_other_poly,
         points_inside_other_poly,
-        points_exactly_on_other_poly,
     }
 }
 
