@@ -1551,7 +1551,11 @@ impl Aenderungen {
             .entry(kuerzel)
             .and_modify(|ep: &mut SvgPolygon| {
                 web_sys::console::log_1(&format!("stage 4 4").as_str().into());
-                if let Some(e) = join_polys(&[ep.round_to_3dec(), polyneu.poly.round_to_3dec()]) {
+                let a = ep.round_to_3dec();
+                let b = polyneu.poly.round_to_3dec();
+                web_sys::console::log_1(&serde_json::to_string(&a).unwrap_or_default().as_str().into());
+                web_sys::console::log_1(&serde_json::to_string(&b).unwrap_or_default().as_str().into());
+                if let Some(e) = join_polys(&[a, b]) {
                     *ep = e;
                 }
                 web_sys::console::log_1(&format!("stage 4 5").as_str().into());
