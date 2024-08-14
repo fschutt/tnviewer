@@ -1207,8 +1207,11 @@ impl AenderungenClean {
                 web_sys::console::log_1(&serde_json::to_string(&potentially_intersecting.poly).unwrap_or_default().as_str().into());
                 web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
 
+                let only_touches = crate::nas::only_touches(&potentially_intersecting.poly.round_to_3dec(), &megapoly.round_to_3dec());
+                web_sys::console::log_1(&format!("only touches: {only_touches:?}").as_str().into());
+
                 let mut q = Vec::new();
-                if !crate::nas::only_touches(&potentially_intersecting.poly.round_to_3dec(), &megapoly.round_to_3dec()) {
+                if !only_touches {
                     q = intersect_polys(&potentially_intersecting.poly, megapoly)
                     .iter()
                     .map(|v| v.round_to_3dec())
