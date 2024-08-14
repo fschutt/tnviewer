@@ -48,7 +48,7 @@ struct GeoJSONResult {
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
     let poly_string1 = r#"{"outer_rings":[{"points":[{"x":423371.188,"y":5918780.322},{"x":423382.657,"y":5918812.595},{"x":423363.784,"y":5918819.121},{"x":423314.25,"y":5918836.247},{"x":423306.578,"y":5918802.688},{"x":423371.188,"y":5918780.322}]}],"inner_rings":[]}"#;
-    let poly_string2 = include_str!("./test.txt");
+    let poly_string2 = "";
     
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
