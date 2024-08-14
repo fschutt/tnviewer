@@ -1378,11 +1378,7 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
-    if only_touches(&a, &b) {
-        // no intersection if a only touches b
-        // prevents crash in intersection() function
-        return vec![];
-    }
+    // TODO: nas::only_touches crashes here???
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);

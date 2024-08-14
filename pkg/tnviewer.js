@@ -253,6 +253,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -1169,8 +1170,6 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, risse_ext
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
-
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0));
@@ -1583,10 +1582,10 @@ function __wbg_get_imports() {
         getInt32Memory0()[arg0 / 4 + 1] = len1;
         getInt32Memory0()[arg0 / 4 + 0] = ptr1;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_log_5bb5f88f245d7762 = function(arg0) {
         console.log(getObject(arg0));
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_memory = function() {
         const ret = wasm.memory;
         return addHeapObject(ret);

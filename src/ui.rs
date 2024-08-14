@@ -1207,9 +1207,14 @@ impl AenderungenClean {
                 web_sys::console::log_1(&serde_json::to_string(&potentially_intersecting.poly).unwrap_or_default().as_str().into());
                 web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
 
-                let q = intersect_polys(&potentially_intersecting.poly, megapoly)
-                .iter().map(|v| v.round_to_3dec()).collect::<Vec<_>>();
-                
+                let mut q = Vec::new();
+                if !crate::nas::only_touches(&potentially_intersecting.poly.round_to_3dec(), &megapoly.round_to_3dec()) {
+                    q = intersect_polys(&potentially_intersecting.poly, megapoly)
+                    .iter()
+                    .map(|v| v.round_to_3dec())
+                    .collect();
+                }
+
                 web_sys::console::log_1(&format!("is 2").as_str().into());
 
                 let mut subtract_polys = Vec::new();
