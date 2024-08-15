@@ -1204,26 +1204,54 @@ impl AenderungenClean {
                 let bnew = megapoly.round_to_3dec();
                 let only_touches = crate::nas::only_touches(&anew, &bnew);
 
-                let mut q = Vec::new();
+                let mut subtract_polys = Vec::<SvgPolygon>::new();
                 if !only_touches {
-                    q = intersect_polys(&potentially_intersecting.poly, megapoly)
+                    let q = intersect_polys(&potentially_intersecting.poly, &megapoly)
                     .iter()
                     .map(|v| v.round_to_3dec())
-                    .collect();
+                    .collect::<Vec<_>>();
+
+                    for intersect_poly in q.iter() {
+                        subtract_polys.push(intersect_poly.round_to_3dec());
+                        is.push(AenderungenIntersection {
+                            alt: alt_kuerzel.clone(),
+                            neu: neu_kuerzel.clone(),
+                            flst_id: flurstueck_id.clone(),
+                            poly_cut: intersect_poly.round_to_3dec(),
+                        });
+                    }
+
+                    let f = difference_polys(&[potentially_intersecting.poly.clone(), megapoly.clone()])
+                    .iter()
+                    .map(|v| v.round_to_3dec())
+                    .collect::<Vec<_>>();
+
+                    for difference_poly in f.iter() {
+                        subtract_polys.push(difference_poly.round_to_3dec());
+                        is.push(AenderungenIntersection {
+                            alt: neu_kuerzel.clone(),
+                            neu: alt_kuerzel.clone(),
+                            flst_id: flurstueck_id.clone(),
+                            poly_cut: difference_poly.round_to_3dec(),
+                        });
+                    }
                 }
 
-                let mut subtract_polys = Vec::new();
-                for intersect_poly in q.iter() {
-                    subtract_polys.push(intersect_poly.round_to_3dec());
-                    is.push(AenderungenIntersection {
-                        alt: alt_kuerzel.clone(),
-                        neu: neu_kuerzel.clone(),
-                        flst_id: flurstueck_id.clone(),
-                        poly_cut: intersect_poly.round_to_3dec(),
-                    });
-                }
+                // deduplicate polys
+                subtract_polys.sort_by(|a, b| {
+                    let s1 = a.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
+                    let s2 = b.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
+                    s1.cmp(&s2)
+                });
+
+                subtract_polys.dedup_by(|a, b| {
+                    let a = serde_json::to_string(a).unwrap_or_default();
+                    let b = serde_json::to_string(b).unwrap_or_default();
+                    a == b
+                });
 
                 let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
+                
                 stay_polys.entry(flurstueck_id)
                 .and_modify(|sp: &mut TaggedPolygon| {
                     sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
@@ -1260,7 +1288,7 @@ impl AenderungenClean {
 
         web_sys::console::log_1(&format!("is 6").as_str().into());
 
-        is.into_iter().filter_map(|s| {
+        let is = is.into_iter().filter_map(|s| {
             use geo::Area;
             let area_m2 = crate::nas::translate_to_geo_poly(&s.poly_cut).0.iter().map(|p| p.signed_area()).sum::<f64>();
             if area_m2 < 1.0 {
@@ -1268,6 +1296,18 @@ impl AenderungenClean {
             } else {
                 Some(s)
             }
+        }).collect::<Vec<_>>();
+
+        let flst_changed = is.iter().filter_map(|s| {
+            if s.alt != s.neu {
+                Some(s.flst_id.clone())
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        is.into_iter().filter(|s| {
+            flst_changed.contains(&s.flst_id)
         }).collect()
     }
 }
