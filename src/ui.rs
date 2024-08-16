@@ -1686,6 +1686,8 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
+
+/*
     pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
         web_sys::console::log_1(&format!("STAGE 5").as_str().into());
@@ -1739,6 +1741,7 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
+*/
 
     pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
@@ -1802,7 +1805,7 @@ impl Aenderungen {
         
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 
-        let changed_mut = changed_mut.clean_stage5(split_nas, log);
+        // let changed_mut = changed_mut.clean_stage5(split_nas, log);
 
         let changed_mut = changed_mut.clean_stage6(split_nas, log);
 

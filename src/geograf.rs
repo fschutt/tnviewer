@@ -286,9 +286,9 @@ pub fn calc_splitflaechen(
 
     let aenderungen = aenderungen.clean_stage4(split_nas, &mut Vec::new());
 
-    web_sys::console::log_1(&format!("cleaning stage 5...").as_str().into());
+    // web_sys::console::log_1(&format!("cleaning stage 5...").as_str().into());
 
-    let aenderungen = aenderungen.clean_stage5(split_nas, &mut Vec::new());
+    // let aenderungen = aenderungen.clean_stage5(split_nas, &mut Vec::new());
 
     web_sys::console::log_1(&format!("cleaning stage 6...").as_str().into());
 
