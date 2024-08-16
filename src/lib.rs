@@ -47,8 +47,8 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":425805.619,"y":5919728.368},{"x":425805.619,"y":5919728.368},{"x":425677.23,"y":5919788.05},{"x":425805.619,"y":5919728.368}]}],"inner_rings":[]}"#;
-    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":425915.632,"y":5919885.012},{"x":425915.632,"y":5919885.012},{"x":425800.418,"y":5919937.081},{"x":425915.632,"y":5919885.012}]}],"inner_rings":[]}"#;
+    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":425673.039,"y":5917562.363},{"x":425673.039,"y":5917562.363},{"x":425520.799,"y":5917598.052},{"x":425520.799,"y":5917598.052},{"x":425673.039,"y":5917562.363}]}],"inner_rings":[]}"#;
+    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":425526.053,"y":5917490.401},{"x":425552.382,"y":5917713.295},{"x":425547.214,"y":5917713.554},{"x":425533.625,"y":5917609.143},{"x":425519.472,"y":5917491.572},{"x":425526.053,"y":5917490.401}]}],"inner_rings":[]}"#;
     
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
@@ -75,7 +75,7 @@ pub fn get_problem_geojson() -> String {
     serde_json::to_string(&GeoJSONResult {
         geojson1: crate::nas::tagged_polys_to_featurecollection(&v1),
         geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
-        bounds: s1.get_fit_bounds(),
+        bounds: s2.get_fit_bounds(),
         onlytouches1: onlytouches1,
     }).unwrap_or_default()
 }

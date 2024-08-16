@@ -1473,6 +1473,12 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
+    if a.is_zero_area() {
+        return Vec::new();
+    }
+    if b.is_zero_area() {
+        return Vec::new();
+    }
     // TODO: nas::only_touches crashes here???
     if a.equals_any_ring(&b) {
         return vec![a];
