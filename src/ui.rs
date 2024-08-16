@@ -1180,7 +1180,6 @@ impl AenderungenClean {
     pub fn get_aenderungen_intersections(&self) -> Vec<AenderungenIntersection> {
         
         let mut is = Vec::new();
-        let mut stay_polys = BTreeMap::new();
         
         for (neu_kuerzel, megapoly) in self.map.iter() {
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&megapoly.get_rect());
@@ -1204,73 +1203,21 @@ impl AenderungenClean {
                 let bnew = megapoly.round_to_3dec();
                 let only_touches = crate::nas::only_touches(&anew, &bnew);
 
-                web_sys::console::log_1(&format!("only_touches: {only_touches:?}").as_str().into());
-
-                let mut q = Vec::new();
-                if !only_touches {
-                    q = intersect_polys(&potentially_intersecting.poly, megapoly)
-                    .iter()
-                    .map(|v| v.round_to_3dec())
-                    .collect();
+                if only_touches {
+                    continue;
                 }
 
-                let mut subtract_polys = Vec::new();
-                for intersect_poly in q.iter() {
-                    subtract_polys.push(intersect_poly.round_to_3dec());
-                    is.push(AenderungenIntersection {
+                for intersect_poly in intersect_polys(&potentially_intersecting.poly, megapoly) {
+                    let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
-                    });
-                }
-
-                let mut subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
-                stay_polys.entry(flurstueck_id)
-                .and_modify(|sp: &mut TaggedPolygon| {
-                    sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
-                })
-                .or_insert_with(|| {
-                    let s = TaggedPolygon {
-                        attributes: potentially_intersecting.attributes.clone(),
-                        poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
                     };
-                    s
-                });
-
-                // deduplicate polys
-                subtract_polys.sort_by(|a, b| {
-                    let s1 = a.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-                    let s2 = b.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-                    s1.cmp(&s2)
-                });
-
-                subtract_polys.dedup_by(|a, b| {
-                    let a = serde_json::to_string(a).unwrap_or_default();
-                    let b = serde_json::to_string(b).unwrap_or_default();
-                    a == b
-                });
+                    web_sys::console::log_1(&format!("pushing intersection: {qq:?}").as_str().into());
+                    is.push(qq);
+                }
             }
-        }
-
-        for (flurstueck_id, flst_rest) in stay_polys {
-            if flst_rest.poly.is_empty() {
-                continue;
-            }
-            let ebene = match flst_rest.attributes.get("AX_Ebene") {
-                Some(s) => s.clone(),
-                None => continue,
-            };
-            let alt_kuerzel = match flst_rest.get_auto_kuerzel(&ebene) {
-                Some(s) => s,
-                None => continue,
-            };
-            is.push(AenderungenIntersection {
-                alt: alt_kuerzel.clone(),
-                neu: alt_kuerzel.clone(),
-                flst_id: flurstueck_id.clone(),
-                poly_cut: flst_rest.poly.round_to_3dec(),
-            });
         }
 
         web_sys::console::log_1(&format!("is 6").as_str().into());
@@ -1286,15 +1233,18 @@ impl AenderungenClean {
 
         let flst_changed = is.iter().filter_map(|s| {
             if s.alt != s.neu {
-                web_sys::console::log_1(&format!("flst changed: {}", s.flst_id).as_str().into());
-                Some(s.flst_id.clone())
+                Some(s.format_flst_id())
             } else {
                 None
             }
         }).collect::<BTreeSet<_>>();
 
+        for f in flst_changed.iter() {
+            web_sys::console::log_1(&format!("flst changed: {f}").as_str().into());
+        }
+
         is.into_iter().filter(|s| {
-            flst_changed.contains(&s.flst_id)
+            flst_changed.contains(&s.format_flst_id())
         }).collect()
     }
 }
@@ -1309,6 +1259,10 @@ pub struct AenderungenIntersection {
 
 impl AenderungenIntersection {
     
+    pub fn format_flst_id(&self) -> String {
+        FlstIdParsed::from_str(&self.flst_id).to_nice_string()
+    }
+
     pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
         
         let flst_id = FlstIdParsed::from_str(flst_id).to_nice_string();
