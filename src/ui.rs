@@ -1,5 +1,5 @@
 use core::f64;
-use std::{collections::{BTreeMap, BTreeSet}, f64::MAX};
+use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
 use serde_derive::{Serialize, Deserialize};
 
@@ -1225,7 +1225,7 @@ impl AenderungenClean {
                     });
                 }
 
-                let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
+                let mut subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
                 stay_polys.entry(flurstueck_id)
                 .and_modify(|sp: &mut TaggedPolygon| {
                     sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
@@ -1236,6 +1236,19 @@ impl AenderungenClean {
                         poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
                     };
                     s
+                });
+
+                // deduplicate polys
+                subtract_polys.sort_by(|a, b| {
+                    let s1 = a.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
+                    let s2 = b.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
+                    s1.cmp(&s2)
+                });
+
+                subtract_polys.dedup_by(|a, b| {
+                    let a = serde_json::to_string(a).unwrap_or_default();
+                    let b = serde_json::to_string(b).unwrap_or_default();
+                    a == b
                 });
             }
         }
@@ -1263,14 +1276,25 @@ impl AenderungenClean {
         web_sys::console::log_1(&format!("is 6").as_str().into());
         web_sys::console::log_1(&serde_json::to_string(&is).unwrap_or_default().as_str().into());
 
-        is.into_iter().filter_map(|s| {
-            use geo::Area;
-            let area_m2 = crate::nas::translate_to_geo_poly(&s.poly_cut).0.iter().map(|p| p.signed_area()).sum::<f64>();
-            if area_m2 < 1.0 {
-                None
+        let is = is.into_iter().filter_map(|s| {
+            if s.poly_cut.is_zero_area() {
+                None 
             } else {
                 Some(s)
             }
+        }).collect::<Vec<_>>();
+
+        let flst_changed = is.iter().filter_map(|s| {
+            if s.alt != s.neu {
+                web_sys::console::log_1(&format!("flst changed: {}", s.flst_id).as_str().into());
+                Some(s.flst_id.clone())
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        is.into_iter().filter(|s| {
+            flst_changed.contains(&s.flst_id)
         }).collect()
     }
 }
@@ -1750,6 +1774,41 @@ impl Aenderungen {
 
 */
 
+
+    pub fn clean_stage8(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+
+        let changed_mut = self.round_to_3decimal();
+
+        let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
+        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
+        .collect::<BTreeMap<_, _>>();
+
+        let total_aenderungen = aenderungen_merged_by_typ.iter().flat_map(|(kuerzel, poly)| {
+            poly.outer_rings.iter().filter_map(|p| {
+                let p = SvgPolygon {
+                    outer_rings: vec![p.clone()],
+                    inner_rings: Vec::new(), // TODO
+                };
+                if p.is_zero_area() {
+                    None
+                } else {
+                    Some((kuerzel.clone(), p))
+                }
+            })
+        }).collect::<Vec<_>>();
+
+        Aenderungen {
+            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
+            na_definiert: changed_mut.na_definiert.clone(),
+            na_polygone_neu: total_aenderungen.iter().map(|(kuerzel, poly)| {
+                (uuid(), PolyNeu {
+                    nutzung: Some(kuerzel.clone()),
+                    poly: poly.clone()
+                })
+            }).collect()
+        }.round_to_3decimal()
+    }
+
     pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
         let mut changed_mut = self.round_to_3decimal();
@@ -1773,9 +1832,6 @@ impl Aenderungen {
             let hr = hr.iter().collect::<Vec<_>>();
             for h in hr.into_iter() {
                 if !nas::only_touches(&megapoly, h) {
-                    web_sys::console::log_1(&format!("subtracting from").as_str().into());
-                    web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
-                    web_sys::console::log_1(&serde_json::to_string(&h).unwrap_or_default().as_str().into());
                     *megapoly = subtract_from_poly(&megapoly, &[h]);
                 }
             }

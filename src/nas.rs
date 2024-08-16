@@ -793,6 +793,11 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn is_zero_area(&self) -> bool {
+        let area_m2 = crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>();
+        area_m2 < 1.0
+    }
+
     pub fn equals_any_ring(&self, other: &Self) -> bool {
         if self.outer_rings.len() != 1 {
             return false;

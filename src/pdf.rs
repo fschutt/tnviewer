@@ -52,13 +52,13 @@ pub struct MergeConfig {
     pub stage3_maxdst_line: f64,
     #[serde(default = "zero_point_two")]
     pub stage3_maxdst_line2: f64,
-    #[serde(default = "twenty")]
+    #[serde(default = "five")]
     pub stage3_maxdeviation_followline: f64,
 }
 
 fn one() -> f64 { 1.0 }
 fn zero_point_two() -> f64 { 0.2 }
-fn twenty() -> f64 { 20.0 }
+fn five() -> f64 { 5.0 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MapKonfiguration {
