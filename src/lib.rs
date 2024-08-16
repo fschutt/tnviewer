@@ -192,10 +192,9 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
             .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2, konfiguration.merge.stage3_maxdeviation_followline)
         },
         "4" => aenderungen.clean_stage4(&split_nas_xml, &mut log),
-        "5" => aenderungen.round_to_3decimal(),
-        // "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "6" => aenderungen.clean_stage6(&split_nas_xml, &mut log),
-        "7" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
+        "8" => aenderungen.clean_stage6(&split_nas_xml, &mut log),
+        "9" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
         _ => return format!("wrong id {id}"),
     };
 
