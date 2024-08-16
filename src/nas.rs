@@ -1330,7 +1330,7 @@ impl NasXmlQuadTree {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SplitNasXmlQuadTree {
     pub items: usize,
-    original: SplitNasXml,
+    pub original: SplitNasXml,
     qt: quadtree_f32::QuadTree,
     flst_nutzungen_map: BTreeMap<ItemId, (FlstId, usize)>,
 }

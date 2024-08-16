@@ -245,10 +245,10 @@ pub fn splitflaechen_zu_xlsx(
                 Some(s) => s,
                 None => continue
             };
-            let mut notiz = ds_0.notiz.trim().to_string();
-            if notiz.is_empty() {
-                notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
-            }
+            // let mut notiz = ds_0.notiz.trim().to_string();
+            // if notiz.is_empty() {
+                let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
+            // }
             let status = AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id);
             let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
             eigentuemer.sort();

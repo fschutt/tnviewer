@@ -1181,8 +1181,6 @@ impl AenderungenClean {
         
         let mut is = Vec::new();
         
-        web_sys::console::log_1(&format!("only touches!").as_str().into());
-
         for (_id, polyneu) in self.aenderungen.na_polygone_neu.iter() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -1209,31 +1207,17 @@ impl AenderungenClean {
 
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
-                let only_touches = crate::nas::only_touches(&anew, &bnew);
-
-                if only_touches {
-                    web_sys::console::log_1(&format!("only touches!").as_str().into());
-                    web_sys::console::log_1(&serde_json::to_string(&anew).unwrap_or_default().as_str().into());
-                    web_sys::console::log_1(&serde_json::to_string(&bnew).unwrap_or_default().as_str().into());
-                    // continue;
-                }
 
                 for intersect_poly in intersect_polys(&anew, &bnew) {
-                    let qq = AenderungenIntersection {
+                    is.push(AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
-                    };
-                    web_sys::console::log_1(&format!("pushing intersection: {qq:?}").as_str().into());
-                    is.push(qq);
+                    });
                 }
-                web_sys::console::log_1(&format!("ok!").as_str().into());
             }
         }
-
-        web_sys::console::log_1(&format!("is 6").as_str().into());
-        web_sys::console::log_1(&serde_json::to_string(&is).unwrap_or_default().as_str().into());
 
         let is = is.into_iter().filter_map(|s| {
             if s.poly_cut.is_zero_area() {
@@ -1245,19 +1229,70 @@ impl AenderungenClean {
 
         let flst_changed = is.iter().filter_map(|s| {
             if s.alt != s.neu {
-                Some(s.format_flst_id())
+                Some(s.format_flst_id_search())
             } else {
                 None
             }
         }).collect::<BTreeSet<_>>();
 
-        for f in flst_changed.iter() {
-            web_sys::console::log_1(&format!("flst changed: {f}").as_str().into());
+        let mut is = is.into_iter().filter(|s| {
+            flst_changed.contains(&s.format_flst_id_search())
+        }).collect::<Vec<_>>();
+
+        for flst_id in flst_changed.iter() {
+            let ae_is = is.iter().filter(|s| s.format_flst_id_search().as_str() == flst_id.as_str()).collect::<Vec<_>>();
+            if ae_is.is_empty() {
+                web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id} in ae_is").as_str().into());
+                continue;
+            }
+
+            let ae_is_joined = ae_is.iter().map(|s| s.poly_cut.round_to_3dec()).collect::<Vec<_>>();
+            let ae_is_joined = ae_is_joined.iter().collect::<Vec<_>>();
+
+            let flst = match self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id) {
+                Some(s) => s,
+                None => {
+                    web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id}").as_str().into());
+                    continue;
+                },
+            };
+
+            for flst_part in flst {
+
+                let ebene = match flst_part.attributes.get("AX_Ebene") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+
+                let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+
+                let flurstueck_id = match flst_part.attributes.get("AX_Flurstueck") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+
+                let subtracted = subtract_from_poly(&flst_part.poly.round_to_3dec(), &ae_is_joined);
+                if subtracted.is_zero_area() {
+                    continue;
+                }
+                let qq = AenderungenIntersection {
+                    alt: alt_kuerzel.clone(),
+                    neu: alt_kuerzel.clone(),
+                    flst_id: flurstueck_id.clone(),
+                    poly_cut: subtracted.round_to_3dec(),
+                };
+                web_sys::console::log_1(&format!("!!! OK! pushing bleibt {qq:?}").as_str().into());
+
+
+                is.push(qq);
+            }
         }
 
-        is.into_iter().filter(|s| {
-            flst_changed.contains(&s.format_flst_id())
-        }).collect()
+        is
+
     }
 }
 
@@ -1280,8 +1315,17 @@ impl AenderungenIntersection {
         q.format_nice()
     }
 
-    pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
-        
+    pub fn format_flst_id_search(&self) -> String {
+        let s = FlstIdParsed::from_str(&self.flst_id);
+        let q = match s.parse_num() {
+            Some(o) => o,
+            None => return s.to_nice_string(),
+        };
+        q.format_start_str()
+    }
+
+    pub fn get_splitflaechen_fuer_flst(splitflaechen: &[Self], flst_id: &str) -> Vec<AenderungenIntersection> {
+
         let flst_id = FlstIdParsed::from_str(flst_id);
         let flst_id = match flst_id.parse_num() {
             Some(o) => o.format_nice(),
@@ -1289,73 +1333,95 @@ impl AenderungenIntersection {
         };
 
         let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
-            s.alt != s.neu && s.format_flst_id() == flst_id 
-        }).collect::<Vec<_>>();
+            s.format_flst_id() == flst_id 
+        }).cloned().collect::<Vec<_>>();
         splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
         splitflaechen_fuer_flst.dedup();
+        splitflaechen_fuer_flst
+    }
 
-        web_sys::console::log_1(&format!("splitflaechen_fuer_flst {flst_id}: {splitflaechen_fuer_flst:?}").as_str().into());
+    pub fn get_splitflaechen_fuer_flst_veraendert(splitflaechen: &[Self], flst_id: &str) -> Vec<AenderungenIntersection> {
+        Self::get_splitflaechen_fuer_flst(splitflaechen, flst_id)
+        .into_iter()
+        .filter(|s| s.alt.as_str() != s.neu.as_str())
+        .collect()
+    }
 
-        if splitflaechen_fuer_flst.is_empty() {
-            return String::new();
-        }
-    
-        if splitflaechen.len() == 1 {
-            let s0 = &splitflaechen[0];
-            return format!("{} -> {}", s0.alt, s0.neu);
-        }
+    pub fn get_splitflaechen_fuer_flst_bleibt(splitflaechen: &[Self], flst_id: &str) -> Vec<AenderungenIntersection> {
+        Self::get_splitflaechen_fuer_flst(splitflaechen, flst_id)
+        .into_iter()
+        .filter(|s| s.alt.as_str() == s.neu.as_str())
+        .collect()
+    }
 
-        let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
-        let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
-        
-        let neu_dazu = neu_join.difference(&alt_join).cloned().collect::<Vec<_>>();
-        let alt_weg = alt_join.difference(&neu_join).cloned().collect::<Vec<_>>();
-        let veraendert = alt_join.intersection(&neu_join).cloned().collect::<Vec<_>>();
+    pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
 
-        let mut neu_dazu_str = neu_dazu.join(" / ");
+        let (alt_weg, neu_dazu, veraendert) = Self::get_auto_kuerzel(splitflaechen, flst_id);
+
+        let mut neu_dazu_str = neu_dazu.into_iter().collect::<Vec<_>>().join(" / ");
         if !neu_dazu_str.trim().is_empty() {
             neu_dazu_str.push_str(" einzeichnen");
         }
 
-        let mut alt_weg_str = alt_weg.join(" / ");
+        let mut alt_weg_str = alt_weg.into_iter().collect::<Vec<_>>().join(" / ");
         if !alt_weg_str.trim().is_empty() {
-            alt_weg_str.push_str(" weg");
+            alt_weg_str.push_str(" entfernen");
         }
 
-        let mut veraendert_str = veraendert.join(" / ");
+        let mut veraendert_str = veraendert.into_iter().collect::<Vec<_>>().join(" / ");
         if !veraendert_str.trim().is_empty() {
-            veraendert_str.push_str(" verändern");
+            veraendert_str.push_str(" anpassen");
         }
 
-        vec![
-            alt_weg_str,
-            neu_dazu_str,
-            veraendert_str,
-        ].join(", ").trim().to_string()
+        let mut v = Vec::new();
+        
+        if !alt_weg_str.trim().is_empty() {
+            v.push(alt_weg_str);
+        }
+        if !neu_dazu_str.trim().is_empty() {
+            v.push(neu_dazu_str);
+        }
+        if !veraendert_str.trim().is_empty() {
+            v.push(veraendert_str);
+        }
+
+        v.join(", ").trim().to_string()
+    }
+
+    pub fn get_auto_kuerzel(splitflaechen: &[Self], flst_id: &str) -> (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>) {
+
+        let veraenderte_splitflaechen = Self::get_splitflaechen_fuer_flst_veraendert(splitflaechen, flst_id);
+        
+        if veraenderte_splitflaechen.is_empty() {
+            return (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
+        }
+    
+        let bleibende_kuerzel = Self::get_splitflaechen_fuer_flst_bleibt(splitflaechen, flst_id)
+            .iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
+
+        let alt_join = veraenderte_splitflaechen.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
+        let neu_join = veraenderte_splitflaechen.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
+        
+        let alt_weg = alt_join.difference(&neu_join).cloned().collect::<BTreeSet<_>>();
+        let neu_dazu = neu_join.difference(&alt_join).cloned().collect::<BTreeSet<_>>();
+        let mut veraendert = alt_join.intersection(&neu_join).cloned().collect::<BTreeSet<_>>();
+        for k in bleibende_kuerzel.iter() {
+            if alt_weg.contains(k) || neu_dazu.contains(k) {
+                veraendert.insert(k.clone());
+            }
+        }
+        let alt_weg = alt_weg.into_iter().filter(|s| !bleibende_kuerzel.contains(s)).collect::<BTreeSet<_>>();
+        let neu_dazu = neu_dazu.into_iter().filter(|s| !bleibende_kuerzel.contains(s)).collect::<BTreeSet<_>>();
+
+        (alt_weg, neu_dazu, veraendert)
     }
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
 
-        let flst_id = FlstIdParsed::from_str(flst_id);
-        let flst_id = match flst_id.parse_num() {
-            Some(o) => o.format_nice(),
-            None => flst_id.to_nice_string(),
-        };
-        let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
-            s.format_flst_id() == flst_id 
-        }).collect::<Vec<_>>();
-        splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
-        splitflaechen_fuer_flst.dedup();
-
-        if splitflaechen_fuer_flst.is_empty() {
-            return Status::Bleibt;
-        }
-
-        let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
-        let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
+        let (alt_weg, neu_dazu, _) = Self::get_auto_kuerzel(splitflaechen, flst_id);
         
-        let alte_wirtschaftsarten = alt_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
-        let neue_wirtschaftsarten = neu_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let alte_wirtschaftsarten = alt_weg.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let neue_wirtschaftsarten = neu_dazu.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
         let veraenderte_wia = alte_wirtschaftsarten.difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
 
         if veraenderte_wia.is_empty() {
