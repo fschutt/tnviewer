@@ -1418,13 +1418,18 @@ impl AenderungenIntersection {
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
 
-        let (alt_weg, neu_dazu, _) = Self::get_auto_kuerzel(splitflaechen, flst_id);
+        let (alt_weg, neu_dazu, veraendert) = Self::get_auto_kuerzel(splitflaechen, flst_id);
+        
+        if alt_weg.is_empty() && neu_dazu.is_empty() && veraendert.is_empty() {
+            return Status::Bleibt;
+        }
         
         let alte_wirtschaftsarten = alt_weg.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
         let neue_wirtschaftsarten = neu_dazu.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
-        let veraenderte_wia = alte_wirtschaftsarten.difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
+        let veraendert = veraendert.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let veraendert_2 = alte_wirtschaftsarten.symmetric_difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
 
-        if veraenderte_wia.is_empty() {
+        if veraendert.is_empty() && veraendert_2.is_empty() {
             Status::AenderungKeineBenachrichtigung
         } else {
             Status::AenderungMitBenachrichtigung
