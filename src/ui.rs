@@ -1272,14 +1272,23 @@ pub struct AenderungenIntersection {
 impl AenderungenIntersection {
     
     pub fn format_flst_id(&self) -> String {
-        FlstIdParsed::from_str(&self.flst_id).to_nice_string()
+        let s = FlstIdParsed::from_str(&self.flst_id);
+        let q = match s.parse_num() {
+            Some(o) => o,
+            None => return s.to_nice_string(),
+        };
+        q.format_nice()
     }
 
     pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
         
-        let flst_id = FlstIdParsed::from_str(flst_id).to_nice_string();
+        let flst_id = FlstIdParsed::from_str(flst_id);
+        let flst_id = match flst_id.parse_num() {
+            Some(o) => o.format_nice(),
+            None => flst_id.to_nice_string(),
+        };
         let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
-            FlstIdParsed::from_str(&s.flst_id).to_nice_string() == flst_id 
+            s.format_flst_id() == flst_id 
         }).collect::<Vec<_>>();
         splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
         splitflaechen_fuer_flst.dedup();
@@ -1304,9 +1313,13 @@ impl AenderungenIntersection {
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
 
-        let flst_id = FlstIdParsed::from_str(flst_id).to_nice_string();
+        let flst_id = FlstIdParsed::from_str(flst_id);
+        let flst_id = match flst_id.parse_num() {
+            Some(o) => o.format_nice(),
+            None => flst_id.to_nice_string(),
+        };
         let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
-            FlstIdParsed::from_str(&s.flst_id).to_nice_string() == flst_id 
+            s.format_flst_id() == flst_id 
         }).collect::<Vec<_>>();
         splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
         splitflaechen_fuer_flst.dedup();
