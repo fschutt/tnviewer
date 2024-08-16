@@ -1130,7 +1130,7 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
-          addProblemGeoJSON(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -1571,6 +1571,7 @@
         JSON.stringify(window.aenderungen),
         JSON.stringify(window.risse),
         JSON.stringify(risse_extent),
+        JSON.stringify(window.csv_data),
       );
       
       downloadBlob(zip, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');

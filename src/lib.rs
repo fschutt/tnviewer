@@ -220,6 +220,7 @@ pub fn aenderungen_zu_geograf(
     aenderungen: String,
     risse: String,
     risse_extente: String,
+    csv_data: String,
 ) -> Vec<u8> {
     let split_nas_xml = match serde_json::from_str::<SplitNasXml>(split_nas_xml.as_str()) {
         Ok(o) => o,
@@ -256,6 +257,11 @@ pub fn aenderungen_zu_geograf(
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };
 
+    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
+        Ok(o) => o,
+        Err(_) => BTreeMap::default(),
+    };
+
     let result = std::panic::catch_unwind(|| {
         crate::geograf::export_aenderungen_geograf(
             &split_nas_xml,
@@ -265,6 +271,7 @@ pub fn aenderungen_zu_geograf(
             &aenderungen,
             &risse,
             &risse_extente,
+            &csv_data,
         )
     });
 

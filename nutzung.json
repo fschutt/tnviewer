@@ -1,5 +1,6 @@
 {
     "WBF": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "11000000",
       "bez": "Wohnbaufläche",
@@ -9,6 +10,7 @@
       "ehb": "Die unbebauten Flächen gelten gewöhnlich als der Bebauung untergeordnet, wenn sie das 10fache der bebauten Fläche nicht überschreiten. Hausgärten bis zu 1000 m², im übrigen Flächen bis zu 2000 m² gelten bei obiger Nutzung als der Bebauung untergeordnet."
     },
     "WBFO": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "11000000",
       "bez": "Wohnbaufläche offene Bauweise",
@@ -18,6 +20,7 @@
       "ehb": "'Offen' beschreibt die Bebauung von 'Wohnbaufläche', die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
     },
     "WBFG": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "11000000",
       "bez": "Wohnbaufläche geschlossene Bauweise",
@@ -27,6 +30,7 @@
       "ehb": "'Geschlossen' beschreibt die Bebauung von 'Wohnbaufläche', die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent der Wohnbaufläche."
     },
     "WBFPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "11980000",
       "bez": "Wohnbaufläche - Parken",
@@ -36,6 +40,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "IGF": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12000000",
       "bez": "Industrie- und Gewerbefläche",
@@ -45,6 +50,7 @@
       "ehb": "Die unbebauten Flächen gelten gewöhnlich als der Bebauung untergeordnet, wenn sie das 10fache der bebauten Fläche nicht überschreiten."
     },
     "IG": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12010000",
       "bez": "Industrie und Gewerbe",
@@ -54,6 +60,7 @@
       "ehb": "Hierzu gehören auch Gebäude und Freifläche Industrie und Gewerbe, Produktion, Handwerk, Tankstelle, betriebliche Sozialeinrichtung, Logistik und Transport, Forschung und Entwicklung, Nahrungs-, Futter-, Genussmittel, Textil, Bekleidung, Holz-, Naturfaser-, Verpackungsprodukte, Mediaoprodukte, Mineralölverarbeitung, Chemie-, Pharma-, Kunststoffprodukte, Metallerzeugung und -verar- beitung, Technik, Elektrik, Elektronik, Maschinenbau, Fahrzeugbau, Möbel und sonstige Konsumgüter."
     },
     "IGL": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12010400",
       "bez": "Lagerfläche",
@@ -63,6 +70,7 @@
       "ehb": ""
     },
     "IGW": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12010900",
       "bez": "Werft",
@@ -72,6 +80,7 @@
       "ehb": ""
     },
     "HD": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12020000",
       "bez": "Handel und Dienstleistung",
@@ -81,6 +90,7 @@
       "ehb": "Hierzu gehören auch freie Berufe und weitere Dienstleistungen, Bank, Kredit, Versicherung, Beherbergung, Restauration (gastronomische Versorgung), Vergnügung."
     },
     "HDH": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12020400",
       "bez": "Handel",
@@ -90,6 +100,7 @@
       "ehb": ""
     },
     "HDM": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12020500",
       "bez": "Ausstellung, Messe",
@@ -99,6 +110,7 @@
       "ehb": ""
     },
     "HDG": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "12020900",
       "bez": "Gärtnerei",
@@ -108,6 +120,7 @@
       "ehb": ""
     },
     "VS": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage",
@@ -117,6 +130,7 @@
       "ehb": "Hierzu gehören auch Gaswerk, Funk- und Fernmeldeanlagen."
     },
     "VSWA": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Wasser",
@@ -126,6 +140,7 @@
       "ehb": ""
     },
     "VSKK": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Kernkraft",
@@ -135,6 +150,7 @@
       "ehb": ""
     },
     "VSSO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Sonne",
@@ -144,6 +160,7 @@
       "ehb": ""
     },
     "VSWI": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Wind",
@@ -153,6 +170,7 @@
       "ehb": ""
     },
     "VSVE": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Verbrennung",
@@ -162,6 +180,7 @@
       "ehb": ""
     },
     "VSKO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030000",
       "bez": "Versorgungsanlage - Kohle",
@@ -171,6 +190,7 @@
       "ehb": ""
     },
     "FÖ": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030100",
       "bez": "Förderanlage",
@@ -180,6 +200,7 @@
       "ehb": "Hierzu gehören Rohstoffe und Energieträger wie Sole, Lauge, Kohlensäure und Erdwärme."
     },  
     "FÖÖ": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030101",
       "bez": "Förderanlage – Erdöl",
@@ -189,6 +210,7 @@
       "ehb": ""
     },
     "FÖG": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030102",
       "bez": "Förderanlage – Erdgas",
@@ -198,6 +220,7 @@
       "ehb": ""
     },
     "VSW": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030200",
       "bez": "Wasserwerk",
@@ -207,6 +230,7 @@
       "ehb": ""
     },
     "VSK": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030300",
       "bez": "Kraftwerk",
@@ -216,6 +240,7 @@
       "ehb": ""
     },
     "VSKWA": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030301",
       "bez": "Kraftwerk - Wasser",
@@ -225,6 +250,7 @@
       "ehb": ""
     },
     "VSKKK": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030302",
       "bez": "Kraftwerk - Kernkraft",
@@ -234,6 +260,7 @@
       "ehb": ""
     },
     "VSKSO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030303",
       "bez": "Kraftwerk - Sonne",
@@ -243,6 +270,7 @@
       "ehb": ""
     },
     "VSKWI": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030304",
       "bez": "Kraftwerk - Wind",
@@ -252,6 +280,7 @@
       "ehb": ""
     },
     "VSKVE": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030307",
       "bez": "Kraftwerk - Wind",
@@ -261,6 +290,7 @@
       "ehb": ""
     },
     "VSKKO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030308",
       "bez": "Kraftwerk - Kohle",
@@ -270,6 +300,7 @@
       "ehb": ""
     },
     "VSU": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030400",
       "bez": "Umspannstation",
@@ -279,6 +310,7 @@
       "ehb": ""
     },
     "VSR": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030500",
       "bez": "Raffinerie",
@@ -288,6 +320,7 @@
       "ehb": ""
     },
     "VSH": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030700",
       "bez": "Heizwerk",
@@ -297,6 +330,7 @@
       "ehb": ""
     },
     "VSHKK": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030702",
       "bez": "Heizwerk - Kernkraft ",
@@ -306,6 +340,7 @@
       "ehb": ""
     },
     "VSHSO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030703",
       "bez": "Heizwerk - Sonne",
@@ -315,6 +350,7 @@
       "ehb": ""
     },
     "VSHVE": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030707",
       "bez": "Heizwerk - Verbrennung",
@@ -324,6 +360,7 @@
       "ehb": ""
     },
     "VSHKO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12030708",
       "bez": "Heizwerk - Kohle",
@@ -333,6 +370,7 @@
       "ehb": ""
     },
     "ES": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12040000",
       "bez": "Entsorgung",
@@ -342,6 +380,7 @@
       "ehb": ""
     },
     "ESK": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12040100",
       "bez": "Kläranlage, Klärwerk",
@@ -351,6 +390,7 @@
       "ehb": ""
     },
     "ESA": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12040200",
       "bez": "Abfallbehandlungsanlage",
@@ -360,6 +400,7 @@
       "ehb": ""
     },
     "ESDO": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12040300",
       "bez": "Deponie (oberirdisch)",
@@ -369,6 +410,7 @@
       "ehb": ""
     },
     "ESDU": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "12040400",
       "bez": "Deponie (untertägig)",
@@ -378,6 +420,7 @@
       "ehb": ""
     },
     "IGFPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "12980000",
       "bez": "Industrie und Gewerbe - Parken",
@@ -387,6 +430,7 @@
       "ehb": ""
     },
     "HAL": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "13000000",
       "bez": "Halde",
@@ -396,6 +440,7 @@
       "ehb": "Dauerhaft anders genutzte Halden werden als Objekte entsprechend der TN erfasst."
     },
     "BE": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "14000000",
       "bez": "Bergbaubetrieb",
@@ -405,6 +450,7 @@
       "ehb": ""
     },
     "BEAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "14000000",
       "bez": "Bergbaubetrieb - Außer Betrieb",
@@ -414,6 +460,7 @@
       "ehb": ""
     },
     "TG": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15000000",
       "bez": "Tagebau, Grube, Steinbruch",
@@ -423,6 +470,7 @@
       "ehb": ""
     },
     "TGT": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010100",
       "bez": "Tagebau, Grube, Steinbruch - Ton",
@@ -432,6 +480,7 @@
       "ehb": ""
     },
     "TGTAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010100",
       "bez": "Tagebau, Grube, Steinbruch - Ton",
@@ -441,6 +490,7 @@
       "ehb": ""
     },
     "TGL": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010400",
       "bez": "Tagebau, Grube, Steinbruch - Lehm",
@@ -450,6 +500,7 @@
       "ehb": ""
     },
     "TGLAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010400",
       "bez": "Tagebau, Grube, Steinbruch - Lehm",
@@ -459,6 +510,7 @@
       "ehb": ""
     },
     "TGS": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010800",
       "bez": "Tagebau, Grube, Steinbruch - Sand",
@@ -468,6 +520,7 @@
       "ehb": ""
     },
     "TGSAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010800",
       "bez": "Tagebau, Grube, Steinbruch - Sand",
@@ -477,6 +530,7 @@
       "ehb": ""
     },
     "TGKI": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010800",
       "bez": "Tagebau, Grube, Steinbruch - Kies, Kiessand",
@@ -486,6 +540,7 @@
       "ehb": ""
     },
     "TGKIAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15010900",
       "bez": "Tagebau, Grube, Steinbruch - Kies, Kiessand",
@@ -495,6 +550,7 @@
       "ehb": ""
     },
     "TGQ": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15011100",
       "bez": "Tagebau, Grube, Steinbruch - Quarzsand",
@@ -504,6 +560,7 @@
       "ehb": ""
     },
     "TGQAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15011100",
       "bez": "Tagebau, Grube, Steinbruch - Quarzsand",
@@ -513,6 +570,7 @@
       "ehb": ""
     },
     "TGKS": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15020500",
       "bez": "Tagebau, Grube, Steinbruch - Kalkstein",
@@ -522,6 +580,7 @@
       "ehb": ""
     },
     "TGKSAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15020500",
       "bez": "Tagebau, Grube, Steinbruch - Kalkstein",
@@ -531,6 +590,7 @@
       "ehb": ""
     },
     "TGG": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15021000",
       "bez": "Tagebau, Grube, Steinbruch - Grauwacke",
@@ -540,6 +600,7 @@
       "ehb": ""
     },
     "TGGAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15021000",
       "bez": "Tagebau, Grube, Steinbruch - Grauwacke",
@@ -549,6 +610,7 @@
       "ehb": ""
     },
     "TGTF": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15030100",
       "bez": "Tagebau, Grube, Steinbruch - Torf",
@@ -558,6 +620,7 @@
       "ehb": ""
     },
     "TGTFAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15030100",
       "bez": "Tagebau, Grube, Steinbruch - Torf",
@@ -567,6 +630,7 @@
       "ehb": ""
     },
     "TGB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15030300",
       "bez": "Tagebau, Grube, Steinbruch - Braunkohle",
@@ -576,6 +640,7 @@
       "ehb": ""
     },
     "TGBAB": {
+      "wia": "3000",
       "nab": "siedlung",
       "nak": "15030300",
       "bez": "Tagebau, Grube, Steinbruch - Braunkohle",
@@ -585,6 +650,7 @@
       "ehb": ""
     },
     "TGPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "15980000",
       "bez": "Tagebau, Grube, Steinbruch - Parken",
@@ -594,6 +660,7 @@
       "ehb": ""
     },
     "MI": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "16000000",
       "bez": "Fläche gemischter Nutzung",
@@ -603,6 +670,7 @@
       "ehb": "Hierzu gehören auch Gebäude und Freifläche Mischnutzung mit Wohnen (zugleich oder nicht ganz untergeordnete Wohn- oder andere Nutzung), Gebäude und Freifläche Land- und Forstwirtschaft (dient vorwiegend Land- und Forstwirtschaft, einschließlich des Wohnteils)."
     },
     "MIO": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "16000000",
       "bez": "Fläche gemischter Nutzung offene Bauweise",
@@ -612,6 +680,7 @@
       "ehb": "'Offen' beschreibt die Bebauung, die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
     },
     "MIG": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "16000000",
       "bez": "Fläche gemischter Nutzung geschlossene Bauweise",
@@ -621,6 +690,7 @@
       "ehb": "'Geschlossen' beschreibt die Bebauung, die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent."
     },
     "MIPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "16980000",
       "bez": "Fläche gemischter Nutzung - Parken",
@@ -630,6 +700,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "MILB": {
+      "wia": "6000",
       "nab": "siedlung",
       "nak": "16010000",
       "bez": "Landwirtschaftliche Betriebsfläche",
@@ -639,6 +710,7 @@
       "ehb": ""
     },
     "MIFB": {
+      "wia": "7000",
       "nab": "siedlung",
       "nak": "16020000",
       "bez": "Forstwirtschaftliche Betriebsfläche",
@@ -648,6 +720,7 @@
       "ehb": ""
     },
     "MIFW": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "16030000",
       "bez": "Fischereiwirtschaftsfläche",
@@ -657,6 +730,7 @@
       "ehb": ""
     },
     "BP": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17000000",
       "bez": "Fläche besonderer funktionaler Prägung",
@@ -666,6 +740,7 @@
       "ehb": ""
     },
     "BPO": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17000000",
       "bez": "Fläche besonderer funktionaler Prägung offene Bauweise",
@@ -675,6 +750,7 @@
       "ehb": "'Offen' beschreibt die Bebauung, die vorwiegend durch einzelstehende Gebäude charakterisiert wird."
     },
     "BPG": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17000000",
       "bez": "Fläche besonderer funktionaler Prägung geschlossene Bauweise",
@@ -684,6 +760,7 @@
       "ehb": "'Geschlossen' beschreibt die Bebauung, die vorwiegend durch zusammenhängende Gebäude charakterisiert wird. Die Gebäudeabdeckung ist in der Regel > 50 Prozent ."
     },
     "BPÖ": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010000",
       "bez": "Öffentliche Zwecke",
@@ -693,6 +770,7 @@
       "ehb": ""
     },
     "BPV": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010100",
       "bez": "Regierung und Verwaltung",
@@ -702,6 +780,7 @@
       "ehb": ""
     },
     "BPB": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010200",
       "bez": "Bildung und Wissenschaft",
@@ -711,6 +790,7 @@
       "ehb": ""
     },
     "BPK": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010300",
       "bez": "Kultur",
@@ -720,6 +800,7 @@
       "ehb": ""
     },
     "BPR": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010400",
       "bez": "Religiöse Einrichtung",
@@ -729,6 +810,7 @@
       "ehb": ""
     },
     "BPG2": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010500",
       "bez": "Gesundheit, Kur",
@@ -738,6 +820,7 @@
       "ehb": ""
     },
     "BPS": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010600",
       "bez": "Soziales",
@@ -747,6 +830,7 @@
       "ehb": ""
     },
     "BPO2": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010700",
       "bez": "Sicherheit und Ordnung",
@@ -756,6 +840,7 @@
       "ehb": ""
     },
     "BPM": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17010700",
       "bez": "Medien und Kommunikation",
@@ -765,6 +850,7 @@
       "ehb": ""
     },
     "BPHA": {
+      "wia": "1000",
       "nab": "siedlung",
       "nak": "17020000",
       "bez": "Historische Anlage",
@@ -774,15 +860,17 @@
       "ehb": ""
     },
     "BPPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "17980000",
-      "bez": "Historische Anlage",
+      "bez": "Fläche besonderer funktionaler Prägung - Parken",
       "def": "",
       "ken": "41007",
       "oak": "FKT - 1200 / IWN - 1000",
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "SF": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18000000",
       "bez": "Sport-, Freizeit- und Erholungsfläche",
@@ -792,6 +880,7 @@
       "ehb": ""
     },
     "SFS": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18010000",
       "bez": "Sportanlage",
@@ -801,6 +890,7 @@
       "ehb": "Hierzu gehören auch Sportplatz, Rennbahn, Reitsport, Schießanlage, Eis-, Rollschuhbahn, Tennis."
     },
     "SFG": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18010100",
       "bez": "Golf",
@@ -810,6 +900,7 @@
       "ehb": ""
     },
     "SFF": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020000",
       "bez": "Freizeitanlage",
@@ -819,6 +910,7 @@
       "ehb": "Hierzu gehören auch Verkehrsübungsplatz, Testgelände, Fahrsicherheit, Go-Kart-Bahn, Hundeübungsplatz."
     },
     "SFZ": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020100",
       "bez": "Zoo",
@@ -828,6 +920,7 @@
       "ehb": ""
     },
     "SFWP": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020200",
       "bez": "Safaripark, Wildpark",
@@ -837,6 +930,7 @@
       "ehb": ""
     },
     "SFP": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020300",
       "bez": "Freizeitpark",
@@ -846,6 +940,7 @@
       "ehb": "Hierzu gehört auch Kletteranlage."
     },
     "SFB": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020500",
       "bez": "Freilichtbühne",
@@ -855,6 +950,7 @@
       "ehb": ""
     },
     "SFM": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020600",
       "bez": "Freilichtmuseum",
@@ -864,6 +960,7 @@
       "ehb": ""
     },
     "SFA": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18020700",
       "bez": "Autokino, Freilichtkino",
@@ -873,6 +970,7 @@
       "ehb": ""
     },
     "SFMO": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18021100",
       "bez": "Modellfluggelände",
@@ -882,6 +980,7 @@
       "ehb": ""
     },
     "EH": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18030000",
       "bez": "Modellfluggelände",
@@ -891,6 +990,7 @@
       "ehb": ""
     },
     "WFH": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18030100",
       "bez": "Wochenend- und Ferienhausfläche",
@@ -900,6 +1000,7 @@
       "ehb": ""
     },
     "SCHW": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18030100",
       "bez": "Schwimmen",
@@ -909,6 +1010,7 @@
       "ehb": ""
     },
     "CAM": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18030300",
       "bez": "Campingplatz",
@@ -918,6 +1020,7 @@
       "ehb": ""
     },
     "GRÜ": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18040000",
       "bez": "Grünanlage",
@@ -927,6 +1030,7 @@
       "ehb": "Hierzu gehören auch Siedlungsgrünfläche, Botanischer Garten, Wochenendplatz, Garten (Erzeugung von Nutzpflanzen zum privaten Gebrauch, nicht Wohnbaufläche untergeordnet), Spielplatz, Bolzplatz"
     },
     "PARK": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18040200",
       "bez": "Park",
@@ -936,6 +1040,7 @@
       "ehb": ""
     },
     "KG": {
+      "wia": "4000",
       "nab": "siedlung",
       "nak": "18040400",
       "bez": "Kleingarten",
@@ -945,6 +1050,7 @@
       "ehb": ""
     },
     "SFPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "18980000",
       "bez": "Sport-, Freizeit- und Erholungsfläche - Parken",
@@ -954,6 +1060,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "F": {
+      "wia": "9400",
       "nab": "siedlung",
       "nak": "19000000",
       "bez": "Friedhof",
@@ -963,6 +1070,7 @@
       "ehb": "Waldbestattungsflächen werden der Nutzungsart Wald zugeordnet."
     },
     "FPA": {
+      "wia": "5000",
       "nab": "siedlung",
       "nak": "19980000",
       "bez": "Friedhof - Parken",
@@ -972,6 +1080,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "S": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21010000",
       "bez": "Straßenverkehr",
@@ -981,6 +1090,7 @@
       "ehb": "Zu den als Straßenverkehr nachzuweisenden Flächen gehören gewöhnlich auch die Trenn-, Seiten- und Schutzstreifen, Brücken, Gräben und Böschungen, Parkstreifen und ähnliche Einrichtungen, wenn sie eine Breite von in der Regel 3 m nicht überschreiten."
     },
     "SB": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21010200",
       "bez": "Begleitfläche Straßenverkehr",
@@ -990,6 +1100,7 @@
       "ehb": "Ausgenommen der Fahrstreifen gehören hierzu Flächen von Trenn-, Seiten- und Schutzstreifen, Brücken, Gräben und Böschungen, Parkstreifen und ähnliche Einrichtungen, wenn sie eine Breite von 3 m überschreiten und in Bezug auf die Straßenverkehrsfläche nicht untergeordnet sind."
     },
     "WEG": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21020000",
       "bez": "Weg",
@@ -999,6 +1110,7 @@
       "ehb": ""
     },
     "PL": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030000",
       "bez": "Platz",
@@ -1008,6 +1120,7 @@
       "ehb": "Hierzu gehören auch Marktplatz, Busbahnhof."
     },
     "FUß": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030100",
       "bez": "Fußgängerzone",
@@ -1017,6 +1130,7 @@
       "ehb": ""
     },
     "P": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030200",
       "bez": "Parkplatz",
@@ -1026,6 +1140,7 @@
       "ehb": ""
     },
     "RAP": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030300",
       "bez": "Rastplatz",
@@ -1035,6 +1150,7 @@
       "ehb": ""
     },
     "RAS": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030400",
       "bez": "Raststätte, Autohof",
@@ -1044,6 +1160,7 @@
       "ehb": ""
     },
     "FP": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "21030600",
       "bez": "Festplatz",
@@ -1053,6 +1170,7 @@
       "ehb": ""
     },
     "BA": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "22000000",
       "bez": "Bahnverkehr",
@@ -1062,6 +1180,7 @@
       "ehb": "Hierzu gehören 1. der Bahnkörper mit Gleisanlagen, Bahnsteige und Böschungen, Brücken, Gräben und Schutzstreifen, wenn sie eine Breite von in der Regel 3 m nicht überschreiten. 2. Die auf der freien Strecke befindlichen Flächen mit Wärterhäuschen, Blockhäuschen, Transformatoren u.dgl."
     },
     "BAB": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "22020000",
       "bez": "Begleitfläche Bahnverkehr",
@@ -1071,6 +1190,7 @@
       "ehb": "Ausgenommen des Bahnkörpers gehören hierzu 1. Böschungen, Brücken, Gräben und Schutzstreifen, wenn sie eine Breite von 3 m überschreiten und in Bezug auf die Bahnverkehrsfläche nicht untergeordnet sind. 2. Ladestraßen, Laderampen, Lagerplätze u. dgl."
     },
     "BAPA": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "22980000",
       "bez": "Bahnverkehr - Parken",
@@ -1080,6 +1200,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "FL": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Flugverkehr",
@@ -1089,6 +1210,7 @@
       "ehb": ""
     },
     "IFH": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Internationaler Flughafen",
@@ -1098,6 +1220,7 @@
       "ehb": ""
     },
     "RFH": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Regionalflughafen",
@@ -1107,6 +1230,7 @@
       "ehb": ""
     },
     "SFH": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Sonderflughafen",
@@ -1116,6 +1240,7 @@
       "ehb": ""
     },
     "VLP": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Verkehrslandeplatz",
@@ -1125,6 +1250,7 @@
       "ehb": ""
     },
     "SLP": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Sonderlandeplatz",
@@ -1134,6 +1260,7 @@
       "ehb": ""
     },
     "HLP": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Hubschrauberlandeplatz",
@@ -1143,6 +1270,7 @@
       "ehb": ""
     },
     "SFLG": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23000000",
       "bez": "Segelfluggelände",
@@ -1152,6 +1280,7 @@
       "ehb": ""
     },
     "FLPA": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "23980000",
       "bez": "Flugverkehr - Parken",
@@ -1161,6 +1290,7 @@
       "ehb": ""
     },
     "SV": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "24020000",
       "bez": "Schiffsverkehr",
@@ -1170,6 +1300,7 @@
       "ehb": ""
     },
     "SVPA": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "24980000",
       "bez": "Schiffsverkehr - Parken",
@@ -1179,6 +1310,7 @@
       "ehb": "Die Erfassungsuntergrenze ist anzuhalten."
     },
     "SVH": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "24020100",
       "bez": "Hafenanlage (Landfläche)",
@@ -1188,6 +1320,7 @@
       "ehb": ""
     },
     "SVS": {
+      "wia": "5000",
       "nab": "verkehr",
       "nak": "24020200",
       "bez": "Schleuse (Landfläche)",
@@ -1197,6 +1330,7 @@
       "ehb": ""
     },
     "LW": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31000000",
       "bez": "Landwirtschaft",
@@ -1206,6 +1340,7 @@
       "ehb": ""
     },
     "A": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31010000",
       "bez": "Ackerland",
@@ -1215,6 +1350,7 @@
       "ehb": "Hierzu gehören auch Spargel, Hanf."
     },
     "SOA": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31010100",
       "bez": "Streuobstacker",
@@ -1224,6 +1360,7 @@
       "ehb": ""
     },
     "HOP": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31010200",
       "bez": "Hopfen",
@@ -1233,6 +1370,7 @@
       "ehb": ""
     },
     "GR": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31020000",
       "bez": "Grünland",
@@ -1242,6 +1380,7 @@
       "ehb": ""
     },
     "SOW": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31020100",
       "bez": "Streuobstwiese",
@@ -1251,6 +1390,7 @@
       "ehb": ""
     },
     "SAW": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31020200",
       "bez": "Salzweide",
@@ -1260,6 +1400,7 @@
       "ehb": ""
     },
     "G": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31030000",
       "bez": "Gartenbauland",
@@ -1269,6 +1410,7 @@
       "ehb": ""
     },
     "BAUM": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31030100",
       "bez": "Baumschule",
@@ -1278,6 +1420,7 @@
       "ehb": ""
     },
     "REB": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31040000",
       "bez": "Rebfläche",
@@ -1287,6 +1430,7 @@
       "ehb": ""
     },
     "OBP": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31050000",
       "bez": "Obst- und Nussplantage",
@@ -1296,6 +1440,7 @@
       "ehb": ""
     },
     "OBBP": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31050100",
       "bez": "Obst- und Nussbaumplantage",
@@ -1305,6 +1450,7 @@
       "ehb": ""
     },
     "WEIH": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31070000",
       "bez": "Weihnachtsbaumkultur",
@@ -1314,6 +1460,7 @@
       "ehb": ""
     },
     "KURZ": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31080000",
       "bez": "Kurzumtriebsplantage",
@@ -1323,6 +1470,7 @@
       "ehb": ""
     },
     "BRA": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "31090000",
       "bez": "Brachland",
@@ -1332,6 +1480,7 @@
       "ehb": ""
     },
     "WALD": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32000000",
       "bez": "Wald",
@@ -1341,6 +1490,7 @@
       "ehb": "Hierzu gehören auch unbefestigte Wege und Schneisen bis 5 m Breite. Weist eine Fläche mehrere Vegetationsmerkmale auf, so erfolgt eine Differenzierung erst bei einer Flächengröße ab 5000 m² je Vegetationsmerkmal, ansonsten wirkt das Dominanzprinzip."
     },
     "LH": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32000000",
       "bez": "Laubholz",
@@ -1350,6 +1500,7 @@
       "ehb": ""
     },
     "NH": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32000000",
       "bez": "Nadelholz",
@@ -1359,6 +1510,7 @@
       "ehb": ""
     },
     "LNH": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32000000",
       "bez": "Laub- und Nadelholz",
@@ -1368,6 +1520,7 @@
       "ehb": ""
     },
     "FWF": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010000",
       "bez": "Forstwirtschaftsfläche",
@@ -1377,6 +1530,7 @@
       "ehb": "Hierzu gehören keine Kurzumtriebsplantagen."
     },
     "FWFL": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010000",
       "bez": "Forstwirtschaftsfläche (Laubholz)",
@@ -1386,6 +1540,7 @@
       "ehb": ""
     },
     "FWFN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010000",
       "bez": "Forstwirtschaftsfläche (Nadelholz)",
@@ -1395,6 +1550,7 @@
       "ehb": ""
     },
     "FWFLN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010000",
       "bez": "Forstwirtschaftsfläche (Laub- und Nadelholz)",
@@ -1404,6 +1560,7 @@
       "ehb": ""
     },
     "VNPF": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010100",
       "bez": "Verjüngungs-, Neuanpflanzungsfläche",
@@ -1413,6 +1570,7 @@
       "ehb": "Wert wird geführt für Flächen bis zu einer Bewuchshöhe von 5 m."
     },
     "VNFL": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010100",
       "bez": "Verjüngungs-, Neuanpflanzungsfläche (Laubholz)",
@@ -1422,6 +1580,7 @@
       "ehb": ""
     },
     "VNFN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010100",
       "bez": "Verjüngungs-, Neuanpflanzungsfläche (Nadelholz)",
@@ -1431,6 +1590,7 @@
       "ehb": ""
     },
     "VNFLN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32010100",
       "bez": "Verjüngungs-, Neuanpflanzungsfläche (Laub- und Nadelholz)",
@@ -1440,6 +1600,7 @@
       "ehb": ""
     },
     "WABF": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "Waldbestattungsfläche",
@@ -1449,6 +1610,7 @@
       "ehb": ""
     },
     "WABFL": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "Waldbestattungsfläche (Laubholz)",
@@ -1458,6 +1620,7 @@
       "ehb": ""
     },
     "WABFN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "Waldbestattungsfläche (Nadelholz)",
@@ -1467,6 +1630,7 @@
       "ehb": ""
     },
     "WABFLN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "Waldbestattungsfläche (Laub- und Nadelholz)",
@@ -1476,6 +1640,7 @@
       "ehb": ""
     },
     "WABFVN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche",
@@ -1485,6 +1650,7 @@
       "ehb": ""
     },
     "WABFVNL": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Laubholz)",
@@ -1494,6 +1660,7 @@
       "ehb": ""
     },
     "WABFVNN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Nadelholz)",
@@ -1503,6 +1670,7 @@
       "ehb": ""
     },
     "WABFVLN": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "32030000",
       "bez": "verjüngte bzw. neubepflanzte Waldbestattungsfläche (Laub- und Nadelholz)",
@@ -1512,6 +1680,7 @@
       "ehb": ""
     },
     "GHÖ": {
+      "wia": "7000",
       "nab": "vegetation",
       "nak": "33000000",
       "bez": "Gehölz",
@@ -1521,6 +1690,7 @@
       "ehb": ""
     },
     "HEI": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "34000000",
       "bez": "Heide",
@@ -1530,6 +1700,7 @@
       "ehb": ""
     },
     "MOOR": {
+      "wia": "6000",
       "nab": "vegetation",
       "nak": "35000000",
       "bez": "Moor",
@@ -1539,6 +1710,7 @@
       "ehb": ""
     },
     "SUM": {
+      "wia": "8000",
       "nab": "vegetation",
       "nak": "35000000",
       "bez": "Sumpf",
@@ -1548,6 +1720,7 @@
       "ehb": ""
     },
     "UV": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37000000",
       "bez": "Unland, Vegetationslose Fläche",
@@ -1557,6 +1730,7 @@
       "ehb": ""
     },
     "UVS": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37010200",
       "bez": "vegetationslose Fläche - Steine, Schotter",
@@ -1566,6 +1740,7 @@
       "ehb": ""
     },
     "UVG": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37010300",
       "bez": "vegetationslose Fläche - Geröll",
@@ -1575,6 +1750,7 @@
       "ehb": ""
     },
     "UVSA": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37010400",
       "bez": "vegetationslose Fläche - Sand",
@@ -1584,6 +1760,7 @@
       "ehb": ""
     },
     "WAB": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37020000",
       "bez": "Gewässerbegleitfläche",
@@ -1593,6 +1770,7 @@
       "ehb": "Ist gewöhnlich beidseitig, ab einer eigenständigen Breite von ≥ 3 m zu führen. Hierzu gehören auch Schutzeinrichtungen wie Deichflächen"
     },
     "NF": {
+      "wia": "9500",
       "nab": "vegetation",
       "nak": "37040000",
       "bez": "Naturnahe Fläche",
@@ -1602,6 +1780,7 @@
       "ehb": ""
     },
     "WAF": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "41000000",
       "bez": "Fließgewässer",
@@ -1611,6 +1790,7 @@
       "ehb": "Hierzu gehören auch vorübergehend oder ganzjährig nicht wasserführende, jedoch dafür vorgesehene Bodenvertie-\nfungen. Hierzu gehören nicht Flächen, die durch Verfüllung oder Verrohrung der ursprünglichen Bodenvertiefung nun einer anderen Nutzung zugeordnet werden können."
     },
     "KAN": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "41020000",
       "bez": "Kanal",
@@ -1620,6 +1800,7 @@
       "ehb": ""
     },
     "WAH": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "42000000",
       "bez": "Hafenbecken",
@@ -1629,6 +1810,7 @@
       "ehb": ""
     },
     "WAS": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "42000000",
       "bez": "Stehendes Gewässer",
@@ -1638,6 +1820,7 @@
       "ehb": "Hierzu gehören nicht vorübergehende Ansammlungen von Wasser. Sie sind der anliegenden Nutzung zuzuordnen."
     },
     "STS": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "43010100",
       "bez": "Stausee",
@@ -1647,6 +1830,7 @@
       "ehb": ""
     },
     "SPB": {
+      "wia": "8000",
       "nab": "gewaesser",
       "nak": "43010101",
       "bez": "Speicherbecken",

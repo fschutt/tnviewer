@@ -3,6 +3,7 @@ use serde_derive::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NutzungsArt {
+    pub wia: String, // Wirtschaftsart
     pub nab: String,
     pub nak: String, 
     pub bez: String,

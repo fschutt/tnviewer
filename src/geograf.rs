@@ -5,8 +5,8 @@ use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConfor
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::JsString;
-
-use crate::{nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
+use crate::csv::CsvDataType;
+use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
 pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
@@ -113,6 +113,7 @@ pub fn export_aenderungen_geograf(
     aenderungen: &Aenderungen, 
     risse: &Risse,
     risse_extente: &RissMap,
+    csv_data: &CsvDataType,
 ) -> Vec<u8> {
 
     web_sys::console::log_1(&format!("ok 1").as_str().into());
@@ -139,8 +140,8 @@ pub fn export_aenderungen_geograf(
         let i = i + 1;
         let pdf_horz = generate_anschlussriss_pdf(i, len, false);
         let pdf_vert = generate_anschlussriss_pdf(i, len, true);
-        files.push((None, format!("HORZ_{i}_von_{len}.pdf").into(), pdf_horz));
-        files.push((None, format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
+        files.push((Some("Anschlussrisse".to_string()), format!("HORZ_{i}_von_{len}.pdf").into(), pdf_horz));
+        files.push((Some("Anschlussrisse".to_string()), format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
     }
 
     web_sys::console::log_1(&format!("ok 4").as_str().into());
@@ -148,6 +149,9 @@ pub fn export_aenderungen_geograf(
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
     web_sys::console::log_1(&format!("RISSE ::: {risse:?}").as_str().into());
     web_sys::console::log_1(&format!("RISSE EXTENTE ::: {risse_extente:?}").as_str().into());
+
+    let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
+    files.push((None, format!("Splitflaechen.xlsx").into(), splitflaechen_report));
 
     if risse.is_empty() {
         export_splitflaechen(
@@ -212,6 +216,64 @@ pub fn export_aenderungen_geograf(
     web_sys::console::log_1(&format!("writing files to zip finished!").as_str().into());
 
     s
+}
+
+pub fn splitflaechen_zu_xlsx(
+    datensaetze: &CsvDataType,
+    splitflaechen: &[AenderungenIntersection],
+) -> Vec<u8> {
+    
+    use simple_excel_writer::*;
+    
+    let mut wb = Workbook::create_in_memory();
+    let mut sheet = wb.create_sheet("Flurstuecke");
+
+    // ID
+    sheet.add_column(Column { width: 30.0 });
+    // Nutzung
+    sheet.add_column(Column { width: 60.0 });
+    // Status
+    sheet.add_column(Column { width: 30.0 });
+    // Eigentümer
+    sheet.add_column(Column { width: 60.0 });
+
+    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
+        let sw = sheet_writer;
+        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer"])?;
+        for (flst_id, ds) in datensaetze.iter() {
+            let ds_0 = match ds.get(0) {
+                Some(s) => s,
+                None => continue
+            };
+            let mut notiz = ds_0.notiz.trim().to_string();
+            if notiz.is_empty() {
+                notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
+            }
+            let status = AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id);
+            let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
+            eigentuemer.sort();
+            eigentuemer.dedup();
+            let eig: String = eigentuemer.join("; ");
+            let nutzung = ds_0.nutzung.clone();
+            sw.append_row(row![
+                FlstIdParsed::from_str(&flst_id).to_nice_string(),
+                nutzung.to_string(),
+                match status {
+                    crate::csv::Status::Bleibt => "bleibt".to_string(),
+                    crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
+                    crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (mit Benachrichtigung)",
+                },
+                eig.to_string()
+            ])?;
+        }
+
+        Ok(())
+    });
+
+    match wb.close() {
+        Ok(Some(o)) => o,
+        _ => Vec::new(),
+    }
 }
 
 pub fn calc_splitflaechen(

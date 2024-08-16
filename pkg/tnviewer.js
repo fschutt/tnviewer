@@ -253,6 +253,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -375,9 +376,10 @@ function getArrayU8FromWasm0(ptr, len) {
 * @param {string} aenderungen
 * @param {string} risse
 * @param {string} risse_extente
+* @param {string} csv_data
 * @returns {Uint8Array}
 */
-export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, risse_extente) {
+export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, risse_extente, csv_data) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(split_nas_xml, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -394,12 +396,14 @@ export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, kon
         const len5 = WASM_VECTOR_LEN;
         const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len6 = WASM_VECTOR_LEN;
-        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6);
+        const ptr7 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len7 = WASM_VECTOR_LEN;
+        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7);
         var r0 = getInt32Memory0()[retptr / 4 + 0];
         var r1 = getInt32Memory0()[retptr / 4 + 1];
-        var v8 = getArrayU8FromWasm0(r0, r1).slice();
+        var v9 = getArrayU8FromWasm0(r0, r1).slice();
         wasm.__wbindgen_export_3(r0, r1 * 1, 1);
-        return v8;
+        return v9;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
@@ -1168,8 +1172,6 @@ export function export_pdf(projekt_info, risse, csv, xml, aenderungen, risse_ext
         wasm.__wbindgen_export_3(deferred8_0, deferred8_1, 1);
     }
 }
-
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }

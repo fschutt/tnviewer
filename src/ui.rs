@@ -1204,54 +1204,28 @@ impl AenderungenClean {
                 let bnew = megapoly.round_to_3dec();
                 let only_touches = crate::nas::only_touches(&anew, &bnew);
 
-                let mut subtract_polys = Vec::<SvgPolygon>::new();
+                web_sys::console::log_1(&format!("only_touches: {only_touches:?}").as_str().into());
+
+                let mut q = Vec::new();
                 if !only_touches {
-                    let q = intersect_polys(&potentially_intersecting.poly, &megapoly)
+                    q = intersect_polys(&potentially_intersecting.poly, megapoly)
                     .iter()
                     .map(|v| v.round_to_3dec())
-                    .collect::<Vec<_>>();
-
-                    for intersect_poly in q.iter() {
-                        subtract_polys.push(intersect_poly.round_to_3dec());
-                        is.push(AenderungenIntersection {
-                            alt: alt_kuerzel.clone(),
-                            neu: neu_kuerzel.clone(),
-                            flst_id: flurstueck_id.clone(),
-                            poly_cut: intersect_poly.round_to_3dec(),
-                        });
-                    }
-
-                    let f = difference_polys(&[potentially_intersecting.poly.clone(), megapoly.clone()])
-                    .iter()
-                    .map(|v| v.round_to_3dec())
-                    .collect::<Vec<_>>();
-
-                    for difference_poly in f.iter() {
-                        subtract_polys.push(difference_poly.round_to_3dec());
-                        is.push(AenderungenIntersection {
-                            alt: neu_kuerzel.clone(),
-                            neu: alt_kuerzel.clone(),
-                            flst_id: flurstueck_id.clone(),
-                            poly_cut: difference_poly.round_to_3dec(),
-                        });
-                    }
+                    .collect();
                 }
 
-                // deduplicate polys
-                subtract_polys.sort_by(|a, b| {
-                    let s1 = a.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-                    let s2 = b.outer_rings.get(0).and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-                    s1.cmp(&s2)
-                });
-
-                subtract_polys.dedup_by(|a, b| {
-                    let a = serde_json::to_string(a).unwrap_or_default();
-                    let b = serde_json::to_string(b).unwrap_or_default();
-                    a == b
-                });
+                let mut subtract_polys = Vec::new();
+                for intersect_poly in q.iter() {
+                    subtract_polys.push(intersect_poly.round_to_3dec());
+                    is.push(AenderungenIntersection {
+                        alt: alt_kuerzel.clone(),
+                        neu: neu_kuerzel.clone(),
+                        flst_id: flurstueck_id.clone(),
+                        poly_cut: intersect_poly.round_to_3dec(),
+                    });
+                }
 
                 let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
-                
                 stay_polys.entry(flurstueck_id)
                 .and_modify(|sp: &mut TaggedPolygon| {
                     sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
@@ -1265,7 +1239,7 @@ impl AenderungenClean {
                 });
             }
         }
-        
+
         for (flurstueck_id, flst_rest) in stay_polys {
             if flst_rest.poly.is_empty() {
                 continue;
@@ -1287,8 +1261,9 @@ impl AenderungenClean {
         }
 
         web_sys::console::log_1(&format!("is 6").as_str().into());
+        web_sys::console::log_1(&serde_json::to_string(&is).unwrap_or_default().as_str().into());
 
-        let is = is.into_iter().filter_map(|s| {
+        is.into_iter().filter_map(|s| {
             use geo::Area;
             let area_m2 = crate::nas::translate_to_geo_poly(&s.poly_cut).0.iter().map(|p| p.signed_area()).sum::<f64>();
             if area_m2 < 1.0 {
@@ -1296,18 +1271,6 @@ impl AenderungenClean {
             } else {
                 Some(s)
             }
-        }).collect::<Vec<_>>();
-
-        let flst_changed = is.iter().filter_map(|s| {
-            if s.alt != s.neu {
-                Some(s.flst_id.clone())
-            } else {
-                None
-            }
-        }).collect::<BTreeSet<_>>();
-
-        is.into_iter().filter(|s| {
-            flst_changed.contains(&s.flst_id)
         }).collect()
     }
 }
@@ -1322,6 +1285,59 @@ pub struct AenderungenIntersection {
 
 impl AenderungenIntersection {
     
+    pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
+        
+        let flst_id = FlstIdParsed::from_str(flst_id).to_nice_string();
+        let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
+            FlstIdParsed::from_str(&s.flst_id).to_nice_string() == flst_id 
+        }).collect::<Vec<_>>();
+        splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
+        splitflaechen_fuer_flst.dedup();
+
+        let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
+        let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
+        
+        let alt = if alt_join.len() == 1 {
+            alt_join.iter().next().cloned().unwrap()
+        } else {
+            format!("({})", alt_join.iter().cloned().collect::<Vec<_>>().join(", "))
+        };
+
+        let neu = if neu_join.len() == 1 {
+            neu_join.iter().next().cloned().unwrap()
+        } else {
+            format!("({})", neu_join.iter().cloned().collect::<Vec<_>>().join(", "))
+        };
+
+        format!("{alt} -> {neu}")
+    }
+
+    pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
+
+        let flst_id = FlstIdParsed::from_str(flst_id).to_nice_string();
+        let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
+            FlstIdParsed::from_str(&s.flst_id).to_nice_string() == flst_id 
+        }).collect::<Vec<_>>();
+        splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
+        splitflaechen_fuer_flst.dedup();
+
+        if splitflaechen_fuer_flst.is_empty() {
+            return Status::Bleibt;
+        }
+
+        let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
+        let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
+        let alte_wirtschaftsarten = alt_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let neue_wirtschaftsarten = alt_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let veraenderte_wia = alte_wirtschaftsarten.difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
+
+        if veraenderte_wia.is_empty() {
+            Status::AenderungKeineBenachrichtigung
+        } else {
+            Status::AenderungMitBenachrichtigung
+        }
+    }
+
     pub fn get_text_alt(&self) -> Option<TextPlacement> {
         if self.alt == self.neu {
             return None;

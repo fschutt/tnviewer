@@ -17,6 +17,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::console::log_1;
 use crate::csv::CsvDataType;
 use crate::csv::Status;
+use crate::search::NutzungsArt;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
 use crate::xlsx::FlstIdParsed;
@@ -487,6 +488,11 @@ impl TaggedPolygon {
 
     pub fn get_groesse(&self) -> f64 {
         translate_to_geo_poly(&self.poly).0.iter().map(|p| p.signed_area()).sum()
+    }
+
+    pub fn get_wirtschaftsart(kuerzel: &str) -> Option<String> {
+        let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+        map.get(kuerzel.trim()).map(|s| s.wia.clone())
     }
 
     pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
@@ -1450,6 +1456,7 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
 pub struct SvgPolyInternalResult {
     pub points_touching_lines: usize,
     pub points_inside_other_poly: usize,
+    pub all_points_are_on_line: bool,
 }
 
 
@@ -1509,7 +1516,16 @@ pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
     let is_1 = only_touches_internal(a, b);
     let is_2 = only_touches_internal(b, a);
     // no intersection of the two polygons possible
-    is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0
+    if is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0 {
+        if is_1.all_points_are_on_line || is_2.all_points_are_on_line {
+            // a is a subset of b or b is a subset of a
+            false
+        } else {
+            true
+        }
+    } else {
+        false
+    }
 }
 
 // Only touches the other polygon but does not intersect
@@ -1520,18 +1536,22 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
 
     let mut points_touching_lines = 0;
     let mut points_inside_other_poly = 0;
-
+    let mut all_points_are_on_line = true;
     for start_a in points_a.iter() {
         if point_is_on_any_line(start_a, &b) {
             points_touching_lines += 1;
         } else if point_is_in_polygon(*start_a, &b) {
             points_inside_other_poly += 1;
+            all_points_are_on_line = false;
+        } else {
+            all_points_are_on_line = false;
         }
     }
 
     SvgPolyInternalResult {
         points_touching_lines,
         points_inside_other_poly,
+        all_points_are_on_line
     }
 }
 
