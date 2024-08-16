@@ -1173,7 +1173,7 @@ pub struct Aenderungen {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AenderungenClean {
     pub nas_xml_quadtree: SplitNasXmlQuadTree,
-    pub map: BTreeMap<String, SvgPolygon>, 
+    pub aenderungen: Aenderungen, 
 }
 
 impl AenderungenClean {
@@ -1181,9 +1181,17 @@ impl AenderungenClean {
         
         let mut is = Vec::new();
         
-        for (neu_kuerzel, megapoly) in self.map.iter() {
-            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&megapoly.get_rect());
+        web_sys::console::log_1(&format!("only touches!").as_str().into());
+
+        for (_id, polyneu) in self.aenderungen.na_polygone_neu.iter() {
             
+            let neu_kuerzel = match polyneu.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
+
             for potentially_intersecting in all_touching_flst_parts {
                 
                 let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
@@ -1200,14 +1208,15 @@ impl AenderungenClean {
                 };
 
                 let anew = potentially_intersecting.poly.round_to_3dec();
-                let bnew = megapoly.round_to_3dec();
+                let bnew = polyneu.poly.round_to_3dec();
                 let only_touches = crate::nas::only_touches(&anew, &bnew);
 
                 if only_touches {
+                    web_sys::console::log_1(&format!("only touches!").as_str().into());
                     continue;
                 }
 
-                for intersect_poly in intersect_polys(&potentially_intersecting.poly, megapoly) {
+                for intersect_poly in intersect_polys(&anew, &bnew) {
                     let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
@@ -1844,13 +1853,11 @@ impl Aenderungen {
 
         let qt = split_nas.create_quadtree();
 
-        let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
+        let changed_mut = changed_mut.clean_stage8(split_nas, log);
 
         AenderungenClean {
             nas_xml_quadtree: qt,
-            map: aenderungen_merged_by_typ,
+            aenderungen: changed_mut,
         }
     }
 

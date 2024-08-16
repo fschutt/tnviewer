@@ -302,13 +302,9 @@ pub fn calc_splitflaechen(
 
     let qt = split_nas.create_quadtree();
 
-    let aenderungen_merged_by_typ = aenderungen.na_polygone_neu.values()
-    .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-    .collect::<BTreeMap<_, _>>();
-
     let aenderungen = AenderungenClean {
         nas_xml_quadtree: qt,
-        map: aenderungen_merged_by_typ,
+        aenderungen,
     };
 
     web_sys::console::log_1(&format!("getting intersections...").as_str().into());
