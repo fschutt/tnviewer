@@ -40,23 +40,25 @@ pub struct Konfiguration {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MergeConfig {
-    #[serde(default = "four")]
+    #[serde(default = "one")]
     pub stage1_maxdst_point: f64,
-    #[serde(default = "two")]
+    #[serde(default = "one")]
     pub stage1_maxdst_line: f64,
-    #[serde(default = "four")]
+    #[serde(default = "one")]
     pub stage2_maxdst_point: f64,
-    #[serde(default = "two")]
+    #[serde(default = "one")]
     pub stage2_maxdst_line: f64,
-    #[serde(default = "two")]
+    #[serde(default = "one")]
     pub stage3_maxdst_line: f64,
-    #[serde(default = "twenty")]
+    #[serde(default = "zero_point_two")]
     pub stage3_maxdst_line2: f64,
+    #[serde(default = "twenty")]
+    pub stage3_maxdeviation_followline: f64,
 }
 
-fn four() -> f64 { 4.0 }
-fn two() -> f64 { 4.0 }
-fn twenty() -> f64 { 4.0 }
+fn one() -> f64 { 1.0 }
+fn zero_point_two() -> f64 { 0.2 }
+fn twenty() -> f64 { 20.0 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MapKonfiguration {

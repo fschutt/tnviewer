@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{difference_polys, join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{difference_polys, join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1610,7 +1610,14 @@ impl Aenderungen {
     }
 
     // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
-    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>, maxdst_line: f64, maxdst_line2: f64) -> Aenderungen {
+    pub fn clean_stage3(
+        &self, 
+        original_xml: &NasXMLFile, 
+        log: &mut Vec<String>, 
+        maxdst_line: f64, 
+        maxdst_line2: f64,
+        maxdev_followline: f64,
+    ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
@@ -1629,7 +1636,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2).into_iter());
+                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
@@ -1753,14 +1760,25 @@ impl Aenderungen {
 
         // 4. Änderungen mit sich selber veschneiden nach Typ (z.B. GEWÄSSER > ACKER)
         let higher_ranked_polys = aenderungen_merged_by_typ.keys()
-        .map(|k| (k.clone(), get_higher_ranked_polys(k, &aenderungen_merged_by_typ)))
+        .map(|k| {
+            let higher_ranked_polys = get_higher_ranked_polys(k, &aenderungen_merged_by_typ);
+            web_sys::console::log_1(&format!("got {} higher ranked polys for kuerzel {k}", higher_ranked_polys.len()).as_str().into());
+            (k.clone(), higher_ranked_polys)
+        })
         .collect::<BTreeMap<_, _>>();
 
         let default = Vec::new();
         for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
             let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
             let hr = hr.iter().collect::<Vec<_>>();
-            *megapoly = subtract_from_poly(&megapoly, &hr);
+            for h in hr.into_iter() {
+                if !nas::only_touches(&megapoly, h) {
+                    web_sys::console::log_1(&format!("subtracting from").as_str().into());
+                    web_sys::console::log_1(&serde_json::to_string(&megapoly).unwrap_or_default().as_str().into());
+                    web_sys::console::log_1(&serde_json::to_string(&h).unwrap_or_default().as_str().into());
+                    *megapoly = subtract_from_poly(&megapoly, &[h]);
+                }
+            }
         }
 
         Aenderungen {
@@ -1801,7 +1819,12 @@ impl Aenderungen {
 
         let changed_mut = changed_mut.clean_stage2(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
 
-        let changed_mut = changed_mut.clean_stage3(original_xml, log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2);
+        let changed_mut = changed_mut.clean_stage3(
+            original_xml, log, 
+            konfiguration.merge.stage3_maxdst_line, 
+            konfiguration.merge.stage3_maxdst_line2,
+            konfiguration.merge.stage3_maxdeviation_followline,
+        );
         
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 

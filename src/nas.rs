@@ -283,6 +283,7 @@ impl TaggedPolygon {
         end: &SvgPoint, 
         log: &mut Vec<String>,
         dst: f64,
+        maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
 
         let start = start.round_to_3dec();
@@ -461,12 +462,25 @@ impl TaggedPolygon {
             }    
         }
 
-        ret
+        let len_original = start.dist(&end);
+        let mut len_merged_points = vec![start];
+        len_merged_points.extend(ret.iter().cloned());
+        len_merged_points.push(end);
+        let len_merged = len_merged_points.windows(2).map(|w| match &w {
+            &[a, b] => a.dist(b),
+            _ => 0.0,
+        }).sum::<f64>();
+        
+        if len_original + maxdev_followline > len_merged {
+            ret
+        } else {
+            Vec::new()
+        }
     }
 
-    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, dst: f64) -> Vec<SvgPoint> {
+    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, dst: f64, maxdev_followline: f64) -> Vec<SvgPoint> {
         for l in l {
-            let v = Self::check_line_for_points(l, start, end, log, dst);
+            let v = Self::check_line_for_points(l, start, end, log, dst, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }
@@ -474,12 +488,19 @@ impl TaggedPolygon {
         Vec::new()
     }
 
-    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64) -> Vec<SvgPoint> {
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line);
+    pub fn get_line_between_points(
+        &self, 
+        start: &SvgPoint,
+        end: &SvgPoint, 
+        log: &mut Vec<String>, 
+        maxdst_line: f64,
+        maxdev_followline: f64,
+    ) -> Vec<SvgPoint> {
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line, maxdev_followline);
         if !v.is_empty() {
             return v;
         }
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line);
+        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line, maxdev_followline);
         if !v.is_empty() {
             return v;
         }
@@ -1278,13 +1299,21 @@ impl NasXmlQuadTree {
     }
 
     // return = empty if points not on any flst line
-    pub fn get_line_between_points(&self, start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, maxdst_line: f64, maxdst_line2: f64) -> Vec<SvgPoint> {
+    pub fn get_line_between_points(
+        &self, 
+        start: &SvgPoint, 
+        end: &SvgPoint, 
+        log: &mut Vec<String>, 
+        maxdst_line: f64, 
+        maxdst_line2: f64,
+        maxdev_followline: f64,
+    ) -> Vec<SvgPoint> {
         let mut polys = self.get_overlapping_flst(&start.get_rect(maxdst_line));
         polys.extend(self.get_overlapping_flst(&end.get_rect(maxdst_line)));
         polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
         polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
         for p in polys {
-            let v = p.get_line_between_points(start, end, log, maxdst_line2);
+            let v = p.get_line_between_points(start, end, log, maxdst_line2, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }
