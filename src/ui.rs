@@ -1289,7 +1289,7 @@ impl AenderungenIntersection {
         };
 
         let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
-            s.format_flst_id() == flst_id 
+            s.alt != s.neu && s.format_flst_id() == flst_id 
         }).collect::<Vec<_>>();
         splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
         splitflaechen_fuer_flst.dedup();
@@ -1300,22 +1300,38 @@ impl AenderungenIntersection {
             return String::new();
         }
     
+        if splitflaechen.len() == 1 {
+            let s0 = &splitflaechen[0];
+            return format!("{} -> {}", s0.alt, s0.neu);
+        }
+
         let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
         let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
         
-        let alt = if alt_join.len() == 1 {
-            alt_join.iter().next().cloned().unwrap()
-        } else {
-            format!("({})", alt_join.iter().cloned().collect::<Vec<_>>().join(", "))
-        };
+        let neu_dazu = neu_join.difference(&alt_join).cloned().collect::<Vec<_>>();
+        let alt_weg = alt_join.difference(&neu_join).cloned().collect::<Vec<_>>();
+        let veraendert = alt_join.intersection(&neu_join).cloned().collect::<Vec<_>>();
 
-        let neu = if neu_join.len() == 1 {
-            neu_join.iter().next().cloned().unwrap()
-        } else {
-            format!("({})", neu_join.iter().cloned().collect::<Vec<_>>().join(", "))
-        };
+        let mut neu_dazu_str = neu_dazu.join(" / ");
+        if !neu_dazu_str.trim().is_empty() {
+            neu_dazu_str.push_str(" einzeichnen");
+        }
 
-        format!("{alt} -> {neu}")
+        let mut alt_weg_str = alt_weg.join(" / ");
+        if !alt_weg_str.trim().is_empty() {
+            alt_weg_str.push_str(" weg");
+        }
+
+        let mut veraendert_str = veraendert.join(" / ");
+        if !veraendert_str.trim().is_empty() {
+            veraendert_str.push_str(" verändern");
+        }
+
+        vec![
+            alt_weg_str,
+            neu_dazu_str,
+            veraendert_str,
+        ].join(", ").trim().to_string()
     }
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
@@ -1337,8 +1353,9 @@ impl AenderungenIntersection {
 
         let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
         let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
+        
         let alte_wirtschaftsarten = alt_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
-        let neue_wirtschaftsarten = alt_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let neue_wirtschaftsarten = neu_join.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
         let veraenderte_wia = alte_wirtschaftsarten.difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
 
         if veraenderte_wia.is_empty() {
