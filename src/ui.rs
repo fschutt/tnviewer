@@ -1287,12 +1287,19 @@ impl AenderungenIntersection {
             Some(o) => o.format_nice(),
             None => flst_id.to_nice_string(),
         };
+
         let mut splitflaechen_fuer_flst = splitflaechen.iter().filter(|s| {
             s.format_flst_id() == flst_id 
         }).collect::<Vec<_>>();
         splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
         splitflaechen_fuer_flst.dedup();
 
+        web_sys::console::log_1(&format!("splitflaechen_fuer_flst {flst_id}: {splitflaechen_fuer_flst:?}").as_str().into());
+
+        if splitflaechen_fuer_flst.is_empty() {
+            return String::new();
+        }
+    
         let alt_join = splitflaechen_fuer_flst.iter().map(|s| s.alt.clone()).collect::<BTreeSet<_>>();
         let neu_join = splitflaechen_fuer_flst.iter().map(|s| s.neu.clone()).collect::<BTreeSet<_>>();
         
@@ -1345,10 +1352,7 @@ impl AenderungenIntersection {
         if self.alt == self.neu {
             return None;
         }
-        
-        web_sys::console::log_1(&serde_json::to_string(&self.poly_cut).unwrap_or_default().as_str().into());
         let pos = self.poly_cut.get_label_pos(0.001);
-        web_sys::console::log_1(&format!("text pos: {:?}", (pos.x, pos.y)).as_str().into());
         Some(TextPlacement {
             status: TextStatus::Old,
             kuerzel: self.alt.clone(),
