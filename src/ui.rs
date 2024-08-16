@@ -1213,7 +1213,9 @@ impl AenderungenClean {
 
                 if only_touches {
                     web_sys::console::log_1(&format!("only touches!").as_str().into());
-                    continue;
+                    web_sys::console::log_1(&serde_json::to_string(&anew).unwrap_or_default().as_str().into());
+                    web_sys::console::log_1(&serde_json::to_string(&bnew).unwrap_or_default().as_str().into());
+                    // continue;
                 }
 
                 for intersect_poly in intersect_polys(&anew, &bnew) {
@@ -1226,6 +1228,7 @@ impl AenderungenClean {
                     web_sys::console::log_1(&format!("pushing intersection: {qq:?}").as_str().into());
                     is.push(qq);
                 }
+                web_sys::console::log_1(&format!("ok!").as_str().into());
             }
         }
 

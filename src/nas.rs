@@ -1566,7 +1566,7 @@ pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
 pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalResult {
 
     let points_a = a.outer_rings.iter().flat_map(|l| l.points.iter()).collect::<Vec<_>>();
-    let b_geo = translate_to_geo_poly(b);
+    // let b_geo = translate_to_geo_poly(b);
 
     let mut points_touching_lines = 0;
     let mut points_inside_other_poly = 0;
