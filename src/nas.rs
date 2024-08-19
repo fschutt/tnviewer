@@ -14,6 +14,7 @@ use quadtree_f32::ItemId;
 use quadtree_f32::QuadTree;
 use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
+use web_sys::console::log_1;
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 use crate::search::NutzungsArt;
@@ -1520,16 +1521,20 @@ fn clean_ring(r: &SvgLine) -> SvgLine {
 
 fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     let mut ranges_selfintersection = Vec::new();
-    for (i, p) in line.points.iter().enumerate() {
+    for (i, p) in line.points.iter().enumerate().skip(1) {
         for (q, r) in line.points.iter().enumerate().skip(i + 1) {
             if r.equals(p) {
-                ranges_selfintersection.push(i..q);
+                ranges_selfintersection.push((i + 1)..q);
             }
         }
     }
     ranges_selfintersection.retain(|r| !r.is_empty());
     ranges_selfintersection.sort_by(|a, b| a.start.cmp(&b.start));
     ranges_selfintersection.dedup();
+    if ranges_selfintersection.is_empty() {
+        return line.clone();
+    }
+    log_1(&format!("ranges {ranges_selfintersection:?} to be removed").as_str().into());
     let mut newpoints = Vec::new();
     for (i, p) in line.points.iter().enumerate() {
         if ranges_selfintersection.iter().any(|r| r.contains(&i)) {
