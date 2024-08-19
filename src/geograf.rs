@@ -485,6 +485,8 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     // -> check if overlaps linie
     // -> deduplicate + join ends
 
+    web_sys::console::log_1(&"rote linien 1".into());
+
     let mut alle_linien_zu_checken = splitflaechen.iter().flat_map(|s| {
         let mut lines = s.poly_cut.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
         lines.extend(s.poly_cut.inner_rings.iter().flat_map(l_to_points));
@@ -507,6 +509,8 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
 
     let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
     
+    web_sys::console::log_1(&"rote linien 2".into());
+
     let mut lines_end = Vec::new();
     for (ul_start, ul_end) in alle_linien_zu_checken.iter() {
         if !qt.line_overlaps_or_equals(&ul_start, &ul_end) {
@@ -516,6 +520,8 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     lines_end.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
     lines_end.dedup();
 
+    web_sys::console::log_1(&"rote linien 3".into());
+
     merge_lines_again(lines_end)
 }
 
@@ -524,6 +530,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
     let mut v = l.into_iter().map(|(a, b)| vec![(a, b)]).collect::<Vec<_>>();
 
     loop {
+
+        web_sys::console::log_1(&"rote linien 4".into());
 
         let mut modified_mark_remove = BTreeSet::new();
         let v_clone = v.clone();
@@ -611,6 +619,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             break; // error
         }
 
+        web_sys::console::log_1(&"rote linien 5".into());
+
         let vlen = v.len();
         for (i, p) in modified_mark_remove.iter().enumerate() {
             v.swap(*p, vlen.saturating_sub(1).saturating_sub(i));
@@ -619,6 +629,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             v.pop();
         }
     }
+
+    web_sys::console::log_1(&"rote linien 6".into());
 
     let s = v.into_iter().filter_map(|p| {
         let mut points = p.into_iter().flat_map(|(a, b)| vec![a, b]).collect::<Vec<_>>();
@@ -629,6 +641,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             Some(SvgLine { points })
         }
     }).collect::<Vec<_>>();
+
+    web_sys::console::log_1(&"rote linien 7".into());
 
     s
 }
@@ -739,10 +753,14 @@ pub fn generate_pdf_vorschau(
     total_risse: usize,
 ) -> Vec<u8> {
 
+    web_sys::console::log_1(&"1...".into());
+
     let extent_rect = match extent_rect {
         Some(s) => s,
         None => return Vec::new(),
     };
+
+    web_sys::console::log_1(&"2...".into());
 
     let map = vec![(format!("Riss{num_riss}"), RissExtentReprojected {
         crs: split_nas.crs.clone(),
@@ -752,12 +770,18 @@ pub fn generate_pdf_vorschau(
         max_y: extent_rect.max_y,
     })];
 
+    web_sys::console::log_1(&"3...".into());
+
     let rc = match riss_config {
         Some(s) => s,
         None => return Vec::new(),
     };
 
+    web_sys::console::log_1(&"4...".into());
+
     let risse = vec![(format!("Riss{num_riss}"), rc)].into_iter().collect::<BTreeMap<_, _>>();
+
+    web_sys::console::log_1(&"5...".into());
 
     let pdf = crate::pdf::generate_pdf_internal(
         info,
