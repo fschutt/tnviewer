@@ -1280,10 +1280,8 @@ impl AenderungenClean {
                     None => continue,
                 };
 
-                web_sys::console::log_1(&format!("subtracting...").as_str().into());
                 let mut subtracted = flst_part.poly.round_to_3dec();
                 subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
-                web_sys::console::log_1(&format!("subtracted!").as_str().into());
 
                 if subtracted.is_zero_area() {
                     continue;
