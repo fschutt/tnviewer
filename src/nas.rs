@@ -14,7 +14,6 @@ use quadtree_f32::ItemId;
 use quadtree_f32::QuadTree;
 use quadtree_f32::Rect;
 use serde_derive::{Serialize, Deserialize};
-use web_sys::console::log_1;
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 use crate::search::NutzungsArt;
@@ -1469,6 +1468,87 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
     })
 }
 
+pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
+    let s = s.round_to_3dec();
+    let outer_rings = s.outer_rings.iter().map(|r| clean_ring(r)).collect();
+    let inner_rings = s.inner_rings.iter().map(|r| clean_ring(r)).collect();
+    SvgPolygon {
+        outer_rings,
+        inner_rings,
+    }
+}
+
+fn clean_ring(r: &SvgLine) -> SvgLine {
+
+    let list_of_points = r.points.clone();
+    let area_orig = calc_area(&list_of_points);
+    
+    let p1 = clean_internal(&list_of_points);
+    let area_p1 = calc_area(&p1);
+
+    let mut list_of_points = r.points.clone();
+    list_of_points.reverse();
+    let mut p2 = clean_internal(&list_of_points);
+    p2.reverse();
+    let area_p2 = calc_area(&p2);
+
+    let mut preferred = Vec::new();
+    if approx_eq!(f64, area_orig, area_p1, epsilon = 1.0) {
+        preferred.push(&p1);
+    }
+    if approx_eq!(f64, area_orig, area_p2, epsilon = 1.0) {
+        preferred.push(&p2);
+    }
+
+    let preferred = preferred.iter().min_by(|a, b| {
+        a.len().cmp(&b.len())
+    });
+
+    match preferred {
+        None => {
+            return r.clone();
+        },
+        Some(s) => {
+            SvgLine {
+                points: s.to_vec(),
+            }
+        }
+    }
+}
+
+fn calc_area(p: &[SvgPoint]) -> f64 {
+    let gl = geo::Polygon::new(translate_geoline(&SvgLine {
+        points: p.to_vec()
+    }), Vec::new());
+    gl.signed_area().abs()
+}
+
+fn clean_internal(list_of_points: &Vec<SvgPoint>) -> Vec<SvgPoint> {
+    
+    const CLEAN_LINE_DST: f64 = 0.1;
+
+    let mut start = match list_of_points.first() {
+        Some(s) => *s,
+        None => return Vec::new(),
+    };
+    let mut p_new = vec![start];
+    for (i, p) in list_of_points.iter().enumerate().skip(1) {
+        let point_on_line = list_of_points.iter().enumerate().find(|(i2, q)| {
+            if q.equals(&start) || q.equals(&p) {
+                return false; 
+            }
+            dist_to_segment(**q, start, *p).distance < CLEAN_LINE_DST
+        });
+        p_new.push(match point_on_line {
+            Some(s) => *s.1,
+            None => *p,
+        });
+        start = *p;
+    }
+    p_new.dedup_by(|a, b| a.equals(&b));
+    p_new
+}
+
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = a.round_to_3dec();
@@ -1489,7 +1569,7 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
-    translate_from_geo_poly(&intersect)
+    translate_from_geo_poly(&intersect).iter().map(cleanup_poly).collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1619,7 +1699,7 @@ pub fn translate_to_geo_poly(a: &SvgPolygon) -> geo::MultiPolygon<f64> {
     }).collect())
 }
 
-fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
+pub fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
     geo::LineString(a.points.iter().map(|coord| geo::Coord {
         x: coord.x,
         y: coord.y,

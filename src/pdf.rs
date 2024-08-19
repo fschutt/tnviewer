@@ -858,7 +858,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = new;
+        first = crate::nas::cleanup_poly(&new);
     }
 
     first
@@ -891,7 +891,7 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = new;
+        first = crate::nas::cleanup_poly(&new);
     }
 
     Some(first)
