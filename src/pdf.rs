@@ -437,6 +437,8 @@ pub fn generate_pdf_internal(
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
 
         let _ = write_border(&mut layer, 16.5, &rc);
+        
+        web_sys::console::log_1(&"6...".into());
 
         let rote_linien = get_aenderungen_rote_linien(splitflaechen, xml, nas_cut_original)
         .into_iter().map(|l| {

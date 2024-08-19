@@ -496,6 +496,8 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     alle_linien_zu_checken.dedup();
     let alle_linien_zu_checken = alle_linien_zu_checken;
 
+    web_sys::console::log_1(&"rote linien 1.2".into());
+
     let mut alle_linie_split_flurstuecke = split_nas.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
         s.iter().flat_map(|q| {
             let mut lines = q.poly.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
@@ -506,6 +508,8 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
     alle_linie_split_flurstuecke.dedup();
     let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
+
+    web_sys::console::log_1(&"rote linien 1.5".into());
 
     let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
     
