@@ -1546,15 +1546,15 @@ impl Aenderungen {
                         .map(|cur_near_p| dist(*cur_near_p, *p)).unwrap_or(f64::MAX);
 
                         if dist_ap < distance_to_current_nearest && dist_ap < maxdst_point {
-                            log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
+                            // log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
                             nearest_point = Some(*a);
                         } else if dist_bp < distance_to_current_nearest && dist_bp < maxdst_point {
-                            log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *b));
+                            // log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *b));
                             nearest_point = Some(*b);
                         } else {
                             let nearest_point_on_line = dist_to_segment(*p, *a, *b);
                             if nearest_point_on_line.distance < distance_to_current_nearest && nearest_point_on_line.distance < maxdst_line {
-                                log.push(format!("point on line {:?} -> {:?} (maxdst_line = {maxdst_line})", *p, nearest_point_on_line));
+                                // log.push(format!("point on line {:?} -> {:?} (maxdst_line = {maxdst_line})", *p, nearest_point_on_line));
                                 nearest_point = Some(nearest_point_on_line.nearest_point);
                             }
                         }

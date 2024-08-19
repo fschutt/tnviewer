@@ -1521,7 +1521,7 @@ fn clean_ring(r: &SvgLine) -> SvgLine {
 fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     let mut ranges_selfintersection = Vec::new();
     for (i, p) in line.points.iter().enumerate() {
-        for (q, r) in line.points.iter().enumerate().skip(i) {
+        for (q, r) in line.points.iter().enumerate().skip(i + 1) {
             if r.equals(p) {
                 ranges_selfintersection.push(i..q);
             }
