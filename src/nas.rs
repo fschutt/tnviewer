@@ -1504,7 +1504,7 @@ fn clean_ring(r: &SvgLine) -> SvgLine {
         a.len().cmp(&b.len())
     });
 
-    match preferred {
+    let cl = match preferred {
         None => {
             return r.clone();
         },
@@ -1513,6 +1513,33 @@ fn clean_ring(r: &SvgLine) -> SvgLine {
                 points: s.to_vec(),
             }
         }
+    };
+
+    clean_ring_selfintersection(&cl)
+}
+
+fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
+    let mut ranges_selfintersection = Vec::new();
+    for (i, p) in line.points.iter().enumerate() {
+        for (q, r) in line.points.iter().enumerate().skip(i) {
+            if r.equals(p) {
+                ranges_selfintersection.push(i..q);
+            }
+        }
+    }
+    ranges_selfintersection.retain(|r| !r.is_empty());
+    ranges_selfintersection.sort_by(|a, b| a.start.cmp(&b.start));
+    ranges_selfintersection.dedup();
+    let mut newpoints = Vec::new();
+    for (i, p) in line.points.iter().enumerate() {
+        if ranges_selfintersection.iter().any(|r| r.contains(&i)) {
+            continue;
+        }
+        newpoints.push(*p);
+    }
+    newpoints.dedup();
+    SvgLine {
+        points: newpoints,
     }
 }
 
