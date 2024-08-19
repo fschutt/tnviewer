@@ -4,8 +4,8 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use web_sys::js_sys::JsString;
-use crate::csv::CsvDataType;
+use web_sys::{console::log_1, js_sys::JsString};
+use crate::{csv::CsvDataType, pdf::{RissConfig, RissExtentReprojected}};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -157,10 +157,12 @@ pub fn export_aenderungen_geograf(
         export_splitflaechen(
             &mut files, 
             projekt_info, 
+            konfiguration,
             None, 
             &splitflaechen, 
             &split_nas, 
             &nas_xml,
+            None,
             None,
             1,
             1,
@@ -187,10 +189,12 @@ pub fn export_aenderungen_geograf(
             export_splitflaechen(
                 &mut files, 
                 projekt_info, 
+                konfiguration,
                 Some(id.to_string()), 
                 &splitflaechen_for_riss, 
                 &split_nas, 
                 &nas_xml,
+                Some(r.clone()),
                 Some(extent_rect.clone()),
                 i + 1,
                 risse.len(),
@@ -355,10 +359,12 @@ pub fn generate_risse_shp(
 pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
+    konfiguration: &Konfiguration,
     parent_dir: Option<String>,
     splitflaechen: &[AenderungenIntersection],
     split_nas: &SplitNasXml,
     nas_xml: &NasXMLFile,
+    riss_config: Option<RissConfig>,
     extent_rect: Option<Rect>,
     num_riss: usize,
     total_risse: usize,
@@ -389,6 +395,20 @@ pub fn export_splitflaechen(
     let header = generate_header_pdf(info, split_nas, extent_rect, num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
+    web_sys::console::log_1(&"pdf vorschau...".into());
+    let pdf_vorschau = generate_pdf_vorschau(
+        info, 
+        konfiguration, 
+        splitflaechen, 
+        nas_xml, 
+        split_nas, 
+        riss_config,
+        extent_rect, 
+        num_riss, 
+        total_risse
+    );
+    files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));
+
     web_sys::console::log_1(&"rote linien...".into());
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, nas_xml, split_nas);
     if !aenderungen_rote_linien.is_empty() {
@@ -403,14 +423,214 @@ pub fn export_splitflaechen(
     web_sys::console::log_1(&"ok done!".into());
 }
 
+struct LinienQuadTree {
+    pub linien: Vec<(SvgPoint, SvgPoint)>,
+    pub qt: quadtree_f32::QuadTree,
+}
+
+impl LinienQuadTree {
+    pub fn new(linien: Vec<(SvgPoint, SvgPoint)>) -> Self {
+        
+        let qt = quadtree_f32::QuadTree::new(linien.iter().enumerate().map(|(id, (a, b))| {
+            (quadtree_f32::ItemId(id), quadtree_f32::Item::Rect(points_to_rect(&(*a, *b))))
+        }));
+
+        Self {
+            linien,
+            qt,
+        }
+    }
+
+    fn line_overlaps_or_equals(&self, a: &SvgPoint, b: &SvgPoint) -> bool {
+        let rect = points_to_rect(&(*a, *b));
+        let items = self.qt.get_ids_that_overlap(&rect).into_iter().filter_map(|i| self.linien.get(i.0)).cloned().collect::<Vec<_>>();
+        for (s, t) in items.iter() {
+            let a_on_line = a.equals(s) || a.equals(t) || crate::ui::dist_to_segment(*a, *s, *t).distance < 0.1;
+            let b_on_line = b.equals(s) || b.equals(t) || crate::ui::dist_to_segment(*b, *s, *t).distance < 0.1;
+            if a_on_line && b_on_line {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+fn l_to_points(l: &SvgLine) -> Vec<(SvgPoint, SvgPoint)> {
+    let mut v = Vec::new();
+    for p in l.points.windows(2) {
+        match &p {
+            &[a, b] => v.push((*a, *b)),
+            _ => { },
+        }
+    }
+    v
+}
+
+fn points_to_rect((a, b): &(SvgPoint, SvgPoint)) -> quadtree_f32::Rect {
+    let max_x = a.x.max(b.x);
+    let min_x = a.x.min(b.x);
+    let max_y = a.y.max(b.y);
+    let min_y = a.y.min(b.y);
+    quadtree_f32::Rect {
+        max_x, max_y, min_x, min_y
+    }
+}
+
 pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], nas: &NasXMLFile, split_nas: &SplitNasXml) -> Vec<SvgLine> {
-    // let all_lines = splitflaechen.iter().flat_map(|s| s.poly_cut.)
-    // TODO!
-    splitflaechen.iter().flat_map(|s| {
-        let mut lines = s.poly_cut.outer_rings.clone();
-        lines.extend(s.poly_cut.inner_rings.iter().cloned());
+    
+    // rote linie: neue linie, die nicht auf nas xml linie liegt (oder teil einer nas xml linie ist)
+    // 
+    // -> create btree
+    // -> select linien 
+    // -> check if overlaps linie
+    // -> deduplicate + join ends
+
+    let mut alle_linien_zu_checken = splitflaechen.iter().flat_map(|s| {
+        let mut lines = s.poly_cut.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
+        lines.extend(s.poly_cut.inner_rings.iter().flat_map(l_to_points));
         lines
-    }).collect()
+    }).collect::<Vec<_>>();
+    alle_linien_zu_checken.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+    alle_linien_zu_checken.dedup();
+    let alle_linien_zu_checken = alle_linien_zu_checken;
+
+    let mut alle_linie_split_flurstuecke = split_nas.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
+        s.iter().flat_map(|q| {
+            let mut lines = q.poly.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
+            lines.extend(q.poly.inner_rings.iter().flat_map(l_to_points));
+            lines
+        })
+    }).collect::<Vec<_>>();
+    alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+    alle_linie_split_flurstuecke.dedup();
+    let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
+
+    let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
+    
+    let mut lines_end = Vec::new();
+    for (ul_start, ul_end) in alle_linien_zu_checken.iter() {
+        if !qt.line_overlaps_or_equals(&ul_start, &ul_end) {
+            lines_end.push((*ul_start, *ul_end));
+        }
+    }
+    lines_end.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+    lines_end.dedup();
+
+    merge_lines_again(lines_end)
+}
+
+fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
+
+    let mut v = l.into_iter().map(|(a, b)| vec![(a, b)]).collect::<Vec<_>>();
+
+    loop {
+
+        let mut modified_mark_remove = BTreeSet::new();
+        let v_clone = v.clone();
+        'outer: for (i, q) in v.iter_mut().enumerate() {
+
+            if modified_mark_remove.contains(&i) {
+                continue;
+            }
+
+            let first = match q.first().map(|s| s.0) {
+                Some(s) => s,
+                None => {
+                    modified_mark_remove.insert(i);
+                    continue;
+                },
+            };
+
+
+            let last = match q.last().map(|s| s.1) {
+                Some(s) => s,
+                None => {
+                    modified_mark_remove.insert(i);
+                    continue;
+                },
+            };
+
+            for (p, k) in v_clone.iter().enumerate() {
+
+                if modified_mark_remove.contains(&p) || p == i {
+                    continue;
+                }
+
+                let k_first = match k.first().map(|s| s.0) {
+                    Some(s) => s,
+                    None => {
+                        modified_mark_remove.insert(p);
+                        continue;
+                    },
+                };
+    
+                let k_last = match k.last().map(|s| s.1) {
+                    Some(s) => s,
+                    None => {
+                        modified_mark_remove.insert(p);
+                        continue;
+                    },
+                };
+
+                let eps = 1.0;
+                if last.equals_approx(&k_first, eps) {
+                    let mut k_clone = k.clone();
+                    q.append(&mut k_clone);
+                    modified_mark_remove.insert(p);
+                    break 'outer;
+                } else if last.equals_approx(&k_last, 1.0) {
+                    let mut k_clone = k.clone();
+                    k_clone.reverse();
+                    q.append(&mut k_clone);
+                    modified_mark_remove.insert(p);
+                    break 'outer;
+                } else if first.equals_approx(&k_first, 1.0) {
+                    let mut k_clone = k.clone();
+                    q.reverse();
+                    q.append(&mut k_clone);
+                    q.reverse();
+                    modified_mark_remove.insert(p);
+                    break 'outer;
+                } else if first.equals_approx(&k_last, 1.0) {
+                    let mut k_clone = k.clone();
+                    k_clone.reverse();
+                    q.reverse();
+                    q.append(&mut k_clone);
+                    q.reverse();
+                    modified_mark_remove.insert(p);
+                    break 'outer;
+                }
+            }
+        }
+
+        if modified_mark_remove.is_empty() {
+            break;
+        }
+
+        if modified_mark_remove.len() > v.len() {
+            break; // error
+        }
+
+        let vlen = v.len();
+        for (i, p) in modified_mark_remove.iter().enumerate() {
+            v.swap(*p, vlen.saturating_sub(1).saturating_sub(i));
+        }
+        for _ in 0..modified_mark_remove.len() {
+            v.pop();
+        }
+    }
+
+    let s = v.into_iter().filter_map(|p| {
+        let mut points = p.into_iter().flat_map(|(a, b)| vec![a, b]).collect::<Vec<_>>();
+        points.dedup_by(|a, b| a.equals(b));
+        if points.is_empty() {
+            None
+        } else {
+            Some(SvgLine { points })
+        }
+    }).collect::<Vec<_>>();
+
+    s
 }
 
 pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], nas: &NasXMLFile, split_nas: &SplitNasXml) -> Vec<SvgLine> {
@@ -504,6 +724,53 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
     layer1.end_text_section();
 
     doc.save_to_bytes().unwrap_or_default()
+}
+
+
+pub fn generate_pdf_vorschau(
+    info: &ProjektInfo,
+    konfiguration: &Konfiguration,
+    splitflaechen: &[AenderungenIntersection],
+    nas_original: &NasXMLFile,
+    split_nas: &SplitNasXml,
+    riss_config: Option<RissConfig>,
+    extent_rect: Option<Rect>,
+    num_riss: usize,
+    total_risse: usize,
+) -> Vec<u8> {
+
+    let extent_rect = match extent_rect {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+
+    let map = vec![(format!("Riss{num_riss}"), RissExtentReprojected {
+        crs: split_nas.crs.clone(),
+        min_x: extent_rect.min_x,
+        max_x: extent_rect.max_x,
+        min_y: extent_rect.min_y,
+        max_y: extent_rect.max_y,
+    })];
+
+    let rc = match riss_config {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+
+    let risse = vec![(format!("Riss{num_riss}"), rc)].into_iter().collect::<BTreeMap<_, _>>();
+
+    let pdf = crate::pdf::generate_pdf_internal(
+        info,
+        konfiguration,
+        nas_original,
+        split_nas,
+        splitflaechen,
+        &risse, 
+        &map.into_iter().collect(),
+        &mut Vec::new(),
+    );
+
+    pdf
 }
 
 pub fn generate_header_pdf(

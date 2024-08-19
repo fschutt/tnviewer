@@ -884,6 +884,20 @@ pub struct SvgLine {
 
 impl SvgLine {
 
+    pub fn is_closed(&self) -> bool {
+        self.is_closed_internal().is_some()
+    }
+
+    fn is_closed_internal(&self) -> Option<()> {
+        let first = self.points.first()?;
+        let last = self.points.last()?;
+        if first.equals(last) {
+            Some(())
+        } else {
+            None
+        }
+    }
+
     /// Return the two points describing a side of this polygon. Indexing from zero.
     pub fn get_side(&self, i: usize) -> (SvgPoint, SvgPoint) {
         let p1 = self.points.get(i).cloned().unwrap_or_default();
@@ -967,6 +981,12 @@ impl SvgPoint {
         approx_eq!(f64, self.y, other.y, epsilon = 0.001)
     }
 
+
+    pub fn equals_approx(&self, other: &Self, epsilon: f64) -> bool {
+        approx_eq!(f64, self.x, other.x, epsilon = epsilon) &&
+        approx_eq!(f64, self.y, other.y, epsilon = epsilon)
+    }
+    
     pub fn get_rect(&self, dst: f64) -> quadtree_f32::Rect {
         quadtree_f32::Rect {
             max_x: self.x + dst,

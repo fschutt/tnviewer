@@ -4,13 +4,14 @@ use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
+use crate::geograf::get_aenderungen_rote_linien;
 use crate::LatLng;
 use crate::csv::CsvDataType;
 use crate::nas::{
     parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, 
     NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
-use crate::ui::{Aenderungen, PolyNeu};
+use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use crate::xlsx::FlstIdParsed;
 use crate::xml::{self, XmlNode};
 
@@ -187,6 +188,7 @@ pub struct PpoStil {
 }
 
 pub type RissMap = BTreeMap<String, RissExtent>;
+pub type RissMapReprojected = BTreeMap<String, RissExtentReprojected>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RissExtent {
@@ -350,12 +352,36 @@ pub fn generate_pdf(
 
     // AX_Flurstueck, AX_Flur, AX_BauRaumBodenOrdnungsRecht
 
+    generate_pdf_internal(
+        projekt_info,
+        konfiguration,
+        &xml,
+        &nas_cut_original,
+        &[],
+        risse,
+        &riss_map.iter().filter_map(|(k, v)| Some((k.clone(), v.reproject(&xml.crs, log)?))).collect(),
+        log,
+    )
+}
+
+pub fn generate_pdf_internal(
+    projekt_info: &ProjektInfo,
+    konfiguration: &Konfiguration,
+    xml: &NasXMLFile,
+    nas_cut_original: &SplitNasXml,
+    splitflaechen: &[AenderungenIntersection],
+    risse: &Risse,
+    riss_map_reprojected: &RissMapReprojected,
+    log: &mut Vec<String>
+) -> Vec<u8> {
+
     let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
+
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Riss",
         Mm(risse.iter().next().map(|(k, v)| v.width_mm).unwrap_or(210.0)),
         Mm(risse.iter().next().map(|(k, v)| v.height_mm).unwrap_or(297.0)),
-        &format!("Riss 1 / {len} ({first_riss_id})"),
+        &format!("Riss 1 / {} ({first_riss_id})", risse.len()),
     );
 
     doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
@@ -366,7 +392,7 @@ pub fn generate_pdf(
 
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
-        let riss_extent = match riss_map.get(ri).and_then(|r| r.reproject(&xml.crs, log)) {
+        let riss_extent = match riss_map_reprojected.get(ri) {
             Some(s) => s,
             None => continue,
         };
@@ -375,22 +401,11 @@ pub fn generate_pdf(
         let (page, layer) = if i == 0 {
             (page1, layer1)
         } else {
-            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {len} ({p})", i + 1))
+            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {} ({p})", risse.len(), i + 1))
         };
 
         let page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
-
-        let aenderungen_in_pdf_space = match reproject_aenderungen_into_pdf_space(
-            &aenderungen,
-            &riss_extent,
-            rc,
-            &xml.crs,
-            log,
-        ) {
-            Ok(o) => o,
-            Err(_) => continue,
-        };
 
         let nutzungsarten = reproject_splitnas_into_pdf_space(
             &nas_cut_original,
@@ -398,8 +413,6 @@ pub fn generate_pdf(
             rc,
             log
         );
-
-        // log.push(serde_json::to_string(&split_flurstuecke_in_pdf_space).unwrap_or_default());
 
         let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
 
@@ -423,24 +436,24 @@ pub fn generate_pdf(
         
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
 
-        log.push(format!("Rendering Riss {ri} (Seite {i}) - hat Fluren {}", flst.get_fluren(&flst)));
-        log.push(format!("Rendering Riss {ri} (Seite {i}) - hat beschriftete Objekte {}", aenderungen_in_pdf_space.get_beschriftete_objekte(&xml)));
-
         let _ = write_border(&mut layer, 16.5, &rc);
 
+        let rote_linien = get_aenderungen_rote_linien(splitflaechen, xml, nas_cut_original)
+        .into_iter().map(|l| {
+            line_into_pdf_space(&l, riss_extent, rc, &mut Vec::new())
+        }).collect::<Vec<_>>();
+
+        let _ = write_rote_linien(&mut layer, &rote_linien);
+        
+        /*
         let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
             &xml,
             &riss_extent,
             rc,
             log,
         );
-
-        // log.push(format!("nas xml in pdf space {}", serde_json::to_string(&nas_xml_in_pdf_space).unwrap_or_default()));
-
+        */
     }
-
-
-    log.push(format!("Rendering Risse: 5 ok"));
 
     doc.save_to_bytes().unwrap_or_default()
 }
@@ -518,34 +531,19 @@ pub fn reproject_aenderungen_back_into_latlon(
 }
 
 
-pub fn reproject_aenderungen_into_pdf_space(
-    aenderungen: &Aenderungen,
+pub fn reproject_splitflaechen_into_pdf_space(
+    splitflaechen: &[AenderungenIntersection],
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
-    original_crs: &str,
     log: &mut Vec<String>
-) -> Result<Aenderungen, String> {
-
-    let aenderungen = reproject_aenderungen_into_target_space(aenderungen, original_crs)?;
-
+) -> Result<Vec<AenderungenIntersection>, String> {
     let target_riss = riss.get_rect();
-    Ok(Aenderungen {
-        gebaeude_loeschen: aenderungen.gebaeude_loeschen.clone(),
-        na_definiert: aenderungen.na_definiert.clone(),
-        na_polygone_neu: aenderungen.na_polygone_neu
-        .iter()
-        .filter_map(|(k, v)| {
-            if v.poly.get_rect().overlaps_rect(&target_riss) {
-                Some((k.clone(), PolyNeu {
-                    poly: poly_into_pdf_space(&v.poly, &riss, riss_config, log),
-                    nutzung: v.nutzung.clone(),
-                }))
-            } else {
-                None
-            }
-        })
-        .collect()
-    })
+    Ok(splitflaechen.iter().map(|s| AenderungenIntersection {
+        alt: s.alt.clone(),
+        neu: s.neu.clone(),
+        flst_id: s.flst_id.clone(),
+        poly_cut: poly_into_pdf_space(&s.poly_cut, &riss, riss_config, log),
+    }).collect())
 }
 
 #[inline(always)]
@@ -630,6 +628,38 @@ fn line_into_pdf_space(
             }
         }).collect()
     }
+}
+
+fn write_rote_linien(
+    layer: &mut PdfLayerReference,
+    linien: &[SvgLine]
+) -> Option<()> {
+
+    layer.save_graphics_state();
+
+    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
+        r: 255.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    layer.set_outline_thickness(1.0);
+
+    for l in linien.iter() {
+        layer.add_line(printpdf::Line { 
+            points: l.points.iter().map(|p| (printpdf::Point {
+                x: Mm(p.x as f32).into_pt(),
+                y: Mm(p.y as f32).into_pt(),
+            }, false)).collect(), 
+            is_closed: l.is_closed() 
+        })
+    }
+
+    layer.restore_graphics_state();
+    
+    Some(())
+
 }
 
 fn write_border(
