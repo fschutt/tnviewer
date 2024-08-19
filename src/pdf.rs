@@ -873,12 +873,10 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        log_1(&"cleanup poly...".into());
-        first = crate::nas::cleanup_poly(&new);
-        log_1(&"poly cleaned".into());
+        first = new;
     }
 
-    first
+    crate::nas::cleanup_poly(&first)
 }
 
 pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
@@ -908,10 +906,10 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = crate::nas::cleanup_poly(&new);
+        first = new;
     }
 
-    Some(first)
+    Some(crate::nas::cleanup_poly(&first))
 }
 
 pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
@@ -936,7 +934,7 @@ pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         first = new;
     }
 
-    Some(first)
+    Some(crate::nas::cleanup_poly(&first))
 }
 
 fn get_fluren_in_pdf_space(
