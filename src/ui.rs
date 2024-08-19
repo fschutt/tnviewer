@@ -1239,12 +1239,16 @@ impl AenderungenClean {
             flst_changed.contains(&s.format_flst_id_search())
         }).collect::<Vec<_>>();
 
+        web_sys::console::log_1(&format!("get_aenderungen_intersections: 1").as_str().into());
+
         for flst_id in flst_changed.iter() {
             let ae_is = is.iter().filter(|s| s.format_flst_id_search().as_str() == flst_id.as_str()).collect::<Vec<_>>();
             if ae_is.is_empty() {
                 web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id} in ae_is").as_str().into());
                 continue;
             }
+
+            web_sys::console::log_1(&format!("joining ae_is: {}", ae_is.len()).as_str().into());
 
             let ae_is_joined = ae_is.iter().map(|s| s.poly_cut.round_to_3dec()).collect::<Vec<_>>();
             let ae_is_joined = ae_is_joined.iter().collect::<Vec<_>>();
@@ -1256,6 +1260,8 @@ impl AenderungenClean {
                     continue;
                 },
             };
+
+            web_sys::console::log_1(&format!("ae_is joined").as_str().into());
 
             for flst_part in flst {
 
@@ -1274,7 +1280,10 @@ impl AenderungenClean {
                     None => continue,
                 };
 
+                web_sys::console::log_1(&format!("subtracting...").as_str().into());
                 let subtracted = subtract_from_poly(&flst_part.poly.round_to_3dec(), &ae_is_joined);
+                web_sys::console::log_1(&format!("subtracted!").as_str().into());
+
                 if subtracted.is_zero_area() {
                     continue;
                 }
@@ -1286,10 +1295,11 @@ impl AenderungenClean {
                 };
                 web_sys::console::log_1(&format!("!!! OK! pushing bleibt {qq:?}").as_str().into());
 
-
                 is.push(qq);
             }
         }
+
+        web_sys::console::log_1(&format!("get_aenderungen_intersections: 2").as_str().into());
 
         is
 
