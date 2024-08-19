@@ -1882,7 +1882,7 @@ impl Aenderungen {
 
     pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 
-        let mut changed_mut = self.round_to_3decimal();
+        let changed_mut = self.round_to_3decimal();
 
         let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
         .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
@@ -1892,7 +1892,6 @@ impl Aenderungen {
         let higher_ranked_polys = aenderungen_merged_by_typ.keys()
         .map(|k| {
             let higher_ranked_polys = get_higher_ranked_polys(k, &aenderungen_merged_by_typ);
-            web_sys::console::log_1(&format!("got {} higher ranked polys for kuerzel {k}", higher_ranked_polys.len()).as_str().into());
             (k.clone(), higher_ranked_polys)
         })
         .collect::<BTreeMap<_, _>>();
@@ -1902,9 +1901,7 @@ impl Aenderungen {
             let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
             let hr = hr.iter().collect::<Vec<_>>();
             for h in hr.into_iter() {
-                if !nas::only_touches(&megapoly, h) {
-                    *megapoly = subtract_from_poly(&megapoly, &[h]);
-                }
+                *megapoly = subtract_from_poly(&megapoly, &[h]);
             }
         }
 
