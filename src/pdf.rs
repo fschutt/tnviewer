@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
 use serde_derive::{Deserialize, Serialize};
+use web_sys::console::log_1;
 use crate::LatLng;
 use crate::csv::CsvDataType;
 use crate::nas::{
@@ -858,7 +859,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
+        log_1(&"cleanup poly...".into());
         first = crate::nas::cleanup_poly(&new);
+        log_1(&"poly cleaned".into());
     }
 
     first
