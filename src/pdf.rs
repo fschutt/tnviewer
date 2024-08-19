@@ -842,10 +842,9 @@ impl FlurstueckeInPdfSpace {
 
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
-    let mut first = original.round_to_3dec();
+    let mut first = original.clone();
     for i in subtract.iter() {
-        let i = i.round_to_3dec();
-        if first.equals(&i) {
+        if first.equals(i) {
             continue;
         }
         if first.is_zero_area() {
@@ -854,12 +853,11 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        // TODO: nas::only_touches crashes here???
         if first.equals_any_ring(&i) {
             return first;
         }
         if i.equals_any_ring(&first) {
-            return i;
+            return (*i).clone();
         }
         let a = translate_to_geo_poly(&first.round_to_3dec());
         let b = translate_to_geo_poly(&i.round_to_3dec());

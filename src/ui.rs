@@ -1282,11 +1282,7 @@ impl AenderungenClean {
 
                 web_sys::console::log_1(&format!("subtracting...").as_str().into());
                 let mut subtracted = flst_part.poly.round_to_3dec();
-                for a in ae_is_joined.iter() {
-                    web_sys::console::log_1(&serde_json::to_string(&subtracted).unwrap_or_default().as_str().into());
-                    web_sys::console::log_1(&serde_json::to_string(&a).unwrap_or_default().as_str().into());
-                    subtracted = subtract_from_poly(&subtracted, &[a]).round_to_3dec();
-                }
+                subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
                 web_sys::console::log_1(&format!("subtracted!").as_str().into());
 
                 if subtracted.is_zero_area() {
