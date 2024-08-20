@@ -798,19 +798,19 @@ impl SvgPolygon {
         area_m2 < 1.0
     }
 
-    pub fn equals_any_ring(&self, other: &Self) -> bool {
+    pub fn equals_any_ring(&self, other: &Self) -> Option<usize> {
         if self.outer_rings.len() != 1 {
-            return false;
+            return None;
         }
         let first_ring = &self.outer_rings[0];
 
-        for or in other.outer_rings.iter() {
+        for (i, or) in other.outer_rings.iter().enumerate() {
             if or.equals(first_ring) {
-                return true;
+                return Some(i);
             }
         }
 
-        false
+        None
     }
 
     pub fn translate_y(&self, newy: f64) -> Self {
@@ -1612,10 +1612,10 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
         return Vec::new();
     }
     // TODO: nas::only_touches crashes here???
-    if a.equals_any_ring(&b) {
+    if a.equals_any_ring(&b).is_some() {
         return vec![a];
     }
-    if b.equals_any_ring(&a) {
+    if b.equals_any_ring(&a).is_some() {
         return vec![b];
     }
     let a = translate_to_geo_poly(&a);

@@ -898,9 +898,10 @@ impl FlurstueckeInPdfSpace {
 
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
-    let mut first = original.clone();
+    let mut first = original.round_to_3dec();
     for i in subtract.iter() {
-        if first.equals(i) {
+        let i = i.round_to_3dec();
+        if first.equals(&i) {
             continue;
         }
         if first.is_zero_area() {
@@ -909,14 +910,14 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        if first.equals_any_ring(&i) {
-            return first;
+        if let Some(q) = first.equals_any_ring(&i) {
+            first = subtract_ring(&i, q);
         }
-        if i.equals_any_ring(&first) {
-            return (*i).clone();
+        if let Some(q) = i.equals_any_ring(&first) {
+            first = subtract_ring(&first, q);
         }
-        let a = translate_to_geo_poly(&first.round_to_3dec());
-        let b = translate_to_geo_poly(&i.round_to_3dec());
+        let a = translate_to_geo_poly(&first);
+        let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
@@ -927,10 +928,18 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = new;
+        first = new.round_to_3dec();
     }
 
     crate::nas::cleanup_poly(&first)
+}
+
+fn subtract_ring(outer: &SvgPolygon, ring: usize) -> SvgPolygon {
+    let mut o = outer.clone();
+    if ring < o.outer_rings.len() {
+        o.outer_rings.remove(ring);
+    }
+    o
 }
 
 pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
@@ -940,63 +949,38 @@ pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        if first.equals(i) {
+        let fi = first.round_to_3dec();
+        let i = i.round_to_3dec();
+        if fi.equals(&i) {
             continue;
         }
         if i.is_empty() {
             continue;
         }
-        if first.equals_any_ring(i) {
+        if fi.equals_any_ring(&i).is_some() {
             continue;
         }
-        if i.equals_any_ring(&first) {
+        if i.equals_any_ring(&fi).is_some() {
             continue;
         }
         if i.is_zero_area() {
             continue;
         }
-        if first.is_zero_area() {
+        if fi.is_zero_area() {
             first = i.clone();
             continue;
         }
-        let fi = first.round_to_3dec();
-        let ii = i.round_to_3dec();
         if debug {
             log_1(&"joining...".into());
             log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
-            log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
+            log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         }
         let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&ii);
+        let b = translate_to_geo_poly(&i);
         let join = a.union(&b);
         if debug {
             log_1(&"joined!".into());
         }
-        let s = translate_from_geo_poly(&join);
-        let new = SvgPolygon {
-            outer_rings: s.iter().flat_map(|s| {
-                s.outer_rings.clone().into_iter()
-            }).collect(),
-            inner_rings: s.iter().flat_map(|s| {
-                s.inner_rings.clone().into_iter()
-            }).collect(),
-        };
-        first = new;
-    }
-
-    Some(crate::nas::cleanup_poly(&first))
-}
-
-pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
-    use geo::BooleanOps;
-    let mut first = match polys.get(0) {
-        Some(s) => s.clone(),
-        None => return None,
-    };
-    for i in polys.iter().skip(1) {
-        let a = translate_to_geo_poly(&first.round_to_3dec());
-        let b = translate_to_geo_poly(&i.round_to_3dec());
-        let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
