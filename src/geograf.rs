@@ -515,8 +515,12 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     alle_linie_split_flurstuecke.dedup();
     let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
 
+    web_sys::console::log_1(&"quadtree new...".into());
+
     let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
     
+    web_sys::console::log_1(&"quadtree built!".into());
+
     let mut lines_end = Vec::new();
     for (ul_start, ul_end) in alle_linien_zu_checken.iter() {
         if !qt.line_overlaps_or_equals(&ul_start, &ul_end) {
