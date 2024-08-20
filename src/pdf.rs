@@ -874,7 +874,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
-        let i = i.round_to_3dec();
         if first.equals(&i) {
             continue;
         }
@@ -891,10 +890,10 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
         }
         if let Some(q) = i.equals_any_ring(&first) {
             // first = subtract_ring(&first, q);
-            return i.clone();
+            return (*i).clone();
         }
-        let a = translate_to_geo_poly(&first);
-        let b = translate_to_geo_poly(&i);
+        let a = translate_to_geo_poly(&first.round_to_3dec());
+        let b = translate_to_geo_poly(&i.round_to_3dec());
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
@@ -905,10 +904,12 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
+        /* 
         if new.is_zero_area() {
             return SvgPolygon::default();
         }
-        first = new.round_to_3dec();
+        */
+        first = new;
     }
 
     if autoclean {

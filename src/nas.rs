@@ -812,9 +812,10 @@ impl SvgPolygon {
     }
 
     pub fn is_zero_area(&self) -> bool {
+        /*
         if self.outer_rings.is_empty() {
             return true;
-        }
+        }*/
         let area_m2 = crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>();
         area_m2 < 1.0
     }

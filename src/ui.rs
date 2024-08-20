@@ -1848,7 +1848,9 @@ impl Aenderungen {
         for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
             let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
             let hr = hr.iter().collect::<Vec<_>>();
-            *megapoly = subtract_from_poly(&megapoly, &hr, true);
+            for h in hr.into_iter() {
+                *megapoly = subtract_from_poly(&megapoly, &[h], true);
+            }
         }
 
         Aenderungen {
