@@ -24,6 +24,7 @@ use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
 use proj4rs::Proj;
+use crate::geograf::LinienQuadTree;
 
 pub const LATLON_STRING: &str = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
@@ -1312,6 +1313,29 @@ pub struct SplitNasXml {
 }
 
 impl SplitNasXml {
+
+    pub fn get_linien_quadtree(&self) -> LinienQuadTree {
+
+        let mut alle_linie_split_flurstuecke = self.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
+            s.iter().flat_map(|q| {
+                let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
+                lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
+                lines
+            })
+        }).collect::<Vec<_>>();
+        alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+        alle_linie_split_flurstuecke.dedup();
+        let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
+
+        web_sys::console::log_1(&"quadtree new...".into());
+
+        let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
+        
+        web_sys::console::log_1(&"quadtree built!".into());
+
+        qt
+    }
+
     pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
         let split = flstpartid.split(":").collect::<Vec<_>>();
         let (ax_flurstueck, ax_ebene, cut_obj_id) = match &split[..] {

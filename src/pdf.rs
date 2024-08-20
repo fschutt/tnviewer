@@ -4,7 +4,7 @@ use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
-use crate::geograf::get_aenderungen_rote_linien;
+use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
@@ -352,6 +352,8 @@ pub fn generate_pdf(
 
     // AX_Flurstueck, AX_Flur, AX_BauRaumBodenOrdnungsRecht
 
+    let lq = nas_cut_original.get_linien_quadtree();
+
     generate_pdf_internal(
         projekt_info,
         konfiguration,
@@ -361,6 +363,7 @@ pub fn generate_pdf(
         risse,
         &riss_map.iter().filter_map(|(k, v)| Some((k.clone(), v.reproject(&xml.crs, log)?))).collect(),
         log,
+        &lq,
     )
 }
 
@@ -372,7 +375,8 @@ pub fn generate_pdf_internal(
     splitflaechen: &[AenderungenIntersection],
     risse: &Risse,
     riss_map_reprojected: &RissMapReprojected,
-    log: &mut Vec<String>
+    log: &mut Vec<String>,
+    linienquadtree: &LinienQuadTree,
 ) -> Vec<u8> {
 
     let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
@@ -438,7 +442,7 @@ pub fn generate_pdf_internal(
 
         let _ = write_border(&mut layer, 16.5, &rc);
         
-        let rote_linien = get_aenderungen_rote_linien(splitflaechen, xml, nas_cut_original)
+        let rote_linien = get_aenderungen_rote_linien(splitflaechen, linienquadtree)
         .into_iter().map(|l| {
             line_into_pdf_space(&l, riss_extent, rc, &mut Vec::new())
         }).collect::<Vec<_>>();

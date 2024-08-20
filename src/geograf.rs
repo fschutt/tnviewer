@@ -153,6 +153,8 @@ pub fn export_aenderungen_geograf(
     let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("Splitflaechen.xlsx").into(), splitflaechen_report));
 
+    let lq = split_nas.get_linien_quadtree();
+
     if risse.is_empty() {
         export_splitflaechen(
             &mut files, 
@@ -166,6 +168,7 @@ pub fn export_aenderungen_geograf(
             None,
             1,
             1,
+            &lq,
         );
     } else {
         for (i, (id, r)) in risse.iter().enumerate() {
@@ -198,6 +201,7 @@ pub fn export_aenderungen_geograf(
                 Some(extent_rect.clone()),
                 i + 1,
                 risse.len(),
+                &lq,
             );
             web_sys::console::log_1(&format!("files exported for RISS {id}!").as_str().into());
         }
@@ -364,6 +368,7 @@ pub fn export_splitflaechen(
     extent_rect: Option<Rect>,
     num_riss: usize,
     total_risse: usize,
+    lq: &LinienQuadTree,
 ) {
 
     web_sys::console::log_1(&"blattkopf...".into());
@@ -375,13 +380,13 @@ pub fn export_splitflaechen(
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
     web_sys::console::log_1(&"linien NAGrenze...".into());
-    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&splitflaechen, nas_xml, split_nas);
+    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
 
     web_sys::console::log_1(&"rote linien...".into());
-    let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, nas_xml, split_nas);
+    let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq);
     if !aenderungen_rote_linien.is_empty() {
         append_shp(files, &format!("Linien_Rot_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }
@@ -414,14 +419,15 @@ pub fn export_splitflaechen(
         riss_config,
         extent_rect, 
         num_riss, 
-        total_risse
+        total_risse,
+        lq,
     );
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));
     
     web_sys::console::log_1(&"ok done!".into());
 }
 
-struct LinienQuadTree {
+pub struct LinienQuadTree {
     pub linien: Vec<(SvgPoint, SvgPoint)>,
     pub qt: quadtree_f32::QuadTree,
 }
@@ -438,7 +444,7 @@ impl LinienQuadTree {
             Some((id, points_to_rect(&(a, b))))
         }).collect::<Vec<_>>();
 
-        let max_items = items.len().saturating_div(20).max(20);
+        let max_items = items.len().saturating_div(20).max(500);
 
         log_1(&format!("max_items: {max_items}").into());
 
@@ -446,6 +452,7 @@ impl LinienQuadTree {
             items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))),
             max_items
         );
+        
         log_1(&format!("OK! {max_items}").into());
 
         Self {
@@ -468,7 +475,7 @@ impl LinienQuadTree {
     }
 }
 
-fn l_to_points(l: &SvgLine) -> Vec<(SvgPoint, SvgPoint)> {
+pub fn l_to_points(l: &SvgLine) -> Vec<(SvgPoint, SvgPoint)> {
     let mut v = Vec::new();
     for p in l.points.windows(2) {
         match &p {
@@ -489,7 +496,10 @@ fn points_to_rect((a, b): &(SvgPoint, SvgPoint)) -> quadtree_f32::Rect {
     }
 }
 
-pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], nas: &NasXMLFile, split_nas: &SplitNasXml) -> Vec<SvgLine> {
+pub fn get_aenderungen_rote_linien(
+    splitflaechen: &[AenderungenIntersection], 
+    linienquadtree: &LinienQuadTree
+) -> Vec<SvgLine> {
     
     // rote linie: neue linie, die nicht auf nas xml linie liegt (oder teil einer nas xml linie ist)
     // 
@@ -509,26 +519,9 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     alle_linien_zu_checken.dedup();
     let alle_linien_zu_checken = alle_linien_zu_checken;
 
-    let mut alle_linie_split_flurstuecke = split_nas.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
-        s.iter().flat_map(|q| {
-            let mut lines = q.poly.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
-            lines.extend(q.poly.inner_rings.iter().flat_map(l_to_points));
-            lines
-        })
-    }).collect::<Vec<_>>();
-    alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
-    alle_linie_split_flurstuecke.dedup();
-    let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
-
-    web_sys::console::log_1(&"quadtree new...".into());
-
-    let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
-    
-    web_sys::console::log_1(&"quadtree built!".into());
-
     let mut lines_end = Vec::new();
     for (ul_start, ul_end) in alle_linien_zu_checken.iter() {
-        if !qt.line_overlaps_or_equals(&ul_start, &ul_end) {
+        if !linienquadtree.line_overlaps_or_equals(&ul_start, &ul_end) {
             lines_end.push((*ul_start, *ul_end));
         }
     }
@@ -654,7 +647,7 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
     s
 }
 
-pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], nas: &NasXMLFile, split_nas: &SplitNasXml) -> Vec<SvgLine> {
+pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], lq: &LinienQuadTree) -> Vec<SvgLine> {
     Vec::new()
 }
 
@@ -758,6 +751,7 @@ pub fn generate_pdf_vorschau(
     extent_rect: Option<Rect>,
     num_riss: usize,
     total_risse: usize,
+    linienquadtree: &LinienQuadTree,
 ) -> Vec<u8> {
 
     let extent_rect = match extent_rect {
@@ -789,6 +783,7 @@ pub fn generate_pdf_vorschau(
         &risse, 
         &map.into_iter().collect(),
         &mut Vec::new(),
+        linienquadtree,
     );
 
     pdf
