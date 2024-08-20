@@ -446,7 +446,10 @@ impl LinienQuadTree {
 
         web_sys::console::log_1(&format!("{items:?}").into());
 
-        let qt = quadtree_f32::QuadTree::new(items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))));
+        let qt = quadtree_f32::QuadTree::new_with_max_items_per_quad(
+            items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))),
+            items.len().saturating_div(20).max(20)
+        );
 
         web_sys::console::log_1(&"quadtree built!".into());
 
