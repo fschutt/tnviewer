@@ -934,24 +934,22 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        let mut fi = first.round_to_3dec();
-        let i = i.round_to_3dec();
-        if fi.equals(&i) {
+        if first.equals(&i) {
             continue;
         }
         if i.is_empty() {
             continue;
         }
-        if fi.equals_any_ring(&i).is_some() {
+        if first.equals_any_ring(&i).is_some() {
             continue;
         }
-        if i.equals_any_ring(&fi).is_some() {
+        if i.equals_any_ring(&first).is_some() {
             continue;
         }
         if i.is_zero_area() {
             continue;
         }
-        if fi.is_zero_area() {
+        if first.is_zero_area() {
             first = i.clone();
             continue;
         }
@@ -972,7 +970,8 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
             continue;
         }
         */
-
+        let fi = first.round_to_3dec();
+        let i = i.round_to_3dec();
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.union(&b);
