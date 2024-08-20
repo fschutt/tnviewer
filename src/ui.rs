@@ -2198,11 +2198,11 @@ fn render_risse_ui(
         gemeinde = render_config_field(("Gemeinde", &projekt_info.gemeinde, "gemeinde")),
         gemarkung = render_config_field(("Gemarkung", &projekt_info.gemarkung, "gemarkung")),
         gemarkung_nr = render_config_field(("Gemarkungsnr.", &projekt_info.gemarkung_nr, "gemarkung_nr")),
-        risse = risse.iter().map(|(id, rc)| {
+        risse = risse.iter().enumerate().map(|(riss_num, (id, rc))| {
             format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #cccccc;border-radius: 3px;'>
 
                 <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
-                    <p style='font-size: 14px;font-weight: bold;'>Riss ID {id_nice}</p>
+                    <p style='font-size: 14px;font-weight: bold;'>Riss {riss_num}</p>
                     <p class='__application-secondary-undo' style='margin-left: 10px;display: flex;align-items: center;' onclick='rissLoeschen(event);' data-riss-id='{id}'>X</p>
                 </div>
                 <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
@@ -2234,7 +2234,7 @@ fn render_risse_ui(
                 width = rc.width_mm,
                 height = rc.height_mm,
                 scale = rc.scale,
-                id_nice = id.split("-").next().unwrap_or(""),
+                riss_num = riss_num + 1,
             )
         }).collect::<Vec<_>>().join("")
     )
