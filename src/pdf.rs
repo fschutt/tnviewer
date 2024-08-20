@@ -934,46 +934,16 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        if first.equals(&i) {
+        if first.equals(i) {
             continue;
         }
         if i.is_empty() {
             continue;
         }
-        if first.equals_any_ring(&i).is_some() {
-            continue;
-        }
-        if i.equals_any_ring(&first).is_some() {
-            continue;
-        }
-        if i.is_zero_area() {
-            continue;
-        }
-        if first.is_zero_area() {
-            first = i.clone();
-            continue;
-        }
-
-        /* 
-        if nas::only_touches(&fi, &i) {
-            fi.correct_almost_touching_points(&i);
-        }
-
-        let is_1 = nas::only_touches_internal(&fi, &i);
-        let is_2 = nas::only_touches_internal(&i, &fi);
-        let no_intersection = is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0;
-        let touches_at_more_than_one_occation = is_1.points_touching_lines > 1 || is_2.points_touching_lines > 1;
-
-        if no_intersection && !touches_at_more_than_one_occation {
-            first.outer_rings.append(&mut i.outer_rings.clone());
-            first.inner_rings.append(&mut i.inner_rings.clone());
-            continue;
-        }
-        */
         let fi = first.round_to_3dec();
-        let i = i.round_to_3dec();
+        let ii = i.round_to_3dec();
         let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&i);
+        let b = translate_to_geo_poly(&ii);     
         let join = a.union(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
