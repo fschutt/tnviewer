@@ -975,7 +975,9 @@ pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
             continue;
         }
 
-        fi.correct_almost_touching_points(&i);
+        if nas::only_touches(&fi, &i) {
+            fi.correct_almost_touching_points(&i);
+        }
 
         let is_1 = nas::only_touches_internal(&fi, &i);
         let is_2 = nas::only_touches_internal(&i, &fi);
