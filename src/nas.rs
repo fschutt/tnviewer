@@ -1486,7 +1486,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
         let polys = polys.iter().flat_map(|p| {
-            let intersection_mp = intersect_polys(&flst.poly, &p.poly);
+            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
             intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
                 attributes: {
                     let mut attrs = p.attributes.clone();
@@ -1621,7 +1621,7 @@ fn clean_internal(list_of_points: &Vec<SvgPoint>) -> Vec<SvgPoint> {
     p_new
 }
 
-pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
+pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
@@ -1641,7 +1641,12 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
-    translate_from_geo_poly(&intersect).iter().map(cleanup_poly).collect()
+    let s = translate_from_geo_poly(&intersect);
+    if autoclean {
+        s.iter().map(cleanup_poly).collect()
+    } else {
+        s
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -870,7 +870,7 @@ impl FlurstueckeInPdfSpace {
     }
 }
 
-pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
+pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoclean: bool) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
@@ -909,7 +909,11 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         first = new.round_to_3dec();
     }
 
-    crate::nas::cleanup_poly(&first)
+    if autoclean {
+        crate::nas::cleanup_poly(&first)
+    } else {
+        first
+    }
 }
 
 fn subtract_ring(outer: &SvgPolygon, ring: usize) -> SvgPolygon {
@@ -920,7 +924,7 @@ fn subtract_ring(outer: &SvgPolygon, ring: usize) -> SvgPolygon {
     o
 }
 
-pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
+pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
@@ -949,6 +953,7 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
             continue;
         }
 
+        /* 
         if nas::only_touches(&fi, &i) {
             fi.correct_almost_touching_points(&i);
         }
@@ -963,7 +968,8 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
             first.inner_rings.append(&mut i.inner_rings.clone());
             continue;
         }
-
+        */
+        
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.union(&b);
@@ -979,7 +985,13 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         first = new;
     }
 
-    Some(crate::nas::cleanup_poly(&first))
+    let c = if autoclean {
+        crate::nas::cleanup_poly(&first)
+    } else {
+        first
+    };
+
+    Some(c)
 }
 
 fn get_fluren_in_pdf_space(
@@ -1015,7 +1027,7 @@ fn get_fluren_in_pdf_space(
             let polys = v.iter()
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
-            let joined = join_polys(&polys)?;
+            let joined = join_polys(&polys, false)?;
             let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),

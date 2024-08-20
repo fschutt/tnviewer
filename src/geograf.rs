@@ -506,7 +506,6 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
 
     let mut alle_linie_split_flurstuecke = split_nas.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
         s.iter().flat_map(|q| {
-            web_sys::console::log_1(&serde_json::to_string(&q.poly).unwrap_or_default().as_str().into());
             let mut lines = q.poly.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
             lines.extend(q.poly.inner_rings.iter().flat_map(l_to_points));
             lines

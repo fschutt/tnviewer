@@ -1208,7 +1208,7 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
 
-                for intersect_poly in intersect_polys(&anew, &bnew) {
+                for intersect_poly in intersect_polys(&anew, &bnew, true) {
                     is.push(AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
@@ -1277,7 +1277,7 @@ impl AenderungenClean {
                 };
 
                 let mut subtracted = flst_part.poly.round_to_3dec();
-                subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
+                subtracted = subtract_from_poly(&subtracted, &ae_is_joined, true).round_to_3dec();
 
                 if subtracted.is_zero_area() {
                     continue;
@@ -1771,7 +1771,7 @@ impl Aenderungen {
             .and_modify(|ep: &mut SvgPolygon| {
                 let a = ep.round_to_3dec();
                 let b = polyneu.poly.round_to_3dec();
-                if let Some(e) = join_polys(&[a, b]) {
+                if let Some(e) = join_polys(&[a, b], true) {
                     *ep = e;
                 }
             })
@@ -1848,9 +1848,7 @@ impl Aenderungen {
         for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
             let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
             let hr = hr.iter().collect::<Vec<_>>();
-            for h in hr.into_iter() {
-                *megapoly = subtract_from_poly(&megapoly, &[h]);
-            }
+            *megapoly = subtract_from_poly(&megapoly, &hr, true);
         }
 
         Aenderungen {
