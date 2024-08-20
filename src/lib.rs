@@ -47,8 +47,8 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = "";
-    let poly_string2 = "";
+    let poly_string1 = include_str!("./test1.txt");
+    let poly_string2 = include_str!("./test2.txt");
     
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();

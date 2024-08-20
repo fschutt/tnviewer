@@ -875,28 +875,32 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
         let i = i.round_to_3dec();
-        if first.equals(&i) {
+        let fi = first.round_to_3dec();
+        if fi.equals(&i) {
             continue;
         }
-        if first.is_zero_area() {
+        if fi.is_zero_area() {
             return SvgPolygon::default();
         }
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        if let Some(_) = first.equals_any_ring(&i) {
+        if let Some(_) = fi.equals_any_ring(&i) {
             // i is the bigger than the polygon subtracted from, so the polygon is empty
             // return SvgPolygon::default();
-            return first;
+            return fi;
         }
-        if let Some(q) = i.equals_any_ring(&first) {
+        if let Some(q) = i.equals_any_ring(&fi) {
             // first = subtract_ring(&first, q);
             return i.clone();
         }
+        if nas::only_touches(&fi, &i) {
+            continue;
+        }
         log_1(&"subtracting...".into());
-        log_1(&serde_json::to_string(&first).unwrap_or_default().into());
+        log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
         log_1(&serde_json::to_string(&i).unwrap_or_default().into());
-        let a = translate_to_geo_poly(&first.round_to_3dec());
+        let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
         log_1(&"subtracted!".into());
