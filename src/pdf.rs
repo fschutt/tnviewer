@@ -893,9 +893,13 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
             // first = subtract_ring(&first, q);
             return i.clone();
         }
+        log_1(&"subtracting...".into());
+        log_1(&serde_json::to_string(&first).unwrap_or_default().into());
+        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         let a = translate_to_geo_poly(&first.round_to_3dec());
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
+        log_1(&"subtracted!".into());
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
