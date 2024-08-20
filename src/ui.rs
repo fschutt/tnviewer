@@ -1248,8 +1248,6 @@ impl AenderungenClean {
                 continue;
             }
 
-            web_sys::console::log_1(&format!("joining ae_is: {}", ae_is.len()).as_str().into());
-
             let ae_is_joined = ae_is.iter().map(|s| s.poly_cut.round_to_3dec()).collect::<Vec<_>>();
             let ae_is_joined = ae_is_joined.iter().collect::<Vec<_>>();
 
@@ -1260,8 +1258,6 @@ impl AenderungenClean {
                     continue;
                 },
             };
-
-            web_sys::console::log_1(&format!("ae_is joined").as_str().into());
 
             for flst_part in flst {
 
@@ -1292,6 +1288,7 @@ impl AenderungenClean {
                     flst_id: flurstueck_id.clone(),
                     poly_cut: subtracted.round_to_3dec(),
                 };
+                
                 web_sys::console::log_1(&format!("!!! OK! pushing bleibt {qq:?}").as_str().into());
 
                 is.push(qq);

@@ -1575,7 +1575,6 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     if ranges_selfintersection.is_empty() {
         return line.clone();
     }
-    log_1(&format!("ranges {ranges_selfintersection:?} to be removed").as_str().into());
     let mut newpoints = Vec::new();
     for (i, p) in line.points.iter().enumerate() {
         if ranges_selfintersection.iter().any(|r| r.contains(&i)) {

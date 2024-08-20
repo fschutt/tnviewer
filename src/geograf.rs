@@ -429,8 +429,6 @@ struct LinienQuadTree {
 impl LinienQuadTree {
     pub fn new(linien: Vec<(SvgPoint, SvgPoint)>) -> Self {
         
-        web_sys::console::log_1(&"collecting items...".into());
-
         let items = linien.iter().enumerate().filter_map(|(id, (a, b))| {
             let a = a.round_to_3dec();
             let b = b.round_to_3dec();
@@ -440,14 +438,10 @@ impl LinienQuadTree {
             Some((id, points_to_rect(&(a, b))))
         }).collect::<Vec<_>>();
 
-        web_sys::console::log_1(&format!("{items:?}").into());
-
         let qt = quadtree_f32::QuadTree::new_with_max_items_per_quad(
             items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))),
             items.len().saturating_div(20).max(20)
         );
-
-        web_sys::console::log_1(&"quadtree built!".into());
 
         Self {
             linien,
@@ -544,8 +538,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
 
     loop {
 
-        web_sys::console::log_1(&"rote linien 4".into());
-
         let mut modified_mark_remove = BTreeSet::new();
         let v_clone = v.clone();
         'outer: for (i, q) in v.iter_mut().enumerate() {
@@ -632,8 +624,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             break; // error
         }
 
-        web_sys::console::log_1(&"rote linien 5".into());
-
         let vlen = v.len();
         for (i, p) in modified_mark_remove.iter().enumerate() {
             v.swap(*p, vlen.saturating_sub(1).saturating_sub(i));
@@ -642,8 +632,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             v.pop();
         }
     }
-
-    web_sys::console::log_1(&"rote linien 6".into());
 
     let s = v.into_iter().filter_map(|p| {
         let mut points = p.into_iter().flat_map(|(a, b)| vec![a, b]).collect::<Vec<_>>();
@@ -654,8 +642,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             Some(SvgLine { points })
         }
     }).collect::<Vec<_>>();
-
-    web_sys::console::log_1(&"rote linien 7".into());
 
     s
 }

@@ -43,8 +43,11 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
             web_sys::console::log_1(&format!("adding file {}: {} bytes", name.display(), file_contents.len()).as_str().into());
 
             #[allow(deprecated)]
-            let _ = zip.start_file_from_path(name, options);
-            let _ = zip.write_all(&file_contents);
+            let e = zip.start_file_from_path(name, options);
+            web_sys::console::log_1(&format!("starting file {}: {e:?}", name.display()).as_str().into());
+
+            let e = zip.write_all(&file_contents);
+            web_sys::console::log_1(&format!("wrote file {}: {e:?}", name.display()).as_str().into());
         }
 
         web_sys::console::log_1(&"finishing...".into());
