@@ -886,10 +886,12 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
         }
         if let Some(_) = first.equals_any_ring(&i) {
             // i is the bigger than the polygon subtracted from, so the polygon is empty
-            return SvgPolygon::default();
+            // return SvgPolygon::default();
+            return first;
         }
         if let Some(q) = i.equals_any_ring(&first) {
-            first = subtract_ring(&first, q);
+            // first = subtract_ring(&first, q);
+            return i.clone();
         }
         let a = translate_to_geo_poly(&first);
         let b = translate_to_geo_poly(&i);
@@ -969,7 +971,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
             continue;
         }
         */
-        
+
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.union(&b);
