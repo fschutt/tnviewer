@@ -435,13 +435,18 @@ impl LinienQuadTree {
         
         web_sys::console::log_1(&"collecting items...".into());
 
-        let items = linien.iter().enumerate().map(|(id, (a, b))| {
-            (id, (a.round_to_3dec(), b.round_to_3dec()))
+        let items = linien.iter().enumerate().filter_map(|(id, (a, b))| {
+            let a = a.round_to_3dec();
+            let b = b.round_to_3dec();
+            if a.equals(&b) {
+                return None;
+            }
+            Some((id, points_to_rect(&(a, b))))
         }).collect::<Vec<_>>();
 
-        web_sys::console::log_1(&serde_json::to_string(&items).unwrap_or_default().into());
+        web_sys::console::log_1(&format!("{items:?}").into());
 
-        let qt = quadtree_f32::QuadTree::new(items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(points_to_rect(&v)))));
+        let qt = quadtree_f32::QuadTree::new(items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))));
 
         web_sys::console::log_1(&"quadtree built!".into());
 
