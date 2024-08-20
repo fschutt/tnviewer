@@ -793,7 +793,28 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn correct_almost_touching_points(&mut self, other: &Self) {
+        let maxdst = 0.1;
+        let mut other_lines = other.outer_rings.clone();
+        other_lines.extend(other.inner_rings.iter().cloned());
+
+        for l in self.outer_rings.iter_mut() {
+            for p in l.points.iter_mut() {
+                let _ = Aenderungen::correct_point(p, &other_lines, maxdst, maxdst, &mut Vec::new());
+            }
+        }
+
+        for l in self.inner_rings.iter_mut() {
+            for p in l.points.iter_mut() {
+                let _ = Aenderungen::correct_point(p, &other_lines, maxdst, maxdst, &mut Vec::new());
+            }
+        }
+    }
+
     pub fn is_zero_area(&self) -> bool {
+        if self.outer_rings.is_empty() {
+            return true;
+        }
         let area_m2 = crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>();
         area_m2 < 1.0
     }

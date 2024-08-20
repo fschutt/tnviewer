@@ -1533,7 +1533,7 @@ impl Aenderungen {
         String::new()
     }
 
-    fn correct_point(p: &mut SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
+    pub fn correct_point(p: &mut SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
         let mut nearest_point = None;
         for line in i.iter() {
             let line: &crate::nas::SvgLine = line;

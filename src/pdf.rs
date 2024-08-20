@@ -5,7 +5,7 @@ use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerRe
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::get_aenderungen_rote_linien;
-use crate::LatLng;
+use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
     parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, 
@@ -910,8 +910,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        if let Some(q) = first.equals_any_ring(&i) {
-            first = subtract_ring(&i, q);
+        if let Some(_) = first.equals_any_ring(&i) {
+            // i is the bigger than the polygon subtracted from, so the polygon is empty
+            return SvgPolygon::default();
         }
         if let Some(q) = i.equals_any_ring(&first) {
             first = subtract_ring(&first, q);
@@ -928,6 +929,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
+        if new.is_zero_area() {
+            return SvgPolygon::default();
+        }
         first = new.round_to_3dec();
     }
 
@@ -949,7 +953,7 @@ pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        let fi = first.round_to_3dec();
+        let mut fi = first.round_to_3dec();
         let i = i.round_to_3dec();
         if fi.equals(&i) {
             continue;
@@ -970,6 +974,20 @@ pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
             first = i.clone();
             continue;
         }
+
+        fi.correct_almost_touching_points(&i);
+
+        let is_1 = nas::only_touches_internal(&fi, &i);
+        let is_2 = nas::only_touches_internal(&i, &fi);
+        let no_intersection = is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0;
+        let touches_at_more_than_one_occation = is_1.points_touching_lines > 1 || is_2.points_touching_lines > 1;
+
+        if no_intersection && !touches_at_more_than_one_occation {
+            first.outer_rings.append(&mut i.outer_rings.clone());
+            first.inner_rings.append(&mut i.inner_rings.clone());
+            continue;
+        }
+
         if debug {
             log_1(&"joining...".into());
             log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
