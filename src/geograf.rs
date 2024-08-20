@@ -431,9 +431,17 @@ struct LinienQuadTree {
 impl LinienQuadTree {
     pub fn new(linien: Vec<(SvgPoint, SvgPoint)>) -> Self {
         
-        let qt = quadtree_f32::QuadTree::new(linien.iter().enumerate().map(|(id, (a, b))| {
-            (quadtree_f32::ItemId(id), quadtree_f32::Item::Rect(points_to_rect(&(*a, *b))))
-        }));
+        web_sys::console::log_1(&"collecting items...".into());
+
+        let items = linien.iter().enumerate().map(|(id, (a, b))| {
+            (id, (a.round_to_3dec(), b.round_to_3dec()))
+        }).collect::<Vec<_>>();
+
+        web_sys::console::log_1(&serde_json::to_string(&items).unwrap_or_default().into());
+
+        let qt = quadtree_f32::QuadTree::new(items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(points_to_rect(&v)))));
+
+        web_sys::console::log_1(&"quadtree built!".into());
 
         Self {
             linien,
