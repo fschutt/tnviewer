@@ -1463,7 +1463,7 @@ impl AenderungenIntersection {
             kuerzel: self.neu.clone(),
             pos: {
                 let mut pos = self.poly_cut.get_label_pos(0.001);
-                pos.y -= 6.0;
+                pos.y -= 10.0;
                 pos
             }
         })

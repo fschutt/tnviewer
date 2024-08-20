@@ -539,6 +539,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
 
     loop {
 
+        web_sys::console::log_1(&format!("merge_lines_again: {} lines", v.len()).into());
+
         let mut modified_mark_remove = BTreeSet::new();
         let v_clone = v.clone();
         'outer: for (i, q) in v.iter_mut().enumerate() {
@@ -625,6 +627,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             break; // error
         }
 
+        web_sys::console::log_1(&format!("removing: {modified_mark_remove:?}").into());
+
         let vlen = v.len();
         for (i, p) in modified_mark_remove.iter().enumerate() {
             v.swap(*p, vlen.saturating_sub(1).saturating_sub(i));
@@ -633,6 +637,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             v.pop();
         }
     }
+
+    web_sys::console::log_1(&format!("ok 1").into());
 
     let s = v.into_iter().filter_map(|p| {
         let mut points = p.into_iter().flat_map(|(a, b)| vec![a, b]).collect::<Vec<_>>();
@@ -643,6 +649,8 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             Some(SvgLine { points })
         }
     }).collect::<Vec<_>>();
+
+    web_sys::console::log_1(&format!("ok 2").into());
 
     s
 }

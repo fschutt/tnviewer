@@ -1,17 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb};
+use printpdf::{CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, 
-    NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    intersect_polys, parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
-use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu};
+use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement};
 use crate::xlsx::FlstIdParsed;
 use crate::xml::{self, XmlNode};
 
@@ -146,6 +145,23 @@ pub struct PdfEbenenStyle {
     pub lagebez_ohne_hsnr: PtoStil,
 }
 
+impl PdfEbenenStyle {
+    pub fn default_grau(kuerzel: &str) -> Self {
+        PdfEbenenStyle {
+            kuerzel: kuerzel.to_string(),
+            fill_color: None,
+            fill: false,
+            outline_color: Some("#6082B6".to_string()),
+            outline_thickness: Some(0.1),
+            outline_overprint: false,
+            outline_dash: None,
+            pattern_svg: None,
+            pattern_placement: None,
+            lagebez_ohne_hsnr: PtoStil::default(),
+        }
+    }
+}
+
 fn default_fill() -> bool { true }
 
 impl Default for PdfEbenenStyle {
@@ -263,6 +279,21 @@ impl RissExtentReprojected {
             max_x: self.max_x,
             max_y: self.max_y,
         }
+    }
+    pub fn get_poly(&self) -> SvgPolygon {
+        let mut v = vec![
+            SvgPoint { x: self.min_x, y: self.min_y },
+            SvgPoint { x: self.min_x, y: self.max_y },
+            SvgPoint { x: self.max_x, y: self.max_y },
+            SvgPoint { x: self.max_x, y: self.min_y },
+            SvgPoint { x: self.min_x, y: self.min_y },
+        ];
+        v.reverse();
+        SvgPolygon { outer_rings: vec![
+            SvgLine {
+                points: v
+            }
+        ], inner_rings: Vec::new() }
     }
 }
 
@@ -394,6 +425,11 @@ pub fn generate_pdf_internal(
         .. Default::default()
     }));
 
+    let helvetica = match doc.add_builtin_font(printpdf::BuiltinFont::HelveticaBold) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
         let riss_extent = match riss_map_reprojected.get(ri) {
@@ -420,6 +456,10 @@ pub fn generate_pdf_internal(
 
         let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
 
+        let gebaeude = get_gebaeude_in_pdf_space(&xml, riss_extent, rc, log);
+
+        let _ = write_gebaeude(&mut layer, &gebaeude, log);
+
         let flst = get_flurstuecke_in_pdf_space(
             &xml,
             &riss_extent,
@@ -439,8 +479,6 @@ pub fn generate_pdf_internal(
         );
         
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
-
-        let _ = write_border(&mut layer, 16.5, &rc);
         
         let rote_linien = get_aenderungen_rote_linien(splitflaechen, linienquadtree)
         .into_iter().map(|l| {
@@ -449,6 +487,16 @@ pub fn generate_pdf_internal(
 
         let _ = write_rote_linien(&mut layer, &rote_linien);
         
+        let _ = write_splitflaechen_beschriftungen(
+            &mut layer, 
+            &helvetica,
+            splitflaechen, 
+            riss_extent, 
+            rc
+        );
+
+        let _ = write_border(&mut layer, 16.5, &rc);
+
         /*
         let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
             &xml,
@@ -626,11 +674,19 @@ fn line_into_pdf_space(
 ) -> SvgLine {
     SvgLine {
         points: line.points.iter().map(|p| {
-            SvgPoint {
-                x: (p.x - riss.min_x) / riss.width_m() * riss_config.width_mm as f64, 
-                y: (p.y - riss.min_y) / riss.height_m() * riss_config.height_mm as f64, 
-            }
+            point_into_pdf_space(p, riss, riss_config)
         }).collect()
+    }
+}
+
+fn point_into_pdf_space(
+    p: &SvgPoint,
+    riss: &RissExtentReprojected,
+    riss_config: &RissConfig
+) -> SvgPoint {
+    SvgPoint {
+        x: (p.x - riss.min_x) / riss.width_m() * riss_config.width_mm as f64, 
+        y: (p.y - riss.min_y) / riss.height_m() * riss_config.height_mm as f64, 
     }
 }
 
@@ -664,6 +720,133 @@ fn write_rote_linien(
     
     Some(())
 
+}
+
+fn write_splitflaechen_beschriftungen(
+    layer: &mut PdfLayerReference,
+    font: &IndirectFontRef,
+    splitflaechen: &[AenderungenIntersection],
+    riss_extent: &RissExtentReprojected,
+    riss: &RissConfig,
+) -> Option<()> {
+
+    let riss_poly = riss_extent.get_poly();
+
+    for sf in splitflaechen.iter() {
+        log_1(&format!("PDF splitflaeche: {sf:?}").into());
+    }
+
+    log_1(&format!("RISS poly: {riss_poly:?}").into());
+
+    let splitflaechen = splitflaechen.iter().flat_map(|sf| {
+        intersect_polys(&sf.poly_cut, &riss_poly, true)
+        .into_iter()
+        .map(|f| {
+            AenderungenIntersection {
+                alt: sf.alt.clone(),
+                neu: sf.neu.clone(),
+                flst_id: sf.flst_id.clone(),
+                poly_cut: f.round_to_3dec(),
+            }
+        })
+    }).collect::<Vec<_>>();
+    
+    let texte_bleibt = splitflaechen.iter()
+    .filter_map(|s| s.get_text_bleibt())
+    .map(|p| {
+        TextPlacement {
+            kuerzel: p.kuerzel,
+            status: p.status,
+            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+        }
+    })
+    .collect::<Vec<_>>();
+
+    let texte_neu = splitflaechen.iter()
+    .filter_map(|s| s.get_text_neu())
+    .map(|p| {
+        TextPlacement {
+            kuerzel: p.kuerzel,
+            status: p.status,
+            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+        }
+    })
+    .collect::<Vec<_>>();
+
+    let texte_alt = splitflaechen.iter()
+    .filter_map(|s| s.get_text_alt())
+    .map(|p| {
+        TextPlacement {
+            kuerzel: p.kuerzel,
+            status: p.status,
+            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+        }
+    })
+    .collect::<Vec<_>>();
+
+
+    for l in texte_alt.iter() {
+        log_1(&format!("TEXT ALT: {l:?}").into());
+    }
+
+    for l in texte_neu.iter() {
+        log_1(&format!("TEXT NEU: {l:?}").into());
+    }
+
+    for l in texte_bleibt.iter() {
+        log_1(&format!("TEXT BLEIBT: {l:?}").into());
+    }
+
+    log_1(&format!("PDF TEXTE: {} bleibt {} alt {} neu", texte_bleibt.len(), texte_alt.len(), texte_neu.len()).into());
+
+    let alt_color = csscolorparser::parse("#cc0000").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let neu_color = csscolorparser::parse("#00aa00").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let bleibt_color = csscolorparser::parse("#333333").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    layer.save_graphics_state();
+    
+
+    layer.set_fill_color(bleibt_color);
+    for t in texte_bleibt {
+        layer.begin_text_section();
+        layer.set_font(&font, 10.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
+        layer.write_text(t.kuerzel, &font);
+        layer.end_text_section();
+    }
+
+    layer.set_fill_color(alt_color);
+    for t in texte_alt {
+        layer.begin_text_section();
+        layer.set_font(&font, 10.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
+        layer.write_text(t.kuerzel, &font);
+        layer.end_text_section();
+    }
+
+    layer.set_fill_color(neu_color);
+    for t in texte_neu {
+        layer.begin_text_section();
+        layer.set_font(&font, 10.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
+        layer.write_text(t.kuerzel, &font);
+        layer.end_text_section();
+    }
+
+    layer.restore_graphics_state();
+
+    Some(())
 }
 
 fn write_border(
@@ -768,7 +951,7 @@ fn write_nutzungsarten(
 
             let (flst_style_id, flst_style) = match flst_style {
                 Some(s) => s,
-                None => continue,
+                None => (flst_kuerzel_alt.clone(), PdfEbenenStyle::default_grau(&flst_kuerzel_alt)),
             };
 
             flurstueck_nutzungen_grouped_by_ebene.entry(flst_style_id).or_insert_with(|| Vec::new()).push(f);
@@ -841,37 +1024,12 @@ pub fn get_flurstuecke_in_pdf_space(
     }
 }
 
-struct FlurenInPdfSpace {
-    pub fluren: Vec<TaggedPolygon>,
+struct GebaeudeInPdfSpace {
+    pub gebaeude: Vec<TaggedPolygon>,
 }
 
-impl FlurstueckeInPdfSpace {
-    pub fn get_fluren(&self, flst: &FlurstueckeInPdfSpace) -> String {
-        let mut fluren_map = BTreeMap::new();
-        for v in flst.flst.iter() {
-            
-            let flst = v.attributes
-            .get("flurstueckskennzeichen")
-            .and_then(|s| FlstIdParsed::from_str(s).parse_num());
-    
-            let flst = match flst {
-                Some(s) => s,
-                None => continue,
-            };
-    
-            fluren_map.entry(flst.gemarkung).or_insert_with(|| BTreeSet::new()).insert(flst.flur);
-        }
-
-
-        let mut s = String::new();
-
-        for (gemarkung, flur) in fluren_map {
-            s.push_str(&format!("  Gemarkung {gemarkung} Flur {flur:?},  "));
-        }
-        
-        s
-        
-    }
+struct FlurenInPdfSpace {
+    pub fluren: Vec<TaggedPolygon>,
 }
 
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoclean: bool) -> SvgPolygon {
@@ -979,6 +1137,31 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
     Some(c)
 }
 
+
+fn get_gebaeude_in_pdf_space(
+    xml: &NasXMLFile,
+    riss: &RissExtentReprojected,
+    riss_config: &RissConfig,
+    log: &mut Vec<String>
+) -> GebaeudeInPdfSpace {
+
+    let mut gebaeude = xml.ebenen.get("AX_Gebaeude").cloned().unwrap_or_default();
+    gebaeude.retain(|s| {
+        let rb = riss.get_rect();
+        rb.overlaps_rect(&s.get_rect())
+    });
+
+    GebaeudeInPdfSpace {
+        gebaeude: gebaeude.iter().filter_map(|v| {
+            let joined = poly_into_pdf_space(&v.poly, riss, riss_config, log);
+            Some(TaggedPolygon {
+                attributes: BTreeMap::new(),
+                poly: joined,
+            })
+        }).collect()
+    }
+}
+
 fn get_fluren_in_pdf_space(
     xml: &NasXMLFile,
     riss: &RissExtentReprojected,
@@ -1007,7 +1190,7 @@ fn get_fluren_in_pdf_space(
         fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
     }
 
-    let s = FlurenInPdfSpace {
+    FlurenInPdfSpace {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter()
             .map(|s| s.poly.clone())
@@ -1019,9 +1202,7 @@ fn get_fluren_in_pdf_space(
                 poly: joined,
             })
         }).collect()
-    };
-
-    s
+    }
 }
 
 fn write_flurstuecke(
@@ -1059,6 +1240,39 @@ fn write_flurstuecke(
     Some(())
 }
 
+
+fn write_gebaeude(
+    layer: &mut PdfLayerReference,
+    gebaeude: &GebaeudeInPdfSpace,
+    log: &mut Vec<String>,
+) -> Option<()> {
+
+    let fill_color = csscolorparser::parse("#808080").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let outline_color = csscolorparser::parse("#000000").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    layer.save_graphics_state();
+
+    layer.set_fill_color(fill_color);
+
+    layer.set_outline_color(outline_color);
+
+    layer.set_outline_thickness(0.1);
+
+    for tp in gebaeude.gebaeude.iter() {
+        let poly = translate_poly(&tp.poly, PaintMode::FillStroke);
+        layer.add_polygon(poly);
+    }
+
+    layer.restore_graphics_state();
+
+    Some(())
+}
+
 fn write_fluren(
     layer: &mut PdfLayerReference,
     fluren: &FlurenInPdfSpace,
@@ -1068,19 +1282,13 @@ fn write_fluren(
 
     layer.save_graphics_state();
 
-    layer.set_fill_color(printpdf::Color::Rgb(Rgb {
-        r: 255.0,
-        g: 0.0,
-        b: 0.0,
-        icc_profile: None,
-    }));
+    let outline_color = csscolorparser::parse("#F8196F").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        icc_profile: None,
-    }));
+    layer.set_overprint_stroke(true);
+
+    layer.set_outline_color(outline_color);
 
     layer.set_outline_thickness(3.0);
 
