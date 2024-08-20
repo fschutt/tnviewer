@@ -446,7 +446,7 @@ pub fn generate_pdf_internal(
         // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
 
         let fluren = get_fluren_in_pdf_space(
-            &flst,
+            &xml,
             &riss_extent,
             rc,
             log
@@ -1013,7 +1013,7 @@ pub fn difference_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
 }
 
 fn get_fluren_in_pdf_space(
-    flst: &FlurstueckeInPdfSpace,
+    xml: &NasXMLFile,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
     log: &mut Vec<String>
@@ -1021,8 +1021,14 @@ fn get_fluren_in_pdf_space(
 
     web_sys::console::log_1(&"5.13.1...".into());
 
+    let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
+    flst.retain(|s| {
+        let rb = riss.get_rect();
+        rb.overlaps_rect(&s.get_rect())
+    });
+
     let mut fluren_map = BTreeMap::new();
-    for v in flst.flst.iter() {
+    for v in flst.iter() {
         
         let flst = v.attributes
         .get("flurstueckskennzeichen")
@@ -1044,6 +1050,7 @@ fn get_fluren_in_pdf_space(
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
             let joined = join_polys(&polys, true)?;
+            let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
                 poly: joined,
