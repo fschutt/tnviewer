@@ -925,7 +925,7 @@ fn write_nutzungsarten(
     style: &Konfiguration,
     log: &mut Vec<String>,
 ) -> Option<()> {
-
+    
     let mut flurstueck_nutzungen_grouped_by_ebene = BTreeMap::new();
     for (flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
         for f in flst_parts.iter() {
@@ -960,7 +960,7 @@ fn write_nutzungsarten(
 
     let flurstueck_nutzungen_grouped_by_ebene = style.pdf.layer_ordnung.iter().filter_map(|s| {
         let polys = flurstueck_nutzungen_grouped_by_ebene.get(s)?;
-        let style = style.pdf.nutzungsarten.get(s)?;
+        let style = style.pdf.nutzungsarten.get(s).cloned().unwrap_or_else(|| PdfEbenenStyle::default_grau(&s));
         Some((style, polys))
     }).collect::<Vec<_>>();
 
@@ -987,7 +987,11 @@ fn write_nutzungsarten(
         if let Some(oc) = outline_color.as_ref() {
             layer.set_outline_color(oc.clone());
             layer.set_outline_thickness(outline_thickness);
-            paintmode = PaintMode::FillStroke;
+            paintmode = if fill_color.is_some() {
+                PaintMode::FillStroke
+            } else {
+                PaintMode::Stroke
+            };
         }
 
         for poly in polys.iter() {
@@ -1214,13 +1218,6 @@ fn write_flurstuecke(
 
     layer.save_graphics_state();
 
-    layer.set_fill_color(printpdf::Color::Rgb(Rgb {
-        r: 255.0,
-        g: 255.0,
-        b: 255.0,
-        icc_profile: None,
-    }));
-
     layer.set_outline_color(printpdf::Color::Rgb(Rgb {
         r: 0.0,
         g: 0.0,
@@ -1228,7 +1225,7 @@ fn write_flurstuecke(
         icc_profile: None,
     }));
 
-    layer.set_outline_thickness(1.0);
+    layer.set_outline_thickness(0.1);
 
     for tp in flst.flst.iter() {
         let poly = translate_poly(&tp.poly, PaintMode::Stroke);
