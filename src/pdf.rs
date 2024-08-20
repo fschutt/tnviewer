@@ -1032,7 +1032,9 @@ fn get_fluren_in_pdf_space(
 
     let s = FlurenInPdfSpace {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
-            let polys = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
+            let polys = v.iter()
+            .map(|s| s.poly.round_to_3dec())
+            .collect::<Vec<_>>();
             let joined = join_polys(&polys)?;
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
