@@ -390,18 +390,12 @@ pub fn generate_pdf_internal(
         .. Default::default()
     }));
 
-    web_sys::console::log_1(&"5.5...".into());
-
     for (i, (ri, rc))  in risse.iter().enumerate() {
-
-        web_sys::console::log_1(&"5.6...".into());
 
         let riss_extent = match riss_map_reprojected.get(ri) {
             Some(s) => s,
             None => continue,
         };
-
-        web_sys::console::log_1(&"5.7...".into());
 
         let p = ri.split("-").next().unwrap_or("");
         let (page, layer) = if i == 0 {
@@ -410,12 +404,8 @@ pub fn generate_pdf_internal(
             doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {} ({p})", risse.len(), i + 1))
         };
 
-        web_sys::console::log_1(&"5.8...".into());
-
         let page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
-
-        web_sys::console::log_1(&"5.9...".into());
 
         let nutzungsarten = reproject_splitnas_into_pdf_space(
             &nas_cut_original,
@@ -424,11 +414,7 @@ pub fn generate_pdf_internal(
             log
         );
 
-        web_sys::console::log_1(&"5.10...".into());
-
         let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
-
-        web_sys::console::log_1(&"5.11...".into());
 
         let flst = get_flurstuecke_in_pdf_space(
             &xml,
@@ -437,11 +423,7 @@ pub fn generate_pdf_internal(
             log
         );
 
-        web_sys::console::log_1(&"5.12...".into());
-
         let _ = write_flurstuecke(&mut layer, &flst, &konfiguration, log);
-
-        web_sys::console::log_1(&"5.13...".into());
 
         // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
 
@@ -452,18 +434,10 @@ pub fn generate_pdf_internal(
             log
         );
         
-        web_sys::console::log_1(&"5.14...".into());
-
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
-
-        web_sys::console::log_1(&"5.15...".into());
 
         let _ = write_border(&mut layer, 16.5, &rc);
         
-        web_sys::console::log_1(&"5.16...".into());
-
-        web_sys::console::log_1(&"6...".into());
-
         let rote_linien = get_aenderungen_rote_linien(splitflaechen, xml, nas_cut_original)
         .into_iter().map(|l| {
             line_into_pdf_space(&l, riss_extent, rc, &mut Vec::new())
@@ -946,7 +920,7 @@ fn subtract_ring(outer: &SvgPolygon, ring: usize) -> SvgPolygon {
     o
 }
 
-pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
+pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
@@ -990,17 +964,9 @@ pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
             continue;
         }
 
-        if debug {
-            log_1(&"joining...".into());
-            log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
-            log_1(&serde_json::to_string(&i).unwrap_or_default().into());
-        }
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.union(&b);
-        if debug {
-            log_1(&"joined!".into());
-        }
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -1023,8 +989,6 @@ fn get_fluren_in_pdf_space(
     log: &mut Vec<String>
 ) -> FlurenInPdfSpace {
 
-    web_sys::console::log_1(&"5.13.1...".into());
-
     let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
     flst.retain(|s| {
         let rb = riss.get_rect();
@@ -1046,14 +1010,12 @@ fn get_fluren_in_pdf_space(
         fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
     }
 
-    web_sys::console::log_1(&"5.13.2...".into());
-
     let s = FlurenInPdfSpace {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter()
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
-            let joined = join_polys(&polys, true)?;
+            let joined = join_polys(&polys)?;
             let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
@@ -1061,8 +1023,6 @@ fn get_fluren_in_pdf_space(
             })
         }).collect()
     };
-
-    web_sys::console::log_1(&"5.13.3...".into());
 
     s
 }

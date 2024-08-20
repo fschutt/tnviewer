@@ -204,18 +204,14 @@ pub fn export_aenderungen_geograf(
     }
 
     web_sys::console::log_1(&format!("loop finished!").as_str().into());
-
-    let dirs = files.iter().filter_map(|(dir, _, _)| dir.clone()).collect::<BTreeSet<_>>();
-    let mut files_2 = dirs.iter().map(|d| (Some(d.clone()), PathBuf::new(), Vec::new())).collect::<Vec<_>>();
-    files_2.extend(files.into_iter());
-    let files_names = files_2.iter().map(|(d, p, c)| format!("{d:?} - {p:?}: {} bytes", c.len())).collect::<Vec<_>>();
+    let files_names = files.iter().map(|(d, p, c)| format!("{d:?} - {p:?}: {} bytes", c.len())).collect::<Vec<_>>();
     web_sys::console::log_1(&format!("ZIP FILE").as_str().into());
     for f in files_names {
         web_sys::console::log_1(&format!("  {f}").as_str().into());
     }
-    web_sys::console::log_1(&format!("writing {} files to zip!", files_2.len()).as_str().into());
+    web_sys::console::log_1(&format!("writing {} files to zip!", files.len()).as_str().into());
 
-    let s = write_files_to_zip(&files_2);
+    let s = write_files_to_zip(&files);
 
     web_sys::console::log_1(&format!("writing files to zip finished!").as_str().into());
 
@@ -514,8 +510,6 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
     alle_linien_zu_checken.dedup();
     let alle_linien_zu_checken = alle_linien_zu_checken;
 
-    web_sys::console::log_1(&"rote linien 1.2".into());
-
     let mut alle_linie_split_flurstuecke = split_nas.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
         s.iter().flat_map(|q| {
             web_sys::console::log_1(&serde_json::to_string(&q.poly).unwrap_or_default().as_str().into());
@@ -524,18 +518,12 @@ pub fn get_aenderungen_rote_linien(splitflaechen: &[AenderungenIntersection], na
             lines
         })
     }).collect::<Vec<_>>();
-    web_sys::console::log_1(&"rote linien 1.3".into());
     alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
-    web_sys::console::log_1(&"rote linien 1.4".into());
     alle_linie_split_flurstuecke.dedup();
     let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
 
-    web_sys::console::log_1(&"rote linien 1.5".into());
-
     let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
     
-    web_sys::console::log_1(&"rote linien 2".into());
-
     let mut lines_end = Vec::new();
     for (ul_start, ul_end) in alle_linien_zu_checken.iter() {
         if !qt.line_overlaps_or_equals(&ul_start, &ul_end) {
@@ -778,14 +766,10 @@ pub fn generate_pdf_vorschau(
     total_risse: usize,
 ) -> Vec<u8> {
 
-    web_sys::console::log_1(&"1...".into());
-
     let extent_rect = match extent_rect {
         Some(s) => s,
         None => return Vec::new(),
     };
-
-    web_sys::console::log_1(&"2...".into());
 
     let map = vec![(format!("Riss{num_riss}"), RissExtentReprojected {
         crs: split_nas.crs.clone(),
@@ -795,18 +779,12 @@ pub fn generate_pdf_vorschau(
         max_y: extent_rect.max_y,
     })];
 
-    web_sys::console::log_1(&"3...".into());
-
     let rc = match riss_config {
         Some(s) => s,
         None => return Vec::new(),
     };
 
-    web_sys::console::log_1(&"4...".into());
-
     let risse = vec![(format!("Riss{num_riss}"), rc)].into_iter().collect::<BTreeMap<_, _>>();
-
-    web_sys::console::log_1(&"5...".into());
 
     let pdf = crate::pdf::generate_pdf_internal(
         info,
