@@ -438,10 +438,15 @@ impl LinienQuadTree {
             Some((id, points_to_rect(&(a, b))))
         }).collect::<Vec<_>>();
 
+        let max_items = items.len().saturating_div(20).max(20);
+
+        log_1(&format!("max_items: {max_items}").into());
+
         let qt = quadtree_f32::QuadTree::new_with_max_items_per_quad(
             items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))),
-            items.len().saturating_div(20).max(20)
+            max_items
         );
+        log_1(&format!("OK! {max_items}").into());
 
         Self {
             linien,
