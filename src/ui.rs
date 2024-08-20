@@ -1774,7 +1774,7 @@ impl Aenderungen {
             .and_modify(|ep: &mut SvgPolygon| {
                 let a = ep.round_to_3dec();
                 let b = polyneu.poly.round_to_3dec();
-                if let Some(e) = join_polys(&[a, b]) {
+                if let Some(e) = join_polys(&[a, b], false) {
                     *ep = e;
                 }
             })
@@ -1796,64 +1796,6 @@ impl Aenderungen {
             }).collect()
         }.round_to_3decimal()
     }
-
-
-/*
-    pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        web_sys::console::log_1(&format!("STAGE 5").as_str().into());
-        
-        let mut changed_mut = self.round_to_3decimal();
-
-        let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        let aenderungen_merged_by_typ_clone = aenderungen_merged_by_typ.clone();
-        
-        // 3. Alle komplett geänderte Flächen: In Änderungen einfügen
-        for (flst_part_id, neue_nutzung) in changed_mut.na_definiert.iter() {
-            let flst_part = match split_nas.get_flst_part_by_id(&flst_part_id) {
-                Some(s) => s.clone(),
-                None => continue,
-            };
-
-            let flst_part_rect = flst_part.get_rect();
-
-            // Teilflächen abziehen vom Flurstück, die von Änderungen überlappt werden
-            let aenderungen_overlaps_polygon = 
-                aenderungen_merged_by_typ_clone.values()
-                .filter(|f| f.get_rect().overlaps_rect(&flst_part_rect))
-                .collect::<Vec<_>>();
-
-            let poly = subtract_from_poly(&flst_part.poly, &aenderungen_overlaps_polygon);
-
-            aenderungen_merged_by_typ
-            .entry(neue_nutzung.clone())
-            .and_modify(|ep: &mut SvgPolygon| { 
-                if let Some(e) = join_polys(&[ep.round_to_3dec(), poly.round_to_3dec()]) {
-                    *ep = e;
-                }
-            })
-            .or_insert_with(|| poly.round_to_3dec());
-        }
-
-        web_sys::console::log_1(&format!("clean stage 5 done!").as_str().into());
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-*/
-
 
     pub fn clean_stage8(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
 

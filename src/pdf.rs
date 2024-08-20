@@ -933,7 +933,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     crate::nas::cleanup_poly(&first)
 }
 
-pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
+pub fn join_polys(polys: &[SvgPolygon], debug: bool) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.clone(),
@@ -961,9 +961,17 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         }
         let fi = first.round_to_3dec();
         let ii = i.round_to_3dec();
+        if debug {
+            log_1(&"joining...".into());
+            log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
+            log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
+        }
         let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&ii);     
+        let b = translate_to_geo_poly(&ii);
         let join = a.union(&b);
+        if debug {
+            log_1(&"joined!".into());
+        }
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -1033,9 +1041,9 @@ fn get_fluren_in_pdf_space(
     let s = FlurenInPdfSpace {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter()
-            .map(|s| s.poly.round_to_3dec())
+            .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
-            let joined = join_polys(&polys)?;
+            let joined = join_polys(&polys, true)?;
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
                 poly: joined,
