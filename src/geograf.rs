@@ -1,7 +1,7 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
 use dxf::{Vector, XData, XDataItem};
-use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, Pt, Rgb};
+use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
 use web_sys::{console::log_1, js_sys::JsString};
@@ -151,7 +151,14 @@ pub fn export_aenderungen_geograf(
     web_sys::console::log_1(&format!("RISSE EXTENTE ::: {risse_extente:?}").as_str().into());
 
     let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
-    files.push((None, format!("Splitflaechen.xlsx").into(), splitflaechen_report));
+    let mut antragsnr = projekt_info.antragsnr.trim().to_string();
+    if antragsnr.is_empty() {
+        antragsnr = "Aenderungen".to_string();
+    }
+    files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
+
+    let eigentuemer_xlsx = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
+    files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
 
     let lq = split_nas.get_linien_quadtree();
 
@@ -220,6 +227,24 @@ pub fn export_aenderungen_geograf(
     web_sys::console::log_1(&format!("writing files to zip finished!").as_str().into());
 
     s
+}
+
+pub fn eigentuemer_bearbeitete_flst_xlsx(
+    datensaetze: &CsvDataType,
+    splitflaechen: &[AenderungenIntersection],
+) -> Vec<u8> {
+    let data = datensaetze.iter().map(|(flst_id, v)| {
+        (flst_id.clone(), v.iter().map(|cs| {
+            CsvDatensatz {
+                eigentuemer: cs.eigentuemer.trim().to_string(),
+                nutzung: cs.nutzung.trim().to_string(),
+                notiz: String::new(),
+                status: AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id),
+            }
+        }).collect())
+    }).collect();
+
+    crate::xlsx::flst_id_nach_eigentuemer(&data)
 }
 
 pub fn splitflaechen_zu_xlsx(
@@ -530,7 +555,12 @@ pub fn get_aenderungen_rote_linien(
 
     web_sys::console::log_1(&"rote linien 3".into());
 
-    merge_lines_again(lines_end)
+    lines_end.iter().map(|s| SvgLine {
+        points: vec![s.0, s.1]
+    }).collect()
+
+    // TODO: buggy!
+    // merge_lines_again(lines_end)
 }
 
 fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
@@ -805,26 +835,6 @@ pub fn generate_header_pdf(
     total_risse: usize,
 ) -> Vec<u8> {
 
-    let target_gemarkung_nr = info.gemarkung_nr.parse::<usize>().unwrap_or(0);
-
-    let fluren_overlaps = split_nas.flurstuecke_nutzungen
-    .values()
-    .flat_map(|flst| flst.iter())
-    .filter(|tp| match extent_rect {
-        None => true,
-        Some(s) => tp.get_rect().overlaps_rect(&s),
-    })
-    .filter_map(|s| {
-        let flst = s.attributes.get("AX_Flurstueck")?;
-        let flst_id = FlstIdParsed::from_str(&flst);
-        if flst_id.gemarkung.parse::<usize>().ok()? != target_gemarkung_nr {
-            None
-        } else {
-            flst_id.flur.parse::<usize>().ok()
-        }
-    })
-    .collect::<BTreeSet<_>>();
-
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Risskopf",
         Mm(175.0),
@@ -847,92 +857,145 @@ pub fn generate_header_pdf(
         Err(_) => return Vec::new(),
     };
     let page1 = doc.get_page(page1);
-    let layer1 = page1.get_layer(layer1);
+    let mut layer1 = page1.get_layer(layer1);
+
+    let _ = write_header(
+        &mut layer1,
+        info,
+        split_nas,
+        &times_roman,
+        &times_roman_bold,
+        extent_rect.clone(),
+        num_riss,
+        total_risse,
+        0.0,
+        0.0,
+    );
+
+    doc.save_to_bytes().unwrap_or_default()
+}
+
+pub fn write_header(
+    layer1: &mut PdfLayerReference,
+    info: &ProjektInfo,
+    split_nas: &SplitNasXml,
+    times_roman: &IndirectFontRef,
+    times_roman_bold: &IndirectFontRef,
+    extent_rect: Option<Rect>,
+    num_riss: usize,
+    total_risse: usize,
+    offset_top: f32,
+    offset_right: f32,
+) -> Option<()> {
+
+    layer1.save_graphics_state();
+
+    let target_gemarkung_nr = info.gemarkung_nr.parse::<usize>().unwrap_or(0);
+
+    let fluren_overlaps = split_nas.flurstuecke_nutzungen
+    .values()
+    .flat_map(|flst| flst.iter())
+    .filter(|tp| match extent_rect {
+        None => true,
+        Some(s) => tp.get_rect().overlaps_rect(&s),
+    })
+    .filter_map(|s| {
+        let flst = s.attributes.get("AX_Flurstueck")?;
+        let flst_id = FlstIdParsed::from_str(&flst);
+        if flst_id.gemarkung.parse::<usize>().ok()? != target_gemarkung_nr {
+            None
+        } else {
+            flst_id.flur.parse::<usize>().ok()
+        }
+    })
+    .collect::<BTreeSet<_>>();
 
     let header_font_size = 14.0; // pt
     let medium_font_size = 10.0; // pt
     let small_font_size = 8.0; // pt
 
+    layer1.set_fill_color(printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None)));
+
     let text = format!("Ergänzungsriss: Tatsächliche Nutzung ( {num_riss} / {total_risse} )");
-    layer1.use_text(&text, header_font_size, Mm(2.0), Mm(30.0), &times_roman_bold);    
+    layer1.use_text(&text, header_font_size, Mm(offset_right + 2.0), Mm(offset_top + 30.0), &times_roman_bold);    
 
     let text = "Gemeinde:";
-    layer1.use_text(text, small_font_size, Mm(2.0), Mm(25.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 25.0), &times_roman);    
 
     let text = "Gemarkung:";
-    layer1.use_text(text, small_font_size, Mm(2.0), Mm(17.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 17.0), &times_roman);    
 
     let text = "Flur";
-    layer1.use_text(text, small_font_size, Mm(2.0), Mm(10.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 10.0), &times_roman);    
 
     let text = "Instrument/Nr.";
-    layer1.use_text(text, small_font_size, Mm(2.0), Mm(3.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 3.0), &times_roman);    
 
     let text = "Flurstücke";
-    layer1.use_text(text, small_font_size, Mm(20.0), Mm(10.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 20.0), Mm(offset_top + 10.0), &times_roman);    
 
     let text = "Bearbeitung beendet am:";
-    layer1.use_text(text, small_font_size, Mm(62.0), Mm(25.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 25.0), &times_roman);    
 
     let text = format!("Erstellt durch: {} ({})", info.erstellt_durch, info.beruf_kuerzel);
-    layer1.use_text(text, small_font_size, Mm(62.0), Mm(17.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 17.0), &times_roman);    
 
     let text = "Vermessungsstelle";
-    layer1.use_text(text, small_font_size, Mm(62.0), Mm(10.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 10.0), &times_roman);    
 
     let text = "Grenztermin vom";
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(25.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 25.0), &times_roman);    
 
     let text = "Verwendete Vermessungsun-";
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(17.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 17.0), &times_roman);    
     let text = "terlagen";
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(14.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 14.0), &times_roman);    
 
     let text = format!("ALKIS ({})", info.alkis_aktualitaet);
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(10.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 10.0), &times_roman);    
     let text = format!("Orthophoto ({})", info.orthofoto_datum);
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(6.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 6.0), &times_roman);    
     let text = format!("GIS-Feldblöcke ({})", info.gis_feldbloecke_datum);
-    layer1.use_text(text, small_font_size, Mm(104.0), Mm(3.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 3.0), &times_roman);    
 
     let text = "Archivblatt: *";
-    layer1.use_text(text, small_font_size, Mm(140.0), Mm(25.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 25.0), &times_roman);    
 
     let text = "Antrags-Nr.: *";
-    layer1.use_text(text, small_font_size, Mm(140.0), Mm(17.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 17.0), &times_roman);    
 
     let text = "Katasteramt:";
-    layer1.use_text(text, small_font_size, Mm(140.0), Mm(10.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 10.0), &times_roman);    
 
     let text = info.gemeinde.trim();
-    layer1.use_text(text, medium_font_size, Mm(20.0), Mm(22.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 22.0), &times_roman);    
 
     let text = format!("{} ({})", info.gemarkung.trim(), info.gemarkung_nr);
-    layer1.use_text(text, medium_font_size, Mm(20.0), Mm(14.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 14.0), &times_roman);    
 
     let text = "diverse";
-    layer1.use_text(text, medium_font_size, Mm(37.0), Mm(7.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 37.0), Mm(offset_top + 7.0), &times_roman);    
 
     let text = info.bearbeitung_beendet_am.trim();
-    layer1.use_text(text, medium_font_size, Mm(73.0), Mm(22.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 73.0), Mm(offset_top + 22.0), &times_roman);    
 
     let text = info.vermessungsstelle.trim();
-    layer1.use_text(text, medium_font_size, Mm(68.0), Mm(2.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 68.0), Mm(offset_top + 2.0), &times_roman);    
 
     let text = fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ");
-    layer1.use_text(&text, medium_font_size, Mm(10.0), Mm(10.0), &times_roman);    
+    layer1.use_text(&text, medium_font_size, Mm(offset_right + 10.0), Mm(offset_top + 10.0), &times_roman);    
     
     let lines = &[
-        ((0.0, 28.0), (139.0, 28.0)),
-        ((0.0, 20.0), (175.0, 20.0)),
-        ((0.0, 13.0), (105.0, 13.0)),
-        ((0.0, 6.0), (60.0, 6.0)),
-        ((139.0, 20.0), (175.0, 20.0)),
+        ((offset_right + 0.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 28.0)),
+        ((offset_right + 0.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
+        ((offset_right + 0.0, offset_top + 13.0), (offset_right + 105.0, offset_top + 13.0)),
+        ((offset_right + 0.0, offset_top + 6.0), (offset_right + 60.0, offset_top + 6.0)),
+        ((offset_right + 139.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
 
-        ((20.0, 13.0), (20.0, 6.0)),
-        ((60.0, 28.0), (60.0, 0.0)),
-        ((102.0, 28.0), (102.0, 0.0)),
-        ((139.0, 28.0), (139.0, 0.0)),
+        ((offset_right + 20.0, offset_top + 13.0), (offset_right + 20.0, offset_top + 6.0)),
+        ((offset_right + 60.0, offset_top + 28.0), (offset_right + 60.0, offset_top + 0.0)),
+        ((offset_right + 102.0, offset_top + 28.0), (offset_right + 102.0, offset_top + 0.0)),
+        ((offset_right + 139.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 0.0)),
     ];
 
     layer1.set_outline_thickness(0.5);
@@ -953,7 +1016,9 @@ pub fn generate_header_pdf(
         })
     }
 
-    doc.save_to_bytes().unwrap_or_default()
+    layer1.restore_graphics_state();
+
+    Some(())
 }
 
 pub fn generate_legende_xlsx(

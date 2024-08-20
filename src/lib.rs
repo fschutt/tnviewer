@@ -920,49 +920,6 @@ pub fn export_flst_id_nach_eigentuemer(s: String) -> Vec<u8> {
     crate::xlsx::flst_id_nach_eigentuemer(&data)
 }
 
-#[wasm_bindgen]
-pub fn export_pdf(
-    projekt_info: String,
-    risse: String, 
-    csv: String, 
-    xml: String, // parsed XML objects
-    aenderungen: String, 
-    risse_extente: String, // latlon projection
-    konfiguration: String,
-) -> String {
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    struct ExportPdfReturn {
-        bytes: Vec<u8>,
-        log: Vec<String>,
-    }
-    let projekt_info = serde_json::from_str::<ProjektInfo>(&projekt_info).unwrap_or_default();
-    let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
-    let csv = serde_json::from_str::<CsvDataType>(&csv).unwrap_or_default();
-    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
-    let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration).unwrap_or_default();
-    let xml_nodes = serde_json::from_str::<Vec<XmlNode>>(&xml).unwrap_or_default();
-    let mut riss_extente = serde_json::from_str::<RissMap>(&risse_extente).unwrap_or_default();
-    let mut log = Vec::new();
-    for r in riss_extente.values_mut() {
-        r.projection = LATLON_STRING.to_string();
-    }
-    let bytes = crate::pdf::generate_pdf(
-        &projekt_info, 
-        &konfiguration, 
-        &csv, 
-        xml_nodes,
-        &aenderungen, 
-        &risse,
-        &riss_extente,
-        &mut log,
-    );
-    serde_json::to_string(&ExportPdfReturn {
-        bytes,
-        log,
-    }).unwrap_or_default()
-
-}
-
 pub fn decode(bytes: Vec<u8>) -> String {
     let mut text_decoder = chardetng::EncodingDetector::new();
     let _ = text_decoder.feed(&bytes[..], true);

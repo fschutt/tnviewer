@@ -430,6 +430,16 @@ pub fn generate_pdf_internal(
         Err(_) => return Vec::new(),
     };
 
+    let times_roman = match doc.add_builtin_font(printpdf::BuiltinFont::TimesRoman) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let times_roman_bold = match doc.add_builtin_font(printpdf::BuiltinFont::TimesBold) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
     for (i, (ri, rc))  in risse.iter().enumerate() {
 
         let riss_extent = match riss_map_reprojected.get(ri) {
@@ -495,16 +505,18 @@ pub fn generate_pdf_internal(
             rc
         );
 
-        let _ = write_border(&mut layer, 16.5, &rc);
-
-        /*
-        let nas_xml_in_pdf_space = reproject_nasxml_into_pdf_space(
-            &xml,
-            &riss_extent,
-            rc,
-            log,
+        let _ = write_border(
+            &mut layer, 
+            &rc,
+            projekt_info,
+            nas_cut_original,
+            &times_roman,
+            &times_roman_bold,
+            Some(riss_extent.get_rect()),
+            i + 1,
+            risse.len(),
+            16.5
         );
-        */
     }
 
     doc.save_to_bytes().unwrap_or_default()
@@ -807,7 +819,7 @@ fn write_splitflaechen_beschriftungen(
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let bleibt_color = csscolorparser::parse("#333333").ok()
+    let bleibt_color = csscolorparser::parse("#6082B6").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -817,7 +829,7 @@ fn write_splitflaechen_beschriftungen(
     layer.set_fill_color(bleibt_color);
     for t in texte_bleibt {
         layer.begin_text_section();
-        layer.set_font(&font, 10.0);
+        layer.set_font(&font, 6.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
         layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
         layer.write_text(t.kuerzel, &font);
@@ -827,7 +839,7 @@ fn write_splitflaechen_beschriftungen(
     layer.set_fill_color(alt_color);
     for t in texte_alt {
         layer.begin_text_section();
-        layer.set_font(&font, 10.0);
+        layer.set_font(&font, 6.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
         layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
         layer.write_text(t.kuerzel, &font);
@@ -837,7 +849,7 @@ fn write_splitflaechen_beschriftungen(
     layer.set_fill_color(neu_color);
     for t in texte_neu {
         layer.begin_text_section();
-        layer.set_font(&font, 10.0);
+        layer.set_font(&font, 6.0);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
         layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
         layer.write_text(t.kuerzel, &font);
@@ -851,8 +863,15 @@ fn write_splitflaechen_beschriftungen(
 
 fn write_border(
     layer: &mut PdfLayerReference,
-    border_width_mm: f32,
     riss: &RissConfig,
+    info: &ProjektInfo,
+    split_nas: &SplitNasXml,
+    times_roman: &IndirectFontRef,
+    times_roman_bold: &IndirectFontRef,
+    extent_rect: Option<quadtree_f32::Rect>,
+    num_riss: usize,
+    total_risse: usize,
+    border_width_mm: f32,
 ) -> Option<()> {
 
     use printpdf::Point;
@@ -915,6 +934,19 @@ fn write_border(
         PaintMode::Fill
     );
 
+    let _ = crate::geograf::write_header(
+        layer,
+        info,
+        split_nas,
+        times_roman,
+        times_roman_bold,
+        extent_rect,
+        num_riss,
+        total_risse,
+        riss.height_mm - border_width_mm - 35.0,
+        border_width_mm,
+    );
+
     layer.restore_graphics_state();
     Some(())
 }
@@ -926,43 +958,52 @@ fn write_nutzungsarten(
     log: &mut Vec<String>,
 ) -> Option<()> {
     
-    let mut flurstueck_nutzungen_grouped_by_ebene = BTreeMap::new();
-    for (flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
-        for f in flst_parts.iter() {
-            let flst_ebene = match f.attributes.get("AX_Ebene") {
-                Some(s) => s,
-                None => continue,
-            };
+    let mut flurstueck_nutzungen_grouped_by_ebene = Vec::new();
 
-            let flst_kuerzel_alt = match f.get_auto_kuerzel(&flst_ebene) {
-                Some(s) => s,
-                None => continue,
-            };
+    if style.pdf.nutzungsarten.is_empty() {
+        flurstueck_nutzungen_grouped_by_ebene = split_flurstuecke.flurstuecke_nutzungen.iter().map(|(f, v)| {
+            (PdfEbenenStyle::default_grau(f), v.iter().collect::<Vec<_>>())
+        }).collect();
+    } else {
 
-            let flst_style =  style.pdf.nutzungsarten
-            .iter()
-            .find_map(|(k, v)|{
-                if v.kuerzel != flst_kuerzel_alt {
-                    None
-                } else {
-                    Some((k.clone(), v.clone()))
-                }
-            });
-
-            let (flst_style_id, flst_style) = match flst_style {
-                Some(s) => s,
-                None => (flst_kuerzel_alt.clone(), PdfEbenenStyle::default_grau(&flst_kuerzel_alt)),
-            };
-
-            flurstueck_nutzungen_grouped_by_ebene.entry(flst_style_id).or_insert_with(|| Vec::new()).push(f);
-        }        
+        let mut fl_btree = BTreeMap::new();
+        for (flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
+            for f in flst_parts.iter() {
+                let flst_ebene = match f.attributes.get("AX_Ebene") {
+                    Some(s) => s,
+                    None => continue,
+                };
+    
+                let flst_kuerzel_alt = match f.get_auto_kuerzel(&flst_ebene) {
+                    Some(s) => s,
+                    None => continue,
+                };
+    
+                let flst_style =  style.pdf.nutzungsarten
+                .iter()
+                .find_map(|(k, v)|{
+                    if v.kuerzel != flst_kuerzel_alt {
+                        None
+                    } else {
+                        Some((k.clone(), v.clone()))
+                    }
+                });
+    
+                let (flst_style_id, flst_style) = match flst_style {
+                    Some(s) => s,
+                    None => continue,
+                };
+    
+                fl_btree.entry(flst_style_id).or_insert_with(|| Vec::new()).push(f);
+            }        
+        }
+    
+        flurstueck_nutzungen_grouped_by_ebene = style.pdf.layer_ordnung.iter().filter_map(|s| {
+            let polys = fl_btree.get(s)?.clone();
+            let style = style.pdf.nutzungsarten.get(s)?.clone();
+            Some((style, polys))
+        }).collect::<Vec<_>>();    
     }
-
-    let flurstueck_nutzungen_grouped_by_ebene = style.pdf.layer_ordnung.iter().filter_map(|s| {
-        let polys = flurstueck_nutzungen_grouped_by_ebene.get(s)?;
-        let style = style.pdf.nutzungsarten.get(s).cloned().unwrap_or_else(|| PdfEbenenStyle::default_grau(&s));
-        Some((style, polys))
-    }).collect::<Vec<_>>();
 
     // log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
 

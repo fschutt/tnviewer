@@ -140,9 +140,6 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
     let mut eigentuemer = BTreeMap::new();
     for (k, v) in datensaetze.iter() {
         for d in v.iter() {
-            if d.status != Status::AenderungMitBenachrichtigung {
-                continue;
-            }
             let flst = match FlstIdParsed::from_str(k).parse_num() {
                 Some(s) => s,
                 None => continue,
@@ -167,7 +164,7 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
                 v.sort_by(|a, b| a.flst_zaehler.cmp(&b.flst_zaehler));
                 v.dedup();
                 let s_flur = v.iter().map(|q| q.format_str()).collect::<Vec<_>>().join(", ");
-                txt.push_str(&format!("Flur {flur}: Flurstücke {s_flur}"));
+                txt.push_str(&format!("Fl. {flur}: Flst. {s_flur}"));
                 txt.push_str("\r\n");
             }
             sw.append_row(row![

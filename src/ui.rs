@@ -610,48 +610,54 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
 }
 
 pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
-    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-settings-48.png");
-    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-help-96.png");
-    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-48.png");
-    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-book-96.png");
+    
     static ICON_ZURUECK: &[u8] = include_bytes!("./img/icons8-back-48.png");
-    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-48.png");
-    static ICON_EXPORT_CSV: &[u8] = include_bytes!("./img/icons8-microsoft-excel-2019-96.png");
-    static ICON_EXPORT_LEFIS: &[u8] = include_bytes!("./img/icons8-export-96.png");
-    static ICON_DOWNLOAD: &[u8] = include_bytes!("./img/icons8-desktop-download-48.png");
-    static ICON_DELETE: &[u8] = include_bytes!("./img/icons8-delete-trash-48.png");
-    static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-48.png");
-    static ICON_RECHTE_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-scales-96.png");
-    static ICON_FEHLER_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-high-priority-96.png");
-    static ICON_ABT1_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-person-96.png");
-    static ICON_TEILBELASTUNGEN_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-pass-fail-96.png");
-    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-96.png");
-    static ICON_SEARCH: &[u8] = include_bytes!("./img/icons8-search-in-cloud-96.png");
-    static ICON_UPLOAD: &[u8] = include_bytes!("./img/icons8-upload-to-cloud-96.png");
-    static ICON_HVM: &[u8] = include_bytes!("./img/icons8-copy-link-96.png");
-    static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
-
-    let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
-    let icon_neu_base64 = base64_encode(ICON_NEU);
     let icon_back_base64 = base64_encode(ICON_ZURUECK);
-    let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
-    let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
-    let icon_help_base64 = base64_encode(ICON_HELP);
-    let icon_info_base64 = base64_encode(ICON_INFO);
-    let icon_export_pdf = base64_encode(ICON_PDF);
-    let icon_rechte_speichern = base64_encode(ICON_RECHTE_AUSGEBEN);
-    let icon_fehler_speichern = base64_encode(ICON_FEHLER_AUSGEBEN);
-    let icon_export_teilbelastungen = base64_encode(ICON_TEILBELASTUNGEN_AUSGEBEN);
-    let icon_export_abt1 = base64_encode(ICON_ABT1_AUSGEBEN);
-    let icon_upload_lefis = base64_encode(ICON_UPLOAD);
-    let icon_export_csv = base64_encode(ICON_EXPORT_CSV);
-    let icon_export_lefis = base64_encode(ICON_EXPORT_LEFIS);
-    let icon_hvm = base64_encode(ICON_HVM);
-    let icon_download_base64 = base64_encode(ICON_DOWNLOAD);
-    let icon_delete_base64 = base64_encode(ICON_DELETE);
-    let icon_search_base64 = base64_encode(ICON_SEARCH);
-    let icon_reload = base64_encode(&RELOAD_PNG);
 
+    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-48.png");
+    let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
+
+    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-settings-48.png");
+    let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
+
+    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-help-96.png");
+    let icon_help_base64 = base64_encode(ICON_HELP);
+
+    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-48.png");
+    let icon_info_base64 = base64_encode(ICON_INFO);
+
+    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-book-96.png");
+    let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
+
+    static ICON_SPEICHERN: &[u8] = include_bytes!("./img/icons8-save-96.png");
+    let icon_save_base64 = base64_encode(ICON_SPEICHERN);
+
+    static ICON_TRANSFER: &[u8] = include_bytes!("./img/icons8-transfer-96.png");
+    let icon_transfer_base64 = base64_encode(ICON_TRANSFER);
+
+    static ICON_XML: &[u8] = include_bytes!("./img/icons8-xml-96.png");
+    let icon_xml_base64 = base64_encode(ICON_XML);
+
+    static ICON_HOUSE: &[u8] = include_bytes!("./img/icons8-house-96.png");
+    let icon_house_base64 = base64_encode(ICON_HOUSE);
+
+    static ICON_DAVID: &[u8] = include_bytes!("./img/icons8-david-96.png");
+    let icon_david_base64 = base64_encode(ICON_DAVID);
+
+    static ICON_GEOGRAF: &[u8] = include_bytes!("./img/geograf-96.png");
+    let icon_geograf_base64 = base64_encode(ICON_GEOGRAF);
+
+    static ICON_GEORG: &[u8] = include_bytes!("./img/georg-96.png");
+    let icon_georg_base64 = base64_encode(ICON_GEORG);
+
+    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-96.png");
+    let icon_neu_base64 = base64_encode(ICON_NEU);
+
+    static ICON_EXCEL: &[u8] = include_bytes!("./img/icons8-microsoft-excel-2019-96.png");
+    let icon_export_csv = base64_encode(ICON_EXCEL);
+
+    static ICON_BROOM: &[u8] = include_bytes!("./img/icons8-broom-96.png");
+    let icon_export_lefis = base64_encode(ICON_BROOM);
 
     // TAB 1
     // let disabled = if data_loaded { "" } else { "disabled" };
@@ -726,7 +732,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.import_data(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon' src='data:image/png;base64,{icon_reload}'>
+                    <img class='icon' src='data:image/png;base64,{icon_xml_base64}'>
                 </div>
                 <div>
                     <p>NAS-Daten</p>
@@ -742,7 +748,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.save_project(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_upload_lefis}'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_save_base64}'>
                 </div>
                 <div>
                     <p>Änderungen</p>
@@ -808,7 +814,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_house_base64}'>
                     </div>
                     <div>
                         <p>Gebäude</p>
@@ -827,7 +833,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.nutzung_einzeichnen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_transfer_base64}'>
                     </div>
                     <div>
                         <p>Nutzung</p>
@@ -851,8 +857,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
                     </div>
                     <div>
+                        <p>Export</p>
                         <p>Excel</p>
-                        <p>exportieren</p>
                     </div>
                 </label>
             </div>
@@ -867,27 +873,11 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
                     </div>
                     <div>
-                        <p>Bearb. Flst.</p>
-                        <p>nach Eigentümer</p>
+                        <p>Export Flst.</p>
+                        <p>n. Eigentümer</p>
                     </div>
                 </label>
             </div>
-        ")
-    };
-
-    let export_pdf = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_pdf(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_pdf}'>
-                </div>
-                <div>
-                    <p>Vorschau</p>
-                    <p>Risse PDF</p>
-                </div>
-            </label>
-        </div>   
         ")
     };
 
@@ -896,7 +886,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.export_geograf(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_geograf_base64}'>
                 </div>
                 <div>
                     <p>Export</p>
@@ -912,11 +902,11 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.export_alle_flst(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_georg_base64}'>
                     </div>
                     <div>
-                        <p>Export</p>
-                        <p>alle Flst.</p>
+                        <p>Export Flst.</p>
+                        <p>nach Georg</p>
                     </div>
                 </label>
             </div>
@@ -928,7 +918,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.export_david(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_david_base64}'>
                     </div>
                     <div>
                         <p>Export</p>
@@ -1114,7 +1104,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_pdf}
+                        {export_alle_flurstuecke}
                         {export_geograf}
                         {export_david}
                     </div>
@@ -1122,7 +1112,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_alle_flurstuecke}
                         {clean_stage7_test}
                     </div>
                 </div>
@@ -2265,12 +2254,15 @@ fn render_csv_editable(
     ))
     }).collect::<Vec<_>>().join("");
 
+    content
+    /* 
     format!("
         <div id='toggle-visible-flst' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 20px;'>
             <input onchange='toggleRenderOut(event);' type='checkbox'>Filter bearbeitete Flurstücke</input>
         </div>
         {content}
     ")
+    */
 }
 
 pub fn normalize_for_js(s: String) -> String {

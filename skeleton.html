@@ -1585,36 +1585,6 @@
         downloadBlob(xlsx, window.info.antragsnr + ".FlstNachEigentuemer.xlsx", 'application/octet-stream');
     }
 
-    function exportPdf() {
-      if (!window.projectdata) {
-        alert("Keine Projektdaten geladen!");
-        return;
-      }
-
-      var risse_extent = {};
-      for (var [riss_id, riss_config] of Object.entries(window.risse)) {
-        risse_extent[riss_id] = calculate_coords(
-          riss_config.width_mm, 
-          riss_config.height_mm, 
-          riss_config.scale, 
-          riss_config.lon, 
-          riss_config.lat
-        );
-      }
-
-      var pdf = JSON.parse(export_pdf(
-        JSON.stringify(window.info),
-        JSON.stringify(window.risse),
-        JSON.stringify(window.csv_data),
-        JSON.stringify(window.xml_data),
-        JSON.stringify(window.aenderungen),
-        JSON.stringify(risse_extent),
-        JSON.stringify(window.configuration),
-      ));
-      console.log(pdf.log);
-      downloadBlob(new Uint8Array(pdf.bytes), window.info.antragsnr + ".pdf", 'application/pdf');
-    }
-
     function exportAlleFlst() {
         if (!window.csv_data) {
           return;
@@ -1696,7 +1666,6 @@
     window.replaceRibbon = replaceRibbon;
     window.focusFlst = focusFlst;
     window.searchNA = searchNA;
-    window.exportPdf = exportPdf;
     window.exportDavid = exportDavid;
     window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
     window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
@@ -1716,7 +1685,6 @@
         open_help: function(event) { openHelp(); },
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
-        export_pdf: function(event) { exportPdf(); },
         export_excel: function(event) { exportExcel(); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
