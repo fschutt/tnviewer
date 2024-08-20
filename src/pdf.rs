@@ -390,12 +390,18 @@ pub fn generate_pdf_internal(
         .. Default::default()
     }));
 
+    web_sys::console::log_1(&"5.5...".into());
+
     for (i, (ri, rc))  in risse.iter().enumerate() {
+
+        web_sys::console::log_1(&"5.6...".into());
 
         let riss_extent = match riss_map_reprojected.get(ri) {
             Some(s) => s,
             None => continue,
         };
+
+        web_sys::console::log_1(&"5.7...".into());
 
         let p = ri.split("-").next().unwrap_or("");
         let (page, layer) = if i == 0 {
@@ -404,8 +410,12 @@ pub fn generate_pdf_internal(
             doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {} ({p})", risse.len(), i + 1))
         };
 
+        web_sys::console::log_1(&"5.8...".into());
+
         let page = doc.get_page(page);
         let mut layer = page.get_layer(layer);
+
+        web_sys::console::log_1(&"5.9...".into());
 
         let nutzungsarten = reproject_splitnas_into_pdf_space(
             &nas_cut_original,
@@ -414,7 +424,11 @@ pub fn generate_pdf_internal(
             log
         );
 
+        web_sys::console::log_1(&"5.10...".into());
+
         let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
+
+        web_sys::console::log_1(&"5.11...".into());
 
         let flst = get_flurstuecke_in_pdf_space(
             &xml,
@@ -423,7 +437,11 @@ pub fn generate_pdf_internal(
             log
         );
 
+        web_sys::console::log_1(&"5.12...".into());
+
         let _ = write_flurstuecke(&mut layer, &flst, &konfiguration, log);
+
+        web_sys::console::log_1(&"5.13...".into());
 
         // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
 
@@ -434,10 +452,16 @@ pub fn generate_pdf_internal(
             log
         );
         
+        web_sys::console::log_1(&"5.14...".into());
+
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
+
+        web_sys::console::log_1(&"5.15...".into());
 
         let _ = write_border(&mut layer, 16.5, &rc);
         
+        web_sys::console::log_1(&"5.16...".into());
+
         web_sys::console::log_1(&"6...".into());
 
         let rote_linien = get_aenderungen_rote_linien(splitflaechen, xml, nas_cut_original)
