@@ -946,6 +946,19 @@ pub fn join_polys(polys: &[SvgPolygon]) -> Option<SvgPolygon> {
         if i.is_empty() {
             continue;
         }
+        if first.equals_any_ring(i) {
+            continue;
+        }
+        if i.equals_any_ring(&first) {
+            continue;
+        }
+        if i.is_zero_area() {
+            continue;
+        }
+        if first.is_zero_area() {
+            first = i.clone();
+            continue;
+        }
         let fi = first.round_to_3dec();
         let ii = i.round_to_3dec();
         let a = translate_to_geo_poly(&fi);
@@ -998,6 +1011,8 @@ fn get_fluren_in_pdf_space(
     log: &mut Vec<String>
 ) -> FlurenInPdfSpace {
 
+    web_sys::console::log_1(&"5.13.1...".into());
+
     let mut fluren_map = BTreeMap::new();
     for v in flst.flst.iter() {
         
@@ -1013,8 +1028,9 @@ fn get_fluren_in_pdf_space(
         fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
     }
 
+    web_sys::console::log_1(&"5.13.2...".into());
 
-    FlurenInPdfSpace {
+    let s = FlurenInPdfSpace {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
             let joined = join_polys(&polys)?;
@@ -1023,7 +1039,11 @@ fn get_fluren_in_pdf_space(
                 poly: joined,
             })
         }).collect()
-    }
+    };
+
+    web_sys::console::log_1(&"5.13.3...".into());
+
+    s
 }
 
 fn write_flurstuecke(
