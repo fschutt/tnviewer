@@ -1,0 +1,33 @@
+Copyright <JAHR> <RECHTSINHABER>
+
+Die Weiterverbreitung und Verwendung in Quell- und Binärform, mit oder ohne mit
+oder ohne Änderungen, sind erlaubt, sofern die folgenden Bedingungen erfüllt
+sind:
+
+1. Die Weitergabe des Quellcodes muss den obigen Copyright-Vermerk
+Urheberrechtsvermerk, diese Liste der Bedingungen und den folgenden
+Haftungsausschluss enthalten.
+
+2. Weiterverbreitungen in binärer Form müssen den obigen Copyright-Vermerk,
+diese Liste der Bedingungen Copyright-Vermerk, diese Liste der Bedingungen und
+den folgenden Haftungsausschluss in der Dokumentation und/oder anderen mit der
+Distribution gelieferten Materialien enthalten.
+
+3. Weder der Name des Urheberrechtsinhabers noch die Namen der Namen der
+Mitwirkenden dürfen ohne vorherige schriftliche Genehmigung nicht verwendet
+werden, um Produkte zu dieser Software abgeleiteten Produkte ohne ausdrückliche
+vorherige schriftliche Genehmigung.
+
+DIESE SOFTWARE WIRD VON DEN URHEBERRECHTSINHABERN UND ZUR VERFÜGUNG GESTELLT,
+OHNE JEGLICHE AUSDRÜCKLICHE ODER STILLSCHWEIGENDE GARANTIE, EINSCHLIESSLICH,
+ABER NICHT BESCHRÄNKT AUF, DIE STILLSCHWEIGENDEN GARANTIEN DER DER
+MARKTGÄNGIGKEIT UND DER EIGNUNG FÜR EINEN BESTIMMTEN ZWECK SIND AUSGESCHLOSSEN.
+DER URHEBERRECHTSINHABER ODER DIE MITWIRKENDEN SIND UNTER KEINEN UMSTÄNDEN
+HAFTBAR FÜR DIREKTE, INDIREKTE, ZUFÄLLIGE, BESONDERE, EXEMPLARISCHE ODER
+FOLGESCHÄDEN(EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF, DIE BESCHAFFUNG VON
+ERSATZWAREN ODER -DIENSTLEISTUNGEN, NUTZUNGSAUSFALL, DATENVERLUST ODER
+GEWINNEINBUSSEN ODER GESCHÄFTSUNTERBRECHUNG), UNABHÄNGIG VON DER URSACHE UND
+DER HAFTUNGSTHEORIE, OB AUS VERTRAG, VERSCHULDENSUNABHÄNGIGER HAFTUNG ODER
+UNERLAUBTER HANDLUNG(EINSCHLIESSLICH FAHRLÄSSIGKEIT ODER ANDERWEITIG), DIE SICH
+IN IRGENDEINER WEISE AUS DER VERWENDUNG DIESER SOFTWARE ERGEBEN, SELBST WENN
+AUF DIE MÖGLICHKEIT EINES SOLCHEN SCHADENS HINGEWIESEN WURDE.

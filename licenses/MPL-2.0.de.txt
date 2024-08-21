@@ -1,0 +1,384 @@
+Mozilla Public License Version 2.0
+
+1. Definitionen
+---------------
+
+1.1. „Mitwirkender“ bezeichnet jede natürliche oder juristische Person, die die
+Abgedeckte Software erstellt, zur erstellt, zur Erstellung beiträgt oder
+Eigentümer der Abgedeckten Software ist.
+
+1.2. „Mitwirkende Version“ bezeichnet die Kombination aus den Beiträgen anderer
+(falls vorhanden), die von einem Beitragenden eines Mitwirkenden und dem
+Beitrag des betreffenden Mitwirkenden.
+
+1.3. „Beitrag“ bezeichnet die Abgedeckte Software eines bestimmten
+Mitwirkenden.
+
+1.4. „Abgedeckte Software“ bezeichnet die Quellcodeform, der der ursprüngliche
+Beitragende die Mitteilung in Anhang A beigefügt hat den Hinweis in Anhang A
+beigefügt hat, die ausführbare Form dieser Quellcodeform Form und Änderungen
+dieser Quellcodeform, jeweils einschließlich einschließlich Teilen davon.
+
+1.5. „Inkompatibel mit Sekundärlizenzen“ bedeutet
+
+    (a) dass der ursprüngliche Mitwirkende der Abgedeckten Software den in
+    Anhang B beschriebenen Hinweis beigefügt hat Anhang B beschriebenen Hinweis
+    an die Abgedeckte Software angebracht hat; oder
+
+    (b) dass die Abgedeckte Software unter den Bedingungen von Version 1.1 oder
+    einer früheren Version der Lizenz zur Verfügung gestellt wurde, aber nicht
+    auch unter den Bedingungen einer Sekundärlizenz.
+
+1.6. „Ausführbare Form“ bezeichnet jede Form des Werks, die nicht die Form des
+Quellcodes ist.
+
+1.7. „Größeres Werk“ bezeichnet ein Werk, das Abgedeckte Software mit anderem
+Material kombiniert, das einer oder mehreren separaten Dateien, bei denen es
+sich nicht um Abgedeckte Software handelt.
+
+1.8. „Lizenz“ bedeutet dieses Dokument.
+
+1.9. „Lizenzierbar“ bedeutet, das Recht zu haben, in größtmöglichem Umfang zu
+gewähren, sei es zum Zeitpunkt der erstmaligen Gewährung oder später, jedes und
+alle durch diese Lizenz übertragenen Rechte zu gewähren.
+
+1.10. „Modifikationen“ bedeutet eine der folgenden Dinge:
+
+    (a) jede Datei in Quellcodeform, die aus einer Hinzufügung, Löschung oder
+    Veränderung des Inhalts der Abgedeckten Software resultiert, Löschung oder
+    Änderung des Inhalts der Abgedeckten Software Software; oder
+
+    (b) jede neue Datei in Quellcodeform, die eine Abgedeckte Software enthält
+    Software enthält.
+
+1.11. „Patentansprüche“ eines Mitwirkenden bedeutet alle Patentansprüche,
+einschließlich, aber nicht beschränkt auf Verfahrens-, Verfahrens- und
+Vorrichtungsansprüche, die in einem lizenzierbaren Patent eines solchen
+lizenzierbaren Patenten, die ohne die Gewährung der Lizenz durch die Lizenz,
+durch die Herstellung, die Benutzung, den Verkauf, das Anbieten zum Verkauf,
+die Herstellung, den Verkauf, das Anbieten zum Verkauf, den Import oder die
+Übertragung seiner Beiträge oder seiner Beitragenden Version.
+
+1.12. „Sekundärlizenz“ bedeutet entweder die GNU General Public License, Version
+2.0, die GNU Lesser General Public License, Version 2.1, die GNU Affero General
+Public License, Version 3.0, oder jede spätere Version dieser Lizenzen.
+
+1.13. „Quellcode-Form“ bezeichnet die Form des Werks, die für die Durchführung
+von Änderungen bevorzugt wird.
+
+1.14. „Sie“ (oder ‚Ihr‘) bedeutet eine natürliche oder juristische Person, die
+Rechte unter dieser Lizenz ausübt. Bei juristischen Personen schließt „Sie“
+jede juristische Person ein, die die Sie kontrollieren, von Ihnen kontrolliert
+werden oder unter gemeinsamer Kontrolle mit Ihnen stehen. Für Sinne dieser
+Definition bedeutet „Kontrolle“ (a) die direkte oder indirekte Macht die
+direkte oder indirekte Befugnis, die Leitung oder das Management eines solchen
+Rechtsträgers zu bestimmen, vertraglich oder anderweitig, oder (b) das Eigentum
+an mehr als fünfzig Prozent (50%) der im Umlauf befindlichen Aktien oder oder
+wirtschaftliches Eigentum an einer solchen Einrichtung.
+
+2. Lizenzerteilung und Bedingungen
+----------------------------------
+
+2.1. Gewährung
+
+Jeder Mitwirkende gewährt Ihnen hiermit eine weltweite, lizenzgebührenfreie
+nicht-exklusive Lizenz:
+
+(a) unter den Rechten des geistigen Eigentums (mit Ausnahme von Patenten und
+Marken) lizenzierbar durch den jeweiligen Mitwirkenden, zu nutzen, zu
+reproduzieren, zur Verfügung zu stellen, zu nutzen, zu reproduzieren, verfügbar
+zu machen, zu modifizieren, darzustellen, aufzuführen, zu vertreiben und
+anderweitig zu verwerten, und zwar Beiträge zu vervielfältigen, zur Verfügung
+zu stellen, zu modifizieren, auszustellen, vorzuführen, zu vertreiben und
+anderweitig zu verwerten, entweder auf unveränderter Basis, mit Modifikationen
+oder als Teil eines größeren Werks; und
+
+(b) unter Patentansprüchen eines solchen Mitwirkenden herzustellen, zu
+verwenden, zu verkaufen, anzubieten verkaufen, zum Verkauf anzubieten,
+herstellen zu lassen, zu importieren und anderweitig zu übertragen Beiträge
+oder die Version des Beitragenden zu übertragen.
+
+2.2. Datum des Inkrafttretens
+
+Die in Abschnitt 2.1 gewährten Lizenzen in Bezug auf einen Beitrag werden für
+jeden Beitrag an dem Tag wirksam, an dem der Mitwirkende diesen Beitrag
+erstmals diesen Beitrag verbreitet.
+
+2.3. Beschränkungen des Umfangs der Gewährung
+
+Die in diesem Abschnitt 2 gewährten Lizenzen sind die einzigen Rechte, die unter
+dieser Lizenz. Es werden keine zusätzlichen Rechte oder Lizenzen durch die
+Verteilung oder Lizenzierung der Abgedeckten Software unter dieser Lizenz.
+Ungeachtet des obigen Abschnitts 2.1(b) wird keine Patentlizenz gewährt von
+einem Mitwirkenden:
+
+(a) für jeglichen Code, den ein Mitwirkender aus der Abgedeckten Software
+entfernt hat; oder
+
+(b) für Rechtsverletzungen, die durch: (i) Ihre Änderungen und die eines Dritten
+Modifikationen der Abgedeckten Software, oder (ii) die Kombination seiner
+Beiträge mit anderer Software (außer als Teil der Contributor Version); oder
+
+(c) unter Patentansprüchen, die durch die Abgedeckte Software verletzt werden,
+wenn keine seiner Beiträge.
+
+Diese Lizenz gewährt keine Rechte an den Warenzeichen, Dienstleistungsmarken
+oder Logos eines Mitwirkenden (außer in den Fällen, in denen dies zur
+Einhaltung der den Hinweispflichten in Abschnitt 3.4).
+
+
+
+2.4. Nachträgliche Lizenzen
+
+Kein Mitwirkender gewährt zusätzliche Lizenzen als Ergebnis Ihrer Entscheidung
+die Abgedeckte Software unter einer späteren Version dieser Lizenz
+(siehe Abschnitt 10.2) oder unter den Bedingungen einer Sekundärlizenz
+(falls gemäß den Bedingungen von Abschnitt 3.3).
+
+2.5. Zusicherung
+
+Jeder Mitwirkende sichert zu, dass er davon ausgeht, dass seine Beiträge seine
+ursprüngliche(n) Schöpfung(en) sind oder er über ausreichende Rechte verfügt um
+die durch diese Lizenz übertragenen Rechte an seinen Beiträgen zu gewähren.
+
+2.6. Angemessene Nutzung
+
+Diese Lizenz soll keine Rechte einschränken, die Sie gemäß anwendbaren
+urheberrechtlichen Doktrinen der fairen Nutzung, des fairen Umgangs oder
+anderer Äquivalente.
+
+2.7. Bedingungen
+
+Die Abschnitte 3.1, 3.2, 3.3 und 3.4 sind Bedingungen der in Abschnitt 2.1
+gewährten Lizenzen. in Abschnitt 2.1.
+
+3. Verantwortlichkeiten
+-----------------------
+
+3.1. Weitergabe der Quellcodeform
+
+Jede Weitergabe der Abgedeckten Software in Quellcodeform, einschließlich aller
+Modifikationen, die Sie erstellen oder zu denen Sie beitragen, muss unter den
+den Bedingungen dieser Lizenz erfolgen. Sie müssen die Empfänger darüber
+informieren, dass die Quellcode Quellcodeform der Abgedeckten Software den
+Bedingungen dieser Lizenz unterliegt Lizenz unterliegt, und wie sie eine Kopie
+dieser Lizenz erhalten können. Sie dürfen nicht versuchen, die Rechte des
+Empfängers an der Quellcodeform zu ändern oder zu Form einzuschränken.
+
+3.2. Weitergabe der ausführbaren Form
+
+Wenn Sie die Abgedeckte Software in ausführbarer Form vertreiben, dann:
+
+(a) muss diese Abgedeckte Software auch in Quellcodeform zur Verfügung gestellt
+werden Quellcode zur Verfügung gestellt werden, wie in Abschnitt 3.1
+beschrieben, und Sie müssen die Empfänger der der ausführbaren Form darüber
+informieren, wie sie eine Kopie dieser Quellcodeform mit angemessenen Mitteln
+erhalten können. Form mit angemessenen Mitteln rechtzeitig erhalten können, und
+zwar zu einer Gebühr, die nicht höher ist als die Kosten der Verteilung an den
+Empfänger; und
+
+(b) Sie dürfen diese ausführbare Form unter den Bedingungen dieser Lizenz
+verbreiten oder sie unter anderen Bedingungen unterlizenzieren, vorausgesetzt,
+daß die Lizenz für die ausführbare Form nicht versucht, die Rechte des die
+Rechte des Empfängers an der Quellcodeform gemäß dieser Lizenz zu beschränken
+oder zu verändern.
+
+3.3. Verbreitung eines Größeren Werks
+
+Sie dürfen ein größeres Werk unter den von Ihnen gewählten Bedingungen erstellen
+und verbreiten, vorausgesetzt, Sie erfüllen auch die Anforderungen dieser
+Lizenz für die die Abgedeckte Software einhalten. Handelt es sich bei dem
+Größeren Werk um eine Kombination aus Abgedeckter Software mit einem Werk, das
+durch eine oder mehrere Sekundärlizenzen geregelt ist, und die Abgedeckte
+Software nicht mit Sekundärlizenzen inkompatibel ist, erlaubt diese Lizenz
+erlaubt Ihnen, die Abgedeckte Software zusätzlich unter den unter den
+Bedingungen dieser Sekundärlizenz(en) zu vertreiben, so dass der Empfänger des
+Empfänger des Größeren Werkes die Abgedeckte Software nach seiner Wahl Software
+entweder unter den Bedingungen dieser Lizenz oder einer solchen Lizenz
+(en) weitergeben kann.
+
+3.4. Hinweise
+
+Sie dürfen keine Lizenzhinweise entfernen oder deren Inhalt verändern
+(einschließlich Urheberrechtsvermerke, Patentvermerke,
+Gewährleistungsausschlüsse, oder Haftungsbeschränkungen), die in der
+Quellcodeform der Abgedeckten Software der Abgedeckten Software enthalten sind,
+mit der Ausnahme, dass Sie Lizenzhinweise ändern dürfen, soweit soweit dies
+erforderlich ist, um bekannte faktische Ungenauigkeiten zu beheben.
+
+3.5. Anwendung von zusätzlichen Bedingungen
+
+Es steht Ihnen frei, Gewährleistungs-, Support- oder Haftungsverpflichtungen
+gegenüber einer Person anzubieten und dafür eine Gebühr zu erheben,
+Entschädigungs- oder Haftungsverpflichtungen gegenüber einem oder mehreren
+Empfängern der Abgedeckten Software. Sie dürfen dies jedoch nur in Ihrem
+eigenen Namen tun und nicht im Namen im Namen eines Mitwirkenden. Sie müssen
+eindeutig klarstellen, dass jede Sie müssen unmissverständlich klarstellen,
+dass eine solche Garantie-, Support-, Entschädigungs- oder
+Haftungsverpflichtung von Ihnen allein angeboten wird. Sie verpflichten sich
+hiermit, jeden Mitwirkenden für jede Haftung zu entschädigen Sie verpflichten
+sich hiermit, jeden Mitwirkenden von jeglicher Haftung freizustellen, die
+diesem Mitwirkenden aufgrund von Garantie-, Support- oder Haftungsbedingungen
+entsteht, Entschädigungs- oder Haftungsbedingungen, die Sie anbieten. Sie
+können zusätzliche Gewährleistungsausschlüsse und Haftungsbeschränkungen für
+jede Gerichtsbarkeit.
+
+4. Unmöglichkeit der Einhaltung von Gesetzen oder Vorschriften
+--------------------------------------------------------------
+
+Wenn es für Sie unmöglich ist, eine der Bedingungen dieser Lizenz in Bezug auf
+einige oder alle Lizenz in Bezug auf einige oder alle der Abgedeckten Software
+aufgrund von Gesetzes, einer gerichtlichen Anordnung oder einer Vorschrift
+nicht einhalten können, dann müssen Sie: (a) die Bedingungen dieser Lizenz
+einhalten die Bedingungen dieser Lizenz so weit wie möglich einhalten; und
+(b) die Einschränkungen und den von ihnen betroffenen Code beschreiben. Eine
+solche Beschreibung muss in einer Textdatei enthalten sein, die mit allen
+Distributionen der Abgedeckten Software Software unter dieser Lizenz enthalten
+sein. Soweit dies nicht durch Gesetz oder Verordnung verboten ist oder
+Vorschriften untersagt ist, muss diese Beschreibung so detailliert sein, dass
+ein Empfänger mit normalen Kenntnissen in der Lage ist, sie zu verstehen.
+
+
+5. Beendigung
+-------------
+
+5.1. Die unter dieser Lizenz gewährten Rechte erlöschen automatisch wenn Sie
+eine ihrer Bedingungen nicht einhalten. Wenn Sie jedoch werden, werden die
+unter dieser Lizenz von einem bestimmten Mitwirkenden gewährten Rechte
+Mitwirkenden gewährten Rechte(a) vorläufig wiederhergestellt, es sei denn, der
+Mitwirkende Ihre Zuwendungen nicht ausdrücklich und endgültig kündigt, und
+(b) auf fortlaufend, wenn der betreffende Mitwirkende Sie nicht auf nicht
+innerhalb von 60 Tagen, nachdem Sie die Anforderungen wieder erfüllt haben, mit
+angemessenen Mitteln über die Nichteinhaltung wieder in Übereinstimmung
+gebracht haben. Außerdem werden Ihre Zuwendungen von einem bestimmten
+Beitragszahler fortlaufend wiederhergestellt werden, wenn dieser Beitragszahler
+Sie mit angemessenen Mitteln über die Nichteinhaltung informiert und dies das
+erste Mal ist Sie zum ersten Mal eine Mitteilung über die Nichteinhaltung
+dieser Lizenz erhalten haben von diesem Mitwirkenden erhalten haben und Sie die
+Lizenz vor Ablauf von 30 Tagen nach Eingang der Mitteilung bei Ihnen.
+
+5.2. Wenn Sie einen Rechtsstreit gegen eine juristische Person einleiten, indem
+Sie eine Patentverletzung geltend machen Patentverletzungsanspruch
+(ausgenommen Feststellungsklagen, Widerklagen und Gegenklagen) mit der
+Behauptung, dass eine Contributor-Version direkt oder indirekt ein Patent
+verletzt, werden die Rechte, die Ihnen Rechte, die Ihnen von allen Mitwirkenden
+für die Abgedeckte Software gemäß Abschnitt 2.1 dieser Lizenz gewährt wurden,
+erlöschen.
+
+5.3. Im Falle einer Kündigung gemäß Abschnitt 5.1 oder 5.2 werden alle
+Endbenutzer-Lizenzvereinbarungen (ausgenommen Distributoren und
+Wiederverkäufer), die die von Ihnen oder Ihren Vertriebspartnern im Rahmen
+dieser Lizenz vor der vor der Kündigung gültig erteilt wurden, bleiben
+bestehen.
+
+
+6. Gewährleistungsausschluss
+----------------------------
+
+Abgedeckte Software wird unter dieser Lizenz auf einer „wie besehen“ Basis
+bereitgestellt.
+
+
+Abgedeckte Software ist frei von Mängeln, handelsüblich, geeignet für einen
+bestimmten Zweck oder nicht verletzend ist. Das gesamte Risiko in Bezug auf die
+Qualität und Leistung der Abgedeckten Software liegt bei Ihnen. Sollte sich
+eine Abgedeckte Software in irgendeiner Hinsicht als fehlerhaft erweisen,
+übernehmen Sie(nicht ein Mitwirkender) die Kosten für die notwendige Wartung,
+Reparatur oder Korrektur. Dieser Gewährleistungsausschluss ist ein wesentlicher
+Bestandteil dieser Lizenz. Keine Nutzung der Abgedeckten Software ist unter
+dieser Lizenz erlaubt, außer unter diesem Haftungsausschluss.
+
+7. Haftungsbeschränkung
+-----------------------
+
+Unter keinen Umständen und unter keiner rechtlichen Theorie, ob unerlaubte
+Handlung(einschließlich Fahrlässigkeit), Vertrag oder anderweitig, darf ein
+Mitwirkende oder jemand, der die Abgedeckte Software wie erlaubt, haftet Ihnen
+gegenüber für direkte, indirekte, besondere, zufällige oder Folgeschäden
+jeglicher Art einschließlich, ohne Einschränkung, Schäden für entgangenen
+Gewinn, Verlust von Goodwill, Arbeitsunterbrechung, Computerausfall oder
+Fehlfunktion, oder jede und alle anderen kommerziellen Schäden oder Verluste,
+auch wenn diese Partei über die Möglichkeit solcher Schäden informiert worden
+ist. Diese Haftungsbeschränkung gilt nicht für die Haftung für Tod oder
+Personenschäden, die auf die Fahrlässigkeit dieser Partei zurückzuführen sind,
+bis zu dem soweit das geltende Recht eine solche Beschränkung verbietet. Einige
+Gerichtsbarkeiten erlauben nicht den Ausschluss oder die Beschränkung von
+zufälligen oder Folgeschäden, so dass dieser Ausschluss und Beschränkung
+möglicherweise nicht auf Sie zutreffen. 
+
+8. Rechtsstreitigkeiten
+-----------------------
+
+Alle Rechtsstreitigkeiten im Zusammenhang mit dieser Lizenz dürfen nur vor den
+Gerichtsbarkeit eingeleitet werden, in der der Beklagte seinen
+Hauptgeschäftssitz hat. Geschäftssitz hat, und ein solcher Rechtsstreit
+unterliegt den Gesetzen dieser dieser Gerichtsbarkeit, ohne Bezugnahme auf
+deren kollisionsrechtliche Bestimmungen. Dieser Abschnitt hindert eine Partei
+nicht daran, folgende Klagen einzureichen Widerklagen oder Gegenklagen zu
+erheben.
+
+
+9. Sonstiges
+------------
+
+Diese Lizenz stellt die vollständige Vereinbarung über den Gegenstand Gegenstand
+dieser Lizenz. Falls eine Bestimmung dieser Lizenz für nicht durchsetzbar
+gehalten wird nicht durchsetzbar ist, wird eine solche Bestimmung nur insoweit
+reformiert um sie durchsetzbar zu machen. Jedes Gesetz oder jede Vorschrift,
+die vorsieht die vorsehen, dass der Wortlaut eines Vertrages zuungunsten des
+Verfassers auszulegen ist dürfen nicht dazu verwendet werden, diese Lizenz
+gegen einen Mitwirkenden auszulegen.
+
+10. Fassungen der Lizenz
+------------------------
+
+10.1. Neue Fassungen
+
+Die Mozilla Foundation ist der Verwalter der Lizenz. Außer wie in Abschnitt 10.3
+vorgesehen, hat niemand außer dem Lizenzverwalter das Recht, neue Versionen
+neue Versionen dieser Lizenz zu veröffentlichen. Jede Version wird mit einer
+Versionsnummer gekennzeichnet.
+
+10.2. Wirkung von neuen Versionen
+
+Sie sind berechtigt, die Abgedeckte Software unter den Bedingungen der Version
+zu vertreiben der Lizenz, unter der Sie die Abgedeckte Software ursprünglich
+erhalten haben, oder unter den Bedingungen einer späteren, vom Lizenzverwalter
+veröffentlichten Version Verwalter veröffentlicht wurde.
+
+10.3. Modifizierte Versionen
+
+Wenn Sie Software erstellen, die nicht unter diese Lizenz fällt, und Sie eine
+neue Lizenz für diese Software erstellen wollen, dürfen Sie eine modifizierte
+Version dieser Lizenz erstellen und verwenden, wenn Sie die Lizenz umbenennen
+und alle Verweise auf den Namen des Lizenzverwalters entfernen (außer dem
+Hinweis, dass eine solche modifizierte Lizenz von dieser Lizenz abweicht).
+
+10.4. Weitergabe von Quellcode in einer Form, die mit Sekundärlizenzen nicht
+kompatibel ist Lizenzen
+
+Wenn Sie sich dazu entschließen, Quellcode-Formulare zu verbreiten, die nicht
+kompatibel sind mitSekundärlizenzen unter den Bedingungen dieser Version der
+Lizenz zu verbreiten, ist der inmuß der in Anhang B dieser Lizenz beschriebene
+Hinweis beigefügt werden.
+
+Anhang A - Quellcode-Formular-Lizenzhinweis
+-------------------------------------------
+
+  Dieses Quelltextformular unterliegt den Bedingungen der Mozilla Public Lizenz,
+  v. 2.0. Falls eine Kopie der MPL nicht mit dieser Datei verteilt wurde Datei
+  verteilt wurde, können Sie eine unter http://mozilla.org/MPL/2.0/ erhalten.
+
+Wenn es nicht möglich oder wünschenswert ist, den Hinweis in eine bestimmte
+Datei aufzunehmen Datei aufzunehmen, können Sie den Hinweis an einer Stelle
+einfügen (z.B. in einer LICENSE Datei in einem relevanten Verzeichnis), wo ein
+Empfänger wahrscheinlich nach einem solchen Hinweis nach einem solchen Hinweis
+suchen würde.
+
+Sie können weitere genaue Hinweise auf das Urheberrecht hinzufügen.
+
+Anhang B - Hinweis auf „Unvereinbarkeit mit Sekundärlizenzen“
+---------------------------------------------------------
+
+  Dieses Quellcode-Formular ist „inkompatibel mit Sekundärlizenzen“, wie
+  definiert durch die Mozilla Public License, v. 2.0.
