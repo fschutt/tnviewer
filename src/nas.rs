@@ -1490,7 +1490,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
         let polys = polys.iter().flat_map(|p| {
-            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
+            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false, false);
             intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
                 attributes: {
                     let mut attrs = p.attributes.clone();
@@ -1667,7 +1667,7 @@ fn clean_internal(list_of_points: &Vec<SvgPoint>) -> (usize, Vec<SvgPoint>) {
     (moved_points, p_new_global)
 }
 
-pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
+pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_touches_check: bool) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let a = a.round_to_3dec();
     let b = b.round_to_3dec();
@@ -1684,8 +1684,10 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<S
     if b.equals_any_ring(&a).is_some() {
         return vec![b];
     }
-    if crate::nas::only_touches(&a, &b) {
-        return Vec::new();
+    if only_touches_check {
+        if crate::nas::only_touches(&a, &b) {
+            return Vec::new();
+        }
     }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);

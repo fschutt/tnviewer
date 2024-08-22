@@ -751,7 +751,7 @@ fn write_splitflaechen_beschriftungen(
     log_1(&format!("RISS poly: {riss_poly:?}").into());
 
     let splitflaechen = splitflaechen.iter().flat_map(|sf| {
-        intersect_polys(&sf.poly_cut, &riss_poly, true)
+        intersect_polys(&sf.poly_cut, &riss_poly, true, true)
         .into_iter()
         .map(|f| {
             AenderungenIntersection {

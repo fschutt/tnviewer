@@ -1197,7 +1197,7 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
 
-                for intersect_poly in intersect_polys(&anew, &bnew, true) {
+                for intersect_poly in intersect_polys(&anew, &bnew, true, true) {
                     is.push(AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
