@@ -1446,7 +1446,7 @@ impl AenderungenIntersection {
         if self.alt == self.neu {
             return None;
         }
-        let pos = self.poly_cut.get_label_pos(0.001);
+        let pos = self.poly_cut.get_label_pos(0.001)?;
         Some(TextPlacement {
             status: TextStatus::Old,
             kuerzel: self.alt.clone(),
@@ -1462,7 +1462,7 @@ impl AenderungenIntersection {
             status: TextStatus::New,
             kuerzel: self.neu.clone(),
             pos: {
-                let mut pos = self.poly_cut.get_label_pos(0.001);
+                let mut pos = self.poly_cut.get_label_pos(0.001)?;
                 pos.y -= 10.0;
                 pos
             }
@@ -1476,7 +1476,7 @@ impl AenderungenIntersection {
         Some(TextPlacement {
             status: TextStatus::StaysAsIs,
             kuerzel: self.alt.clone(),
-            pos: self.poly_cut.get_label_pos(0.001)
+            pos: self.poly_cut.get_label_pos(0.001)?
         })
     }
 }
@@ -1912,49 +1912,6 @@ impl Aenderungen {
             nas_xml_quadtree: qt,
             aenderungen: changed_mut,
         }
-    }
-
-    // NOTIZ: SplitNasXML sollte ALLE Ebenen drin haben
-    pub fn get_texte(&self, split_nas: &SplitNasXml) -> Vec<TextPlacement> {
-
-        // 5. Für alle Flächen, die halb oder ganz überlappt werden von Änderungen:
-        // - Flurstück auswählen
-        // - alle Teilflächen selektieren
-
-        // 6. Für alle selektierten Teilflächen:
-        // - ALle Teilflächen mit Änderungen überschneiden 
-        // -> keine Menge: bleibt so
-        // -> hat Differenz: alt / neu beschriften
-
-        self.na_polygone_neu.values().flat_map(|poly| {
-            let nutzung = match poly.nutzung.clone() {
-                Some(s) => s,
-                None => return Vec::new().into_iter(),
-            };
-
-            let old_label_pos = poly.poly.get_label_pos(0.001);
-            let new_label_pos = SvgPoint {
-                x: old_label_pos.x + 10.0,
-                y: old_label_pos.y,
-            };
-
-            if old_label_pos.x == 0.0 || old_label_pos.y == 0.0 {
-                return Vec::new().into_iter(); // TODO: why????
-            }
-
-            vec![
-                TextPlacement {
-                    kuerzel: nutzung.clone(),
-                    status: TextStatus::Old,
-                    pos: old_label_pos,
-                },
-                TextPlacement {
-                    kuerzel: nutzung.clone(),
-                    status: TextStatus::New,
-                    pos: new_label_pos,
-                },
-            ].into_iter()
-        }).collect()
     }
 }
 

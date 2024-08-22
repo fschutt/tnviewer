@@ -202,7 +202,10 @@ impl NasXMLFile {
                 None => continue,
             };
 
-            let label_pos = o.poly.get_label_pos(0.001);
+            let label_pos = match o.poly.get_label_pos(0.001) {
+                Some(s) => s,
+                None => continue,
+            };
 
             let label = Label {
                 lon: label_pos.x, 
@@ -969,8 +972,12 @@ impl SvgPolygon {
         }
     }
 
-    pub fn get_label_pos(&self, tolerance: f64) -> SvgPoint {
+    pub fn get_label_pos(&self, tolerance: f64) -> Option<SvgPoint> {
         
+        if self.is_empty() || self.is_zero_area() {
+            return None;
+        }
+
         let coords_outer = self.outer_rings.iter().flat_map(|line| {
             line.points.iter().map(|p| (p.x, p.y))
        }).collect::<Vec<_>>();
@@ -995,10 +1002,10 @@ impl SvgPolygon {
 
        let label_pos = polylabel_mini::polylabel(&polygon, tolerance);
        
-       SvgPoint {
+       Some(SvgPoint {
             x: label_pos.x,
             y: label_pos.y,
-       }
+       })
     }
 }
 
