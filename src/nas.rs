@@ -1684,6 +1684,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<S
     if b.equals_any_ring(&a).is_some() {
         return vec![b];
     }
+    if crate::nas::only_touches(&a, &b) {
+        return Vec::new();
+    }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
