@@ -1110,12 +1110,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if relate.only_touches() {
             continue;
         }
-        log_1(&serde_json::to_string(&relate).unwrap_or_default().into());
-        log_1(&format!("a contained in b: {:?}", relate.a_contained_in_b()).into());
-        log_1(&format!("b contained in a: {:?}", relate.b_contained_in_a()).into());
         if relate.b_contained_in_a() {
-            // first = i;
-            // continue;
+            first = i;
+            continue;
         }
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
