@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
+use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
@@ -1082,31 +1083,35 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
-        let i = i.round_to_3dec();
-        if first.equals(&i) {
+        let fi = first.round_to_3dec();
+        let mut i = i.round_to_3dec();
+        if fi.equals(&i) {
             continue;
         }
-        log_1(&"subtract!".into());
-        log_1(&serde_json::to_string(&first).unwrap_or_default().into());
+        log_1(&"correcting almost touching points...".into());
+        i.correct_almost_touching_points(&fi, 0.05, true);
+        let i = i.round_to_3dec();
+        log_1(&"ok subtract!".into());
+        log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
         log_1(&serde_json::to_string(&i).unwrap_or_default().into());
-        if first.is_zero_area() {
+        if fi.is_zero_area() {
             return SvgPolygon::default();
         }
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
         // TODO: nas::only_touches crashes here???
-        if first.equals_any_ring(&i).is_some() {
-            return first;
+        if fi.equals_any_ring(&i).is_some() {
+            return fi;
         }
-        if i.equals_any_ring(&first).is_some() {
+        if i.equals_any_ring(&fi).is_some() {
             return i;
         }
-        if nas::only_touches(&first, &i) {
+        if nas::only_touches(&fi, &i) {
             continue;
         }
-        let a = translate_to_geo_poly(&first.round_to_3dec());
-        let b = translate_to_geo_poly(&i.round_to_3dec());
+        let a = translate_to_geo_poly(&fi);
+        let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {

@@ -17,6 +17,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::console::log_1;
 use crate::csv::CsvDataType;
 use crate::csv::Status;
+use crate::geograf::points_to_rect;
 use crate::search::NutzungsArt;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
@@ -794,22 +795,121 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
-    pub fn correct_almost_touching_points(&mut self, other: &Self) {
-        let maxdst = 0.1;
-        let mut other_lines = other.outer_rings.clone();
-        other_lines.extend(other.inner_rings.iter().cloned());
+    pub fn correct_almost_touching_points(&mut self, other: &Self, maxdst: f64, correct_points_on_lines: bool) {
+       
+        let mut other_points = Vec::new();
+        let mut other_lines = Vec::new();
+
+        for l in other.outer_rings.iter() {
+            for p in l.points.iter() {
+                other_points.push(*p);
+            }
+            if correct_points_on_lines {
+                for p in l.points.windows(2) {
+                    match p {
+                        &[a, b] => other_lines.push((a, b)),
+                        _ => {},
+                    }
+                }
+            }
+        }
+
+        for l in other.inner_rings.iter() {
+            for p in l.points.iter() {
+                other_points.push(*p);
+            }
+            if correct_points_on_lines {
+                for p in l.points.windows(2) {
+                    match p {
+                        &[a, b] => other_lines.push((a, b)),
+                        _ => {},
+                    }
+                }
+            }
+        }
+
+        let max_items_points = other_points.len().saturating_div(20).max(500);
+        let max_items_lines = other_lines.len().saturating_div(20).max(500);
+
+        let qt_points = quadtree_f32::QuadTree::new_with_max_items_per_quad(other_points.iter().enumerate().map(|(i, s)| {
+            (ItemId(i), Item::Point(quadtree_f32::Point { x: s.x, y: s.y }))
+        }), max_items_points);
 
         for l in self.outer_rings.iter_mut() {
             for p in l.points.iter_mut() {
-                let _ = Aenderungen::correct_point(p, &other_lines, maxdst, maxdst, &mut Vec::new());
+                let mut closest_other_point = qt_points.get_points_contained_by(&p.get_rect(maxdst))
+                .into_iter()
+                .map(|p| SvgPoint { x: p.x, y: p.y })
+                .filter(|s| s.dist(&p) < maxdst)
+                .collect::<Vec<_>>();
+                closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
+                if let Some(first) = closest_other_point.first() {
+                    *p = *first;
+                } else {
+                    
+                }
             }
         }
 
         for l in self.inner_rings.iter_mut() {
             for p in l.points.iter_mut() {
-                let _ = Aenderungen::correct_point(p, &other_lines, maxdst, maxdst, &mut Vec::new());
+                let mut closest_other_point = qt_points.get_points_contained_by(&p.get_rect(maxdst))
+                .into_iter()
+                .map(|p| SvgPoint { x: p.x, y: p.y })
+                .filter(|s| s.dist(&p) < maxdst)
+                .collect::<Vec<_>>();
+                closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
+                if let Some(first) = closest_other_point.first() {
+                    *p = *first;
+                }
             }
         }
+
+
+        if !correct_points_on_lines {
+            return;
+        }
+
+        let qt_lines = quadtree_f32::QuadTree::new_with_max_items_per_quad(
+            other_lines.iter().enumerate().map(|(i, s)| {
+            (ItemId(i), Item::Rect(points_to_rect(&(s.0, s.1))))
+        }), max_items_lines);
+
+        for l in self.outer_rings.iter_mut() {
+            for p in l.points.iter_mut() {
+                let mut closest_other_lines = qt_lines
+                .get_ids_that_overlap(&p.get_rect(maxdst))
+                .into_iter()
+                .filter_map(|i| other_lines.get(i.0))
+                .map(|q| {
+                    dist_to_segment(*p, q.0, q.1)
+                })
+                .filter(|s| s.distance < maxdst)
+                .collect::<Vec<_>>();
+                closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+                if let Some(first) = closest_other_lines.first() {
+                    *p = first.nearest_point;
+                }
+            }
+        }
+
+        for l in self.inner_rings.iter_mut() {
+            for p in l.points.iter_mut() {
+                let mut closest_other_lines = qt_lines.get_ids_that_overlap(&p.get_rect(maxdst))
+                .into_iter()
+                .filter_map(|i| other_lines.get(i.0))
+                .map(|q| {
+                    dist_to_segment(*p, q.0, q.1)
+                })
+                .filter(|s| s.distance < maxdst)
+                .collect::<Vec<_>>();
+                closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+                if let Some(first) = closest_other_lines.first() {
+                    *p = first.nearest_point;
+                }
+            }
+        }
+
     }
 
     pub fn is_zero_area(&self) -> bool {

@@ -511,7 +511,7 @@ pub fn l_to_points(l: &SvgLine) -> Vec<(SvgPoint, SvgPoint)> {
     v
 }
 
-fn points_to_rect((a, b): &(SvgPoint, SvgPoint)) -> quadtree_f32::Rect {
+pub fn points_to_rect((a, b): &(SvgPoint, SvgPoint)) -> quadtree_f32::Rect {
     let max_x = a.x.max(b.x);
     let min_x = a.x.min(b.x);
     let max_y = a.y.max(b.y);

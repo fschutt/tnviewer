@@ -1495,7 +1495,7 @@ pub enum TextStatus {
     StaysAsIs,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DstToLine {
     pub nearest_point: SvgPoint,
     pub distance: f64,
