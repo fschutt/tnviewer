@@ -1789,12 +1789,6 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
-    if relate.a_contained_in_b() {
-        return vec![a];
-    }
-    if relate.b_contained_in_a() {
-        return vec![b];
-    }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
