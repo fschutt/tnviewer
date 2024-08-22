@@ -1218,20 +1218,20 @@ impl AenderungenClean {
 
         let flst_changed = is.iter().filter_map(|s| {
             if s.alt != s.neu {
-                Some(s.format_flst_id_search())
+                Some(s.format_flst_id())
             } else {
                 None
             }
         }).collect::<BTreeSet<_>>();
 
         let mut is = is.into_iter().filter(|s| {
-            flst_changed.contains(&s.format_flst_id_search())
+            flst_changed.contains(&s.format_flst_id())
         }).collect::<Vec<_>>();
 
         web_sys::console::log_1(&format!("get_aenderungen_intersections: 1").as_str().into());
 
         for flst_id in flst_changed.iter() {
-            let ae_is = is.iter().filter(|s| s.format_flst_id_search().as_str() == flst_id.as_str()).collect::<Vec<_>>();
+            let ae_is = is.iter().filter(|s| s.format_flst_id().as_str() == flst_id.as_str()).collect::<Vec<_>>();
             if ae_is.is_empty() {
                 web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id} in ae_is").as_str().into());
                 continue;
@@ -1240,13 +1240,18 @@ impl AenderungenClean {
             let ae_is_joined = ae_is.iter().map(|s| s.poly_cut.round_to_3dec()).collect::<Vec<_>>();
             let ae_is_joined = ae_is_joined.iter().collect::<Vec<_>>();
 
-            let flst = match self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id) {
-                Some(s) => s,
+            let found_flst = self.nas_xml_quadtree.original.flurstuecke_nutzungen.iter()
+            .find(|(k, v)| AenderungenIntersection::format_flst_id_func(k.as_str()).as_str() == flst_id);
+
+            let flst = match found_flst {
+                Some((_, s)) => s,
                 None => {
                     web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id}").as_str().into());
                     continue;
                 },
             };
+
+            web_sys::console::log_1(&format!("intersection flst {flst_id}").as_str().into());
 
             for flst_part in flst {
 
@@ -1266,7 +1271,9 @@ impl AenderungenClean {
                 };
 
                 let mut subtracted = flst_part.poly.round_to_3dec();
+                web_sys::console::log_1(&format!("12").as_str().into());
                 subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
+                web_sys::console::log_1(&format!("13").as_str().into());
 
                 if subtracted.is_zero_area() {
                     continue;
@@ -1301,13 +1308,17 @@ pub struct AenderungenIntersection {
 
 impl AenderungenIntersection {
     
-    pub fn format_flst_id(&self) -> String {
-        let s = FlstIdParsed::from_str(&self.flst_id);
+    pub fn format_flst_id_func(s: &str) -> String {
+        let s = FlstIdParsed::from_str(&s);
         let q = match s.parse_num() {
             Some(o) => o,
             None => return s.to_nice_string(),
         };
         q.format_nice()
+    }
+
+    pub fn format_flst_id(&self) -> String {
+        Self::format_flst_id_func(&self.flst_id)
     }
 
     pub fn format_flst_id_search(&self) -> String {
