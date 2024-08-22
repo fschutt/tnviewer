@@ -1082,35 +1082,25 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
         let i = i.round_to_3dec();
-        let fi = first.round_to_3dec();
-        if fi.equals(&i) {
+        if first.equals(&i) {
             continue;
         }
-        if fi.is_zero_area() {
+        if first.is_zero_area() {
             return SvgPolygon::default();
         }
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        if let Some(_) = fi.equals_any_ring(&i) {
-            // i is the bigger than the polygon subtracted from, so the polygon is empty
-            // return SvgPolygon::default();
-            return fi;
+        // TODO: nas::only_touches crashes here???
+        if first.equals_any_ring(&i).is_some() {
+            return first;
         }
-        if let Some(q) = i.equals_any_ring(&fi) {
-            // first = subtract_ring(&first, q);
-            return i.clone();
+        if i.equals_any_ring(&first).is_some() {
+            return i;
         }
-        if nas::only_touches(&fi, &i) {
-            continue;
-        }
-        log_1(&"subtracting...".into());
-        log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
-        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
-        let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&i);
+        let a = translate_to_geo_poly(&first.round_to_3dec());
+        let b = translate_to_geo_poly(&i.round_to_3dec());
         let join = a.difference(&b);
-        log_1(&"subtracted!".into());
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -1120,46 +1110,35 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        /* 
-        if new.is_zero_area() {
-            return SvgPolygon::default();
+        log_1(&"cleanup poly...".into());
+        if autoclean {
+            first = crate::nas::cleanup_poly(&new);
+        } else {
+            first = new;
         }
-        */
-        first = new;
+        log_1(&"poly cleaned".into());
     }
 
-    if autoclean {
-        crate::nas::cleanup_poly(&first)
-    } else {
-        first
-    }
-}
-
-fn subtract_ring(outer: &SvgPolygon, ring: usize) -> SvgPolygon {
-    let mut o = outer.clone();
-    if ring < o.outer_rings.len() {
-        o.outer_rings.remove(ring);
-    }
-    o
+    first
 }
 
 pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
-        Some(s) => s.clone(),
+        Some(s) => s.round_to_3dec(),
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        if first.equals(i) {
+        let i = i.round_to_3dec();
+        if first.equals(&i) {
             continue;
         }
         if i.is_empty() {
             continue;
         }
         let fi = first.round_to_3dec();
-        let ii = i.round_to_3dec();
         let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&ii);     
+        let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
@@ -1170,18 +1149,15 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = new;
+        if autoclean {
+            first = crate::nas::cleanup_poly(&new);
+        } else {
+            first = new;
+        }
     }
 
-    let c = if autoclean {
-        crate::nas::cleanup_poly(&first)
-    } else {
-        first
-    };
-
-    Some(c)
+    Some(first)
 }
-
 
 fn get_gebaeude_in_pdf_space(
     xml: &NasXMLFile,

@@ -6,3 +6,4 @@
 *.zip
 testcase.json
 /2024-31-*
+/out
