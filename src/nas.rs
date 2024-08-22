@@ -891,8 +891,14 @@ impl SvgPolygon {
            }).collect()
        };
 
+       web_sys::console::log_1(&format!("get label pos: (tolerance = {tolerance})").as_str().into());
+
+       web_sys::console::log_1(&serde_json::to_string(&self).unwrap_or_default().into());
+
        let label_pos = polylabel_mini::polylabel(&polygon, tolerance);
-       
+
+       web_sys::console::log_1(&format!("get label pos ok!").as_str().into());
+
        SvgPoint {
             x: label_pos.x,
             y: label_pos.y,

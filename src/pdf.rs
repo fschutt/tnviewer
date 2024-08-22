@@ -780,6 +780,8 @@ fn write_splitflaechen_beschriftungen(
     })
     .collect::<Vec<_>>();
 
+    web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: 5").as_str().into());
+
     let texte_neu = splitflaechen.iter()
     .filter_map(|s| s.get_text_neu())
     .map(|p| {
@@ -790,6 +792,8 @@ fn write_splitflaechen_beschriftungen(
         }
     })
     .collect::<Vec<_>>();
+
+    web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: 6").as_str().into());
 
     let texte_alt = splitflaechen.iter()
     .filter_map(|s| s.get_text_alt())
@@ -802,6 +806,7 @@ fn write_splitflaechen_beschriftungen(
     })
     .collect::<Vec<_>>();
 
+    web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: 7").as_str().into());
 
     for l in texte_alt.iter() {
         log_1(&format!("TEXT ALT: {l:?}").into());
