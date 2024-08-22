@@ -764,6 +764,8 @@ fn write_splitflaechen_beschriftungen(
         })
     }).collect::<Vec<_>>();
     
+    log_1(&format!("sf1").into());
+
     let texte_bleibt = splitflaechen.iter()
     .filter_map(|s| s.get_text_bleibt())
     .map(|p| {
@@ -775,6 +777,8 @@ fn write_splitflaechen_beschriftungen(
     })
     .collect::<Vec<_>>();
 
+    log_1(&format!("sf2").into());
+
     let texte_neu = splitflaechen.iter()
     .filter_map(|s| s.get_text_neu())
     .map(|p| {
@@ -785,6 +789,8 @@ fn write_splitflaechen_beschriftungen(
         }
     })
     .collect::<Vec<_>>();
+
+    log_1(&format!("sf4").into());
 
     let texte_alt = splitflaechen.iter()
     .filter_map(|s| s.get_text_alt())

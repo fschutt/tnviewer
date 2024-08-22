@@ -975,6 +975,9 @@ impl SvgPolygon {
             line.points.iter().map(|p| (p.x, p.y))
        }).collect::<Vec<_>>();
 
+       log_1(&format!("get label pos").into());
+       log_1(&serde_json::to_string(&self).unwrap_or_default().into());
+
        let polygon = polylabel_mini::Polygon {
            exterior: polylabel_mini::LineString {
                points: coords_outer.iter().map(|(x, y)| polylabel_mini::Point {
