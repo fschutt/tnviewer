@@ -5,7 +5,6 @@ use float_cmp::ApproxEq;
 use float_cmp::F64Margin;
 use geo::Area;
 use geo::CoordsIter;
-use geo::Relate;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
@@ -1780,20 +1779,21 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if a.equals(&b) {
         return vec![a];
     }
-    // TODO: nas::only_touches crashes here???
     if a.equals_any_ring(&b).is_some() {
         return vec![a];
     }
     if b.equals_any_ring(&a).is_some() {
         return vec![b];
     }
-    if only_touches_check {
-        log_1(&"only touches check!".into());
-        log_1(&serde_json::to_string(&a).unwrap_or_default().into());
-        log_1(&serde_json::to_string(&b).unwrap_or_default().into());
-        if crate::nas::only_touches(&a, &b) {
-            return Vec::new();
-        }
+    let relate = crate::nas::relate(&a, &b);
+    if relate.only_touches() {
+        return Vec::new();
+    }
+    if relate.a_contained_in_b() {
+        return vec![a];
+    }
+    if relate.b_contained_in_a() {
+        return vec![b];
     }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
@@ -1808,9 +1808,16 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {
+    pub num_points: usize,
     pub points_touching_lines: usize,
     pub points_inside_other_poly: usize,
     pub all_points_are_on_line: bool,
+}
+
+impl SvgPolyInternalResult {
+    pub fn is_contained_in_other_poly(&self) -> bool {
+        self.points_touching_lines + self.points_inside_other_poly >= self.num_points
+    }
 }
 
 fn point_in_line(p: &SvgPoint, l: &SvgLine) -> bool {
@@ -1900,19 +1907,42 @@ fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
     c_in_outer
 }
 
-pub fn only_touches(a: &SvgPolygon, b: &SvgPolygon) -> bool {
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Relate {
+    pub is_1: SvgPolyInternalResult,
+    pub is_2: SvgPolyInternalResult,
+}
+
+impl Relate {
+    pub fn only_touches(&self) -> bool {
+        // no intersection of the two polygons possible
+        if self.is_1.points_inside_other_poly == 0 && self.is_2.points_inside_other_poly == 0 {
+            if self.is_1.all_points_are_on_line || self.is_2.all_points_are_on_line {
+                // a is a subset of b or b is a subset of a
+                false
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn a_contained_in_b(&self) -> bool {
+        self.is_1.is_contained_in_other_poly()
+    }
+
+    pub fn b_contained_in_a(&self) -> bool {
+        self.is_2.is_contained_in_other_poly()
+    }
+}
+
+pub fn relate(a: &SvgPolygon, b: &SvgPolygon) -> Relate {
     let is_1 = only_touches_internal(a, b);
     let is_2 = only_touches_internal(b, a);
-    // no intersection of the two polygons possible
-    if is_1.points_inside_other_poly == 0 && is_2.points_inside_other_poly == 0 {
-        if is_1.all_points_are_on_line || is_2.all_points_are_on_line {
-            // a is a subset of b or b is a subset of a
-            false
-        } else {
-            true
-        }
-    } else {
-        false
+    Relate {
+        is_1,
+        is_2,
     }
 }
 
@@ -1937,6 +1967,7 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     }
 
     SvgPolyInternalResult {
+        num_points: points_a.len(),
         points_touching_lines,
         points_inside_other_poly,
         all_points_are_on_line

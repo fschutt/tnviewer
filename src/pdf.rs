@@ -1100,14 +1100,19 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if i.is_zero_area() {
             return SvgPolygon::default();
         }
-        // TODO: nas::only_touches crashes here???
         if fi.equals_any_ring(&i).is_some() {
             return fi;
         }
         if i.equals_any_ring(&fi).is_some() {
             return i;
         }
-        if nas::only_touches(&fi, &i) {
+        let relate = nas::relate(&fi, &i);
+        if relate.only_touches() {
+            continue;
+        }
+        log_1(&serde_json::to_string(&relate).unwrap_or_default().into());
+        if relate.b_contained_in_a() {
+            first = i;
             continue;
         }
         let a = translate_to_geo_poly(&fi);
