@@ -1086,6 +1086,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if first.equals(&i) {
             continue;
         }
+        log_1(&"subtract!".into());
+        log_1(&serde_json::to_string(&first).unwrap_or_default().into());
+        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         if first.is_zero_area() {
             return SvgPolygon::default();
         }
