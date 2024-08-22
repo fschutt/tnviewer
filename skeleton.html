@@ -1131,7 +1131,7 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
-          // addProblemGeoJSON(map);
+          addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -1148,8 +1148,8 @@
       var ml = null;
       var style = {
         "color": "#ff0000",
-        "fillColor": "#ff0000",
-        "weight": 0.0,
+        "fillColor": "#cccccc",
+        "weight": 1.0,
         "opacity": 0.8,
         "fillOpacity": 0.5
       };
@@ -1167,8 +1167,8 @@
       var ml = null;
       var style = {
         "color": "#0000ff",
-        "fillColor": "#0000ff",
-        "weight": 0.0,
+        "fillColor": "#000000",
+        "weight": 3.0,
         "opacity": 0.8,
         "fillOpacity": 0.5
       };

@@ -1266,7 +1266,7 @@ impl AenderungenClean {
                 };
 
                 let mut subtracted = flst_part.poly.round_to_3dec();
-                subtracted = subtract_from_poly(&subtracted, &ae_is_joined, true).round_to_3dec();
+                subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
 
                 if subtracted.is_zero_area() {
                     continue;
@@ -1838,7 +1838,7 @@ impl Aenderungen {
             let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
             let hr = hr.iter().collect::<Vec<_>>();
             for h in hr.into_iter() {
-                *megapoly = subtract_from_poly(&megapoly, &[h], true);
+                *megapoly = subtract_from_poly(&megapoly, &[h]);
             }
         }
 

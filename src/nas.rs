@@ -907,6 +907,12 @@ pub struct SvgLine {
 
 impl SvgLine {
 
+    pub fn reverse(&self) -> SvgLine {
+        let mut p = self.points.clone();
+        p.reverse();
+        Self { points: p }
+    }
+    
     pub fn is_closed(&self) -> bool {
         self.is_closed_internal().is_some()
     }
@@ -954,33 +960,6 @@ pub struct SvgPoint {
 }
 
 impl SvgPoint {
-
-    /// Return the angle in radians to another point
-    pub fn angle_to(&self, other: &SvgPoint) -> f64 {
-        let translated = other.translate(&self.invert());
-
-        let result = translated.y.atan2(translated.x);
-        if result < 0.0 {
-            return result + 360.0_f64.to_radians();
-        }
-        result
-    }
-
-    /// offset / translate this point by another one.
-    pub fn translate(&self, by: &Point) -> Point {
-        Point {
-            x: self.x + by.x,
-            y: self.y + by.y,
-        }
-    }
-
-    /// Flip the sign of both x and y coords
-    pub fn invert(&self) -> Point {
-        Point {
-            x: -self.x,
-            y: -self.y,
-        }
-    }
 
     pub fn dist(&self, other: &Self) -> f64 {
         crate::ui::dist(*self, *other)
@@ -1537,52 +1516,58 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     let s = s.round_to_3dec();
-    let outer_rings = s.outer_rings.iter().map(|r| clean_ring(r)).collect();
-    let inner_rings = s.inner_rings.iter().map(|r| clean_ring(r)).collect();
+    let outer_rings = s.outer_rings.iter()
+    .filter(|r| calc_area(&r.points) > 1.0)
+    .map(|r| clean_ring_2(r))
+    .collect();
+    let inner_rings = s.inner_rings.iter()
+    .filter(|r| calc_area(&r.points) > 1.0)
+    .map(|r| clean_ring_2(r)).collect();
     SvgPolygon {
         outer_rings,
         inner_rings,
     }
 }
 
-fn clean_ring(r: &SvgLine) -> SvgLine {
-
-    let list_of_points = r.points.clone();
-    let area_orig = calc_area(&list_of_points);
+fn clean_ring_2(r: &SvgLine) -> SvgLine {
     
-    let p1 = clean_internal(&list_of_points);
-    let area_p1 = calc_area(&p1);
-
-    let mut list_of_points = r.points.clone();
-    list_of_points.reverse();
-    let mut p2 = clean_internal(&list_of_points);
+    let mut p1 = clean_points(&r.points);
+    p1.reverse();
+    let mut p2 = clean_points(&p1);
     p2.reverse();
-    let area_p2 = calc_area(&p2);
 
-    let mut preferred = Vec::new();
-    if approx_eq!(f64, area_orig, area_p1, epsilon = 1.0) {
-        preferred.push(&p1);
-    }
-    if approx_eq!(f64, area_orig, area_p2, epsilon = 1.0) {
-        preferred.push(&p2);
-    }
+    clean_ring_selfintersection(&SvgLine {
+        points: p2,
+    })
+}
 
-    let preferred = preferred.iter().min_by(|a, b| {
-        a.len().cmp(&b.len())
-    });
+fn clean_points(points: &[SvgPoint]) -> Vec<SvgPoint> {
+    // insert points whenever a line ends on another line
+    let mut lines = points.windows(2).map(|a| match &a {
+        &[a, b] => vec![*a, *b],
+        _ => Vec::new(),
+    }).collect::<Vec<_>>();
 
-    let cl = match preferred {
-        None => {
-            return r.clone();
-        },
-        Some(s) => {
-            SvgLine {
-                points: s.to_vec(),
+    for r in points.iter().skip(1).take(points.len().saturating_sub(2)) {
+        for p in lines.iter_mut() {
+            let start = match p.first() {
+                Some(s) => s,
+                None => continue,
+            };
+            let end = match p.last() {
+                Some(s) => s,
+                None => continue,
+            };
+            let dst = dist_to_segment(*r, *start, *end);
+            if dst.distance < CLEAN_LINE_DST {
+                *p = vec![*start, *r, *end];
             }
         }
-    };
+    }
 
-    clean_ring_selfintersection(&cl)
+    let mut points = lines.into_iter().flat_map(|v| v.into_iter()).collect::<Vec<_>>();
+    points.dedup_by(|a, b| a.equals(&b));
+    points
 }
 
 fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
@@ -1607,43 +1592,79 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
         }
         newpoints.push(*p);
     }
-    newpoints.dedup();
+    newpoints.dedup_by(|a, b| a.equals(&b));
     SvgLine {
         points: newpoints,
     }
 }
 
-fn calc_area(p: &[SvgPoint]) -> f64 {
-    let gl = geo::Polygon::new(translate_geoline(&SvgLine {
-        points: p.to_vec()
-    }), Vec::new());
-    gl.signed_area().abs()
+pub fn calc_area(p: &[SvgPoint]) -> f64 {
+    let mut res = 0.0;
+
+    for i in p.windows(2) {
+        let (p, q) = match &i {
+            &[a, b] => (a, b),
+            _ => continue,
+        };
+        res += (p.x - q.x) * (p.y + q.y);
+    }
+
+    f64::abs(res) / 2.0
 }
 
-fn clean_internal(list_of_points: &Vec<SvgPoint>) -> Vec<SvgPoint> {
-    
-    const CLEAN_LINE_DST: f64 = 0.1;
+const CLEAN_LINE_DST: f64 = 0.1;
 
-    let mut start = match list_of_points.first() {
-        Some(s) => *s,
-        None => return Vec::new(),
-    };
-    let mut p_new = vec![start];
-    for (i, p) in list_of_points.iter().enumerate().skip(1) {
-        let point_on_line = list_of_points.iter().enumerate().find(|(i2, q)| {
-            if q.equals(&start) || q.equals(&p) {
-                return false; 
-            }
-            dist_to_segment(**q, start, *p).distance < CLEAN_LINE_DST
-        });
-        p_new.push(match point_on_line {
-            Some(s) => *s.1,
-            None => *p,
-        });
-        start = *p;
+
+fn clean_internal(list_of_points: &Vec<SvgPoint>) -> (usize, Vec<SvgPoint>) {
+    
+    let mut p_new_global = list_of_points.clone();
+    let mut moved_points = 0;
+
+    loop {
+        let mut moved = false;
+        let mut start = match p_new_global.first() {
+            Some(s) => *s,
+            None => return (moved_points, Vec::new()),
+        };
+        let mut p_new = vec![start];
+
+        for (i, p) in p_new_global.iter().enumerate().skip(1) {
+
+            let point_on_line = p_new_global
+            .iter().enumerate()
+            .filter(|(i2, q)| {
+                !q.equals(&start) && !q.equals(&p)
+            })
+            .map(|(i2, q)| {
+                (i2, q, dist_to_segment(*q, start, *p).distance)
+            })
+            .filter(|(i2, q, dist)| {
+                *dist < CLEAN_LINE_DST
+            })
+            .min_by_key(|(i2, q, dist)| ((dist + start.dist(q) + p.dist(q)) * 100.0) as usize)
+            .map(|(i2, u, _)| (i2, u));
+
+            p_new.push(match point_on_line {
+                Some(s) => {
+                    moved = true;
+                    moved_points += 1;
+                    *s.1
+                },
+                None => *p,
+            });
+
+            start = *p;
+        }
+        p_new.dedup_by(|a, b| a.equals(&b));
+        p_new_global = p_new;
+        if !moved {
+            break;
+        } else {
+            log_1(&"looping...".into());
+        }
     }
-    p_new.dedup_by(|a, b| a.equals(&b));
-    p_new
+
+    (moved_points, p_new_global)
 }
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
@@ -1681,39 +1702,73 @@ pub struct SvgPolyInternalResult {
     pub all_points_are_on_line: bool,
 }
 
-
 fn point_in_line(p: &SvgPoint, l: &SvgLine) -> bool {
-
-    // work out the sum of the angles between adjacent points and the point we are checking.
-    // if the sum is equal to 360 degrees then we are inside the polygon.
-    let mut total = 0.0;
-
-    for i in 0..l.points.len() {
-        let (p1, p2) = l.get_side(i);
-        let angle_a = p.angle_to(&p2);
-        let angle_b = p.angle_to(&p1);
-
-        // handle rolling around over the 360/0 degree line reasonably
-        let result = if angle_a > angle_b {
-            -((360.0_f64.to_radians() - angle_a) + angle_b)
-        } else {
-            angle_a - angle_b
-        };
-
-        total += result;
+    if point_in_line_2(p, l) {
+        return true;
     }
-    approx_eq!(f64, total.abs(), 360.0_f64.to_radians(), ulps = 2)
+    let mut l = l.clone();
+    l.points.reverse();
+    point_in_line_2(p, &l)
+}
+
+fn point_in_line_2(p: &SvgPoint, l: &SvgLine) -> bool {
+    let mut count = 0;
+    for side in l.points.windows(2) {
+        match &side {
+            &[a, b] => if ray_intersects_segment(p, (a, b)) {
+                count += 1;
+            },
+            _ => { }
+        }
+    }
+    if count % 2 == 0 {
+        false // outside
+    } else {
+        true // inside 
+    }
+}
+
+fn ray_intersects_segment(p: &SvgPoint, (mut a, mut b): (&SvgPoint, &SvgPoint)) -> bool {
+
+    // B must be "above" A
+    if b.y < a.y {
+        std::mem::swap(&mut a, &mut b);
+    }
+
+    let mut p: SvgPoint = p.clone();
+
+    let eps = 0.001;
+    if p.y == a.y || p.y == b.y {
+        p.y = p.y + eps;
+    }
+
+    if p.y < a.y || p.y > b.y {
+        return false; // out of bounds
+    } else if p.x >= a.x.max(b.x) {
+        return false; // out of bounds
+    }
+
+    if p.x < a.x.min(b.x) {
+        return true;
+    }
+
+    let m_red = if a.x != b.x {
+        (b.y - a.y)/(b.x - a.x)
+    } else {
+        std::f64::INFINITY
+    };
+
+    let m_blue = if a.x != p.x {
+        (p.y - a.y)/(p.x - a.x)
+    } else {
+        std::f64::INFINITY
+    };
+    
+    m_blue >= m_red
 }
 
 fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
     
-    if !poly.get_rect().contains_point(&quadtree_f32::Point {
-        x: p.x,
-        y: p.y,
-    }) {
-        return false;
-    }
-
     let mut c_in_outer = false;
     for o in poly.outer_rings.iter() {
         if point_in_line(p, o) {
@@ -1722,7 +1777,7 @@ fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
         }
     }
 
-    if (c_in_outer) {
+    if c_in_outer {
         for i in poly.inner_rings.iter() {
             if point_in_line(p, i) {
                 c_in_outer = false;
@@ -1782,7 +1837,7 @@ fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon) -> bool {
         for q in line.points.windows(2) {
             match &q {
                 &[sa, eb] => {
-                    if dist_to_segment(*p, *sa, *eb).distance < 0.01 {
+                    if dist_to_segment(*p, *sa, *eb).distance < 0.5 {
                         return true;
                     }
                 },

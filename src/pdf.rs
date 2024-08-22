@@ -1077,7 +1077,8 @@ struct FlurenInPdfSpace {
     pub fluren: Vec<TaggedPolygon>,
 }
 
-pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoclean: bool) -> SvgPolygon {
+// only called in stage6 + get_intersections!
+pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
@@ -1098,6 +1099,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
         if i.equals_any_ring(&first).is_some() {
             return i;
         }
+        if nas::only_touches(&first, &i) {
+            continue;
+        }
         let a = translate_to_geo_poly(&first.round_to_3dec());
         let b = translate_to_geo_poly(&i.round_to_3dec());
         let join = a.difference(&b);
@@ -1110,13 +1114,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon], autoc
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        log_1(&"cleanup poly...".into());
-        if autoclean {
-            first = crate::nas::cleanup_poly(&new);
-        } else {
-            first = new;
-        }
-        log_1(&"poly cleaned".into());
+        first = crate::nas::cleanup_poly(&new);
     }
 
     first

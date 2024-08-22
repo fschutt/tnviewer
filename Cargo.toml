@@ -50,4 +50,3 @@ dbase = { git = "https://github.com/fschutt/dbase-rs", default-features = false,
 web-sys = { version = "0.3.69", features = ["console"] }
 float-cmp = "0.9.0"
 ab_glyph = "0.2.28"
-
