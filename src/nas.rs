@@ -1695,9 +1695,15 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
             return Vec::new();
         }
     }
+
+    log_1(&"intersect_polys: only touches check failed".into());
+    log_1(&serde_json::to_string(&a).unwrap_or_default().into());
+    log_1(&serde_json::to_string(&b).unwrap_or_default().into());
+
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
+    log_1(&"intersect ok!".into());
     let s = translate_from_geo_poly(&intersect);
     if autoclean {
         s.iter().map(cleanup_poly).collect()

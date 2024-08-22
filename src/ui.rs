@@ -1170,6 +1170,8 @@ impl AenderungenClean {
         
         let mut is = Vec::new();
         
+        web_sys::console::log_1(&format!("get_aenderungen_intersections: 0").as_str().into());
+
         for (_id, polyneu) in self.aenderungen.na_polygone_neu.iter() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -1207,6 +1209,8 @@ impl AenderungenClean {
                 }
             }
         }
+
+        web_sys::console::log_1(&format!("get_aenderungen_intersections: 9").as_str().into());
 
         let is = is.into_iter().filter_map(|s| {
             if s.poly_cut.is_zero_area() {

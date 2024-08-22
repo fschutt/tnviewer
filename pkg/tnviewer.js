@@ -1,5 +1,23 @@
 let wasm;
 
+const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
+
+if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
+
+let cachedUint8Memory0 = null;
+
+function getUint8Memory0() {
+    if (cachedUint8Memory0 === null || cachedUint8Memory0.byteLength === 0) {
+        cachedUint8Memory0 = new Uint8Array(wasm.memory.buffer);
+    }
+    return cachedUint8Memory0;
+}
+
+function getStringFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
+}
+
 const heap = new Array(128).fill(undefined);
 
 heap.push(undefined, null, true, false);
@@ -27,24 +45,6 @@ function takeObject(idx) {
     const ret = getObject(idx);
     dropObject(idx);
     return ret;
-}
-
-const cachedTextDecoder = (typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }) : { decode: () => { throw Error('TextDecoder not available') } } );
-
-if (typeof TextDecoder !== 'undefined') { cachedTextDecoder.decode(); };
-
-let cachedUint8Memory0 = null;
-
-function getUint8Memory0() {
-    if (cachedUint8Memory0 === null || cachedUint8Memory0.byteLength === 0) {
-        cachedUint8Memory0 = new Uint8Array(wasm.memory.buffer);
-    }
-    return cachedUint8Memory0;
-}
-
-function getStringFromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
 function debugString(val) {
@@ -253,7 +253,6 @@ export function add_nadgrid(key, view) {
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -1132,6 +1131,8 @@ export function export_flst_id_nach_eigentuemer(s) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
+
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0));
@@ -1361,6 +1362,13 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
+    imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
+        const ret = getStringFromWasm0(arg0, arg1);
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_log_5bb5f88f245d7762 = function(arg0) {
+        console.log(getObject(arg0));
+    };
     imports.wbg.__wbindgen_number_new = function(arg0) {
         const ret = arg0;
         return addHeapObject(ret);
@@ -1424,10 +1432,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbindgen_is_function = function(arg0) {
         const ret = typeof(getObject(arg0)) === 'function';
         return ret;
-    };
-    imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
-        const ret = getStringFromWasm0(arg0, arg1);
-        return addHeapObject(ret);
     };
     imports.wbg.__wbg_call_b3ca7c6051f9bec1 = function() { return handleError(function (arg0, arg1, arg2) {
         const ret = getObject(arg0).call(getObject(arg1), getObject(arg2));
@@ -1543,9 +1547,6 @@ function __wbg_get_imports() {
         var len1 = WASM_VECTOR_LEN;
         getInt32Memory0()[arg0 / 4 + 1] = len1;
         getInt32Memory0()[arg0 / 4 + 0] = ptr1;
-    };
-    imports.wbg.__wbg_log_5bb5f88f245d7762 = function(arg0) {
-        console.log(getObject(arg0));
     };
     imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbindgen_memory = function() {

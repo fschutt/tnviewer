@@ -751,7 +751,8 @@ fn write_splitflaechen_beschriftungen(
     log_1(&format!("RISS poly: {riss_poly:?}").into());
 
     let splitflaechen = splitflaechen.iter().flat_map(|sf| {
-        intersect_polys(&sf.poly_cut, &riss_poly, true, true)
+        web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: in loop").as_str().into());
+        let s = intersect_polys(&sf.poly_cut, &riss_poly, true, true)
         .into_iter()
         .map(|f| {
             AenderungenIntersection {
@@ -761,8 +762,13 @@ fn write_splitflaechen_beschriftungen(
                 poly_cut: f.round_to_3dec(),
             }
         })
+        .collect::<Vec<_>>();
+        web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: in loop finished").as_str().into());
+        s.into_iter()
     }).collect::<Vec<_>>();
     
+    web_sys::console::log_1(&format!("write_splitflaechen_beschriftungen: 2").as_str().into());
+
     let texte_bleibt = splitflaechen.iter()
     .filter_map(|s| s.get_text_bleibt())
     .map(|p| {
