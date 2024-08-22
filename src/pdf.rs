@@ -1086,9 +1086,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if first.equals(&i) {
             continue;
         }
-        log_1(&"subtract!".into());
-        log_1(&serde_json::to_string(&first).unwrap_or_default().into());
-        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         if first.is_zero_area() {
             return SvgPolygon::default();
         }
@@ -1117,10 +1114,10 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = crate::nas::cleanup_poly(&new);
+        first = new;
     }
 
-    first
+    crate::nas::cleanup_poly(&first)
 }
 
 pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
@@ -1150,14 +1147,14 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        if autoclean {
-            first = crate::nas::cleanup_poly(&new);
-        } else {
-            first = new;
-        }
+        first = new;
     }
 
-    Some(first)
+    if autoclean {
+        Some(crate::nas::cleanup_poly(&first))
+    } else {
+        Some(first)
+    }
 }
 
 fn get_gebaeude_in_pdf_space(
