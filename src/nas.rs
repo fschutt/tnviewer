@@ -1677,6 +1677,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if b.is_zero_area() {
         return Vec::new();
     }
+    if a.equals(&b) {
+        return vec![a];
+    }
     // TODO: nas::only_touches crashes here???
     if a.equals_any_ring(&b).is_some() {
         return vec![a];
@@ -1685,6 +1688,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
         return vec![b];
     }
     if only_touches_check {
+        log_1(&"only touches check!".into());
+        log_1(&serde_json::to_string(&a).unwrap_or_default().into());
+        log_1(&serde_json::to_string(&b).unwrap_or_default().into());
         if crate::nas::only_touches(&a, &b) {
             return Vec::new();
         }
