@@ -1161,8 +1161,22 @@ pub struct AenderungenClean {
     pub aenderungen: Aenderungen, 
 }
 
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
+
+impl AenderungenIntersections {
+    pub fn deduplicate(&self) -> Self {
+        // TODO
+        self.clone()
+    }
+    pub fn merge_to_nearest(&self) -> Self {
+        // TODO
+        self.clone()
+    }
+}
+
 impl AenderungenClean {
-    pub fn get_aenderungen_intersections(&self) -> Vec<AenderungenIntersection> {
+    pub fn get_aenderungen_intersections(&self) -> AenderungenIntersections {
         
         let mut is = Vec::new();
         
@@ -1301,8 +1315,7 @@ impl AenderungenClean {
             !i.poly_cut.is_empty() && !i.poly_cut.is_zero_area()
         }).collect::<Vec<_>>();
 
-        is
-
+        AenderungenIntersections(is).deduplicate().merge_to_nearest()
     }
 }
 
@@ -1431,6 +1444,16 @@ impl AenderungenIntersection {
     }
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
+
+        let such_id = match FlstIdParsed::from_str(&flst_id).parse_num() {
+            Some(s) => s,
+            None => return Status::Bleibt,
+        };
+
+        let splitflaechen = splitflaechen.iter().filter(|sf| {
+            let flst_id = FlstIdParsed::from_str(&sf.flst_id).parse_num();
+            flst_id.as_ref() == Some(&such_id)
+        }).collect::<Vec<_>>();
 
         log_status("1");
         let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
@@ -1884,7 +1907,7 @@ impl Aenderungen {
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: intersections.iter().enumerate().map(|(i, is)| {
+            na_polygone_neu: intersections.0.iter().enumerate().map(|(i, is)| {
                 let id = format!("{i}: {k} :: {n}", k = is.alt, n = is.neu);
                 (id, PolyNeu {
                     nutzung: Some(is.neu.clone()),

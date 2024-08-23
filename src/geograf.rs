@@ -4,7 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{ExistierendeBeschriftungen, RissConfig, RissExtentReprojected}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{ExistierendeBeschriftungen, RissConfig, RissExtentReprojected}, ui::AenderungenIntersections, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -140,7 +140,7 @@ pub fn export_aenderungen_geograf(
     log_status("Berechne Splitflächen...");
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
 
-    log_status(&format!("OK: {} Splitflächen", splitflaechen.len()));
+    log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
 
     let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
     let mut antragsnr = projekt_info.antragsnr.trim().to_string();
@@ -149,7 +149,7 @@ pub fn export_aenderungen_geograf(
     }
     files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
 
-    log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.len()));
+    log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.0.len()));
 
     let (num_eigentuemer, eigentuemer_xlsx) = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
@@ -166,7 +166,7 @@ pub fn export_aenderungen_geograf(
             projekt_info, 
             konfiguration,
             None, 
-            &splitflaechen, 
+            &splitflaechen.0, 
             &split_nas, 
             &nas_xml,
             None,
@@ -184,7 +184,7 @@ pub fn export_aenderungen_geograf(
                 None => continue,
             };
             let extent_rect = extent.get_rect();
-            let splitflaechen_for_riss = splitflaechen
+            let splitflaechen_for_riss = splitflaechen.0
                 .iter()
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
@@ -213,7 +213,7 @@ pub fn export_aenderungen_geograf(
 
 pub fn eigentuemer_bearbeitete_flst_xlsx(
     datensaetze: &CsvDataType,
-    splitflaechen: &[AenderungenIntersection],
+    splitflaechen: &AenderungenIntersections,
 ) -> (usize, Vec<u8>) {
     let data = datensaetze.iter().map(|(flst_id, v)| {
         (flst_id.clone(), v.iter().map(|cs| {
@@ -221,7 +221,7 @@ pub fn eigentuemer_bearbeitete_flst_xlsx(
                 eigentuemer: cs.eigentuemer.trim().to_string(),
                 nutzung: cs.nutzung.trim().to_string(),
                 notiz: String::new(),
-                status: AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id),
+                status: AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id),
             }
         }).collect())
     }).collect();
@@ -231,7 +231,7 @@ pub fn eigentuemer_bearbeitete_flst_xlsx(
 
 pub fn splitflaechen_zu_xlsx(
     datensaetze: &CsvDataType,
-    splitflaechen: &[AenderungenIntersection],
+    splitflaechen: &AenderungenIntersections,
 ) -> Vec<u8> {
     
     use simple_excel_writer::*;
@@ -258,9 +258,9 @@ pub fn splitflaechen_zu_xlsx(
             };
             let f = FlstIdParsed::from_str(flst_id).parse_num().unwrap_or_default();
             log_status(&format!("Fl. {} Flst. {}: get auto notiz...", f.get_flur(), f.format_str()));
-            let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
+            let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
             log_status("get auto status...");
-            let status = AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id);
+            let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
             log_status("ok");
             let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
             eigentuemer.sort();
@@ -292,7 +292,7 @@ pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
     original_xml: &NasXMLFile,
-) -> Vec<AenderungenIntersection> {
+) -> AenderungenIntersections {
 
     log_status(&format!("Änderungen nach Typ mergen..."));
 

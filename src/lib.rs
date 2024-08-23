@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
-use ui::{Aenderungen, PolyNeu};
+use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
 use wasm_bindgen::prelude::*;
 use xml::XmlNode;
