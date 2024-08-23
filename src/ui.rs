@@ -1482,7 +1482,9 @@ impl AenderungenIntersection {
         if self.alt == self.neu {
             return None;
         }
+        log_status(&format!("get_text_alt: {}", serde_json::to_string(&self).unwrap_or_default()));
         let pos = self.poly_cut.get_label_pos(0.001)?;
+        log_status("ok!");
         Some(TextPlacement {
             status: TextStatus::Old,
             kuerzel: self.alt.clone(),

@@ -4,7 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{ExistierendeBeschriftungen, RissConfig, RissExtentReprojected}, ui::AenderungenIntersections, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{ExistierendeBeschriftungen, ExtraInfos, RissConfig, RissExtentReprojected}, ui::AenderungenIntersections, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -412,12 +412,14 @@ pub fn export_splitflaechen(
         num_riss, 
         total_risse,
         lq,
-        aenderungen_rote_linien,
-        ExistierendeBeschriftungen {
-            texte_alt: aenderungen_texte_alt,
-            texte_bleibt: aenderungen_texte_bleibt,
-            texte_neu: aenderungen_texte_neu,
-        }
+        Some(&ExtraInfos {
+            rote_linien: aenderungen_rote_linien,
+            beschriftungen: ExistierendeBeschriftungen {
+                texte_alt: aenderungen_texte_alt,
+                texte_bleibt: aenderungen_texte_bleibt,
+                texte_neu: aenderungen_texte_neu,
+            },
+        })
     );
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
     log_status(&format!("PDF-Vorschau generiert."));
@@ -744,8 +746,7 @@ pub fn generate_pdf_vorschau(
     num_riss: usize,
     total_risse: usize,
     linienquadtree: &LinienQuadTree,
-    rote_linien: Vec<SvgLine>,
-    beschriftungen: ExistierendeBeschriftungen,
+    extra_infos: Option<&ExtraInfos>,
 ) -> Vec<u8> {
 
     let extent_rect = match extent_rect {
@@ -767,8 +768,6 @@ pub fn generate_pdf_vorschau(
     };
 
     let risse = vec![(format!("Riss{num_riss}"), rc)].into_iter().collect::<BTreeMap<_, _>>();
-    let rote_linien_btree = vec![(format!("Riss{num_riss}"), rote_linien)].into_iter().collect::<BTreeMap<_, _>>();
-    let beschriftungen_btree = vec![(format!("Riss{num_riss}"), beschriftungen)].into_iter().collect::<BTreeMap<_, _>>();
 
     let pdf = crate::pdf::generate_pdf_internal(
         info,
@@ -780,8 +779,7 @@ pub fn generate_pdf_vorschau(
         &map.into_iter().collect(),
         &mut Vec::new(),
         linienquadtree,
-        &rote_linien_btree,
-        &beschriftungen_btree,
+        extra_infos,
     );
 
     pdf
