@@ -1432,15 +1432,21 @@ impl AenderungenIntersection {
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
 
+        log_status("1");
         let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
 
         if !wurde_veraendert {
             return Status::Bleibt;
         }
         
+        log_status("2");
+
         let alte_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.alt)).collect::<BTreeSet<_>>();
+        log_status("3");
         let neue_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.neu)).collect::<BTreeSet<_>>();
+        log_status("4");
         let veraendert_2 = alte_wirtschaftsarten.symmetric_difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
+        log_status("5");
 
         if veraendert_2.is_empty() {
             Status::AenderungKeineBenachrichtigung
