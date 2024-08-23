@@ -22,6 +22,7 @@ pub mod uuid_wasm;
 pub mod zip;
 pub mod geograf;
 pub mod david;
+pub mod optimize_labels;
 
 pub const ARIAL_TTF: &[u8] = include_bytes!("./Arial.ttf");
 
@@ -48,8 +49,8 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = "";
-    let poly_string2 = "";
+    let poly_string1 = "{\"outer_rings\":[{\"points\":[{\"x\":425249.392,\"y\":5917378.88},{\"x\":425280.552,\"y\":5917417.697},{\"x\":425278.015,\"y\":5917423.229},{\"x\":425253.759,\"y\":5917392.901},{\"x\":425243.966,\"y\":5917380.735},{\"x\":425249.392,\"y\":5917378.88}]}],\"inner_rings\":[]}}";
+    let poly_string2 = "{\"outer_rings\":[{\"points\":[{\"x\":424728.055,\"y\":5917172.236},{\"x\":424730.042,\"y\":5917174.526},{\"x\":424546.837,\"y\":5917226.357},{\"x\":424545.232,\"y\":5917224.054},{\"x\":424728.055,\"y\":5917172.236}]}],\"inner_rings\":[]}";
 
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();

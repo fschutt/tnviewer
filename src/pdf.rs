@@ -12,7 +12,7 @@ use crate::csv::CsvDataType;
 use crate::nas::{
     intersect_polys, parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
-use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement};
+use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
 use crate::xml::{self, XmlNode};
 
@@ -329,110 +329,86 @@ pub struct RissConfig {
     pub scale: f32,
 }
 
-pub enum Aenderung {
-    GebauedeLoeschen {
-        id: String,
-    },
-    NutzungAendern {
-        nutzung_alt: String,
-        nutzung_neu: String,
-    },
-    NutzungZerlegen {
-        nutzung_alt: String,
-        nutzung_neu: BTreeMap<SvgLine, String>,
-    },
-    RingAnpassen {
-        neue_ringe: BTreeMap<String, SvgLine>,
-    },
-    RingLoeschen {
-        ring_geloeschet: String,
+pub struct Fluren {
+    pub fluren: Vec<TaggedPolygon>,
+}
+
+pub struct FlurenInPdfSpace {
+    pub fluren: Vec<TaggedPolygon>,
+}
+
+
+impl Fluren {
+    pub fn to_pdf_space(&self, riss: &RissExtentReprojected, rc: &RissConfig) -> FlurenInPdfSpace {
+        FlurenInPdfSpace {
+            fluren: self.fluren.iter().map(|tp| TaggedPolygon {
+                attributes: tp.attributes.clone(),
+                poly: poly_into_pdf_space(&tp.poly, riss, rc)
+            }).collect()
+        }
     }
 }
 
-// + Risse config
-// + Änderungen
-pub fn generate_pdf(
-    projekt_info: &ProjektInfo,
-    konfiguration: &Konfiguration,
-    csv: &CsvDataType, 
-    xml_original: Vec<XmlNode>,
-    aenderungen: &Aenderungen, 
-    risse: &Risse,
-    riss_map: &RissMap,
-    log: &mut Vec<String>,
-) -> Vec<u8> {
 
-    let len = risse.len();
-    if len == 0 {
-        return Vec::new();
+pub struct Flurstuecke {
+    pub flst: Vec<TaggedPolygon>,
+}
+
+pub struct FlurstueckeInPdfSpace {
+    pub flst: Vec<TaggedPolygon>,
+}
+
+impl Flurstuecke {
+    pub fn to_pdf_space(&self, riss: &RissExtentReprojected, rc: &RissConfig) -> FlurstueckeInPdfSpace {
+        FlurstueckeInPdfSpace {
+            flst: self.flst.iter().map(|tp| TaggedPolygon {
+                attributes: tp.attributes.clone(),
+                poly: poly_into_pdf_space(&tp.poly, riss, rc)
+            }).collect()
+        }
     }
-
-    let whitelist = crate::xml::get_all_nodes_in_tree(&xml_original)
-        .iter()
-        .filter(|n| n.node_type.starts_with("AX_"))
-        .map(|n| n.node_type.clone())
-        .collect::<Vec<_>>();
-
-    let xml = match parse_nas_xml(xml_original, &whitelist, log) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&xml, log) {
-        Ok(o) => o,
-        Err(e) => return Vec::new(),
-    };
-
-    // AX_Flurstueck, AX_Flur, AX_BauRaumBodenOrdnungsRecht
-
-    let lq = nas_cut_original.get_linien_quadtree();
-
-    generate_pdf_internal(
-        projekt_info,
-        konfiguration,
-        &xml,
-        &nas_cut_original,
-        &[],
-        risse,
-        &riss_map.iter().filter_map(|(k, v)| Some((k.clone(), v.reproject(&xml.crs, log)?))).collect(),
-        log,
-        &lq,
-        None,
-    )
 }
 
-
-pub struct ExtraInfos {
-    pub rote_linien: Vec<SvgLine>,
-    pub beschriftungen: ExistierendeBeschriftungen,
+pub struct Gebaeude {
+    pub gebaeude: Vec<TaggedPolygon>,
 }
 
-pub struct ExistierendeBeschriftungen {
-    pub texte_alt: Vec<TextPlacement>,
-    pub texte_neu: Vec<TextPlacement>,
-    pub texte_bleibt: Vec<TextPlacement>,
+pub struct GebaeudeInPdfSpace {
+    pub gebaeude: Vec<TaggedPolygon>,
+}
+
+impl Gebaeude {
+    pub fn to_pdf_space(&self, riss: &RissExtentReprojected, rc: &RissConfig) -> GebaeudeInPdfSpace {
+        GebaeudeInPdfSpace {
+            gebaeude: self.gebaeude.iter().map(|tp| TaggedPolygon {
+                attributes: tp.attributes.clone(),
+                poly: poly_into_pdf_space(&tp.poly, riss, rc)
+            }).collect()
+        }
+    }
 }
 
 pub fn generate_pdf_internal(
+    riss_von: (usize, usize), // Riss X von Y
     projekt_info: &ProjektInfo,
     konfiguration: &Konfiguration,
-    xml: &NasXMLFile,
-    nas_cut_original: &SplitNasXml,
-    splitflaechen: &[AenderungenIntersection],
-    risse: &Risse,
-    riss_map_reprojected: &RissMapReprojected,
-    log: &mut Vec<String>,
-    linienquadtree: &LinienQuadTree,
-    extra_infos: Option<&ExtraInfos>,
-) -> Vec<u8> {
+    nutzungsarten: &SplitNasXml,
+    rc: &RissConfig,
+    riss_extent: &RissExtentReprojected,
 
-    let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
+    splitflaechen: &[AenderungenIntersection],
+    rote_linien: &Vec<SvgLine>, // in ETRS space
+    beschriftungen: &[TextPlacement], // in ETRS space
+    fluren: &Fluren, // in ETRS space,
+    flst: &Flurstuecke, // in ETRS space
+    gebaeude: &Gebaeude, // in ETRS space
+) -> Vec<u8> {
 
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Riss",
-        Mm(risse.iter().next().map(|(k, v)| v.width_mm).unwrap_or(210.0)),
-        Mm(risse.iter().next().map(|(k, v)| v.height_mm).unwrap_or(297.0)),
-        &format!("Riss 1 / {} ({first_riss_id})", risse.len()),
+        Mm(rc.width_mm),
+        Mm(rc.height_mm),
+        &format!("Riss {} / {}", riss_von.0, riss_von.1),
     );
 
     doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
@@ -456,89 +432,54 @@ pub fn generate_pdf_internal(
         Err(_) => return Vec::new(),
     };
 
-    for (i, (ri, rc))  in risse.iter().enumerate() {
+    let (page, layer) = (page1, layer1);
 
-        let riss_extent = match riss_map_reprojected.get(ri) {
-            Some(s) => s,
-            None => continue,
-        };
+    let page = doc.get_page(page);
+    let mut layer = page.get_layer(layer);
 
-        let p = ri.split("-").next().unwrap_or("");
-        let (page, layer) = if i == 0 {
-            (page1, layer1)
-        } else {
-            doc.add_page(Mm(rc.width_mm), Mm(rc.height_mm), &format!("Riss {} / {} ({p})", risse.len(), i + 1))
-        };
+    let nutzungsarten = reproject_splitnas_into_pdf_space(
+        &nutzungsarten,
+        &riss_extent,
+        rc,
+        &mut Vec::new(),
+    );
 
-        let page = doc.get_page(page);
-        let mut layer = page.get_layer(layer);
+    let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, &mut Vec::new());
 
-        let nutzungsarten = reproject_splitnas_into_pdf_space(
-            &nas_cut_original,
-            &riss_extent,
-            rc,
-            log
-        );
+    log_status(&format!("Rendere Gebäude..."));
+    let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), &mut Vec::new());
 
-        let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, log);
+    log_status(&format!("Rendere Flurstücke..."));
+    let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
 
-        let gebaeude = get_gebaeude_in_pdf_space(&xml, riss_extent, rc, log);
+    log_status(&format!("Rendere Fluren..."));
+    let _ = write_fluren(&mut layer, &fluren.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
 
-        let _ = write_gebaeude(&mut layer, &gebaeude, log);
+    log_status(&format!("Rendere rote Linien..."));
+    let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
+    let _ = write_rote_linien(&mut layer, &rote_linien);
 
-        let flst = get_flurstuecke_in_pdf_space(
-            &xml,
-            &riss_extent,
-            rc,
-            log
-        );
+    log_status(&format!("Rendere Beschriftungen..."));
+    let _ = write_splitflaechen_beschriftungen(
+        &mut layer, 
+        &helvetica,
+        riss_extent, 
+        rc,
+        beschriftungen,
+    );
 
-        let _ = write_flurstuecke(&mut layer, &flst, &konfiguration, log);
-
-        // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
-
-        log_status(&format!("Rendere Fluren..."));
-        let fluren = get_fluren_in_pdf_space(
-            &xml,
-            &riss_extent,
-            rc,
-            log
-        );
-
-        let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
-
-        log_status(&format!("Rendere rote Linien..."));
-        let rote_linien = extra_infos.as_ref().map(|s| s.rote_linien.clone())
-        .unwrap_or_else(|| get_aenderungen_rote_linien(splitflaechen, linienquadtree))
-        .into_iter().map(|l| {
-            line_into_pdf_space(&l, riss_extent, rc, &mut Vec::new())
-        }).collect::<Vec<_>>();
-
-        let _ = write_rote_linien(&mut layer, &rote_linien);
-        
-        log_status(&format!("Rendere Beschriftungen..."));
-        let _ = write_splitflaechen_beschriftungen(
-            &mut layer, 
-            &helvetica,
-            splitflaechen, 
-            riss_extent, 
-            rc,
-            extra_infos.as_ref().map(|s| &s.beschriftungen),
-        );
-
-        let _ = write_border(
-            &mut layer, 
-            &rc,
-            projekt_info,
-            nas_cut_original,
-            &times_roman,
-            &times_roman_bold,
-            Some(riss_extent.get_rect()),
-            i + 1,
-            risse.len(),
-            16.5
-        );
-    }
+    let _ = write_border(
+        &mut layer, 
+        &rc,
+        projekt_info,
+        &nutzungsarten,
+        &times_roman,
+        &times_roman_bold,
+        Some(riss_extent.get_rect()),
+        riss_von.0,
+        riss_von.1,
+        16.5
+    );
 
     log_status(&format!("PDF fertig."));
 
@@ -629,7 +570,7 @@ pub fn reproject_splitflaechen_into_pdf_space(
         alt: s.alt.clone(),
         neu: s.neu.clone(),
         flst_id: s.flst_id.clone(),
-        poly_cut: poly_into_pdf_space(&s.poly_cut, &riss, riss_config, log),
+        poly_cut: poly_into_pdf_space(&s.poly_cut, &riss, riss_config),
     }).collect())
 }
 
@@ -653,7 +594,7 @@ fn reproject_splitnas_into_pdf_space(
                 if s.get_rect().overlaps_rect(&target_riss) {
                     Some(TaggedPolygon {
                         attributes: s.attributes.clone(),
-                        poly: poly_into_pdf_space(&s.poly, &riss, riss_config, log),
+                        poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
                     })
                 } else {
                     None
@@ -682,7 +623,7 @@ fn reproject_nasxml_into_pdf_space(
             v.iter().map(|s| {
                 TaggedPolygon {
                     attributes: s.attributes.clone(),
-                    poly: poly_into_pdf_space(&s.poly, &riss, riss_config, log),
+                    poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
                 }
             }).collect())
         }).collect()
@@ -693,11 +634,10 @@ fn poly_into_pdf_space(
     poly: &SvgPolygon,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
-    log: &mut Vec<String>,
 ) -> SvgPolygon {
     SvgPolygon { 
-        outer_rings: poly.outer_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config, log)).collect(), 
-        inner_rings: poly.inner_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config, log)).collect(), 
+        outer_rings: poly.outer_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
+        inner_rings: poly.inner_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
     }
 }
 
@@ -705,7 +645,6 @@ fn line_into_pdf_space(
     line: &SvgLine,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
-    log: &mut Vec<String>,
 ) -> SvgLine {
     SvgLine {
         points: line.points.iter().map(|p| {
@@ -760,72 +699,40 @@ fn write_rote_linien(
 fn write_splitflaechen_beschriftungen(
     layer: &mut PdfLayerReference,
     font: &IndirectFontRef,
-    splitflaechen: &[AenderungenIntersection],
     riss_extent: &RissExtentReprojected,
     riss: &RissConfig,
-    beschriftungen: Option<&ExistierendeBeschriftungen>,
+    beschriftungen: &[TextPlacement],
 ) -> Option<()> {
 
-    let riss_poly = riss_extent.get_poly();
-
-    let (texte_alt, texte_neu, texte_bleibt) = match beschriftungen {
-        Some(a) => (a.texte_alt.clone(), a.texte_neu.clone(), a.texte_bleibt.clone()),
-        None => {
-            let splitflaechen = splitflaechen.iter().flat_map(|sf| {
-                intersect_polys(&sf.poly_cut, &riss_poly, true, true)
-                .into_iter()
-                .map(|f| {
-                    AenderungenIntersection {
-                        alt: sf.alt.clone(),
-                        neu: sf.neu.clone(),
-                        flst_id: sf.flst_id.clone(),
-                        poly_cut: f.round_to_3dec(),
-                    }
-                })
-            }).collect::<Vec<_>>();
-            
-            let texte_bleibt = splitflaechen.iter()
-            .filter_map(|s| s.get_text_bleibt())
-            .collect::<Vec<_>>();
-        
-            let texte_neu = splitflaechen.iter()
-            .filter_map(|s| s.get_text_neu())
-            .collect::<Vec<_>>();
-        
-            let texte_alt = splitflaechen.iter()
-            .filter_map(|s| s.get_text_alt())
-            .collect::<Vec<_>>();
-
-            (texte_alt, texte_neu, texte_bleibt)
-        }
-    };
-
-    let texte_alt = texte_alt.into_iter()
+    let texte_alt = beschriftungen.iter()
+    .filter(|s| s.status == TextStatus::Old)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
+            kuerzel: p.kuerzel.clone(),
+            status: p.status.clone(),
             pos: point_into_pdf_space(&p.pos, riss_extent, riss),
         }
     })
     .collect::<Vec<_>>();
 
 
-    let texte_neu = texte_neu.into_iter()
+    let texte_neu = beschriftungen.into_iter()
+    .filter(|s| s.status == TextStatus::New)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
+            kuerzel: p.kuerzel.clone(),
+            status: p.status.clone(),
             pos: point_into_pdf_space(&p.pos, riss_extent, riss),
         }
     })
     .collect::<Vec<_>>();
 
-    let texte_bleibt = texte_bleibt.into_iter()
+    let texte_bleibt = beschriftungen.into_iter()
+    .filter(|s| s.status == TextStatus::StaysAsIs)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
+            kuerzel: p.kuerzel.clone(),
+            status: p.status.clone(),
             pos: point_into_pdf_space(&p.pos, riss_extent, riss),
         }
     })
@@ -1063,16 +970,10 @@ fn write_nutzungsarten(
     Some(())
 }
 
-pub struct FlurstueckeInPdfSpace {
-    pub flst: Vec<TaggedPolygon>,
-}
-
-pub fn get_flurstuecke_in_pdf_space(
+pub fn get_flurstuecke(
     xml: &NasXMLFile,
     riss: &RissExtentReprojected,
-    riss_config: &RissConfig,
-    log: &mut Vec<String>
-) -> FlurstueckeInPdfSpace {
+) -> Flurstuecke {
 
     let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
     flst.retain(|s| {
@@ -1080,21 +981,9 @@ pub fn get_flurstuecke_in_pdf_space(
         rb.overlaps_rect(&s.get_rect())
     });
 
-    FlurstueckeInPdfSpace {
-        flst: flst.into_iter().map(|s| TaggedPolygon {
-            attributes: s.attributes,
-            poly: poly_into_pdf_space(&s.poly, riss, riss_config, log)
-        }).collect()
-    }
+    Flurstuecke { flst }
 }
 
-struct GebaeudeInPdfSpace {
-    pub gebaeude: Vec<TaggedPolygon>,
-}
-
-struct FlurenInPdfSpace {
-    pub fluren: Vec<TaggedPolygon>,
-}
 
 // only called in stage6 + get_intersections!
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
@@ -1187,12 +1076,10 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
     Some(first)
 }
 
-fn get_gebaeude_in_pdf_space(
+pub fn get_gebaeude(
     xml: &NasXMLFile,
     riss: &RissExtentReprojected,
-    riss_config: &RissConfig,
-    log: &mut Vec<String>
-) -> GebaeudeInPdfSpace {
+) -> Gebaeude {
 
     let mut gebaeude = xml.ebenen.get("AX_Gebaeude").cloned().unwrap_or_default();
     gebaeude.retain(|s| {
@@ -1200,23 +1087,10 @@ fn get_gebaeude_in_pdf_space(
         rb.overlaps_rect(&s.get_rect())
     });
 
-    GebaeudeInPdfSpace {
-        gebaeude: gebaeude.iter().filter_map(|v| {
-            let joined = poly_into_pdf_space(&v.poly, riss, riss_config, log);
-            Some(TaggedPolygon {
-                attributes: BTreeMap::new(),
-                poly: joined,
-            })
-        }).collect()
-    }
+    Gebaeude { gebaeude }
 }
 
-fn get_fluren_in_pdf_space(
-    xml: &NasXMLFile,
-    riss: &RissExtentReprojected,
-    riss_config: &RissConfig,
-    log: &mut Vec<String>
-) -> FlurenInPdfSpace {
+pub fn get_fluren(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Fluren {
 
     let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
     flst.retain(|s| {
@@ -1239,7 +1113,7 @@ fn get_fluren_in_pdf_space(
         fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
     }
 
-    FlurenInPdfSpace {
+    Fluren {
         fluren: fluren_map.iter().filter_map(|(k, v)| {
             let polys = v.iter()
             .map(|s| s.poly.clone())
@@ -1247,7 +1121,6 @@ fn get_fluren_in_pdf_space(
             log_status(&format!("joining fluren flur {k}..."));
             let joined = join_polys(&polys, false, true)?;
             log_status("joined!");
-            let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
                 poly: joined,

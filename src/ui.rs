@@ -1199,6 +1199,34 @@ impl AenderungenIntersections {
         // TODO
         self.clone()
     }
+    pub fn get_texte(s: &[AenderungenIntersection], tolerance: f64) -> Vec<TextPlacement> {
+        s.iter().flat_map(|q| {
+            let lp = match q.poly_cut.get_label_pos(tolerance) {
+                Some(s) => s,
+                None => return Vec::new(),
+            };
+            if q.alt == q.neu {
+                vec![TextPlacement {
+                    kuerzel: q.alt.clone(),
+                    status: TextStatus::StaysAsIs,
+                    pos: lp.clone(),
+                }]
+            } else {
+                vec![
+                    TextPlacement {
+                        kuerzel: q.alt.clone(),
+                        status: TextStatus::Old,
+                        pos: lp.clone(),
+                    },
+                    TextPlacement {
+                        kuerzel: q.neu.clone(),
+                        status: TextStatus::New,
+                        pos: lp.clone(),
+                    },
+                ]
+            }
+        }).collect()
+    }
 }
 
 impl AenderungenClean {
@@ -1496,46 +1524,6 @@ impl AenderungenIntersection {
         } else {
             Status::AenderungMitBenachrichtigung
         }
-    }
-
-    pub fn get_text_alt(&self) -> Option<TextPlacement> {
-        if self.alt == self.neu {
-            return None;
-        }
-        log_status(&format!("get_text_alt: {}", serde_json::to_string(&self).unwrap_or_default()));
-        let pos = self.poly_cut.get_label_pos(0.001)?;
-        log_status("ok!");
-        Some(TextPlacement {
-            status: TextStatus::Old,
-            kuerzel: self.alt.clone(),
-            pos: pos,
-        })
-    }
-
-    pub fn get_text_neu(&self) -> Option<TextPlacement> {
-        if self.alt == self.neu {
-            return None;
-        }
-        Some(TextPlacement {
-            status: TextStatus::New,
-            kuerzel: self.neu.clone(),
-            pos: {
-                let mut pos = self.poly_cut.get_label_pos(0.001)?;
-                pos.y -= 10.0;
-                pos
-            }
-        })
-    }
-
-    pub fn get_text_bleibt(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
-            return None;
-        }
-        Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
-            kuerzel: self.alt.clone(),
-            pos: self.poly_cut.get_label_pos(0.001)?
-        })
     }
 }
 

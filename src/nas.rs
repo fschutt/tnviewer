@@ -979,10 +979,21 @@ impl SvgPolygon {
             return None;
         }
 
+        let rect = self.get_rect();
+        let center = rect.get_center();
+
+        Some(SvgPoint {
+            x: center.x,
+            y: center.y,
+        })
+
+        /* 
         log_status("get_label_pos: ");
         log_status(&serde_json::to_string(&self).unwrap_or_default());
 
-        let coords_outer = self.outer_rings.iter().flat_map(|line| {
+        let out = self.round_to_3dec();
+
+        let coords_outer = out.outer_rings.iter().flat_map(|line| {
             line.points.iter().map(|p| (p.x, p.y))
        }).collect::<Vec<_>>();
 
@@ -993,7 +1004,7 @@ impl SvgPolygon {
                    y: *y,
                }).collect()
            },
-           interiors: self.inner_rings.iter().map(|l| polylabel_mini::LineString {
+           interiors: out.inner_rings.iter().map(|l| polylabel_mini::LineString {
                points: l.points.iter().map(|p| polylabel_mini::Point {
                    x: p.x,
                    y: p.y,
@@ -1007,6 +1018,7 @@ impl SvgPolygon {
             x: label_pos.x,
             y: label_pos.y,
        })
+       */
     }
 }
 
@@ -1071,6 +1083,12 @@ pub struct SvgPoint {
 
 impl SvgPoint {
 
+    pub fn translate(&self, x: f64, y: f64) -> Self {
+        Self {
+            x: self.x + x,
+            y: self.y + y,
+        }
+    }
     pub fn dist(&self, other: &Self) -> f64 {
         crate::ui::dist(*self, *other)
     }
@@ -1882,7 +1900,7 @@ fn ray_intersects_segment(p: &SvgPoint, (mut a, mut b): (&SvgPoint, &SvgPoint)) 
     m_blue >= m_red
 }
 
-fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
+pub fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygon) -> bool {
     
     let mut c_in_outer = false;
     for o in poly.outer_rings.iter() {

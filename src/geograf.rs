@@ -4,7 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{ExistierendeBeschriftungen, ExtraInfos, RissConfig, RissExtentReprojected}, ui::AenderungenIntersections, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{get_fluren, get_flurstuecke, get_gebaeude, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -170,7 +170,6 @@ pub fn export_aenderungen_geograf(
             &split_nas, 
             &nas_xml,
             None,
-            None,
             1,
             1,
             &lq,
@@ -197,8 +196,7 @@ pub fn export_aenderungen_geograf(
                 &splitflaechen_for_riss, 
                 &split_nas, 
                 &nas_xml,
-                Some(r.clone()),
-                Some(extent_rect.clone()),
+                Some((r.clone(), extent.clone())),
                 i + 1,
                 risse.len(),
                 &lq,
@@ -355,8 +353,7 @@ pub fn export_splitflaechen(
     splitflaechen: &[AenderungenIntersection],
     split_nas: &SplitNasXml,
     nas_xml: &NasXMLFile,
-    riss_config: Option<RissConfig>,
-    extent_rect: Option<Rect>,
+    riss: Option<(RissConfig, RissExtentReprojected)>,
     num_riss: usize,
     total_risse: usize,
     lq: &LinienQuadTree,
@@ -364,7 +361,7 @@ pub fn export_splitflaechen(
 
     log_status(&format!("[{num_riss} / {total_risse}] Export {} Teilflächen", splitflaechen.len()));
 
-    let header = generate_header_pdf(info, split_nas, extent_rect, num_riss, total_risse);
+    let header = generate_header_pdf(info, split_nas, riss.as_ref().map(|(_, s)| s.get_rect()), num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
     let legende = generate_legende_xlsx(splitflaechen);
@@ -382,42 +379,87 @@ pub fn export_splitflaechen(
     }
     log_status(&format!("{} rote Linien generiert.", aenderungen_rote_linien.len()));
 
-    let aenderungen_texte_bleibt = splitflaechen
-        .iter().filter_map(|sf| sf.get_text_bleibt()).collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Bleibt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
-    log_status(&format!("{} Texte: Keine Kürzel-Änderung", aenderungen_texte_bleibt.len()));
+    let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(splitflaechen, 0.001);
+    log_status(&format!("{} Texte generiert", aenderungen_texte.len()));
 
-    let aenderungen_texte_alt = splitflaechen
-        .iter().filter_map(|sf| sf.get_text_alt()).collect::<Vec<_>>();
+    // optimize_texts();
+
+    let aenderungen_texte_bleibt = aenderungen_texte
+        .iter().filter(|sf| sf.status == TextStatus::StaysAsIs)
+        .cloned().collect::<Vec<_>>();
+    files.push((parent_dir.clone(), format!("Texte_Bleibt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
+    log_status(&format!("{} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
+
+    let aenderungen_texte_alt = aenderungen_texte
+        .iter().filter(|sf| sf.status == TextStatus::Old)
+        .cloned().collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Texte_Alt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
     log_status(&format!("{} Texte: alte Kürzel", aenderungen_texte_alt.len()));
 
-    let aenderungen_texte_neu = splitflaechen
-        .iter().filter_map(|sf| sf.get_text_neu()).collect::<Vec<_>>();
+    let aenderungen_texte_neu = aenderungen_texte
+        .iter().filter(|sf| sf.status == TextStatus::New)
+        .cloned().collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Texte_Neu_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
     log_status(&format!("{} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
     log_status(&format!("Generiere PDF-Vorschau..."));
-    let pdf_vorschau = generate_pdf_vorschau(
-        info, 
-        konfiguration, 
-        splitflaechen, 
-        nas_xml, 
-        split_nas, 
-        riss_config,
-        extent_rect, 
-        num_riss, 
-        total_risse,
-        lq,
-        Some(&ExtraInfos {
-            rote_linien: aenderungen_rote_linien,
-            beschriftungen: ExistierendeBeschriftungen {
-                texte_alt: aenderungen_texte_alt,
-                texte_bleibt: aenderungen_texte_bleibt,
-                texte_neu: aenderungen_texte_neu,
-            },
-        })
+    /*
+    
+    //  get_gebaeude_in_pdf_space(&xml, riss_extent, rc, log);
+
+    let fluren = get_fluren_in_pdf_space(
+        &xml,
+        &riss_extent,
+        rc,
+        log
     );
+
+    extra_infos.as_ref().map(|s| s.rote_linien.clone())
+    .unwrap_or_else(|| get_aenderungen_rote_linien(splitflaechen, linienquadtree))
+    .into_iter()
+
+    get_flurstuecke_in_pdf_space(
+        &xml,
+        &riss_extent,
+        rc,
+        log
+    )
+
+    optimize_labels(
+        &flst,
+        &gebaeude,
+        &[],
+        // text positions,
+        &riss_extent,
+        1.0,
+    );
+
+    */
+
+
+    let pdf_vorschau = riss.as_ref().map(|(rc, riss_extent)| {
+        // export_splitflaechen
+
+        let flst = get_flurstuecke(nas_xml, riss_extent);
+        let fluren = get_fluren(nas_xml, riss_extent);
+        let gebaeude = get_gebaeude(nas_xml, riss_extent);
+        
+        crate::pdf::generate_pdf_internal(
+            (num_riss, total_risse),
+            info,
+            konfiguration,
+            split_nas,
+            rc,
+            riss_extent,
+            splitflaechen,
+            &aenderungen_rote_linien,
+            &aenderungen_texte,
+            &fluren,
+            &flst,
+            &gebaeude,
+        )
+    }).unwrap_or_default();
+
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
     log_status(&format!("PDF-Vorschau generiert."));
   
@@ -729,57 +771,6 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
     layer1.end_text_section();
 
     doc.save_to_bytes().unwrap_or_default()
-}
-
-
-pub fn generate_pdf_vorschau(
-    info: &ProjektInfo,
-    konfiguration: &Konfiguration,
-    splitflaechen: &[AenderungenIntersection],
-    nas_original: &NasXMLFile,
-    split_nas: &SplitNasXml,
-    riss_config: Option<RissConfig>,
-    extent_rect: Option<Rect>,
-    num_riss: usize,
-    total_risse: usize,
-    linienquadtree: &LinienQuadTree,
-    extra_infos: Option<&ExtraInfos>,
-) -> Vec<u8> {
-
-    let extent_rect = match extent_rect {
-        Some(s) => s,
-        None => return Vec::new(),
-    };
-
-    let map = vec![(format!("Riss{num_riss}"), RissExtentReprojected {
-        crs: split_nas.crs.clone(),
-        min_x: extent_rect.min_x,
-        max_x: extent_rect.max_x,
-        min_y: extent_rect.min_y,
-        max_y: extent_rect.max_y,
-    })];
-
-    let rc = match riss_config {
-        Some(s) => s,
-        None => return Vec::new(),
-    };
-
-    let risse = vec![(format!("Riss{num_riss}"), rc)].into_iter().collect::<BTreeMap<_, _>>();
-
-    let pdf = crate::pdf::generate_pdf_internal(
-        info,
-        konfiguration,
-        nas_original,
-        split_nas,
-        splitflaechen,
-        &risse, 
-        &map.into_iter().collect(),
-        &mut Vec::new(),
-        linienquadtree,
-        extra_infos,
-    );
-
-    pdf
 }
 
 pub fn generate_header_pdf(
