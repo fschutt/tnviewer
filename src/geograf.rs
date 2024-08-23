@@ -152,7 +152,11 @@ pub fn export_aenderungen_geograf(
     let eigentuemer_xlsx = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
 
+    log_status(&format!("Erstelle QuadTree..."));
+
     let lq = split_nas.get_linien_quadtree();
+
+    log_status(&format!("QuadTree ok!"));
 
     if risse.is_empty() {
         export_splitflaechen(
