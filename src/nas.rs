@@ -20,6 +20,7 @@ use crate::geograf::points_to_rect;
 use crate::search::NutzungsArt;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
+use crate::uuid_wasm::log_status;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
@@ -977,6 +978,9 @@ impl SvgPolygon {
         if self.is_empty() || self.is_zero_area() {
             return None;
         }
+
+        log_status("get_label_pos: ");
+        log_status(&serde_json::to_string(&self).unwrap_or_default());
 
         let coords_outer = self.outer_rings.iter().flat_map(|line| {
             line.points.iter().map(|p| (p.x, p.y))
