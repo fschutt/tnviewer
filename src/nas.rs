@@ -982,9 +982,6 @@ impl SvgPolygon {
             line.points.iter().map(|p| (p.x, p.y))
        }).collect::<Vec<_>>();
 
-       log_1(&format!("get label pos").into());
-       log_1(&serde_json::to_string(&self).unwrap_or_default().into());
-
        let polygon = polylabel_mini::Polygon {
            exterior: polylabel_mini::LineString {
                points: coords_outer.iter().map(|(x, y)| polylabel_mini::Point {
@@ -1415,13 +1412,7 @@ impl SplitNasXml {
         alle_linie_split_flurstuecke.dedup();
         let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
 
-        web_sys::console::log_1(&"quadtree new...".into());
-
-        let qt = LinienQuadTree::new(alle_linie_split_flurstuecke);
-        
-        web_sys::console::log_1(&"quadtree built!".into());
-
-        qt
+        LinienQuadTree::new(alle_linie_split_flurstuecke)
     }
 
     pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
@@ -1768,8 +1759,6 @@ fn clean_internal(list_of_points: &Vec<SvgPoint>) -> (usize, Vec<SvgPoint>) {
         p_new_global = p_new;
         if !moved {
             break;
-        } else {
-            log_1(&"looping...".into());
         }
     }
 

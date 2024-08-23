@@ -4,8 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use web_sys::{console::log_1, js_sys::JsString};
-use crate::{csv::CsvDataType, pdf::{RissConfig, RissExtentReprojected}};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{RissConfig, RissExtentReprojected}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -116,8 +115,6 @@ pub fn export_aenderungen_geograf(
     csv_data: &CsvDataType,
 ) -> Vec<u8> {
 
-    web_sys::console::log_1(&format!("ok 1").as_str().into());
-
     let mut files = Vec::new();
 
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas.crs) {
@@ -125,14 +122,10 @@ pub fn export_aenderungen_geograf(
         Err(e) => return Vec::new(),
     };
 
-    web_sys::console::log_1(&format!("ok 2").as_str().into());
-
     // RISSE -> risse.shp
     if !risse.is_empty() {
         append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse_extente, &split_nas.crs));
     }
-
-    web_sys::console::log_1(&format!("ok 3").as_str().into());
 
     // Anschlussrisse PDFs
     let len = risse.len();
@@ -144,11 +137,10 @@ pub fn export_aenderungen_geograf(
         files.push((Some("Anschlussrisse".to_string()), format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
     }
 
-    web_sys::console::log_1(&format!("ok 4").as_str().into());
-
+    log_status("Berechne Splitflächen...");
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
-    web_sys::console::log_1(&format!("RISSE ::: {risse:?}").as_str().into());
-    web_sys::console::log_1(&format!("RISSE EXTENTE ::: {risse_extente:?}").as_str().into());
+
+    log_status(&format!("OK: {} Splitflächen", splitflaechen.len()));
 
     let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
     let mut antragsnr = projekt_info.antragsnr.trim().to_string();
@@ -179,11 +171,8 @@ pub fn export_aenderungen_geograf(
         );
     } else {
         for (i, (id, r)) in risse.iter().enumerate() {
-            web_sys::console::log_1(&format!("RISSE EXTENTE 1 {id}").as_str().into());
             let ex = risse_extente.get(id);
-            web_sys::console::log_1(&format!("EX 1 {ex:?}").as_str().into());
             let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
-            web_sys::console::log_1(&format!("EX 2 {ex:?}").as_str().into());
             let extent = match ex {
                 Some(s) => s,
                 None => continue,
@@ -194,8 +183,6 @@ pub fn export_aenderungen_geograf(
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
             
-            web_sys::console::log_1(&format!("EXPORTING SPLITFLAECHEN RISSE {id}: {} flächen", splitflaechen_for_riss.len()).as_str().into());
-
             export_splitflaechen(
                 &mut files, 
                 projekt_info, 
@@ -210,23 +197,12 @@ pub fn export_aenderungen_geograf(
                 risse.len(),
                 &lq,
             );
-            web_sys::console::log_1(&format!("files exported for RISS {id}!").as_str().into());
         }
     }
 
-    web_sys::console::log_1(&format!("loop finished!").as_str().into());
     let files_names = files.iter().map(|(d, p, c)| format!("{d:?} - {p:?}: {} bytes", c.len())).collect::<Vec<_>>();
-    web_sys::console::log_1(&format!("ZIP FILE").as_str().into());
-    for f in files_names {
-        web_sys::console::log_1(&format!("  {f}").as_str().into());
-    }
-    web_sys::console::log_1(&format!("writing {} files to zip!", files.len()).as_str().into());
 
-    let s = write_files_to_zip(&files);
-
-    web_sys::console::log_1(&format!("writing files to zip finished!").as_str().into());
-
-    s
+    write_files_to_zip(&files)
 }
 
 pub fn eigentuemer_bearbeitete_flst_xlsx(
@@ -311,23 +287,15 @@ pub fn calc_splitflaechen(
     original_xml: &NasXMLFile,
 ) -> Vec<AenderungenIntersection> {
 
-    web_sys::console::log_1(&format!("cleaning stage 4...").as_str().into());
+    log_status(&format!("Änderungen nach Typ mergen..."));
 
     let aenderungen = aenderungen.clean_stage4(split_nas, &mut Vec::new());
 
-    // web_sys::console::log_1(&format!("cleaning stage 5...").as_str().into());
-
-    // let aenderungen = aenderungen.clean_stage5(split_nas, &mut Vec::new());
-
-    web_sys::console::log_1(&format!("cleaning stage 6...").as_str().into());
+    log_status(&format!("Änderungen mit sich selber verschneiden..."));
 
     let aenderungen = aenderungen.clean_stage6(split_nas, &mut Vec::new());
 
-    web_sys::console::log_1(&format!("cleaning stage 8...").as_str().into());
-
     let aenderungen = aenderungen.clean_stage8(split_nas, &mut Vec::new());
-
-    web_sys::console::log_1(&format!("ok!").as_str().into());
 
     let qt = split_nas.create_quadtree();
 
@@ -336,15 +304,9 @@ pub fn calc_splitflaechen(
         aenderungen,
     };
 
-    web_sys::console::log_1(&format!("getting intersections...").as_str().into());
+    log_status(&format!("Verschneide Änderungen.."));
 
-    let cs = aenderungen.get_aenderungen_intersections();
-
-    web_sys::console::log_1(&format!("intersections ok!").as_str().into());
-
-    web_sys::console::log_1(&format!("{} SPLITFLAECHEN", cs.len()).as_str().into());
-
-    cs
+    aenderungen.get_aenderungen_intersections()
 }
 
 pub fn generate_risse_shp(
@@ -396,45 +358,34 @@ pub fn export_splitflaechen(
     lq: &LinienQuadTree,
 ) {
 
-    web_sys::console::log_1(&"blattkopf...".into());
     let header = generate_header_pdf(info, split_nas, extent_rect, num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
-    web_sys::console::log_1(&"legende...".into());
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
-    web_sys::console::log_1(&"linien NAGrenze...".into());
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
 
-    web_sys::console::log_1(&"rote linien...".into());
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq);
     if !aenderungen_rote_linien.is_empty() {
         append_shp(files, &format!("Linien_Rot_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }
 
-    web_sys::console::log_1(&"texte bleibt...".into());
     let aenderungen_texte_bleibt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_bleibt()).collect::<Vec<_>>();
-    web_sys::console::log_1(&format!("ok {} texte bleibt", aenderungen_texte_bleibt.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Texte_Bleibt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
 
-    web_sys::console::log_1(&"texte alt...".into());
     let aenderungen_texte_alt = splitflaechen
         .iter().filter_map(|sf| sf.get_text_alt()).collect::<Vec<_>>();
-    web_sys::console::log_1(&format!("ok {} texte alt", aenderungen_texte_alt.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Texte_Alt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
 
-    web_sys::console::log_1(&"texte neu...".into());
     let aenderungen_texte_neu = splitflaechen
         .iter().filter_map(|sf| sf.get_text_neu()).collect::<Vec<_>>();
-    web_sys::console::log_1(&format!("ok {} texte neu", aenderungen_texte_neu.len()).as_str().into());
     files.push((parent_dir.clone(), format!("Texte_Neu_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
 
-    web_sys::console::log_1(&"pdf vorschau...".into());
     let pdf_vorschau = generate_pdf_vorschau(
         info, 
         konfiguration, 
@@ -447,9 +398,7 @@ pub fn export_splitflaechen(
         total_risse,
         lq,
     );
-    files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));
-    
-    web_sys::console::log_1(&"ok done!".into());
+    files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));    
 }
 
 pub struct LinienQuadTree {
@@ -471,15 +420,11 @@ impl LinienQuadTree {
 
         let max_items = items.len().saturating_div(20).max(500);
 
-        log_1(&format!("max_items: {max_items}").into());
-
         let qt = quadtree_f32::QuadTree::new_with_max_items_per_quad(
             items.iter().map(|(k, v)| (quadtree_f32::ItemId(*k),  quadtree_f32::Item::Rect(*v))),
             max_items
         );
         
-        log_1(&format!("OK! {max_items}").into());
-
         Self {
             linien,
             qt,
@@ -533,8 +478,6 @@ pub fn get_aenderungen_rote_linien(
     // -> check if overlaps linie
     // -> deduplicate + join ends
 
-    web_sys::console::log_1(&"rote linien 1".into());
-
     let mut alle_linien_zu_checken = splitflaechen.iter().flat_map(|s| {
         let mut lines = s.poly_cut.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
         lines.extend(s.poly_cut.inner_rings.iter().flat_map(l_to_points));
@@ -553,8 +496,6 @@ pub fn get_aenderungen_rote_linien(
     lines_end.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
     lines_end.dedup();
 
-    web_sys::console::log_1(&"rote linien 3".into());
-
     lines_end.iter().map(|s| SvgLine {
         points: vec![s.0, s.1]
     }).collect()
@@ -568,8 +509,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
     let mut v = l.into_iter().map(|(a, b)| vec![(a, b)]).collect::<Vec<_>>();
 
     loop {
-
-        web_sys::console::log_1(&format!("merge_lines_again: {} lines", v.len()).into());
 
         let mut modified_mark_remove = BTreeSet::new();
         let v_clone = v.clone();
@@ -657,8 +596,6 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
             break; // error
         }
 
-        web_sys::console::log_1(&format!("removing: {modified_mark_remove:?}").into());
-
         let vlen = v.len();
         for (i, p) in modified_mark_remove.iter().enumerate() {
             v.swap(*p, vlen.saturating_sub(1).saturating_sub(i));
@@ -668,9 +605,7 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
         }
     }
 
-    web_sys::console::log_1(&format!("ok 1").into());
-
-    let s = v.into_iter().filter_map(|p| {
+    v.into_iter().filter_map(|p| {
         let mut points = p.into_iter().flat_map(|(a, b)| vec![a, b]).collect::<Vec<_>>();
         points.dedup_by(|a, b| a.equals(b));
         if points.is_empty() {
@@ -678,11 +613,7 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
         } else {
             Some(SvgLine { points })
         }
-    }).collect::<Vec<_>>();
-
-    web_sys::console::log_1(&format!("ok 2").into());
-
-    s
+    }).collect::<Vec<_>>()
 }
 
 pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], lq: &LinienQuadTree) -> Vec<SvgLine> {

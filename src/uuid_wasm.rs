@@ -7,6 +7,16 @@ use rand_xorshift::XorShiftRng;
 extern "C" {
     #[wasm_bindgen(js_namespace = Math)]
     fn random() -> f64;
+    fn update_export_status(s: String);
+    fn export_status_clear();
+}
+
+pub fn log_status_clear() {
+    export_status_clear();
+}
+
+pub fn log_status(s: &str) {
+    update_export_status(s.trim().to_string())
 }
 
 pub fn uuid() -> String {

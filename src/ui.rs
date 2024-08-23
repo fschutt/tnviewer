@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -54,11 +54,6 @@ pub enum PopoverState {
     Help,
 }
 
-#[test]
-fn test1() {
-    let s = serde_json::to_string(&PopoverState::Info).unwrap_or_default();
-    println!("{s}");
-}
 #[derive(Debug, Copy, PartialEq, Serialize, Deserialize, PartialOrd, Clone)]
 pub enum ConfigurationView {
     #[serde(rename = "allgemein")]
@@ -1091,6 +1086,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 <p onmouseup='selectTab(0);'>START</p>
                 <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
                 <div style='flex-grow:1;'></div>
+                <p id='export-status'></p>
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
@@ -1170,7 +1166,9 @@ impl AenderungenClean {
         
         let mut is = Vec::new();
         
-        for (_id, polyneu) in self.aenderungen.na_polygone_neu.iter() {
+        let aenderung_len = self.aenderungen.na_polygone_neu.len();
+
+        for (aenderung_i, (id, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
                 Some(s) => s,
@@ -1178,6 +1176,8 @@ impl AenderungenClean {
             };
 
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
+
+            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
 
             for potentially_intersecting in all_touching_flst_parts {
                 
@@ -1208,6 +1208,8 @@ impl AenderungenClean {
             }
         }
 
+        log_status(&format!("OK: {} Teilflächen generiert", is.len()));
+
         let is = is.into_iter().filter_map(|s| {
             if s.poly_cut.is_zero_area() {
                 None 
@@ -1224,16 +1226,24 @@ impl AenderungenClean {
             }
         }).collect::<BTreeSet<_>>();
 
+        log_status(&format!("OK: {} Flurstücke verändert", flst_changed.len()));
+
         let mut is = is.into_iter().filter(|s| {
             flst_changed.contains(&s.format_flst_id())
         }).collect::<Vec<_>>();
 
-        web_sys::console::log_1(&format!("get_aenderungen_intersections: 1").as_str().into());
+        let flst_changed_len = flst_changed.len();
 
-        for flst_id in flst_changed.iter() {
+        for (i, flst_id) in flst_changed.iter().enumerate() {
+            
+            let fs = FlstIdParsed::from_str(flst_id);
+            let fs_nice = fs.parse_num().unwrap_or_default();
+            let fs_nice_flur = fs_nice.flur;
+            let fs_nice_flst = fs_nice.format_str_zero();
+
             let ae_is = is.iter().filter(|s| s.format_flst_id().as_str() == flst_id.as_str()).collect::<Vec<_>>();
             if ae_is.is_empty() {
-                web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id} in ae_is").as_str().into());
+                log_status(&format!("WARN: Kann Flurstück {flst_id} nicht finden"));
                 continue;
             }
 
@@ -1246,12 +1256,12 @@ impl AenderungenClean {
             let flst = match found_flst {
                 Some((_, s)) => s,
                 None => {
-                    web_sys::console::log_1(&format!("warning: cannot lookup flst {flst_id}").as_str().into());
+                    log_status(&format!("WARN: Kann Flurstück {flst_id} nicht finden"));
                     continue;
                 },
             };
 
-            web_sys::console::log_1(&format!("intersection flst {flst_id}").as_str().into());
+            log_status(&format!("[{} / {flst_changed_len}] Fl. {fs_nice_flur} Flst. {fs_nice_flst}: Subtrahiere {} Änderungen von {} Teilflächen", i + 1, ae_is.len(), flst.len()));
 
             for flst_part in flst {
 
@@ -1271,9 +1281,7 @@ impl AenderungenClean {
                 };
 
                 let mut subtracted = flst_part.poly.round_to_3dec();
-                web_sys::console::log_1(&format!("12").as_str().into());
                 subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
-                web_sys::console::log_1(&format!("13").as_str().into());
 
                 if subtracted.is_zero_area() {
                     continue;
@@ -1285,13 +1293,9 @@ impl AenderungenClean {
                     poly_cut: subtracted.round_to_3dec(),
                 };
                 
-                web_sys::console::log_1(&format!("!!! OK! pushing bleibt {qq:?}").as_str().into());
-
                 is.push(qq);
             }
         }
-
-        web_sys::console::log_1(&format!("get_aenderungen_intersections: 2").as_str().into());
 
         is
 
@@ -1394,7 +1398,7 @@ impl AenderungenIntersection {
         v.join(", ").trim().to_string()
     }
 
-    pub fn get_auto_kuerzel(splitflaechen: &[Self], flst_id: &str) -> (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>) {
+    fn get_auto_kuerzel(splitflaechen: &[Self], flst_id: &str) -> (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>) {
 
         let veraenderte_splitflaechen = Self::get_splitflaechen_fuer_flst_veraendert(splitflaechen, flst_id);
         
@@ -1424,18 +1428,17 @@ impl AenderungenIntersection {
 
     pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
 
-        let (alt_weg, neu_dazu, veraendert) = Self::get_auto_kuerzel(splitflaechen, flst_id);
-        
-        if alt_weg.is_empty() && neu_dazu.is_empty() && veraendert.is_empty() {
+        let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
+
+        if !wurde_veraendert {
             return Status::Bleibt;
         }
         
-        let alte_wirtschaftsarten = alt_weg.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
-        let neue_wirtschaftsarten = neu_dazu.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
-        let veraendert = veraendert.iter().filter_map(|k| TaggedPolygon::get_wirtschaftsart(k)).collect::<BTreeSet<_>>();
+        let alte_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.alt)).collect::<BTreeSet<_>>();
+        let neue_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.neu)).collect::<BTreeSet<_>>();
         let veraendert_2 = alte_wirtschaftsarten.symmetric_difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
 
-        if veraendert.is_empty() && veraendert_2.is_empty() {
+        if veraendert_2.is_empty() {
             Status::AenderungKeineBenachrichtigung
         } else {
             Status::AenderungMitBenachrichtigung
@@ -1756,8 +1759,6 @@ impl Aenderungen {
 
         let mut changed_mut = self.round_to_3decimal();
 
-        web_sys::console::log_1(&format!("stage 4 1").as_str().into());
-
         // 2. Änderungen mergen und kombinieren nach Typ
         let mut aenderungen_merged_by_typ = BTreeMap::new();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
@@ -1779,8 +1780,6 @@ impl Aenderungen {
                 polyneu.poly.round_to_3dec()
             });
         }
-
-        web_sys::console::log_1(&format!("stage 4 fertig").as_str().into());
 
         Aenderungen {
             gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),

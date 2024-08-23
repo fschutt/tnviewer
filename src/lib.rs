@@ -4,6 +4,7 @@ use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, Spl
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, PolyNeu};
+use uuid_wasm::{log_status, log_status_clear};
 use wasm_bindgen::prelude::*;
 use xml::XmlNode;
 use crate::ui::UiData;
@@ -47,9 +48,9 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":422364.234,"y":5918809.156},{"x":422380.244,"y":5918811.348},{"x":422487.788,"y":5919334.917},{"x":422416.881,"y":5919348.948},{"x":422404.716,"y":5919351.355},{"x":422383.553,"y":5919242.094},{"x":422383.553,"y":5919242.095},{"x":422397.843,"y":5919251.304},{"x":422411.611,"y":5919248.407},{"x":422417.143,"y":5919243.33},{"x":422419.711,"y":5919227.717},{"x":422414.957,"y":5919212.279},{"x":422403.586,"y":5919205.525},{"x":422390.618,"y":5919201.772},{"x":422384.506,"y":5919202.725},{"x":422377.092,"y":5919208.741},{"x":422297.935,"y":5918800.077},{"x":422364.234,"y":5918809.156}]}],"inner_rings":[{"points":[{"x":422369.778,"y":5919120.153},{"x":422384.837,"y":5919148.86},{"x":422392.252,"y":5919135.524},{"x":422393.189,"y":5919116.881},{"x":422395.422,"y":5919101.647},{"x":422388.032,"y":5919089.566},{"x":422380.495,"y":5919085.995},{"x":422374.041,"y":5919086.233},{"x":422365.805,"y":5919094.107},{"x":422364.338,"y":5919104.766},{"x":422369.778,"y":5919120.153}]}]}"#;
-    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":422397.843,"y":5919251.304},{"x":422399.599,"y":5919250.935},{"x":422399.401,"y":5919253.071},{"x":422396.64,"y":5919258.72},{"x":422390.906,"y":5919262.46},{"x":422387.457,"y":5919262.252},{"x":422383.553,"y":5919242.095},{"x":422397.843,"y":5919251.304}]}],"inner_rings":[]}"#;
-    
+    let poly_string1 = "";
+    let poly_string2 = "";
+
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
@@ -222,6 +223,9 @@ pub fn aenderungen_zu_geograf(
     risse_extente: String,
     csv_data: String,
 ) -> Vec<u8> {
+
+    log_status_clear();
+    log_status("Starte Export nach GEOgraf...");
     let split_nas_xml = match serde_json::from_str::<SplitNasXml>(split_nas_xml.as_str()) {
         Ok(o) => o,
         Err(e) => return e.to_string().as_bytes().to_vec(),
@@ -277,7 +281,11 @@ pub fn aenderungen_zu_geograf(
 
     match result {
         Ok(o) => o,
-        Err(e) => format!("{:?}", e).as_bytes().to_vec(),
+        Err(e) => {
+            let s = format!("FEHLER: {:?}", e);
+            log_status(&s);
+            s.as_bytes().to_vec()
+        },
     }
 }
 

@@ -745,12 +745,6 @@ fn write_splitflaechen_beschriftungen(
 
     let riss_poly = riss_extent.get_poly();
 
-    for sf in splitflaechen.iter() {
-        log_1(&format!("PDF splitflaeche: {sf:?}").into());
-    }
-
-    log_1(&format!("RISS poly: {riss_poly:?}").into());
-
     let splitflaechen = splitflaechen.iter().flat_map(|sf| {
         intersect_polys(&sf.poly_cut, &riss_poly, true, true)
         .into_iter()
@@ -764,8 +758,6 @@ fn write_splitflaechen_beschriftungen(
         })
     }).collect::<Vec<_>>();
     
-    log_1(&format!("sf1").into());
-
     let texte_bleibt = splitflaechen.iter()
     .filter_map(|s| s.get_text_bleibt())
     .map(|p| {
@@ -776,8 +768,6 @@ fn write_splitflaechen_beschriftungen(
         }
     })
     .collect::<Vec<_>>();
-
-    log_1(&format!("sf2").into());
 
     let texte_neu = splitflaechen.iter()
     .filter_map(|s| s.get_text_neu())
@@ -790,8 +780,6 @@ fn write_splitflaechen_beschriftungen(
     })
     .collect::<Vec<_>>();
 
-    log_1(&format!("sf4").into());
-
     let texte_alt = splitflaechen.iter()
     .filter_map(|s| s.get_text_alt())
     .map(|p| {
@@ -802,21 +790,6 @@ fn write_splitflaechen_beschriftungen(
         }
     })
     .collect::<Vec<_>>();
-
-
-    for l in texte_alt.iter() {
-        log_1(&format!("TEXT ALT: {l:?}").into());
-    }
-
-    for l in texte_neu.iter() {
-        log_1(&format!("TEXT NEU: {l:?}").into());
-    }
-
-    for l in texte_bleibt.iter() {
-        log_1(&format!("TEXT BLEIBT: {l:?}").into());
-    }
-
-    log_1(&format!("PDF TEXTE: {} bleibt {} alt {} neu", texte_bleibt.len(), texte_alt.len(), texte_neu.len()).into());
 
     let alt_color = csscolorparser::parse("#cc0000").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
@@ -1094,12 +1067,8 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if fi.equals(&i) {
             continue;
         }
-        log_1(&"correcting almost touching points...".into());
         i.correct_almost_touching_points(&fi, 0.05, true);
         let i = i.round_to_3dec();
-        log_1(&"ok subtract!".into());
-        log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
-        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         if fi.is_zero_area() {
             return SvgPolygon::default();
         }

@@ -1131,10 +1131,27 @@
           layers.addTo(map);
           L.control.zoom({ position: 'bottomright' }).addTo(map);
           basemaps.OSM.addTo(map);
-          addProblemGeoJSON(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
+
+    function export_status_clear() {
+      window.export_log = [];
+      document.getElementById("export-status").innerHTML = "";
+    }
+
+    window.export_status_clear = export_status_clear;
+
+    function update_export_status(s) {
+      document.getElementById("export-status").innerHTML = s;
+      if (!window.export_log) {
+        window.export_log = [];
+      }
+      window.export_log.push(s);
+    }
+
+    window.update_export_status = update_export_status;
 
     function addProblemGeoJSON(map) {
       let j = JSON.parse(get_problem_geojson());

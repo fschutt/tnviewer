@@ -192,7 +192,7 @@ pub struct FlstIdParsed {
     pub padding: String,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct FlstIdParsedNumber {
     pub land: usize, 
     pub gemarkung: usize,
@@ -233,20 +233,65 @@ impl FlstIdParsedNumber {
      }
 }
 
+#[test]
+fn test_flst_parsing() {
+    let s1 = FlstIdParsed::from_str("12 1180 003 00010 0000 00");
+    let s2 = FlstIdParsed::from_str("12118000300010______");
+    let target = FlstIdParsed {
+        land: "12".to_string(),
+        gemarkung: "1180".to_string(),
+        flur: "003".to_string(),
+        flst_zaehler: "00010".to_string(),
+        flst_nenner: "0000".to_string(),
+        padding: "00".to_string(),
+    };
+    assert_eq!(s1, s2);
+    assert_eq!(s1, target);
+}
+
 impl FlstIdParsed {
 
     pub fn from_str(id: &str) -> FlstIdParsed {
 
         // 12 1180 003 00001 0000 00
         // 12-1180-003-00261/0000
-
+        let id = id.replace("-", "").replace("/", "").replace(" ", "").replace("_", "");
         let chars = id.chars().collect::<Vec<_>>();
-        let land = chars.iter().skip(0).take(2).collect::<String>();
-        let gemarkung = chars.iter().skip(2).take(4).collect::<String>();
-        let flur = chars.iter().skip(6).take(3).collect::<String>();
-        let flst_zaehler = chars.iter().skip(9).take(5).collect::<String>();
-        let flst_nenner = chars.iter().skip(14).take(4).collect::<String>();
-        let padding = chars.iter().skip(18).take(2).collect::<String>();
+        
+        let mut land = chars.iter().skip(0).take(2).collect::<String>();
+        match land.parse::<usize>() {
+            Ok(s) => { land = format!("{s:02}"); },
+            Err(_) => { land = "12".to_string(); },
+        }
+
+        let mut gemarkung = chars.iter().skip(2).take(4).collect::<String>();
+        match gemarkung.parse::<usize>() {
+            Ok(s) => { gemarkung = format!("{s:04}"); },
+            Err(_) => { gemarkung = "0000".to_string(); },
+        }
+
+        let mut flur = chars.iter().skip(6).take(3).collect::<String>();
+        match flur.parse::<usize>() {
+            Ok(s) => { flur = format!("{s:03}"); },
+            Err(_) => { flur = "001".to_string(); },
+        }
+
+        let mut flst_zaehler = chars.iter().skip(9).take(5).collect::<String>();
+        match flst_zaehler.parse::<usize>() {
+            Ok(s) => { flst_zaehler = format!("{s:05}"); },
+            Err(_) => { flst_zaehler = "00001".to_string(); },
+        }
+        
+        let mut flst_nenner = chars.iter().skip(14).take(4).collect::<String>();
+        match flst_nenner.parse::<usize>() {
+            Ok(s) => { flst_nenner = format!("{s:04}"); },
+            Err(_) => { flst_nenner = "0000".to_string(); },
+        }
+
+        let mut padding = chars.iter().skip(18).take(2).collect::<String>();
+        if padding.is_empty() {
+            padding = "00".to_string();
+        }
 
         FlstIdParsed {
             land, 
