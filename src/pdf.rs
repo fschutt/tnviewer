@@ -6,6 +6,7 @@ use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
+use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
@@ -358,7 +359,7 @@ pub fn generate_pdf(
     aenderungen: &Aenderungen, 
     risse: &Risse,
     riss_map: &RissMap,
-    log: &mut Vec<String>
+    log: &mut Vec<String>,
 ) -> Vec<u8> {
 
     let len = risse.len();
@@ -396,6 +397,8 @@ pub fn generate_pdf(
         &riss_map.iter().filter_map(|(k, v)| Some((k.clone(), v.reproject(&xml.crs, log)?))).collect(),
         log,
         &lq,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
     )
 }
 
@@ -409,6 +412,8 @@ pub fn generate_pdf_internal(
     riss_map_reprojected: &RissMapReprojected,
     log: &mut Vec<String>,
     linienquadtree: &LinienQuadTree,
+    rote_linien: &BTreeMap<String, Vec<SvgLine>>,
+    beschriftungen: &BTreeMap<String, ExistierendeBeschriftungen>,
 ) -> Vec<u8> {
 
     let first_riss_id = risse.keys().next().and_then(|s| s.split("-").next()).unwrap_or("");
@@ -482,28 +487,32 @@ pub fn generate_pdf_internal(
 
         // let _ = write_grenzpunkte(&mut layer, &flst, &konfiguration, log);
 
+        log_status(&format!("Rendere Fluren..."));
         let fluren = get_fluren_in_pdf_space(
             &xml,
             &riss_extent,
             rc,
             log
         );
-        
+
         let _ = write_fluren(&mut layer, &fluren, &konfiguration, log);
-        
-        let rote_linien = get_aenderungen_rote_linien(splitflaechen, linienquadtree)
+
+        log_status(&format!("Rendere rote Linien..."));
+        let rote_linien = rote_linien.get(ri).cloned().unwrap_or_else(|| get_aenderungen_rote_linien(splitflaechen, linienquadtree))
         .into_iter().map(|l| {
             line_into_pdf_space(&l, riss_extent, rc, &mut Vec::new())
         }).collect::<Vec<_>>();
 
         let _ = write_rote_linien(&mut layer, &rote_linien);
         
+        log_status(&format!("Rendere Beschriftungen..."));
         let _ = write_splitflaechen_beschriftungen(
             &mut layer, 
             &helvetica,
             splitflaechen, 
             riss_extent, 
-            rc
+            rc,
+            beschriftungen.get(ri),
         );
 
         let _ = write_border(
@@ -519,6 +528,8 @@ pub fn generate_pdf_internal(
             16.5
         );
     }
+
+    log_status(&format!("PDF fertig."));
 
     doc.save_to_bytes().unwrap_or_default()
 }
@@ -705,7 +716,7 @@ fn point_into_pdf_space(
 
 fn write_rote_linien(
     layer: &mut PdfLayerReference,
-    linien: &[SvgLine]
+    linien: &[SvgLine],
 ) -> Option<()> {
 
     layer.save_graphics_state();
@@ -735,61 +746,75 @@ fn write_rote_linien(
 
 }
 
+pub struct ExistierendeBeschriftungen {
+    pub texte_alt: Vec<TextPlacement>,
+    pub texte_neu: Vec<TextPlacement>,
+    pub texte_bleibt: Vec<TextPlacement>,
+}
+
 fn write_splitflaechen_beschriftungen(
     layer: &mut PdfLayerReference,
     font: &IndirectFontRef,
     splitflaechen: &[AenderungenIntersection],
     riss_extent: &RissExtentReprojected,
     riss: &RissConfig,
+    beschriftungen: Option<&ExistierendeBeschriftungen>,
 ) -> Option<()> {
 
     let riss_poly = riss_extent.get_poly();
 
-    let splitflaechen = splitflaechen.iter().flat_map(|sf| {
-        intersect_polys(&sf.poly_cut, &riss_poly, true, true)
-        .into_iter()
-        .map(|f| {
-            AenderungenIntersection {
-                alt: sf.alt.clone(),
-                neu: sf.neu.clone(),
-                flst_id: sf.flst_id.clone(),
-                poly_cut: f.round_to_3dec(),
-            }
-        })
-    }).collect::<Vec<_>>();
-    
-    let texte_bleibt = splitflaechen.iter()
-    .filter_map(|s| s.get_text_bleibt())
-    .map(|p| {
-        TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
-        }
-    })
-    .collect::<Vec<_>>();
+    let (texte_alt, texte_neu, texte_bleibt) = match beschriftungen {
+        Some(a) => (a.texte_alt.clone(), a.texte_neu.clone(), a.texte_bleibt.clone()),
+        None => {
+            let splitflaechen = splitflaechen.iter().flat_map(|sf| {
+                intersect_polys(&sf.poly_cut, &riss_poly, true, true)
+                .into_iter()
+                .map(|f| {
+                    AenderungenIntersection {
+                        alt: sf.alt.clone(),
+                        neu: sf.neu.clone(),
+                        flst_id: sf.flst_id.clone(),
+                        poly_cut: f.round_to_3dec(),
+                    }
+                })
+            }).collect::<Vec<_>>();
+            
+            let texte_bleibt = splitflaechen.iter()
+            .filter_map(|s| s.get_text_bleibt())
+            .map(|p| {
+                TextPlacement {
+                    kuerzel: p.kuerzel,
+                    status: p.status,
+                    pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+                }
+            })
+            .collect::<Vec<_>>();
+        
+            let texte_neu = splitflaechen.iter()
+            .filter_map(|s| s.get_text_neu())
+            .map(|p| {
+                TextPlacement {
+                    kuerzel: p.kuerzel,
+                    status: p.status,
+                    pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+                }
+            })
+            .collect::<Vec<_>>();
+        
+            let texte_alt = splitflaechen.iter()
+            .filter_map(|s| s.get_text_alt())
+            .map(|p| {
+                TextPlacement {
+                    kuerzel: p.kuerzel,
+                    status: p.status,
+                    pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+                }
+            })
+            .collect::<Vec<_>>();
 
-    let texte_neu = splitflaechen.iter()
-    .filter_map(|s| s.get_text_neu())
-    .map(|p| {
-        TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+            (texte_alt, texte_neu, texte_bleibt)
         }
-    })
-    .collect::<Vec<_>>();
-
-    let texte_alt = splitflaechen.iter()
-    .filter_map(|s| s.get_text_alt())
-    .map(|p| {
-        TextPlacement {
-            kuerzel: p.kuerzel,
-            status: p.status,
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
-        }
-    })
-    .collect::<Vec<_>>();
+    };
 
     let alt_color = csscolorparser::parse("#cc0000").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))

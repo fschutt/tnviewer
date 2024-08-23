@@ -1298,7 +1298,7 @@ impl AenderungenClean {
         }
 
         let is = is.into_iter().filter(|i| {
-            !i.poly_cut.is_empty() && i.poly_cut.is_zero_area()
+            !i.poly_cut.is_empty() && !i.poly_cut.is_zero_area()
         }).collect::<Vec<_>>();
 
         is

@@ -144,6 +144,9 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
                 Some(s) => s,
                 None => continue,
             };
+            if d.status != Status::AenderungMitBenachrichtigung {
+                continue;
+            }
             eigentuemer
             .entry(d.eigentuemer.trim().to_string())
             .or_insert_with(|| BTreeMap::new())
