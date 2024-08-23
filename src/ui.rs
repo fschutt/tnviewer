@@ -1827,7 +1827,7 @@ impl Aenderungen {
             .and_modify(|ep: &mut SvgPolygon| {
                 let a = ep.round_to_3dec();
                 let b = polyneu.poly.round_to_3dec();
-                if let Some(e) = join_polys(&[a, b], true) {
+                if let Some(e) = join_polys(&[a, b], true, false) {
                     *ep = e;
                 }
             })

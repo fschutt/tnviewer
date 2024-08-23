@@ -1146,7 +1146,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     first
 }
 
-pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
+pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<SvgPolygon> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.round_to_3dec(),
@@ -1161,6 +1161,10 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool) -> Option<SvgPolygon> {
             continue;
         }
         let fi = first.round_to_3dec();
+        if debug {
+            log_status(&serde_json::to_string(&fi).unwrap_or_default());
+            log_status(&serde_json::to_string(&i).unwrap_or_default());
+        }
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
@@ -1241,8 +1245,7 @@ fn get_fluren_in_pdf_space(
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
             log_status(&format!("joining fluren flur {k}..."));
-            log_status(&serde_json::to_string(&polys).unwrap_or_default());
-            let joined = join_polys(&polys, false)?;
+            let joined = join_polys(&polys, false, true)?;
             log_status("joined!");
             let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
