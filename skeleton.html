@@ -1136,15 +1136,21 @@
         }
       }
 
+    function exportLog() {
+      if (!window.export_log) {
+        return;
+      }
+      downloadBlob(JSON.stringify(window.export_log, null, 4), window.info.antragsnr + ".LOG.json", 'application/octet-stream')
+    }
+    window.exportLog = exportLog;
+
     function export_status_clear() {
       window.export_log = [];
-      document.getElementById("export-status").innerHTML = "";
     }
 
     window.export_status_clear = export_status_clear;
 
     function update_export_status(s) {
-      document.getElementById("export-status").innerHTML = s;
       if (!window.export_log) {
         window.export_log = [];
       }

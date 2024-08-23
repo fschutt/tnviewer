@@ -257,11 +257,8 @@ pub fn splitflaechen_zu_xlsx(
                 None => continue
             };
             let f = FlstIdParsed::from_str(flst_id).parse_num().unwrap_or_default();
-            log_status(&format!("Fl. {} Flst. {}: get auto notiz...", f.get_flur(), f.format_str()));
             let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
-            log_status("get auto status...");
             let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
-            log_status("ok");
             let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
             eigentuemer.sort();
             eigentuemer.dedup();

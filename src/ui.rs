@@ -654,6 +654,9 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
     static ICON_BROOM: &[u8] = include_bytes!("./img/icons8-broom-96.png");
     let icon_export_lefis = base64_encode(ICON_BROOM);
 
+    static ICON_LOG: &[u8] = include_bytes!("./img/icons8-log-96.png");
+    let icon_log_base64 = base64_encode(ICON_LOG);
+
     // TAB 1
     // let disabled = if data_loaded { "" } else { "disabled" };
     let disabled = "";
@@ -892,6 +895,22 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
+    let export_log = {
+        format!("
+        <div class='__application-ribbon-section-content'>
+            <label onmouseup='exportLog();' class='__application-ribbon-action-vertical-large'>
+                <div class='icon-wrapper'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_log_base64}'>
+                </div>
+                <div>
+                    <p>Log-Datei</p>
+                    <p>speichern</p>
+                </div>
+            </label>
+        </div>   
+        ")
+    };
+
     let export_alle_flurstuecke = {
         format!("
             <div class='__application-ribbon-section-content'>
@@ -1103,6 +1122,13 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         {export_alle_flurstuecke}
                         {export_geograf}
                         {export_david}
+                    </div>
+                </div>
+
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {export_log}
+                        {projekt_speichern}
                     </div>
                 </div>
 
@@ -1455,21 +1481,15 @@ impl AenderungenIntersection {
             flst_id.as_ref() == Some(&such_id)
         }).collect::<Vec<_>>();
 
-        log_status("1");
         let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
 
         if !wurde_veraendert {
             return Status::Bleibt;
         }
         
-        log_status(&format!("2: {}", serde_json::to_string(&splitflaechen).unwrap_or_default()));
-
         let alte_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.alt)).collect::<BTreeSet<_>>();
-        log_status("3");
         let neue_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.neu)).collect::<BTreeSet<_>>();
-        log_status("4");
         let veraendert_2 = alte_wirtschaftsarten.symmetric_difference(&neue_wirtschaftsarten).collect::<BTreeSet<_>>();
-        log_status("5");
 
         if veraendert_2.is_empty() {
             Status::AenderungKeineBenachrichtigung
