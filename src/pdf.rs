@@ -1240,7 +1240,10 @@ fn get_fluren_in_pdf_space(
             let polys = v.iter()
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
+            log_status(&format!("joining fluren flur {k}..."));
+            log_status(&serde_json::to_string(&polys).unwrap_or_default());
             let joined = join_polys(&polys, false)?;
+            log_status("joined!");
             let joined = poly_into_pdf_space(&joined, riss, riss_config, log);
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
