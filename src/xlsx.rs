@@ -125,7 +125,7 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     }
 }
 
-pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
+pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> (usize, Vec<u8>) {
 
     use simple_excel_writer::*;
     
@@ -156,6 +156,8 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
         }
     }
 
+    let mut eigentuemer_len = eigentuemer.len();
+
     let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
         let sw = sheet_writer;
         sw.append_row(row!["Eigentümer", "Flurstücke"])?;
@@ -180,8 +182,8 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> Vec<u8> {
     });
 
     match wb.close() {
-        Ok(Some(o)) => o,
-        _ => Vec::new(),
+        Ok(Some(o)) => (eigentuemer_len, o),
+        _ => (0, Vec::new()),
     }
 }
 

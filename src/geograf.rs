@@ -149,10 +149,12 @@ pub fn export_aenderungen_geograf(
     }
     files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
 
-    let eigentuemer_xlsx = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
+    log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.len()));
+
+    let (num_eigentuemer, eigentuemer_xlsx) = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
 
-    log_status(&format!("Erstelle QuadTree..."));
+    log_status(&format!("OK: {num_eigentuemer} Eigentümer exportiert in XLSX"));
 
     let lq = split_nas.get_linien_quadtree();
 
@@ -212,7 +214,7 @@ pub fn export_aenderungen_geograf(
 pub fn eigentuemer_bearbeitete_flst_xlsx(
     datensaetze: &CsvDataType,
     splitflaechen: &[AenderungenIntersection],
-) -> Vec<u8> {
+) -> (usize, Vec<u8>) {
     let data = datensaetze.iter().map(|(flst_id, v)| {
         (flst_id.clone(), v.iter().map(|cs| {
             CsvDatensatz {
@@ -254,11 +256,12 @@ pub fn splitflaechen_zu_xlsx(
                 Some(s) => s,
                 None => continue
             };
-            // let mut notiz = ds_0.notiz.trim().to_string();
-            // if notiz.is_empty() {
-                let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
-            // }
+            let f = FlstIdParsed::from_str(flst_id).parse_num().unwrap_or_default();
+            log_status(&format!("Fl. {} Flst. {}: get auto notiz...", f.get_flur(), f.format_str()));
+            let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen, &flst_id);
+            log_status("get auto status...");
             let status = AenderungenIntersection::get_auto_status(&splitflaechen, &flst_id);
+            log_status("ok");
             let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
             eigentuemer.sort();
             eigentuemer.dedup();
