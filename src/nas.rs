@@ -516,7 +516,7 @@ impl TaggedPolygon {
     }
 
     pub fn get_wirtschaftsart(kuerzel: &str) -> Option<String> {
-        let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+        let map = crate::get_map();
         map.get(kuerzel.trim()).map(|s| s.wia.clone())
     }
 

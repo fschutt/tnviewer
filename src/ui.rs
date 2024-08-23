@@ -1439,7 +1439,7 @@ impl AenderungenIntersection {
             return Status::Bleibt;
         }
         
-        log_status("2");
+        log_status(&format!("2: {}", serde_json::to_string(&splitflaechen).unwrap_or_default()));
 
         let alte_wirtschaftsarten = splitflaechen.iter().filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.alt)).collect::<BTreeSet<_>>();
         log_status("3");
@@ -2038,7 +2038,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 }
 
 pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_id: &str) -> String {
-    let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+    let map = crate::get_map();
     let mut s = format!("<select id='{html_id}-{id}' onchange='{function}(event);' data-id='{id}'>");
     s.push_str(&format!("<option {selected} value='NOTDEFINED'>nicht defin.</option>", selected = if selected.is_none() { " selected='selected' " } else { "" }));
     for k in map.keys() {

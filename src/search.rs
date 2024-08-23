@@ -15,8 +15,12 @@ pub struct NutzungsArt {
 
 pub type NutzungsArtMap = BTreeMap<String, NutzungsArt>;
 
+pub fn get_map_internal() -> NutzungsArtMap {
+    include!(concat!(env!("OUT_DIR"), "/nutzung.rs"))
+}
+
 pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {
-    let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+    let map = crate::get_map();
     let mut target = BTreeMap::new();
     let s = term.to_lowercase();
     for (k, v) in map.iter() {

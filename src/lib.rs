@@ -928,6 +928,10 @@ pub fn export_flst_id_nach_eigentuemer(s: String) -> Vec<u8> {
     crate::xlsx::flst_id_nach_eigentuemer(&data).1
 }
 
+pub fn get_map() -> BTreeMap<String, crate::search::NutzungsArt> {
+    crate::search::get_map_internal()
+}
+
 pub fn decode(bytes: Vec<u8>) -> String {
     let mut text_decoder = chardetng::EncodingDetector::new();
     let _ = text_decoder.feed(&bytes[..], true);

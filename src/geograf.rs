@@ -994,7 +994,7 @@ pub fn generate_legende_xlsx(
     })
     .collect::<BTreeSet<_>>();
 
-    let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
+    let map = crate::get_map();
 
     let mut lines = alle_kuerzel.iter().filter_map(|k| {
         let bez = &map.get(k)?.bez;
