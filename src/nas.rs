@@ -798,6 +798,12 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn insert_points_from(&mut self, other: &Self, maxdst: f64) {
+        self.outer_rings = self.outer_rings.iter().map(|o| o.insert_points_from(other, maxdst)).collect();
+        self.inner_rings = self.inner_rings.iter().map(|o| o.insert_points_from(other, maxdst)).collect();
+        self.correct_almost_touching_points(other, maxdst, false);
+    }
+
     pub fn correct_almost_touching_points(&mut self, other: &Self, maxdst: f64, correct_points_on_lines: bool) {
        
         let mut other_points = Vec::new();
@@ -1028,6 +1034,38 @@ pub struct SvgLine {
 }
 
 impl SvgLine {
+
+    pub fn insert_points_from(&self, other: &SvgPolygon, maxdst: f64) -> SvgLine {
+        use crate::geograf::l_to_points;
+        let mut other_lines = other.outer_rings.iter().flat_map(|ol| l_to_points(ol)).collect::<Vec<_>>();
+        other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
+        
+        let newpoints = self.points.iter().flat_map(|p| {
+            
+            let mut nearest_other_line = other_lines
+            .iter()
+            .filter_map(|(start, end)| {
+                let dst = dist_to_segment(*p, *start, *end);
+                if dst.distance < maxdst {
+                    Some(dst)
+                } else {
+                    None
+                }
+            })
+            .map(|s| s.nearest_point)
+            .collect::<Vec<_>>();
+
+            nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
+
+            let mut ret = vec![*p];
+            ret.append(&mut nearest_other_line);
+            ret
+        }).collect();
+
+        SvgLine {
+            points: newpoints,
+        }
+    }
 
     pub fn reverse(&self) -> SvgLine {
         let mut p = self.points.clone();
@@ -1789,8 +1827,8 @@ fn clean_internal(list_of_points: &Vec<SvgPoint>) -> (usize, Vec<SvgPoint>) {
 
 pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_touches_check: bool) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
-    let a = a.round_to_3dec();
-    let b = b.round_to_3dec();
+    let mut a = a.round_to_3dec();
+    let mut b = b.round_to_3dec();
     if a.is_zero_area() {
         return Vec::new();
     }
@@ -1810,6 +1848,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
+    a.correct_almost_touching_points(&b, 0.05, true);
+    a.insert_points_from(&b, 0.05);
+    b.insert_points_from(&a, 0.05);
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);

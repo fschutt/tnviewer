@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, subtract_from_poly, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
@@ -49,9 +49,8 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = "{\"outer_rings\":[{\"points\":[{\"x\":425249.392,\"y\":5917378.88},{\"x\":425280.552,\"y\":5917417.697},{\"x\":425278.015,\"y\":5917423.229},{\"x\":425253.759,\"y\":5917392.901},{\"x\":425243.966,\"y\":5917380.735},{\"x\":425249.392,\"y\":5917378.88}]}],\"inner_rings\":[]}}";
-    let poly_string2 = "{\"outer_rings\":[{\"points\":[{\"x\":424728.055,\"y\":5917172.236},{\"x\":424730.042,\"y\":5917174.526},{\"x\":424546.837,\"y\":5917226.357},{\"x\":424545.232,\"y\":5917224.054},{\"x\":424728.055,\"y\":5917172.236}]}],\"inner_rings\":[]}";
-
+    let poly_string1 = "";
+    let poly_string2 = "";
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 

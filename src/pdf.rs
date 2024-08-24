@@ -990,12 +990,14 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
-        let fi = first.round_to_3dec();
+        let mut fi = first.round_to_3dec();
         let mut i = i.round_to_3dec();
         if fi.equals(&i) {
             continue;
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
+        fi.insert_points_from(&i, 0.05);
+        i.insert_points_from(&fi, 0.05);
         let i = i.round_to_3dec();
         if fi.is_zero_area() {
             return SvgPolygon::default();
@@ -1013,10 +1015,12 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if relate.only_touches() {
             continue;
         }
+        /* 
         if relate.b_contained_in_a() {
-            first = i;
+            first = subtract_special(first, i, &relate);
             continue;
         }
+        */
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
@@ -1042,18 +1046,16 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        let i = i.round_to_3dec();
+        let mut i = i.round_to_3dec();
         if first.equals(&i) {
             continue;
         }
         if i.is_empty() {
             continue;
         }
-        let fi = first.round_to_3dec();
-        if debug {
-            log_status(&serde_json::to_string(&fi).unwrap_or_default());
-            log_status(&serde_json::to_string(&i).unwrap_or_default());
-        }
+        let mut fi = first.round_to_3dec();
+        fi.insert_points_from(&i, 0.05);
+        i.insert_points_from(&fi, 0.05);
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
