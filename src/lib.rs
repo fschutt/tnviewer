@@ -55,6 +55,7 @@ pub fn get_problem_geojson() -> String {
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
     let onlytouches1 = nas::relate(&s1, &s2);
+    let s3 = subtract_from_poly(&s1, &[&s2]);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();

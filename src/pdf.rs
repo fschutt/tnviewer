@@ -1008,8 +1008,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
         let mut i = i.round_to_3dec();
-        fi.insert_points_from(&i, 0.05);
-        i.insert_points_from(&fi, 0.05);
         if fi.is_zero_area() {
             return SvgPolygon::default();
         }
@@ -1026,6 +1024,8 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if relate.only_touches() {
             continue;
         }
+        fi.insert_points_from(&i, 0.05);
+        i.insert_points_from(&fi, 0.05);
         log_1(&"subtract_from_poly".into());
         log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
         log_1(&serde_json::to_string(&i).unwrap_or_default().into());
