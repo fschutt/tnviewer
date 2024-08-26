@@ -1,4 +1,5 @@
 use ndarray::Axis;
+use web_sys::console::log_1;
 
 use crate::{nas::{translate_geoline, translate_to_geo_poly, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::log_status};
 
@@ -133,11 +134,13 @@ pub fn optimize_labels(
     log_status(&format!("label width in pixels: {}", config.label_width_pixel()));
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
-    let maxiterations = 5;
+    let maxiterations = 4;
     for tp in initial_text_pos_clone.iter_mut() {
+        log_1(&"labeling 1".into());
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
         'outer: for _ in 0..maxiterations {
+            log_1(&"loop".into());
             let mut newaccum_pos = Vec::new();
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
@@ -145,6 +148,7 @@ pub fn optimize_labels(
                     &overlap_boolmap,
                     &config,
                 ) {
+                    log_1(&"mark found".into());
                     // mark region as occupied
                     textpos_found = Some(*newpostotry);
                     paint_label_onto_map(
@@ -154,15 +158,19 @@ pub fn optimize_labels(
                     );
                     break 'outer;
                 } else {
+                    log_1(&"generating new positions".into());
                     newaccum_pos.append(&mut gen_new_points(newpostotry));
                 }
             }
             if !newaccum_pos.is_empty() {
+                newaccum_pos.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
+                newaccum_pos.dedup_by(|a, b| a.equals(b));
                 textpos_totry = newaccum_pos;
             }
 
         }
         if let Some(found) = textpos_found {
+            log_1(&"pos found".into());
             tp.pos = found;
         }
     }
@@ -183,21 +191,22 @@ pub fn optimize_labels(
 }
 
 fn gen_new_points(p: &SvgPoint) -> Vec<SvgPoint> {
-    let label_height_half = LABEL_HEIGHT_M / 2.0;
-    let label_width_half = LABEL_HEIGHT_M / 2.0;
+    let lpos = 5.0;
+    let label_height_half = lpos / 2.0;
+    let label_width_half = lpos / 2.0;
     let xpos = vec![
-        -LABEL_WIDTH_M,
+        -lpos,
         -label_width_half,
         0.0,
         label_width_half,
-        LABEL_WIDTH_M,
+        lpos,
     ];
     let ypos = vec![
-        -LABEL_HEIGHT_M,
+        -lpos,
         -label_height_half,
         0.0,
         label_height_half,
-        LABEL_HEIGHT_M,
+        lpos,
     ];
     xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
         if *xshift == 0.0 && *yshift == 0.0 {
