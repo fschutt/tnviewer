@@ -4,7 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -404,6 +404,7 @@ pub fn export_splitflaechen(
     let pdf_vorschau = riss.as_ref().map(|(rc, riss_extent)| {
         // export_splitflaechen
 
+        let mini_split_nas = get_mini_nas_xml(split_nas, riss_extent);
         let flst = get_flurstuecke(nas_xml, riss_extent);
         let fluren = get_fluren(nas_xml, riss_extent);
         let gebaeude = get_gebaeude(nas_xml, riss_extent);
@@ -420,6 +421,7 @@ pub fn export_splitflaechen(
             &aenderungen_texte,
             &fluren,
             &flst,
+            &mini_split_nas,
             &gebaeude,
         )
     }).unwrap_or_default();

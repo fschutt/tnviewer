@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::Split;
 
 use printpdf::path::PaintMode;
 use printpdf::{CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
@@ -402,6 +403,7 @@ pub fn generate_pdf_internal(
     beschriftungen: &[TextPlacement], // in ETRS space
     fluren: &Fluren, // in ETRS space,
     flst: &Flurstuecke, // in ETRS space
+    split_nas_mini: &SplitNasXml,
     gebaeude: &Gebaeude, // in ETRS space
 ) -> Vec<u8> {
 
@@ -462,7 +464,7 @@ pub fn generate_pdf_internal(
 
     log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte = crate::optimize::optimize_labels(
-        &flst,
+        &split_nas_mini,
         splitflaechen,
         &gebaeude,
         &[],
@@ -982,6 +984,28 @@ fn write_nutzungsarten(
         layer.restore_graphics_state();
     }
     Some(())
+}
+
+
+pub fn get_mini_nas_xml(
+    xml: &SplitNasXml,
+    riss: &RissExtentReprojected,
+) -> SplitNasXml {
+
+    let rb = riss.get_rect();
+
+    SplitNasXml {
+        crs: xml.crs.clone(),
+        flurstuecke_nutzungen: xml.flurstuecke_nutzungen
+        .iter()
+        .map(|(k, v)| {
+            let mut v = v.clone();
+            v.retain(|s| {
+                rb.overlaps_rect(&s.get_rect())
+            });
+            (k.clone(), v)
+        }).collect()
+    }
 }
 
 pub fn get_flurstuecke(

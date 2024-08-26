@@ -1,7 +1,7 @@
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{translate_geoline, translate_to_geo_poly, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::log_status};
+use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::log_status};
 
 pub struct OptimizedTextPlacement {
     pub rect: SvgLine,
@@ -11,7 +11,7 @@ pub struct OptimizedTextPlacement {
 
 pub const LABEL_HEIGHT_M: f64 = 13.0;
 pub const LABEL_WIDTH_M: f64 = 20.0;
-
+pub const LABEL_WIDTH_PER_CHAR_M: f64 = 5.0;
 
 pub struct OptimizeConfig {
     tolerance: f64,
@@ -69,8 +69,8 @@ impl OptimizeConfig {
         (LABEL_HEIGHT_M / self.one_px_y_in_m).ceil() as usize
     }
 
-    pub fn label_width_pixel(&self) -> usize {
-        (LABEL_WIDTH_M / self.one_px_x_in_m).ceil() as usize
+    pub fn label_width_pixel(&self, lw_meter: f64) -> usize {
+        (lw_meter / self.one_px_x_in_m).ceil() as usize
     }
 
     fn translate_svg_point_to_pixel_space(&self, point: &SvgPoint) -> SvgPoint {
@@ -105,7 +105,7 @@ fn render_boolmap(
 }
 
 pub fn optimize_labels(
-    flurstuecke: &Flurstuecke,
+    flurstuecke: &SplitNasXml,
     splitflaechen: &[AenderungenIntersection],
     gebaeude: &Gebaeude,
     avoid_areas_in_pdf_space: &[SvgPolygon],
@@ -131,21 +131,22 @@ pub fn optimize_labels(
     };
 
     log_status(&format!("label height in pixels: {}", config.label_height_pixel()));
-    log_status(&format!("label width in pixels: {}", config.label_width_pixel()));
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
-    
+
     let maxiterations = 10;
     for tp in initial_text_pos_clone.iter_mut() {
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
+        let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M;
         'outer: for i in 0..maxiterations {
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
                     newpostotry,
                     &overlap_boolmap,
                     &config,
+                    tp_width,
                 ) {
                     // mark region as occupied
                     textpos_found = Some(*newpostotry);
@@ -153,6 +154,7 @@ pub fn optimize_labels(
                         newpostotry,
                         &mut overlap_boolmap,
                         &config,
+                        tp_width,
                     );
                     break 'outer;
                 }
@@ -260,11 +262,12 @@ fn paint_label_onto_map(
     point: &SvgPoint,
     map: &mut ndarray::Array2<bool>,
     config: &OptimizeConfig,
+    tp_width: f64,
 ) -> bool {
 
     let pixel = config.point_to_pixel(point);
     let label_height_px = config.label_height_pixel();
-    let label_width_px = config.label_width_pixel();
+    let label_width_px = config.label_width_pixel(tp_width);
 
     for y_test in 0..label_height_px {
         for x_test in 0..label_width_px {
@@ -283,11 +286,12 @@ fn label_overlaps_feature(
     point: &SvgPoint,
     map: &ndarray::Array2<bool>,
     config: &OptimizeConfig,
+    tp_width: f64,
 ) -> bool {
 
     let pixel = config.point_to_pixel(point);
     let label_height_px = config.label_height_pixel();
-    let label_width_px = config.label_width_pixel();
+    let label_width_px = config.label_width_pixel(tp_width);
     
     for y_test in 0..label_height_px {
         for x_test in 0..label_width_px {
@@ -302,7 +306,7 @@ fn label_overlaps_feature(
 }
 
 fn render_overlap_boolmap(
-    flurstuecke: &Flurstuecke,
+    flurstuecke: &SplitNasXml,
     splitflaechen: &[AenderungenIntersection],
     gebaeude: &Gebaeude,
     do_not_overlap_areas: &[SvgPolygon],
@@ -320,12 +324,14 @@ fn render_overlap_boolmap(
         r.rasterize(&translate_to_geo_poly(&config.polygon_to_pixel_space(shape))).ok()?;
     }
 
-    for flst in flurstuecke.flst.iter() {
-        for line in flst.poly.outer_rings.iter() {
-            r.rasterize(&translate_geoline(&config.line_to_pixel_space(line))).ok()?;
-        }
-        for line in flst.poly.inner_rings.iter() {
-            r.rasterize(&translate_geoline(&config.line_to_pixel_space(line))).ok()?;
+    for (k, v) in flurstuecke.flurstuecke_nutzungen.iter() {
+        for tp in v.iter() {
+            for line in tp.poly.outer_rings.iter() {
+                r.rasterize(&translate_geoline(&config.line_to_pixel_space(line))).ok()?;
+            }
+            for line in tp.poly.inner_rings.iter() {
+                r.rasterize(&translate_geoline(&config.line_to_pixel_space(line))).ok()?;
+            }
         }
     }
 
