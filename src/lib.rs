@@ -55,6 +55,7 @@ pub fn get_problem_geojson() -> String {
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
+    let subtract = subtract_from_poly(&s1, &[&s2]);
     let onlytouches1 = nas::relate(&s1, &s2);
     if s1.equals_any_ring(&s2).is_some() {
         log_1(&"returning s1".into());
