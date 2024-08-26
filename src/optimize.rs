@@ -8,8 +8,8 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 8.0;
-pub const LABEL_WIDTH_M: f64 = 15.0;
+pub const LABEL_HEIGHT_M: f64 = 5.0;
+pub const LABEL_WIDTH_M: f64 = 10.0;
 
 
 pub struct OptimizeConfig {
@@ -133,7 +133,7 @@ pub fn optimize_labels(
     log_status(&format!("label width in pixels: {}", config.label_width_pixel()));
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
-    let maxiterations = 10;
+    let maxiterations = 5;
     for tp in initial_text_pos_clone.iter_mut() {
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
