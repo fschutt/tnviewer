@@ -9,8 +9,8 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 10.0;
-pub const LABEL_WIDTH_M: f64 = 15.0;
+pub const LABEL_HEIGHT_M: f64 = 15.0;
+pub const LABEL_WIDTH_M: f64 = 20.0;
 
 
 pub struct OptimizeConfig {
@@ -159,7 +159,10 @@ pub fn optimize_labels(
                 }
             }
 
-            textpos_totry = gen_new_points(&tp.pos, i);
+            let mut np = gen_new_points(&tp.pos, i);
+            np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
+            np.dedup_by(|a, b| a.equals(&b));
+            textpos_totry = np;
             log_status("labeling finished");
         }
         if let Some(found) = textpos_found {
@@ -180,7 +183,7 @@ pub fn optimize_labels(
 }
 
 fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
-    let lpos = 7.0 * (iteration + 1) as f64;
+    let lpos = 7.0 * (iteration + 2) as f64;
     let lpos_half = lpos / 2.0;
     let xpos = vec![
         -lpos,
