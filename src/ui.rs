@@ -1349,7 +1349,9 @@ impl AenderungenClean {
                 };
 
                 let mut subtracted = flst_part.poly.round_to_3dec();
+                log_status(&format!("subtrahiere..."));
                 subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
+                log_status(&format!("ok!"));
 
                 if subtracted.is_zero_area() {
                     continue;

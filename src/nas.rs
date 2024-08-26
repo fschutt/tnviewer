@@ -1024,7 +1024,7 @@ impl SvgLine {
         let mut other_lines = other.outer_rings.iter().flat_map(|ol| l_to_points(ol)).collect::<Vec<_>>();
         other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
         
-        let newpoints = self.points.iter().flat_map(|p| {
+        let mut newpoints = self.points.iter().flat_map(|p| {
             
             let mut nearest_other_line = other_lines
             .iter()
@@ -1044,7 +1044,9 @@ impl SvgLine {
             let mut ret = vec![*p];
             ret.append(&mut nearest_other_line);
             ret
-        }).collect();
+        }).collect::<Vec<_>>();
+
+        newpoints.dedup_by(|a, b| a.equals(b));
 
         SvgLine {
             points: newpoints,
