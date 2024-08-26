@@ -1007,9 +1007,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
             continue;
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
+        let mut i = i.round_to_3dec();
         fi.insert_points_from(&i, 0.05);
         i.insert_points_from(&fi, 0.05);
-        let i = i.round_to_3dec();
         if fi.is_zero_area() {
             return SvgPolygon::default();
         }
