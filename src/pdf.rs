@@ -1026,12 +1026,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if relate.only_touches() {
             continue;
         }
-        /* 
-        if relate.b_contained_in_a() {
-            first = subtract_special(first, i, &relate);
-            continue;
-        }
-        */
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
@@ -1065,8 +1059,10 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
             continue;
         }
         let mut fi = first.round_to_3dec();
-        fi.insert_points_from(&i, 0.05);
-        i.insert_points_from(&fi, 0.05);
+        if autoclean {
+            fi.insert_points_from(&i, 0.05);
+            i.insert_points_from(&fi, 0.05);
+        }
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);

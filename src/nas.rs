@@ -1832,9 +1832,11 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
-    a.correct_almost_touching_points(&b, 0.05, true);
-    a.insert_points_from(&b, 0.05);
-    b.insert_points_from(&a, 0.05);
+    if autoclean {
+        a.correct_almost_touching_points(&b, 0.05, true);
+        a.insert_points_from(&b, 0.05);
+        b.insert_points_from(&a, 0.05);
+    }
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
