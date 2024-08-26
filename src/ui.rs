@@ -1824,117 +1824,47 @@ impl Aenderungen {
 
     }
 
-    pub fn clean_stage4(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
+    pub fn clean_stage11(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+        
         let mut changed_mut = self.round_to_3decimal();
+        let mut aenderungen_split = Vec::new();
+        
+        for (k, pn) in changed_mut.na_polygone_neu.iter() {
+            let kuerzel = match pn.nutzung.clone() { Some(s) => s, None => continue, };
+            aenderungen_split.push((kuerzel, k.clone(), pn.poly.clone()));
+        }
 
-        // 2. Änderungen mergen und kombinieren nach Typ
-        let mut aenderungen_merged_by_typ = BTreeMap::new();
-        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            let kuerzel = match polyneu.nutzung.clone() {
-                Some(s) => s,
-                None => continue,
-            };
+        for (k, pn) in changed_mut.na_polygone_neu.iter_mut() {
+
+            use web_sys::console::log_1;
             
-            aenderungen_merged_by_typ
-            .entry(kuerzel)
-            .and_modify(|ep: &mut SvgPolygon| {
-                let a = ep.round_to_3dec();
-                let b = polyneu.poly.round_to_3dec();
-                if let Some(e) = join_polys(&[a, b], true, false) {
-                    *ep = e;
-                }
-            })
-            .or_insert_with(|| {
-                polyneu.poly.round_to_3dec()
-            });
+            let pn_rect = pn.poly.get_rect();
+            let kuerzel = match pn.nutzung.clone() { Some(s) => s, None => continue, };
+            let higher_order_polys = aenderungen_split.iter()
+            .filter(|(_, id, _)|  id != k)
+            .filter(|(k, id, v)|  *k != kuerzel && get_ranking(k) > get_ranking(&kuerzel))
+            .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
+            .map(|s| &s.2)
+            .collect::<Vec<_>>();
+
+            let pn_poly_clone = pn.poly.clone();
+            log_1(&format!("subtracting {} poly from {}", higher_order_polys.len(), kuerzel).into());
+            log_1(&serde_json::to_string(&higher_order_polys).unwrap_or_default().into());
+            let subtracted = subtract_from_poly(&pn_poly_clone, &higher_order_polys);
+            log_1(&serde_json::to_string(&subtracted).unwrap_or_default().into());
+            pn.poly = subtracted;
         }
 
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
+        changed_mut.round_to_3decimal()
     }
 
-    pub fn clean_stage8(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        let changed_mut = self.round_to_3decimal();
-
-        let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        let total_aenderungen = aenderungen_merged_by_typ.iter().flat_map(|(kuerzel, poly)| {
-            poly.outer_rings.iter().filter_map(|p| {
-                let p = SvgPolygon {
-                    outer_rings: vec![p.clone()],
-                    inner_rings: Vec::new(), // TODO
-                };
-                if p.is_zero_area() {
-                    None
-                } else {
-                    Some((kuerzel.clone(), p))
-                }
-            })
-        }).collect::<Vec<_>>();
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: total_aenderungen.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-    pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        let changed_mut = self.round_to_3decimal();
-
-        let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        // 4. Änderungen mit sich selber veschneiden nach Typ (z.B. GEWÄSSER > ACKER)
-        let higher_ranked_polys = aenderungen_merged_by_typ.keys()
-        .map(|k| {
-            let higher_ranked_polys = get_higher_ranked_polys(k, &aenderungen_merged_by_typ);
-            (k.clone(), higher_ranked_polys)
-        })
-        .collect::<BTreeMap<_, _>>();
-
-        let default = Vec::new();
-        for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
-            let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
-            let hr = hr.iter().collect::<Vec<_>>();
-            for h in hr.into_iter() {
-                *megapoly = subtract_from_poly(&megapoly, &[h]);
-            }
-        }
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-
-    pub fn clean_stage7_test(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>, konfiguration: &Konfiguration) -> Aenderungen {
+    pub fn clean_stage7_test(
+        &self, 
+        split_nas: &SplitNasXml, 
+        original_xml: &NasXMLFile, 
+        log: &mut Vec<String>, 
+        konfiguration: &Konfiguration
+    ) -> Aenderungen {
 
         let aenderungen = self.clean(split_nas, original_xml, log, konfiguration);
 
@@ -1953,7 +1883,13 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
-    pub fn clean(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>, konfiguration: &Konfiguration) -> AenderungenClean {
+    pub fn clean(
+        &self, 
+        split_nas: &SplitNasXml, 
+        original_xml: &NasXMLFile, 
+        log: &mut Vec<String>, 
+        konfiguration: &Konfiguration
+    ) -> AenderungenClean {
 
         let changed_mut = self.clean_stage1(split_nas, log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
 
@@ -1966,15 +1902,9 @@ impl Aenderungen {
             konfiguration.merge.stage3_maxdeviation_followline,
         );
         
-        let changed_mut = changed_mut.clean_stage4(split_nas, log);
-
-        // let changed_mut = changed_mut.clean_stage5(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage6(split_nas, log);
+        let changed_mut = changed_mut.clean_stage11(split_nas, log);
 
         let qt = split_nas.create_quadtree();
-
-        let changed_mut = changed_mut.clean_stage8(split_nas, log);
 
         AenderungenClean {
             nas_xml_quadtree: qt,
@@ -1983,24 +1913,10 @@ impl Aenderungen {
     }
 }
 
-fn get_higher_ranked_polys(
-    kuerzel: &str, 
-    map: &BTreeMap<String, SvgPolygon>
-) -> Vec<SvgPolygon> {
-    let ranking = get_ranking(kuerzel);
-    map.iter()
-    .filter_map(|(k, v)| {
-        if get_ranking(&k) > ranking { 
-            Some(v.clone()) 
-        } else { None }
-    }).collect()
-}
-
 fn get_ranking(s: &str) -> usize {
     match s {
-        "A" => 1,
         "WALD" => 2,
-        "WAS" | "WAF" => 4,
+        "WAS" | "WAF" => 3,
         _ => 0,
     }
 }

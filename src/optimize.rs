@@ -213,7 +213,7 @@ pub fn optimize_labels(
 }
 
 fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
-    let lpos = 7.0 * (iteration + 1) as f64;
+    let lpos = 7.0 * (iteration + 2) as f64;
     let lpos_half = lpos / 2.0;
     let xpos = vec![
         -lpos,

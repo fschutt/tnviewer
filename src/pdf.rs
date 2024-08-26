@@ -1057,32 +1057,38 @@ pub fn get_flurstuecke(
 }
 
 
-// only called in stage6 + get_intersections!
+// only called in stage11 + get_intersections!
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
         let mut fi = first.round_to_3dec();
         let mut i = i.round_to_3dec();
+        i.correct_winding_order();
+        fi.correct_winding_order();
         if fi.equals(&i) {
             continue;
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
         let mut i = i.round_to_3dec();
-        if fi.is_zero_area() {
-            return SvgPolygon::default();
-        }
         if i.is_zero_area() {
+            continue;
+        }
+        if fi.is_zero_area() {
+            log_1(&"fi is zero area, nothing to subtract from!".into());
             return SvgPolygon::default();
         }
         if fi.equals_any_ring(&i).is_some() {
+            log_1(&"equals ring 1".into());
             return fi;
         }
         if i.equals_any_ring(&fi).is_some() {
+            log_1(&"equals ring 2".into());
             return i;
         }
         let relate = nas::relate(&fi, &i);
         if relate.only_touches() {
+            log_1(&"only touches, continue!".into());
             continue;
         }
         if relate.b_contained_in_a() {
@@ -1110,6 +1116,8 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         first = crate::nas::cleanup_poly(&new);
     }
 
+    first.correct_winding_order();
+    log_1(&"ok done!".into());
     first
 }
 
@@ -1128,6 +1136,8 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
             continue;
         }
         let mut fi = first.round_to_3dec();
+        fi.correct_winding_order();
+        i.correct_winding_order();
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
@@ -1147,6 +1157,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         }
     }
 
+    first.correct_winding_order();
     Some(first)
 }
 

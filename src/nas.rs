@@ -751,6 +751,12 @@ impl TaggedPolygon {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct SvgPolygon {
+    pub outer_rings: Vec<SvgLine>,
+    pub inner_rings: Vec<SvgLine>,
+}
+
 impl SvgPolygon {
 
     pub fn get_rect(&self) -> quadtree_f32::Rect {
@@ -790,15 +796,6 @@ impl SvgPolygon {
             [max_y, max_x]
         ]
     }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct SvgPolygon {
-    pub outer_rings: Vec<SvgLine>,
-    pub inner_rings: Vec<SvgLine>,
-}
-
-impl SvgPolygon {
 
     pub fn insert_points_from(&mut self, other: &Self, maxdst: f64) {
         self.outer_rings = self.outer_rings.iter().map(|o| o.insert_points_from(other, maxdst)).collect();
@@ -923,12 +920,31 @@ impl SvgPolygon {
 
     }
 
+    pub fn inverse_point_order(&self) -> Self {
+        Self {
+            outer_rings: self.outer_rings.iter().map(|s| s.inverse_point_order()).collect(),
+            inner_rings: self.inner_rings.iter().map(|s| s.inverse_point_order()).collect(),
+        }
+    }
+
+    pub fn correct_winding_order(&mut self) {
+        let normal_winding_area = self.area_m2();
+        if normal_winding_area > 1.0 {
+            return;
+        }
+        let reverse_order = self.inverse_point_order();
+        if reverse_order.area_m2() > 1.0 {
+            *self = reverse_order;
+        }
+    }
+
     pub fn is_zero_area(&self) -> bool {
         if self.outer_rings.is_empty() {
             return true;
         }
         let area_m2 = self.area_m2();
-        area_m2 < 1.0
+        let reverse = self.inverse_point_order().area_m2();
+        area_m2 < 1.0 && reverse < 1.0
     }
 
     pub fn area_m2(&self) -> f64 {
@@ -1057,6 +1073,16 @@ pub struct SvgLine {
 }
 
 impl SvgLine {
+
+    pub fn inverse_point_order(&self) -> SvgLine {
+        SvgLine {
+            points: {
+                let mut newp = self.points.clone();
+                newp.reverse();
+                newp
+            }
+        }
+    }
 
     pub fn insert_points_from(&self, other: &SvgPolygon, maxdst: f64) -> SvgLine {
         use crate::geograf::l_to_points;
@@ -1854,6 +1880,8 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     use geo::BooleanOps;
     let mut a = a.round_to_3dec();
     let mut b = b.round_to_3dec();
+    a.correct_winding_order();
+    b.correct_winding_order();
     if a.is_zero_area() {
         return Vec::new();
     }
@@ -1873,21 +1901,14 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
-    log_1(&"intersect_polys".into());
-    log_1(&serde_json::to_string(&a).unwrap_or_default().into());
-    log_1(&serde_json::to_string(&b).unwrap_or_default().into());
-    /* 
-    if autoclean {
-        a.correct_almost_touching_points(&b, 0.05, true);
-        a.insert_points_from(&b, 0.05);
-        b.insert_points_from(&a, 0.05);
-    }
-    */
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
     log_1(&"intersected!".into());
-    let s = translate_from_geo_poly(&intersect);
+    let mut s = translate_from_geo_poly(&intersect);
+    for q in s.iter_mut() {
+        q.correct_winding_order();
+    }
     if autoclean {
         s.iter().map(cleanup_poly).collect()
     } else {

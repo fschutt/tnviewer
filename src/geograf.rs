@@ -289,16 +289,8 @@ pub fn calc_splitflaechen(
     original_xml: &NasXMLFile,
 ) -> AenderungenIntersections {
 
-    log_status(&format!("Änderungen nach Typ mergen..."));
-
-    let aenderungen = aenderungen.clean_stage4(split_nas, &mut Vec::new());
-
-    log_status(&format!("Änderungen mit sich selber verschneiden..."));
-
-    let aenderungen = aenderungen.clean_stage6(split_nas, &mut Vec::new());
-
-    let aenderungen = aenderungen.clean_stage8(split_nas, &mut Vec::new());
-
+    let aenderungen = aenderungen.clean_stage11(split_nas, &mut Vec::new());
+    
     let qt = split_nas.create_quadtree();
 
     let aenderungen = AenderungenClean {

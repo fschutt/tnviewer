@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, subtract_from_poly, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
@@ -50,12 +50,11 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = include_str!("./test1.txt");
-    let poly_string2 = include_str!("./test2.txt");
+    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":430663.988,"y":5887949.297},{"x":430769.339,"y":5888140.393},{"x":430903.586,"y":5888057.721},{"x":430787.849,"y":5887847.355},{"x":430685.908,"y":5887930.184},{"x":430663.988,"y":5887949.297}]}],"inner_rings":[]}"#;
+    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":430898.907,"y":5888221.303},{"x":430754.21,"y":5888043.653},{"x":430828.958,"y":5888000.322},{"x":430930.133,"y":5888196.506},{"x":430922.404,"y":5888208.075},{"x":430898.907,"y":5888221.303}]}],"inner_rings":[]}"#;
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
-    // let subtract = subtract_from_poly(&s1, &[&s2]);
     let onlytouches1 = nas::relate(&s1, &s2);
     if s1.equals_any_ring(&s2).is_some() {
         log_1(&"returning s1".into());
@@ -198,9 +197,7 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
             .clean_stage2(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line)
             .clean_stage3(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2, konfiguration.merge.stage3_maxdeviation_followline)
         },
-        "4" => aenderungen.clean_stage4(&split_nas_xml, &mut log),
-        "6" => aenderungen.clean_stage6(&split_nas_xml, &mut log),
-        "8" => aenderungen.clean_stage8(&split_nas_xml, &mut log),
+        "4" => aenderungen.clean_stage11(&split_nas_xml, &mut log),
         "9" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
         _ => return format!("wrong id {id}"),
     };
