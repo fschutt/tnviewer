@@ -15,7 +15,12 @@ impl OptimizedTextPlacement {
             return None; 
         }
 
-        Some((self.optimized.pos, self.original.pos))
+        let (a, b) = (self.optimized.pos, self.original.pos);
+        let new_b = SvgPoint {
+            x: self.optimized.pos.x + ((self.original.pos.x - self.optimized.pos.x) * 0.90),
+            y: self.optimized.pos.y + ((self.original.pos.y - self.optimized.pos.y) * 0.90),
+        };
+        Some((a, new_b))
     }
 }
 
