@@ -460,7 +460,7 @@ pub fn generate_pdf_internal(
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_rote_linien(&mut layer, &rote_linien);
 
-    log_status(&format!("Optimiere Beschriftungen..."));
+    log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte = crate::optimize::optimize_labels(
         &flst,
         splitflaechen,

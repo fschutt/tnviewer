@@ -175,10 +175,6 @@ pub fn optimize_labels(
         }
     }
 
-    for l in render_boolmap(&overlap_boolmap) {
-        log_status(&l);
-    }
-
     log_status(&format!("OK rendered map! {} x {} pixels", config.width_pixels, config.height_pixels));
 
     initial_text_pos.iter().zip(initial_text_pos_clone.iter()).map(|(old, new)| {
@@ -191,21 +187,20 @@ pub fn optimize_labels(
 }
 
 fn gen_new_points(p: &SvgPoint) -> Vec<SvgPoint> {
-    let lpos = 5.0;
-    let label_height_half = lpos / 2.0;
-    let label_width_half = lpos / 2.0;
+    let lpos = 10.0;
+    let lpos_half = lpos / 2.0;
     let xpos = vec![
         -lpos,
-        -label_width_half,
+        -lpos_half,
         0.0,
-        label_width_half,
+        lpos_half,
         lpos,
     ];
     let ypos = vec![
         -lpos,
-        -label_height_half,
+        -lpos_half,
         0.0,
-        label_height_half,
+        lpos_half,
         lpos,
     ];
     xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
