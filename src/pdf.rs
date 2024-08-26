@@ -11,7 +11,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    intersect_polys, parse_nas_xml, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    intersect_polys, parse_nas_xml, relate, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -1059,6 +1059,13 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
             continue;
         }
         let mut fi = first.round_to_3dec();
+        if nas::relate(&fi, &i).only_touches() {
+            first = join_poly_only_touches(&fi, &i);
+            continue;
+        }
+        log_1(&"join_polys".into());
+        log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
+        log_1(&serde_json::to_string(&i).unwrap_or_default().into());
         if autoclean {
             fi.insert_points_from(&i, 0.05);
             i.insert_points_from(&fi, 0.05);
@@ -1066,6 +1073,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
+        log_1(&"joined!".into());
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -1083,6 +1091,17 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
     }
 
     Some(first)
+}
+
+fn join_poly_only_touches(
+    a: &SvgPolygon,
+    b: &SvgPolygon
+) -> SvgPolygon {
+    let mut outer_rings = a.outer_rings.clone();
+    let mut inner_rings = a.inner_rings.clone();
+    outer_rings.extend(b.outer_rings.iter().cloned());
+    inner_rings.extend(b.inner_rings.iter().cloned());
+    SvgPolygon { outer_rings, inner_rings }
 }
 
 pub fn get_gebaeude(
