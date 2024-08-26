@@ -9,7 +9,7 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 5.0;
+pub const LABEL_HEIGHT_M: f64 = 7.0;
 pub const LABEL_WIDTH_M: f64 = 10.0;
 
 
@@ -134,14 +134,13 @@ pub fn optimize_labels(
     log_status(&format!("label width in pixels: {}", config.label_width_pixel()));
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
-    let maxiterations = 4;
+    let maxiterations = 10;
     for tp in initial_text_pos_clone.iter_mut() {
         log_status("labeling 1");
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
-        'outer: for _ in 0..maxiterations {
+        'outer: for i in 0..maxiterations {
             log_status(&format!("loop {} possible positions", textpos_totry.len()));
-            let mut newaccum_pos = Vec::new();
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
                     newpostotry,
@@ -157,16 +156,10 @@ pub fn optimize_labels(
                         &config,
                     );
                     break 'outer;
-                } else {
-                    log_status(&"generating new positions");
-                    newaccum_pos.append(&mut gen_new_points(newpostotry));
                 }
             }
-            if !newaccum_pos.is_empty() {
-                newaccum_pos.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
-                newaccum_pos.dedup_by(|a, b| a.equals(b));
-                textpos_totry = newaccum_pos;
-            }
+
+            textpos_totry = gen_new_points(&tp.pos, i);
             log_status("labeling finished");
         }
         if let Some(found) = textpos_found {
@@ -186,8 +179,8 @@ pub fn optimize_labels(
     }).collect()
 }
 
-fn gen_new_points(p: &SvgPoint) -> Vec<SvgPoint> {
-    let lpos = 10.0;
+fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
+    let lpos = 7.0 * (iteration + 1) as f64;
     let lpos_half = lpos / 2.0;
     let xpos = vec![
         -lpos,
