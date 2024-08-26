@@ -10,6 +10,7 @@ use xml::XmlNode;
 use crate::ui::UiData;
 use crate::csv::CsvDataType;
 use serde_derive::{Serialize, Deserialize};
+use web_sys::console::log_1;
 
 pub mod xml;
 pub mod ui;
@@ -55,8 +56,11 @@ pub fn get_problem_geojson() -> String {
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
     let onlytouches1 = nas::relate(&s1, &s2);
-    let s3 = subtract_from_poly(&s1, &[&s2]);
-
+    if s1.equals_any_ring(&s2).is_some() {
+        log_1(&"returning s1".into());
+    } else if s2.equals_any_ring(&s1).is_some() {
+        log_1(&"returning s2".into());
+    }
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
 

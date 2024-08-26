@@ -924,10 +924,9 @@ impl SvgPolygon {
     }
 
     pub fn is_zero_area(&self) -> bool {
-        /*
         if self.outer_rings.is_empty() {
             return true;
-        }*/
+        }
         let area_m2 = crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>();
         area_m2 < 1.0
     }
@@ -942,9 +941,25 @@ impl SvgPolygon {
             if or.equals(first_ring) {
                 return Some(i);
             }
+            if Self::equals_ring_dst(first_ring, or) {
+                return Some(i);
+            }
         }
 
         None
+    }
+
+    fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
+        
+        let mut a_points = a.points.clone();
+        a_points.dedup_by(|a, b| a.equals(b));
+        
+        let mut b_points = b.points.clone();
+        b_points.dedup_by(|a, b| a.equals(b));
+        
+        a_points.iter().all(|a| {
+            b_points.iter().any(|p| p.dist(a) < 0.005)
+        })
     }
 
     pub fn translate_y(&self, newy: f64) -> Self {
