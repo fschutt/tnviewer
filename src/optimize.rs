@@ -136,11 +136,11 @@ pub fn optimize_labels(
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     let maxiterations = 4;
     for tp in initial_text_pos_clone.iter_mut() {
-        log_1(&"labeling 1".into());
+        log_status("labeling 1");
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
         'outer: for _ in 0..maxiterations {
-            log_1(&"loop".into());
+            log_status(&format!("loop {} possible positions", textpos_totry.len()));
             let mut newaccum_pos = Vec::new();
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
@@ -148,7 +148,7 @@ pub fn optimize_labels(
                     &overlap_boolmap,
                     &config,
                 ) {
-                    log_1(&"mark found".into());
+                    log_status(&"mark found");
                     // mark region as occupied
                     textpos_found = Some(*newpostotry);
                     paint_label_onto_map(
@@ -158,7 +158,7 @@ pub fn optimize_labels(
                     );
                     break 'outer;
                 } else {
-                    log_1(&"generating new positions".into());
+                    log_status(&"generating new positions");
                     newaccum_pos.append(&mut gen_new_points(newpostotry));
                 }
             }
@@ -167,10 +167,10 @@ pub fn optimize_labels(
                 newaccum_pos.dedup_by(|a, b| a.equals(b));
                 textpos_totry = newaccum_pos;
             }
-
+            log_status("labeling finished");
         }
         if let Some(found) = textpos_found {
-            log_1(&"pos found".into());
+            log_status("pos found");
             tp.pos = found;
         }
     }
