@@ -9,8 +9,8 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 10.0;
-pub const LABEL_WIDTH_M: f64 = 15.0;
+pub const LABEL_HEIGHT_M: f64 = 13.0;
+pub const LABEL_WIDTH_M: f64 = 20.0;
 
 
 pub struct OptimizeConfig {
@@ -162,7 +162,10 @@ pub fn optimize_labels(
             textpos_totry = np;
         }
         if let Some(found) = textpos_found {
-            tp.pos = found;
+            tp.pos = SvgPoint {
+                x: found.x + 1.0,
+                y: found.y - 1.0,
+            };
         }
     }
 
