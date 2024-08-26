@@ -134,6 +134,8 @@ pub fn optimize_labels(
     log_status(&format!("label width in pixels: {}", config.label_width_pixel()));
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
+    initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
+    
     let maxiterations = 10;
     for tp in initial_text_pos_clone.iter_mut() {
         let mut textpos_totry = vec![tp.pos];

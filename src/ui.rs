@@ -1205,11 +1205,13 @@ impl AenderungenIntersections {
                 Some(s) => s,
                 None => return Vec::new(),
             };
+            let area = q.poly_cut.area_m2().round() as usize;
             if q.alt == q.neu {
                 vec![TextPlacement {
                     kuerzel: q.alt.clone(),
                     status: TextStatus::StaysAsIs,
                     pos: lp.clone(),
+                    area: area,
                 }]
             } else {
                 vec![
@@ -1217,11 +1219,13 @@ impl AenderungenIntersections {
                         kuerzel: q.alt.clone(),
                         status: TextStatus::Old,
                         pos: lp.clone(),
+                        area: area,
                     },
                     TextPlacement {
                         kuerzel: q.neu.clone(),
                         status: TextStatus::New,
                         pos: lp.clone(),
+                        area: area,
                     },
                 ]
             }
@@ -1534,6 +1538,7 @@ pub struct TextPlacement {
     pub kuerzel: String,
     pub status: TextStatus,
     pub pos: SvgPoint,
+    pub area: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]

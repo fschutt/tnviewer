@@ -722,6 +722,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            area: p.optimized.area,
         }
     })
     .collect::<Vec<_>>();
@@ -734,6 +735,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            area: p.optimized.area,
         }
     })
     .collect::<Vec<_>>();
@@ -745,6 +747,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            area: p.optimized.area,
         }
     })
     .collect::<Vec<_>>();
