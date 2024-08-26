@@ -1,10 +1,11 @@
+use std::collections::BTreeMap;
+
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::log_status};
+use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{log_status, uuid}};
 
 pub struct OptimizedTextPlacement {
-    pub rect: SvgLine,
     pub original: TextPlacement,
     pub optimized: TextPlacement,
 }
@@ -138,7 +139,6 @@ pub fn optimize_labels(
         Some(s) => s,
         None => return initial_text_pos.iter().map(|s| {
             OptimizedTextPlacement {
-                rect: svg_label_pos_to_line(&s.pos),
                 optimized: s.clone(),
                 original: s.clone(),
             }
@@ -147,14 +147,15 @@ pub fn optimize_labels(
 
     log_status(&format!("label height in pixels: {}", config.label_height_pixel()));
 
+    let maxiterations = 10;
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
-
-    let maxiterations = 10;
-    for tp in initial_text_pos_clone.iter_mut() {
+    initial_text_pos_clone.iter_mut().map(|tp| {
+        
         let mut textpos_totry = vec![tp.pos];
-        let mut textpos_found = None;
+        let mut textpos_found: Option<(SvgPoint, f64)> = None;
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
+        
         'outer: for i in 0..maxiterations {
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
@@ -164,15 +165,23 @@ pub fn optimize_labels(
                     tp_width,
                 ) {
                     // mark region as occupied
-                    textpos_found = Some(*newpostotry);
-                    paint_label_onto_map(
-                        newpostotry,
-                        &mut overlap_boolmap,
-                        &config,
-                        tp_width,
-                    );
-                    break 'outer;
+                    let (potential_textpos, dst) = (*newpostotry, newpostotry.dist(&tp.pos));
+                    let (a, t) = textpos_found.get_or_insert((potential_textpos, dst));
+                    if dst < *t {
+                        *a = potential_textpos;
+                        *t = dst;
+                    }
                 }
+            }
+
+            if let Some((s, _)) = textpos_found.as_ref() {
+                paint_label_onto_map(
+                    s,
+                    &mut overlap_boolmap,
+                    &config,
+                    tp_width,
+                );
+                break 'outer;
             }
 
             let mut np = gen_new_points(&tp.pos, i);
@@ -180,21 +189,25 @@ pub fn optimize_labels(
             np.dedup_by(|a, b| a.equals(&b));
             textpos_totry = np;
         }
-        if let Some(found) = textpos_found {
-            tp.pos = SvgPoint {
-                x: found.x + 1.0,
-                y: found.y - 1.0,
-            };
-        }
-    }
 
-    log_status(&format!("OK rendered map! {} x {} pixels", config.width_pixels, config.height_pixels));
 
-    initial_text_pos.iter().zip(initial_text_pos_clone.iter()).map(|(old, new)| {
+        let optimized_pos = match textpos_found {
+            Some((s, _)) => SvgPoint {
+                x: s.x + 1.0,
+                y: s.y - 1.0,
+            },
+            None => tp.pos,
+        };
+
         OptimizedTextPlacement {
-            rect: svg_label_pos_to_line(&new.pos),
-            optimized: new.clone(),
-            original: old.clone(),
+            optimized: TextPlacement { 
+                kuerzel: tp.kuerzel.clone(), 
+                status: tp.status.clone(), 
+                pos: optimized_pos,
+                area: tp.area.clone(),
+                poly: tp.poly.clone()
+            },
+            original: tp.clone(),
         }
     }).collect()
 }
