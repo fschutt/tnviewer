@@ -9,8 +9,8 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 15.0;
-pub const LABEL_WIDTH_M: f64 = 20.0;
+pub const LABEL_HEIGHT_M: f64 = 10.0;
+pub const LABEL_WIDTH_M: f64 = 15.0;
 
 
 pub struct OptimizeConfig {
@@ -136,18 +136,15 @@ pub fn optimize_labels(
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     let maxiterations = 10;
     for tp in initial_text_pos_clone.iter_mut() {
-        log_status("labeling 1");
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
         'outer: for i in 0..maxiterations {
-            log_status(&format!("loop {} possible positions", textpos_totry.len()));
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
                     newpostotry,
                     &overlap_boolmap,
                     &config,
                 ) {
-                    log_status(&"mark found");
                     // mark region as occupied
                     textpos_found = Some(*newpostotry);
                     paint_label_onto_map(
@@ -163,10 +160,8 @@ pub fn optimize_labels(
             np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
             np.dedup_by(|a, b| a.equals(&b));
             textpos_totry = np;
-            log_status("labeling finished");
         }
         if let Some(found) = textpos_found {
-            log_status("pos found");
             tp.pos = found;
         }
     }
@@ -183,7 +178,7 @@ pub fn optimize_labels(
 }
 
 fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
-    let lpos = 7.0 * (iteration + 2) as f64;
+    let lpos = 7.0 * (iteration + 1) as f64;
     let lpos_half = lpos / 2.0;
     let xpos = vec![
         -lpos,
@@ -268,7 +263,7 @@ fn paint_label_onto_map(
 
     for y_test in 0..label_height_px {
         for x_test in 0..label_width_px {
-            match map.get_mut((pixel.y + y_test, pixel.x + x_test)) {
+            match map.get_mut((pixel.y.saturating_sub(y_test), pixel.x + x_test)) {
                 Some(s) => { *s = true; },
                 _ => { },
             }
@@ -291,7 +286,7 @@ fn label_overlaps_feature(
     
     for y_test in 0..label_height_px {
         for x_test in 0..label_width_px {
-            match map.get((pixel.y + y_test, pixel.x + x_test)) {
+            match map.get((pixel.y.saturating_sub(y_test), pixel.x + x_test)) {
                 Some(s) => if *s { return true; },
                 _ => { },
             }
