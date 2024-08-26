@@ -1199,9 +1199,9 @@ impl AenderungenIntersections {
         // TODO
         self.clone()
     }
-    pub fn get_texte(s: &[AenderungenIntersection], tolerance: f64) -> Vec<TextPlacement> {
+    pub fn get_texte(s: &[AenderungenIntersection]) -> Vec<TextPlacement> {
         s.iter().flat_map(|q| {
-            let lp = match q.poly_cut.get_label_pos(tolerance) {
+            let lp = match q.poly_cut.get_label_pos() {
                 Some(s) => s,
                 None => return Vec::new(),
             };

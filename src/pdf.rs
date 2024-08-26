@@ -6,6 +6,7 @@ use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
+use crate::optimize::{OptimizeConfig, OptimizedTextPlacement};
 use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
@@ -459,13 +460,23 @@ pub fn generate_pdf_internal(
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_rote_linien(&mut layer, &rote_linien);
 
+    log_status(&format!("Optimiere Beschriftungen..."));
+    let aenderungen_texte = crate::optimize::optimize_labels(
+        &flst,
+        splitflaechen,
+        &gebaeude,
+        &[],
+        &beschriftungen,
+        &OptimizeConfig::new(rc, riss_extent, 1.0 /* mm */) ,
+    );
+
     log_status(&format!("Rendere Beschriftungen..."));
     let _ = write_splitflaechen_beschriftungen(
         &mut layer, 
         &helvetica,
         riss_extent, 
         rc,
-        beschriftungen,
+        &aenderungen_texte,
     );
 
     let _ = write_border(
@@ -701,39 +712,39 @@ fn write_splitflaechen_beschriftungen(
     font: &IndirectFontRef,
     riss_extent: &RissExtentReprojected,
     riss: &RissConfig,
-    beschriftungen: &[TextPlacement],
+    beschriftungen: &[OptimizedTextPlacement],
 ) -> Option<()> {
 
     let texte_alt = beschriftungen.iter()
-    .filter(|s| s.status == TextStatus::Old)
+    .filter(|s| s.optimized.status == TextStatus::Old)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel.clone(),
-            status: p.status.clone(),
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+            kuerzel: p.optimized.kuerzel.clone(),
+            status: p.optimized.status.clone(),
+            pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
         }
     })
     .collect::<Vec<_>>();
 
 
     let texte_neu = beschriftungen.into_iter()
-    .filter(|s| s.status == TextStatus::New)
+    .filter(|s| s.optimized.status == TextStatus::New)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel.clone(),
-            status: p.status.clone(),
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+            kuerzel: p.optimized.kuerzel.clone(),
+            status: p.optimized.status.clone(),
+            pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
         }
     })
     .collect::<Vec<_>>();
 
     let texte_bleibt = beschriftungen.into_iter()
-    .filter(|s| s.status == TextStatus::StaysAsIs)
+    .filter(|s| s.optimized.status == TextStatus::StaysAsIs)
     .map(|p| {
         TextPlacement {
-            kuerzel: p.kuerzel.clone(),
-            status: p.status.clone(),
-            pos: point_into_pdf_space(&p.pos, riss_extent, riss),
+            kuerzel: p.optimized.kuerzel.clone(),
+            status: p.optimized.status.clone(),
+            pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
         }
     })
     .collect::<Vec<_>>();

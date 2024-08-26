@@ -4,7 +4,7 @@ use dxf::{Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, pdf::{get_fluren, get_flurstuecke, get_gebaeude, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::TaggedPolygon, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -379,10 +379,8 @@ pub fn export_splitflaechen(
     }
     log_status(&format!("{} rote Linien generiert.", aenderungen_rote_linien.len()));
 
-    let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(splitflaechen, 0.001);
+    let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(splitflaechen);
     log_status(&format!("{} Texte generiert", aenderungen_texte.len()));
-
-    // optimize_texts();
 
     let aenderungen_texte_bleibt = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::StaysAsIs)
@@ -403,47 +401,13 @@ pub fn export_splitflaechen(
     log_status(&format!("{} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
     log_status(&format!("Generiere PDF-Vorschau..."));
-    /*
-    
-    //  get_gebaeude_in_pdf_space(&xml, riss_extent, rc, log);
-
-    let fluren = get_fluren_in_pdf_space(
-        &xml,
-        &riss_extent,
-        rc,
-        log
-    );
-
-    extra_infos.as_ref().map(|s| s.rote_linien.clone())
-    .unwrap_or_else(|| get_aenderungen_rote_linien(splitflaechen, linienquadtree))
-    .into_iter()
-
-    get_flurstuecke_in_pdf_space(
-        &xml,
-        &riss_extent,
-        rc,
-        log
-    )
-
-    optimize_labels(
-        &flst,
-        &gebaeude,
-        &[],
-        // text positions,
-        &riss_extent,
-        1.0,
-    );
-
-    */
-
-
     let pdf_vorschau = riss.as_ref().map(|(rc, riss_extent)| {
         // export_splitflaechen
 
         let flst = get_flurstuecke(nas_xml, riss_extent);
         let fluren = get_fluren(nas_xml, riss_extent);
         let gebaeude = get_gebaeude(nas_xml, riss_extent);
-        
+
         crate::pdf::generate_pdf_internal(
             (num_riss, total_risse),
             info,

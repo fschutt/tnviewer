@@ -4,7 +4,9 @@ use float_cmp::approx_eq;
 use float_cmp::ApproxEq;
 use float_cmp::F64Margin;
 use geo::Area;
+use geo::Centroid;
 use geo::CoordsIter;
+use geo::TriangulateEarcut;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
@@ -203,7 +205,7 @@ impl NasXMLFile {
                 None => continue,
             };
 
-            let label_pos = match o.poly.get_label_pos(0.001) {
+            let label_pos = match o.poly.get_label_pos() {
                 Some(s) => s,
                 None => continue,
             };
@@ -979,7 +981,7 @@ impl SvgPolygon {
         }
     }
 
-    pub fn get_label_pos(&self, tolerance: f64) -> Option<SvgPoint> {
+    pub fn get_label_pos(&self) -> Option<SvgPoint> {
         
         if self.is_empty() || self.is_zero_area() {
             return None;
@@ -987,44 +989,26 @@ impl SvgPolygon {
 
         let rect = self.get_rect();
         let center = rect.get_center();
-
-        Some(SvgPoint {
+        let center = SvgPoint {
             x: center.x,
             y: center.y,
-        })
+        };
 
-        /* 
-        log_status("get_label_pos: ");
-        log_status(&serde_json::to_string(&self).unwrap_or_default());
+        if point_is_in_polygon(&center, &self) {
+            return Some(center);
+        }
 
-        let out = self.round_to_3dec();
+        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = first_poly.first()?;
 
-        let coords_outer = out.outer_rings.iter().flat_map(|line| {
-            line.points.iter().map(|p| (p.x, p.y))
-       }).collect::<Vec<_>>();
+        let triangles = first_poly.earcut_triangles();
+        
+        let largest_triangle = triangles.iter()
+        .max_by_key(|t| (t.unsigned_area() * 1000.0) as usize)?;
 
-       let polygon = polylabel_mini::Polygon {
-           exterior: polylabel_mini::LineString {
-               points: coords_outer.iter().map(|(x, y)| polylabel_mini::Point {
-                   x: *x,
-                   y: *y,
-               }).collect()
-           },
-           interiors: out.inner_rings.iter().map(|l| polylabel_mini::LineString {
-               points: l.points.iter().map(|p| polylabel_mini::Point {
-                   x: p.x,
-                   y: p.y,
-               }).collect()
-           }).collect()
-       };
+        let center = largest_triangle.centroid();
 
-       let label_pos = polylabel_mini::polylabel(&polygon, tolerance);
-       
-       Some(SvgPoint {
-            x: label_pos.x,
-            y: label_pos.y,
-       })
-       */
+        Some(SvgPoint { x: center.x(), y: center.y() })
     }
 }
 

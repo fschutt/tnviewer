@@ -22,7 +22,7 @@ pub mod uuid_wasm;
 pub mod zip;
 pub mod geograf;
 pub mod david;
-pub mod optimize_labels;
+pub mod optimize;
 
 pub const ARIAL_TTF: &[u8] = include_bytes!("./Arial.ttf");
 
