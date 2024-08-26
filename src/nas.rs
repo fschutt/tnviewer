@@ -1000,6 +1000,26 @@ impl SvgPolygon {
         }
     }
 
+    pub fn get_secondary_label_pos(&self) -> Option<SvgPoint> {
+        
+        if self.is_empty() || self.is_zero_area() {
+            return None;
+        }
+
+        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = first_poly.first()?;
+
+        let mut triangles = first_poly.earcut_triangles();
+        
+        triangles.sort_by(|a, b| {
+            a.unsigned_area().total_cmp(&b.unsigned_area())
+        });
+
+        triangles.pop();
+        let center = triangles.pop().map(|second_largest| second_largest.centroid())?;
+        Some(SvgPoint { x: center.x(), y: center.y() })
+    }
+
     pub fn get_label_pos(&self) -> Option<SvgPoint> {
         
         if self.is_empty() || self.is_zero_area() {

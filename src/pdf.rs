@@ -717,6 +717,20 @@ fn write_splitflaechen_beschriftungen(
     beschriftungen: &[OptimizedTextPlacement],
 ) -> Option<()> {
 
+    let linien = beschriftungen.iter().filter_map(|l| {
+        let (start, end) = l.get_line()?;
+        let start = point_into_pdf_space(&start, riss_extent, riss);
+        let end = point_into_pdf_space(&end, riss_extent, riss);
+
+        Some((l.optimized.status.clone(), printpdf::Line {
+            points: vec![
+                (printpdf::Point { x: Mm(start.x as f32).into_pt(), y: Mm(start.y as f32).into_pt() }, false),
+                (printpdf::Point { x: Mm(end.x as f32).into_pt(), y: Mm(end.y as f32).into_pt() }, false),
+            ],
+            is_closed: false,
+        }))
+    }).collect::<Vec<_>>();
+
     let texte_alt = beschriftungen.iter()
     .filter(|s| s.optimized.status == TextStatus::Old)
     .map(|p| {
@@ -725,6 +739,7 @@ fn write_splitflaechen_beschriftungen(
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
             area: p.optimized.area,
+            poly: p.optimized.poly.clone(),
         }
     })
     .collect::<Vec<_>>();
@@ -738,6 +753,7 @@ fn write_splitflaechen_beschriftungen(
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
             area: p.optimized.area,
+            poly: p.optimized.poly.clone(),
         }
     })
     .collect::<Vec<_>>();
@@ -750,6 +766,7 @@ fn write_splitflaechen_beschriftungen(
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
             area: p.optimized.area,
+            poly: p.optimized.poly.clone(),
         }
     })
     .collect::<Vec<_>>();
@@ -768,7 +785,7 @@ fn write_splitflaechen_beschriftungen(
 
     layer.save_graphics_state();
     
-    layer.set_fill_color(bleibt_color);
+    layer.set_fill_color(bleibt_color.clone());
     for t in texte_bleibt {
         layer.begin_text_section();
         layer.set_font(&font, 6.0);
@@ -778,7 +795,7 @@ fn write_splitflaechen_beschriftungen(
         layer.end_text_section();
     }
 
-    layer.set_fill_color(alt_color);
+    layer.set_fill_color(alt_color.clone());
     for t in texte_alt {
         layer.begin_text_section();
         layer.set_font(&font, 6.0);
@@ -788,7 +805,7 @@ fn write_splitflaechen_beschriftungen(
         layer.end_text_section();
     }
 
-    layer.set_fill_color(neu_color);
+    layer.set_fill_color(neu_color.clone());
     for t in texte_neu {
         layer.begin_text_section();
         layer.set_font(&font, 6.0);
@@ -799,6 +816,23 @@ fn write_splitflaechen_beschriftungen(
     }
 
     layer.restore_graphics_state();
+
+    layer.save_graphics_state();
+
+    layer.set_outline_thickness(1.0);
+
+    for (ts, li) in linien.iter() {
+        let col = match ts {
+            TextStatus::New => neu_color.clone(),
+            TextStatus::StaysAsIs => bleibt_color.clone(),
+            TextStatus::Old => alt_color.clone(),
+        };
+        layer.set_outline_color(col);
+        layer.add_line(li.clone());
+    }
+
+    layer.restore_graphics_state();
+    
 
     Some(())
 }

@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1201,33 +1201,51 @@ impl AenderungenIntersections {
     }
     pub fn get_texte(s: &[AenderungenIntersection]) -> Vec<TextPlacement> {
         s.iter().flat_map(|q| {
-            let lp = match q.poly_cut.get_label_pos() {
-                Some(s) => s,
-                None => return Vec::new(),
-            };
-            let area = q.poly_cut.area_m2().round() as usize;
             if q.alt == q.neu {
-                vec![TextPlacement {
-                    kuerzel: q.alt.clone(),
-                    status: TextStatus::StaysAsIs,
-                    pos: lp.clone(),
-                    area: area,
-                }]
-            } else {
-                vec![
-                    TextPlacement {
+                q.poly_cut.outer_rings.iter().flat_map(|or| {
+                    let p = SvgPolygon { outer_rings: vec![or.clone()], inner_rings: q.poly_cut.inner_rings.clone() };
+                    let lp = match p.get_label_pos() {
+                        Some(s) => s,
+                        None => return Vec::new(),
+                    };
+                    vec![TextPlacement {
                         kuerzel: q.alt.clone(),
-                        status: TextStatus::Old,
+                        status: TextStatus::StaysAsIs,
                         pos: lp.clone(),
-                        area: area,
-                    },
-                    TextPlacement {
-                        kuerzel: q.neu.clone(),
-                        status: TextStatus::New,
-                        pos: lp.clone(),
-                        area: area,
-                    },
-                ]
+                        area: p.area_m2().round() as usize,
+                        poly: p.clone(),
+                    }]
+                }).collect::<Vec<_>>()
+            } else {
+                let polys = q.poly_cut.outer_rings.iter().map(|or| {
+                    SvgPolygon { outer_rings: vec![or.clone()], inner_rings: q.poly_cut.inner_rings.clone() }
+                }).collect::<Vec<_>>();
+                polys.iter().flat_map(|p| {
+                    let lp = match p.get_label_pos() {
+                        Some(s) => s,
+                        None => return Vec::new(),
+                    };
+                    let sp = match p.get_secondary_label_pos() {
+                        Some(s) => s,
+                        None => lp,
+                    };
+                    vec![
+                        TextPlacement {
+                            kuerzel: q.alt.clone(),
+                            status: TextStatus::Old,
+                            pos: lp.clone(),
+                            area: p.area_m2().round() as usize,
+                            poly: p.clone(),
+                        },
+                        TextPlacement {
+                            kuerzel: q.neu.clone(),
+                            status: TextStatus::New,
+                            pos: sp.clone(),
+                            area: p.area_m2().round() as usize,
+                            poly: p.clone(),
+                        }
+                    ]
+                }).collect()
             }
         }).collect()
     }
@@ -1539,9 +1557,10 @@ pub struct TextPlacement {
     pub status: TextStatus,
     pub pos: SvgPoint,
     pub area: usize,
+    pub poly: SvgPolygon,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum TextStatus {
     Old,
     New,

@@ -9,6 +9,16 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
+impl OptimizedTextPlacement {
+    pub fn get_line(&self) -> Option<(SvgPoint, SvgPoint)> {
+        if crate::nas::point_is_in_polygon(&self.optimized.pos, &self.optimized.poly) {
+            return None; 
+        }
+
+        Some((self.optimized.pos, self.original.pos))
+    }
+}
+
 pub const LABEL_HEIGHT_M: f64 = 13.0;
 pub const LABEL_WIDTH_M: f64 = 20.0;
 pub const LABEL_WIDTH_PER_CHAR_M: f64 = 5.0;
@@ -139,7 +149,7 @@ pub fn optimize_labels(
     for tp in initial_text_pos_clone.iter_mut() {
         let mut textpos_totry = vec![tp.pos];
         let mut textpos_found = None;
-        let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M;
+        let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         'outer: for i in 0..maxiterations {
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
