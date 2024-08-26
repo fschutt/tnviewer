@@ -1832,6 +1832,9 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
+    log_1(&"intersect_polys".into());
+    log_1(&serde_json::to_string(&a).unwrap_or_default().into());
+    log_1(&serde_json::to_string(&b).unwrap_or_default().into());
     /* 
     if autoclean {
         a.correct_almost_touching_points(&b, 0.05, true);
@@ -1842,6 +1845,7 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
+    log_1(&"intersected!".into());
     let s = translate_from_geo_poly(&intersect);
     if autoclean {
         s.iter().map(cleanup_poly).collect()
