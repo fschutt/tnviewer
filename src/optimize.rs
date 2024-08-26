@@ -9,8 +9,8 @@ pub struct OptimizedTextPlacement {
     pub optimized: TextPlacement,
 }
 
-pub const LABEL_HEIGHT_M: f64 = 7.0;
-pub const LABEL_WIDTH_M: f64 = 10.0;
+pub const LABEL_HEIGHT_M: f64 = 10.0;
+pub const LABEL_WIDTH_M: f64 = 15.0;
 
 
 pub struct OptimizeConfig {
@@ -196,13 +196,40 @@ fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
         lpos_half,
         lpos,
     ];
-    xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
+    xpos.iter().flat_map(|xshift| ypos.iter().flat_map(|yshift| {
+        if *xshift == 0.0 && *yshift == 0.0 {
+            Vec::new()
+        } else {
+            gen_points_around_point(&p.translate(*xshift, *yshift), 4.0)
+        }
+    })).collect()
+}
+
+fn gen_points_around_point(q: &SvgPoint, dst: f64) -> Vec<SvgPoint> {
+    let mut p = vec![*q];
+    let dst_half = dst / 2.0;
+    let xpos = vec![
+        -dst,
+        -dst_half,
+        0.0,
+        dst_half,
+        dst,
+    ];
+    let ypos = vec![
+        -dst,
+        -dst_half,
+        0.0,
+        dst_half,
+        dst,
+    ];
+    p.extend(xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
         if *xshift == 0.0 && *yshift == 0.0 {
             None
         } else {
-            Some(p.translate(*xshift, *yshift))
+            Some(q.translate(*xshift, *yshift))
         }
-    })).collect()
+    })));
+    p
 }
 
 fn svg_label_pos_to_line(p: &SvgPoint) -> SvgLine {
