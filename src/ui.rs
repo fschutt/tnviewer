@@ -1333,7 +1333,7 @@ impl AenderungenClean {
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
-                    // is.push(qq);
+                    is.push(qq);
                 }
             
                 intersection_sizes.insert((flst_id_part, aenderung_i.clone()), is_size);
