@@ -1008,13 +1008,13 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(8);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Änderungen</p>
-                        <p>säubern 8</p>
+                        <p>säubern 5</p>
                     </div>
                 </label>
             </div>
