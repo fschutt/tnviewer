@@ -1855,7 +1855,10 @@ impl Aenderungen {
             let higher_order_polys = aenderungen_split.iter()
             .filter(|(_, id, _)|  id != k)
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
-            .filter(|(k, id, s)| pn.poly.contains_polygon(s))
+            .filter(|(k, id, s)| {
+                let relate = crate::nas::relate(&pn.poly, s);
+                relate.only_touches() 
+            })
             .map(|s| &s.2)
             .collect::<Vec<_>>();
 
