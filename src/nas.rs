@@ -1847,20 +1847,10 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         if b.equals_any_ring(&a).is_some() {
             return vec![b];
         }
-        let relate = crate::nas::relate(&a, &b);
-        /* 
-        if relate.only_touches() {
-            return Vec::new();
-        }
-        */
-        log_status("intersecting...");
-        log_status(&serde_json::to_string(&a).unwrap_or_default());
-        log_status(&serde_json::to_string(&b).unwrap_or_default());
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
         a.intersection(&b);
-        log_status("intersected!");
         let mut s = translate_from_geo_poly(&intersect);
         for q in s.iter_mut() {
             q.correct_winding_order();

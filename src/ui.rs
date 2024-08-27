@@ -1295,6 +1295,10 @@ impl AenderungenClean {
                     Some(s) => s.clone(),
                     None => continue,
                 };
+                let obj_id = match potentially_intersecting.attributes.get("id") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
                 let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel(&ebene) {
                     Some(s) => s,
                     None => continue,
@@ -1312,7 +1316,7 @@ impl AenderungenClean {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
-                        flst_id_part: id.clone(),
+                        flst_id_part: format!("{id}:{ebene}:{obj_id}"),
                         poly_cut: intersect_poly.clone(),
                     };
                     is.push(qq);
@@ -1339,7 +1343,7 @@ impl AenderungenClean {
                 Some(s) => s.clone(),
                 None => continue,
             };
-
+            
             let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
                 Some(s) => s.clone(),
                 None => continue,
