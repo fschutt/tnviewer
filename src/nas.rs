@@ -1868,15 +1868,6 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
 
 define_func!(intersect_polys, geo::OpType::Intersection);
 define_func!(xor_polys, geo::OpType::Xor);
-pub fn subtract_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
-    xor_polys(a, b, autoclean)
-    .into_iter()
-    .filter(|xor_poly| {
-        let relate = crate::nas::relate(xor_poly, a);
-        relate.a_contained_in_b() || relate.b_contained_in_a()
-    })
-    .collect()
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {

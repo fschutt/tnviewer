@@ -1276,6 +1276,7 @@ impl AenderungenClean {
         
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
         let mut flst_parts_changed = BTreeMap::new();
+        let mut intersection_sizes = BTreeMap::new();
 
         for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
@@ -1309,13 +1310,15 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
 
-                for intersect_poly in intersect_polys(&anew, &bnew, true) {
+                let is_polys = intersect_polys(&anew, &bnew, true);
+                let mut is_size = 0.0;
+                let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
+                for intersect_poly in is_polys {
                     let intersect_poly = intersect_poly.round_to_3dec();
                     if intersect_poly.is_zero_area() {
                         continue;
                     }
-
-                    let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
+                    is_size += intersect_poly.area_m2();
                     flst_parts_changed.entry(flst_id_part.clone())
                     .or_insert_with(|| (TaggedPolygon {
                         attributes: potentially_intersecting.attributes.clone(),
@@ -1327,11 +1330,13 @@ impl AenderungenClean {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
-                        flst_id_part,
+                        flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
                     is.push(qq);
                 }
+            
+                intersection_sizes.insert((flst_id_part, aenderung_i.clone()), is_size);
             }
         }
 
@@ -1362,10 +1367,16 @@ impl AenderungenClean {
             };
             log_status("ok joined!");
 
-            let orig_size = flst_part.poly.area_m2().round() as usize;
+            let orig_size = flst_part.poly.area_m2();
+            let areas_to_subtract_ids = areas_to_subtract.iter().map(|(id, _)| id.clone()).collect::<BTreeSet<_>>();
+            let size_of_all_intersections = areas_to_subtract_ids.iter().map(|s| intersection_sizes.get(&(flst_part_id.clone(), s.clone())).copied().unwrap_or(0.0)).sum::<f64>();
+            if orig_size - size_of_all_intersections < 1.0 {
+                continue;
+            }
+
             let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
-            .filter(|p| p.area_m2().round() as usize != orig_size)
+            .filter(|p| p.area_m2().round() as usize != orig_size.round() as usize)
             .filter(|p| {
                 let relate = crate::nas::relate(&flst_part.poly, p);
                 let result = relate.a_contained_in_b() || relate.b_contained_in_a();
