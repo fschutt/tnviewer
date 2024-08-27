@@ -1824,52 +1824,61 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     }
 }
 
-pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
-    use geo::BooleanOps;
-    let mut a = a.round_to_3dec();
-    let mut b = b.round_to_3dec();
-    a.correct_winding_order();
-    b.correct_winding_order();
-    if a.is_zero_area() {
-        return Vec::new();
-    }
-    if b.is_zero_area() {
-        return Vec::new();
-    }
-    if a.equals(&b) {
-        return vec![a];
-    }
-    if a.equals_any_ring(&b).is_some() {
-        return vec![a];
-    }
-    if b.equals_any_ring(&a).is_some() {
-        return vec![b];
-    }
-    let relate = crate::nas::relate(&a, &b);
-    if relate.only_touches() {
-        return Vec::new();
-    }
-    log_status("intersecting...");
-    log_status(&serde_json::to_string(&a).unwrap_or_default());
-    log_status(&serde_json::to_string(&b).unwrap_or_default());
-    let a = translate_to_geo_poly(&a);
-    let b = translate_to_geo_poly(&b);
-    let intersect = a.intersection(&b);
-    log_status("intersected!");
-    let mut s = translate_from_geo_poly(&intersect);
-    for q in s.iter_mut() {
-        q.correct_winding_order();
-        log_status(&format!("intersected area m2: {}", q.area_m2()));
-    }
-    s
-    /* 
-    if autoclean {
-        s.iter().map(cleanup_poly).collect()
-    } else {
+macro_rules! define_func {($fn_name:ident, $op:expr) => {
+        
+    pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
+        use geo::BooleanOps;
+        let mut a = a.round_to_3dec();
+        let mut b = b.round_to_3dec();
+        a.correct_winding_order();
+        b.correct_winding_order();
+        if a.is_zero_area() {
+            return Vec::new();
+        }
+        if b.is_zero_area() {
+            return Vec::new();
+        }
+        if a.equals(&b) {
+            return vec![a];
+        }
+        if a.equals_any_ring(&b).is_some() {
+            return vec![a];
+        }
+        if b.equals_any_ring(&a).is_some() {
+            return vec![b];
+        }
+        let relate = crate::nas::relate(&a, &b);
+        /* 
+        if relate.only_touches() {
+            return Vec::new();
+        }
+        */
+        log_status("intersecting...");
+        log_status(&serde_json::to_string(&a).unwrap_or_default());
+        log_status(&serde_json::to_string(&b).unwrap_or_default());
+        let a = translate_to_geo_poly(&a);
+        let b = translate_to_geo_poly(&b);
+        let intersect = a.boolean_op(&b, $op);
+        a.intersection(&b);
+        log_status("intersected!");
+        let mut s = translate_from_geo_poly(&intersect);
+        for q in s.iter_mut() {
+            q.correct_winding_order();
+            log_status(&format!("intersected area m2: {}", q.area_m2()));
+        }
         s
+        /* 
+        if autoclean {
+            s.iter().map(cleanup_poly).collect()
+        } else {
+            s
+        }
+        */
     }
-    */
-}
+};}
+
+define_func!(intersect_polys, geo::OpType::Intersection);
+define_func!(xor_polys, geo::OpType::Xor);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {
