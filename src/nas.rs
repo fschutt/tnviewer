@@ -75,7 +75,7 @@ pub struct Label {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct GebaeudeInfo {
-    pub flst_id: String,
+    pub flst_id: Vec<String>,
     pub deleted: bool,
     pub gebaeude_id: String,
     pub poly: TaggedPolygon,
@@ -93,65 +93,41 @@ impl NasXMLFile {
     // Returns GeoJSON for all available AX_Gebaeude
     pub fn get_gebaeude(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
 
-        use quadtree_f32::ItemId;
-
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Flurstueck vorhanden"),
         };
-
-        // Flurstueck_ID => Flurstueck Poly
-        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
-            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
-            let flst = crate::csv::search_for_flst_id(&csv, &flst_id)?;
-            if (flst.1.iter().any(|c| c.status != Status::Bleibt)) {
-                let [[min_y, min_x], [max_y, max_x]] = tp.get_fit_bounds();
-                let bounds = Rect {
-                    max_x: max_x,
-                    max_y: max_y,
-                    min_x: min_x,
-                    min_y: min_y,
-                };
-                Some((flst_id, bounds))
-            } else {
-                None 
-            }
-        }).collect::<BTreeMap<_, _>>();
 
         let ax_gebaeude = match self.ebenen.get("AX_Gebaeude") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Gebaeude vorhanden"),
         };
 
-        let ax_gebaeude_map = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
+        // Flurstueck_ID => Flurstueck Poly
+        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
+            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
+            let rect = tp.get_rect();
+            Some((flst_id, rect, &tp.poly))
+        }).collect::<Vec<(_, _, _)>>();
+
+        let gebaeude_avail = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
+            
             let gebaeude_id = tp.attributes.get("id").cloned()?;
-            let item_id = ItemId(i);
-            let bounds = tp.get_rect();
-            Some((item_id, (gebaeude_id, bounds, tp.clone())))
+            let flst_rect = tp.get_rect();
+            let flst = ax_flurstuecke_map.iter()
+            .filter(|(id, r, poly)| flst_rect.overlaps_rect(r))
+            .filter(|(id, r, poly)| poly.overlaps_polygon(&tp.poly))
+            .map(|(id, _, _)| id.clone())
+            .collect::<Vec<_>>();
+
+            Some((gebaeude_id.clone(), GebaeudeInfo {
+                flst_id: flst.clone(),
+                deleted: aenderungen.gebaeude_loeschen.values().any(|v| v.gebaeude_id == gebaeude_id),
+                gebaeude_id: gebaeude_id.clone(),
+                poly: tp.clone(),
+            }))
         }).collect::<BTreeMap<_, _>>();
 
-        // Get intersection of all gebaeude
-        let buildings_qt = QuadTree::new(ax_gebaeude_map.iter().map(|(k, v)| {
-            (k.clone(), Item::Rect(v.1.clone()))
-        }));
-
-        // All buildings witin the given Flst
-        let gebaeude_avail = ax_flurstuecke_map
-        .iter()
-        .flat_map(|(flst_id, flst_rect)| {
-            buildings_qt.get_ids_that_overlap(&flst_rect).iter().filter_map(|building_itemid| {
-                let building = ax_gebaeude_map.get(&building_itemid)?;
-                let already_deleted = aenderungen.gebaeude_loeschen.values().any(|s| s == &building.0);
-                Some((building.0.clone(), GebaeudeInfo {
-                    flst_id: flst_id.clone(),
-                    deleted: already_deleted,
-                    gebaeude_id: building.0.clone(),
-                    poly: building.2.clone(),
-                }))
-            }).collect::<Vec<_>>().into_iter()
-        })
-        .collect::<BTreeMap<_, _>>();
-    
         let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
 
             let holes = v.poly.poly.inner_rings.iter()
@@ -161,7 +137,7 @@ impl NasXMLFile {
 
             let mut attrs = v.poly.attributes.clone();
 
-            attrs.insert("gebaeude_flst_id".to_string(), v.flst_id.clone());
+            attrs.insert("gebaeude_flst_id".to_string(), serde_json::to_string(&v.flst_id).unwrap_or_default());
             attrs.insert("gebaeude_geloescht".to_string(), v.deleted.to_string());
             attrs.insert("gebaeude_id".to_string(), v.gebaeude_id.to_string());
 
@@ -777,6 +753,25 @@ impl SvgPolygon {
         }
 
         true
+    }
+    
+    pub fn overlaps_polygon(&self, other: &Self) -> bool {
+        for l in other.outer_rings.iter() {
+            for p in l.points.iter() {
+                if point_is_in_polygon(p, self) {
+                    return true;
+                }
+            }
+        }
+        for l in other.inner_rings.iter() {
+            for p in l.points.iter() {
+                if point_is_in_polygon(p, self) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
     
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {

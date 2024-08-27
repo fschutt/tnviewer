@@ -1176,8 +1176,14 @@ pub struct PolyNeu {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct GebaeudeLoeschen {
+    pub gebaeude_id: String,
+    pub flst_id: Vec<String>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
-    pub gebaeude_loeschen: BTreeMap<String, GebauedeId>,
+    pub gebaeude_loeschen: BTreeMap<String, GebaeudeLoeschen>,
     pub na_definiert: BTreeMap<FlstPartId, Kuerzel>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
 }
@@ -1192,6 +1198,7 @@ pub struct AenderungenClean {
 pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
 
 impl AenderungenIntersections {
+
     pub fn deduplicate(&self) -> Self {
         let mut aenderungen_2 = BTreeMap::new();
 
@@ -1213,10 +1220,16 @@ impl AenderungenIntersections {
             })
         }).collect())
     }
+    
     pub fn merge_to_nearest(&self) -> Self {
         // TODO
         self.clone()
     }
+
+    pub fn clean_zero_size_areas(&self) -> Self {
+        self.clone() // TODO
+    }
+    
     pub fn get_texte(s: &[AenderungenIntersection]) -> Vec<TextPlacement> {
         s.iter().flat_map(|q| {
             if q.alt == q.neu {
@@ -1394,7 +1407,7 @@ impl AenderungenClean {
 
                 let qq = AenderungenIntersection {
                     alt: alt_kuerzel.clone(),
-                    neu: alt_kuerzel.clone(),
+                    neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
                     flst_id: flurstueck_id.clone(),
                     flst_id_part: flst_part_id.clone(),
                     poly_cut: xor_area.round_to_3dec(),
@@ -1408,7 +1421,23 @@ impl AenderungenClean {
         .filter(|i| !i.poly_cut.is_zero_area())
         .collect::<Vec<_>>();
 
-        AenderungenIntersections(is).deduplicate().merge_to_nearest()
+        // insert na_definiert
+        let na_bereits_definiert = is.iter()
+        .map(|s| s.flst_id_part.clone())
+        .collect::<BTreeSet<_>>();
+
+        for na_def in self.aenderungen.na_definiert.iter() {
+
+        }
+
+        for geb in self.aenderungen.gebaeude_loeschen.values() {
+
+        }
+
+        AenderungenIntersections(is)
+        .deduplicate()
+        .clean_zero_size_areas()
+        .merge_to_nearest()
     }
 }
 
@@ -2047,6 +2076,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "<h2>Gebäude löschen</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
     for (k, gebaeude_id) in aenderungen.gebaeude_loeschen.iter().rev() {
+        let gebaeude_id = &gebaeude_id.gebaeude_id;
         html.push_str(&format!(
             "<div class='__application-aenderung-container' id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
                 <div style='display:flex;'>

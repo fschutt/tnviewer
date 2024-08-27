@@ -1327,7 +1327,11 @@
 
     function gebauedeClicked(e) {
       var gebaeude_id = e.target.feature.properties.gebaeude_id;
+      var flst = JSON.parse(e.target.feature.properties.gebaeude_flst_id);
       if (!gebaeude_id) {
+        return;
+      }
+      if (!flst) {
         return;
       }
       if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
@@ -1346,7 +1350,7 @@
           alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
         }
       } else {
-        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = gebaeude_id; // loeschen
+        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst: flst }; // loeschen
       }
       reinitGebaeudeLoeschenLayer();
       replaceProjectContent();
