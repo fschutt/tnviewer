@@ -1861,6 +1861,32 @@ impl Aenderungen {
         changed_mut.round_to_3decimal()
     }
 
+    pub fn deduplicate(&self) -> Self {
+        
+        let s = self.round_to_3decimal();
+
+        let mut aenderung_2 = BTreeMap::new();
+        for (k, v) in s.na_polygone_neu.iter() {
+
+            let a = match serde_json::to_string(&v.poly) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+
+            aenderung_2.insert(a, (k.clone(), v.nutzung.clone()));
+        }
+
+        Self {
+            gebaeude_loeschen: s.gebaeude_loeschen.clone(),
+            na_definiert: s.na_definiert.clone(),
+            na_polygone_neu: aenderung_2.into_iter()
+            .filter_map(|(k, (v0, v1))| Some((v0, PolyNeu { 
+                nutzung: v1,
+                poly: serde_json::from_str(&k).ok()?
+            }))).collect(),
+        }
+    }
+
     pub fn clean_stage7_test(
         &self, 
         split_nas: &SplitNasXml, 
@@ -1906,6 +1932,8 @@ impl Aenderungen {
         );
         
         let changed_mut = changed_mut.clean_stage11(split_nas, log);
+
+        let changed_mut = changed_mut.deduplicate();
 
         let qt = split_nas.create_quadtree();
 

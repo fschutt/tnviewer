@@ -202,6 +202,8 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
         _ => return format!("wrong id {id}"),
     };
 
+    let clean = clean.deduplicate();
+
     log.push(format!("cleaned {} aenderungen!", aenderungen.na_polygone_neu.len()));
 
     let clean = match reproject_aenderungen_back_into_latlon(&clean, &split_nas_xml.crs) {
