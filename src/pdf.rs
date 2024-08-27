@@ -583,6 +583,7 @@ pub fn reproject_splitflaechen_into_pdf_space(
         alt: s.alt.clone(),
         neu: s.neu.clone(),
         flst_id: s.flst_id.clone(),
+        flst_id_part: s.flst_id_part.clone(),
         poly_cut: poly_into_pdf_space(&s.poly_cut, &riss, riss_config),
     }).collect())
 }

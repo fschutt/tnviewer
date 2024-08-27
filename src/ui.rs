@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1199,14 +1199,15 @@ impl AenderungenIntersections {
                 Ok(o) => o,
                 Err(_) => continue,
             };
-            aenderungen_2.insert(poly_s, (a.alt.clone(), a.neu.clone(), a.flst_id.clone()));
+            aenderungen_2.insert(poly_s, (a.alt.clone(), a.neu.clone(), a.flst_id.clone(), a.flst_id_part.clone()));
         }
 
-        Self(aenderungen_2.into_iter().filter_map(|(k, (alt, neu, flst_id))| {
+        Self(aenderungen_2.into_iter().filter_map(|(k, (alt, neu, flst_id, flst_id_part))| {
             Some(AenderungenIntersection {
                 poly_cut: serde_json::from_str(&k).ok()?,
                 alt,
                 neu,
+                flst_id_part,
                 flst_id,
             })
         }).collect())
@@ -1285,7 +1286,7 @@ impl AenderungenClean {
 
             log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
 
-            for potentially_intersecting in all_touching_flst_parts {
+            for (id, potentially_intersecting) in all_touching_flst_parts {
                 
                 let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
                     Some(s) => s.clone(),
@@ -1308,11 +1309,25 @@ impl AenderungenClean {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
+                        flst_id_part: id.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
                     log_status(&format!("pushing {qq:?}"));
                     is.push(qq);
                 }
+
+                for xor_poly in xor_polys(&anew, &bnew, true) {
+                    let qq = AenderungenIntersection {
+                        alt: alt_kuerzel.clone(),
+                        neu: alt_kuerzel.clone(),
+                        flst_id: flurstueck_id.clone(),
+                        flst_id_part: id.clone(),
+                        poly_cut: xor_poly.round_to_3dec(),
+                    };
+                    log_status(&format!("pushing {qq:?}"));
+                    is.push(qq);
+                }
+
             }
         }
 
@@ -1430,6 +1445,7 @@ pub struct AenderungenIntersection {
     pub alt: Kuerzel,
     pub neu: Kuerzel,
     pub flst_id: FlstId,
+    pub flst_id_part: String,
     pub poly_cut: SvgPolygon,
 }
 
@@ -1798,7 +1814,7 @@ impl Aenderungen {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
                     let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
-                    for poly in overlapping_flst_nutzungen.iter() {
+                    for (_, poly) in overlapping_flst_nutzungen.iter() {
                         Self::correct_point(p, &poly.poly.outer_rings, maxdst_point, maxdst_line, log);
                         Self::correct_point(p, &poly.poly.inner_rings, maxdst_point, maxdst_line, log);
                     }

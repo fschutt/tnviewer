@@ -1638,12 +1638,12 @@ impl SplitNasXml {
 }
 
 impl SplitNasXmlQuadTree {
-    pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<TaggedPolygon> {
+    pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<(String, TaggedPolygon)> {
         self.qt.get_ids_that_overlap(rect)
         .into_iter()
         .filter_map(|itemid| {
             let (flst_id, i) = self.flst_nutzungen_map.get(&itemid)?;
-            self.original.flurstuecke_nutzungen.get(flst_id)?.get(*i).cloned()
+            Some((flst_id.clone(), self.original.flurstuecke_nutzungen.get(flst_id)?.get(*i).cloned()?))
         }).collect()
     }
 }
