@@ -1365,12 +1365,14 @@ impl AenderungenClean {
             };
             log_status("ok joined!");
 
+            let orig_size = flst_part.poly.area_m2();
             let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, true)
             .into_iter()
             .filter_map(|p| {
                 let relate = crate::nas::relate(&p, &flst_part.poly);
                 log_status(&format!("relate: {flst_part_id}: {relate:?}"));
-                if relate.a_contained_in_b() || relate.b_contained_in_a() {
+                let is_same_poly = p.area_m2().round() as usize == orig_size.round() as usize;
+                if (relate.a_contained_in_b() || relate.b_contained_in_a()) && !is_same_poly {
                     Some(p)
                 } else {
                     None
