@@ -1373,6 +1373,7 @@ impl AenderungenClean {
             if orig_size - size_of_all_intersections < 1.0 {
                 continue;
             }
+            log_status(&format!("original size: {orig_size}, size of intersections: {size_of_all_intersections}"));
 
             let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
