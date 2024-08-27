@@ -1878,7 +1878,7 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
 };}
 
 define_func!(intersect_polys, geo::OpType::Intersection);
-define_func!(xor_polys, geo::OpType::Xor);
+define_func!(subtract_polys, geo::OpType::Difference);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {

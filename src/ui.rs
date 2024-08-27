@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, subtract_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1275,6 +1275,8 @@ impl AenderungenClean {
         
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
 
+        let mut subtracted_original_polys = BTreeMap::new();
+
         for (aenderung_i, (id, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -1282,9 +1284,13 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
+            let mut all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
+            let ids_to_insert = all_touching_flst_parts.iter().filter_map(|(k, _)| subtracted_original_polys.get(k).cloned().map(|v: Vec<TaggedPolygon>| (k.clone(), v.clone()))).collect::<BTreeMap<_, _>>();
+            all_touching_flst_parts.retain(|(k, _)| !ids_to_insert.contains_key(k));
+            all_touching_flst_parts.extend(ids_to_insert.iter().flat_map(|(k, v)| v.iter().map(|tp| (k.clone(), tp.clone()))));
 
             log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
+            let mut subtracted_changed_thisloop = BTreeMap::new();
 
             for (id, potentially_intersecting) in all_touching_flst_parts {
                 
@@ -1305,29 +1311,31 @@ impl AenderungenClean {
                 let bnew = polyneu.poly.round_to_3dec();
 
                 for intersect_poly in intersect_polys(&anew, &bnew, true) {
+                    let intersect_poly = intersect_poly.round_to_3dec();
                     let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
                         flst_id_part: id.clone(),
-                        poly_cut: intersect_poly.round_to_3dec(),
+                        poly_cut: intersect_poly.clone(),
                     };
-                    log_status(&format!("pushing {qq:?}"));
                     is.push(qq);
+                    subtracted_changed_thisloop.entry(id.clone()).or_insert_with(|| Vec::new()).extend({
+                        subtract_polys(&anew, &intersect_poly, true)
+                        .into_iter()
+                        .map(|svg_poly| {
+                            TaggedPolygon {
+                                attributes: potentially_intersecting.attributes.clone(),
+                                poly: svg_poly.round_to_3dec(),
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                    });
                 }
-
-                for xor_poly in xor_polys(&anew, &bnew, true) {
-                    let qq = AenderungenIntersection {
-                        alt: alt_kuerzel.clone(),
-                        neu: alt_kuerzel.clone(),
-                        flst_id: flurstueck_id.clone(),
-                        flst_id_part: id.clone(),
-                        poly_cut: xor_poly.round_to_3dec(),
-                    };
-                    log_status(&format!("pushing {qq:?}"));
-                    is.push(qq);
-                }
-
+            }
+        
+            for (k, v) in subtracted_changed_thisloop {
+                subtracted_original_polys.insert(k, v);
             }
         }
 
