@@ -1196,7 +1196,7 @@ impl AenderungenIntersections {
         let mut aenderungen_2 = BTreeMap::new();
 
         for a in self.0.iter() {
-            let poly_s = match serde_json::to_string(&a.poly_cut) {
+            let poly_s = match serde_json::to_string(&a.poly_cut.get_all_pointcoords_sorted()) {
                 Ok(o) => o,
                 Err(_) => continue,
             };
@@ -1333,7 +1333,7 @@ impl AenderungenClean {
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
-                    is.push(qq);
+                    // is.push(qq);
                 }
             
                 intersection_sizes.insert((flst_id_part, aenderung_i.clone()), is_size);

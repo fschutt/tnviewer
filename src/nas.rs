@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::io::Split;
 use float_cmp::approx_eq;
 use float_cmp::ApproxEq;
@@ -758,6 +759,21 @@ pub struct SvgPolygon {
 }
 
 impl SvgPolygon {
+
+    pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {
+        let mut v = BTreeSet::new();
+        for l in self.outer_rings.iter() {
+            for p in l.points.iter() {
+                v.insert([(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize]);
+            }
+        }
+        for l in self.inner_rings.iter() {
+            for p in l.points.iter() {
+                v.insert([(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize]);
+            }
+        }
+        v.into_iter().collect()
+    }
 
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         let [[min_y, min_x], [max_y, max_x]] = self.get_fit_bounds();
