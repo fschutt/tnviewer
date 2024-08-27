@@ -1854,7 +1854,6 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         let mut s = translate_from_geo_poly(&intersect);
         for q in s.iter_mut() {
             q.correct_winding_order();
-            log_status(&format!("intersected area m2: {}", q.area_m2()));
         }
         s
         /* 

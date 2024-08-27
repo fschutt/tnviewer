@@ -1314,7 +1314,7 @@ impl AenderungenClean {
                         continue;
                     }
 
-                    let flst_id_part = format!("{id}:{ebene}:{obj_id}");
+                    let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
                     flst_parts_changed.entry(flst_id_part.clone())
                     .or_insert_with(|| BTreeMap::new())
                     .insert(potentially_touching_id.clone(), anew.clone());
