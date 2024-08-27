@@ -1276,7 +1276,7 @@ impl AenderungenClean {
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
         let mut flst_parts_changed = BTreeMap::new();
 
-        for (aenderung_i, (id, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
+        for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
                 Some(s) => s,
@@ -1284,7 +1284,7 @@ impl AenderungenClean {
             };
 
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
-            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
+            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", id + 1, all_touching_flst_parts.len()));
 
             for (potentially_touching_id, potentially_intersecting) in all_touching_flst_parts {
                 
@@ -1316,15 +1316,18 @@ impl AenderungenClean {
 
                     let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
                     flst_parts_changed.entry(flst_id_part.clone())
-                    .or_insert_with(|| BTreeMap::new())
-                    .insert(potentially_touching_id.clone(), anew.clone());
+                    .or_insert_with(|| (TaggedPolygon {
+                        attributes: potentially_intersecting.attributes.clone(),
+                        poly: anew.clone(),
+                    }, BTreeMap::new()))
+                    .1.insert(aenderung_i.clone(), bnew.clone());
 
                     let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
                         flst_id_part,
-                        poly_cut: intersect_poly.clone(),
+                        poly_cut: intersect_poly.round_to_3dec(),
                     };
                     is.push(qq);
                 }
@@ -1333,14 +1336,7 @@ impl AenderungenClean {
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
-        for (flst_part_id, areas_to_subtract) in flst_parts_changed {
-            let flst_part = match self.nas_xml_quadtree.original.get_flst_part_by_id(&flst_part_id) {
-                Some(s) => s,
-                None => {
-                    log_status(&format!("WARN: Kann Flurstücksteil {flst_part_id} nicht finden"));
-                    continue;
-                }
-            };
+        for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
             
             let ebene = match flst_part.attributes.get("AX_Ebene") {
                 Some(s) => s.clone(),
@@ -1365,22 +1361,21 @@ impl AenderungenClean {
             };
             log_status("ok joined!");
 
-            let orig_size = flst_part.poly.area_m2();
-            let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, true)
+            let orig_size = flst_part.poly.area_m2().round() as usize;
+            let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
-            .filter_map(|p| {
-                let relate = crate::nas::relate(&p, &flst_part.poly);
-                log_status(&format!("relate: {flst_part_id}: {relate:?}"));
-                let is_same_poly = p.area_m2().round() as usize == orig_size.round() as usize;
-                if (relate.a_contained_in_b() || relate.b_contained_in_a()) && !is_same_poly {
-                    Some(p)
-                } else {
-                    None
-                }
-            }).collect::<Vec<_>>();
+            .filter(|p| p.area_m2().round() as usize != orig_size)
+            .collect::<Vec<_>>();
 
-            for xor_area in xor_polys {
-                let xor_area = xor_area.round_to_3dec();
+            let mut intersect_polys2 = Vec::new();
+            for p in xor_polys {
+                for i in intersect_polys(&flst_part.poly, &p, false) {
+                    intersect_polys2.push(i);
+                }
+            }
+
+            for xor_area in intersect_polys2 {
+
                 if xor_area.is_zero_area() {
                     continue;
                 }
@@ -1390,7 +1385,7 @@ impl AenderungenClean {
                     neu: alt_kuerzel.clone(),
                     flst_id: flurstueck_id.clone(),
                     flst_id_part: flst_part_id.clone(),
-                    poly_cut: xor_area,
+                    poly_cut: xor_area.round_to_3dec(),
                 };
                 
                 is.push(qq);
