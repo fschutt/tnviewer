@@ -760,6 +760,25 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn contains_polygon(&self, other: &Self) -> bool {
+        for l in other.outer_rings.iter() {
+            for p in l.points.iter() {
+                if !point_is_in_polygon(p, self) {
+                    return false;
+                }
+            }
+        }
+        for l in other.inner_rings.iter() {
+            for p in l.points.iter() {
+                if !point_is_in_polygon(p, self) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+    
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {
         let mut v = BTreeSet::new();
         for l in self.outer_rings.iter() {

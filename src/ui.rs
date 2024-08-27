@@ -1851,13 +1851,11 @@ impl Aenderungen {
         }
 
         for (k, pn) in changed_mut.na_polygone_neu.iter_mut() {
-            
             let pn_rect = pn.poly.get_rect();
-            let kuerzel = match pn.nutzung.clone() { Some(s) => s, None => continue, };
             let higher_order_polys = aenderungen_split.iter()
             .filter(|(_, id, _)|  id != k)
-            .filter(|(k, id, v)|  *k != kuerzel && get_ranking(k) > get_ranking(&kuerzel))
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
+            .filter(|(k, id, s)| pn.poly.contains_polygon(s))
             .map(|s| &s.2)
             .collect::<Vec<_>>();
 
@@ -1867,6 +1865,37 @@ impl Aenderungen {
         }
 
         changed_mut.round_to_3decimal()
+    }
+
+    pub fn split_aenderungen_by_flst(&self, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+        let changed_mut = self.round_to_3decimal();
+        let mut adefault = Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: BTreeMap::new(),
+        };
+
+        let ebenen = match nas_xml.ebenen.get("AX_Flurstueck") {
+            Some(s) => s,
+            None => return adefault,
+        };
+        let ebenen_rects = ebenen.iter().map(|p| p.poly.get_rect()).collect::<Vec<_>>();
+        for an in changed_mut.na_polygone_neu.values() {
+            let an_rect = an.poly.get_rect();
+            let flst_in_radius = ebenen_rects.iter().enumerate().filter_map(|(i, rect)| {
+                if rect.overlaps_rect(&an_rect) { Some(i) } else { None }
+            }).collect::<BTreeSet<_>>();
+            if flst_in_radius.is_empty() {
+                continue;
+            }
+            for potential_overlap_flst in flst_in_radius.iter().filter_map(|i| ebenen.get(*i)) {
+                for is in intersect_polys(&potential_overlap_flst.poly, &an.poly, false) {
+                    adefault.na_polygone_neu.insert(uuid(), PolyNeu { poly: is, nutzung: an.nutzung.clone() });
+                }
+            }
+        }
+
+        adefault
     }
 
     pub fn deduplicate(&self) -> Self {
@@ -1940,6 +1969,8 @@ impl Aenderungen {
         );
         
         let changed_mut = changed_mut.clean_stage11(split_nas, log);
+
+        let changed_mut = changed_mut.split_aenderungen_by_flst(original_xml, log);
 
         let changed_mut = changed_mut.deduplicate();
 
