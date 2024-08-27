@@ -2,6 +2,7 @@ use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
 use serde_derive::{Serialize, Deserialize};
+use web_sys::js_sys::Atomics::xor;
 
 use crate::{
     csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
@@ -1365,16 +1366,15 @@ impl AenderungenClean {
             let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
             .filter(|p| p.area_m2().round() as usize != orig_size)
+            .filter(|p| {
+                let relate = crate::nas::relate(&flst_part.poly, p);
+                let result = relate.a_contained_in_b() || relate.b_contained_in_a();
+                log_status(&format!("{flst_part_id}: XOR: {relate:?} - {result}"));
+                result
+            })
             .collect::<Vec<_>>();
 
-            let mut intersect_polys2 = Vec::new();
-            for p in xor_polys {
-                for i in intersect_polys(&flst_part.poly, &p, false) {
-                    intersect_polys2.push(i);
-                }
-            }
-
-            for xor_area in intersect_polys2 {
+            for xor_area in xor_polys {
 
                 if xor_area.is_zero_area() {
                     continue;
