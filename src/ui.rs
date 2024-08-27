@@ -1274,7 +1274,8 @@ impl AenderungenClean {
         let mut is = Vec::new();
         
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
-        
+        let mut flst_parts_changed = BTreeMap::new();
+
         for (aenderung_i, (id, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -1285,7 +1286,7 @@ impl AenderungenClean {
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
             log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
 
-            for (id, potentially_intersecting) in all_touching_flst_parts {
+            for (potentially_touching_id, potentially_intersecting) in all_touching_flst_parts {
                 
                 let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
                     Some(s) => s.clone(),
@@ -1312,11 +1313,17 @@ impl AenderungenClean {
                     if intersect_poly.is_zero_area() {
                         continue;
                     }
+
+                    let flst_id_part = format!("{id}:{ebene}:{obj_id}");
+                    flst_parts_changed.entry(flst_id_part.clone())
+                    .or_insert_with(|| BTreeMap::new())
+                    .insert(potentially_touching_id.clone(), anew.clone());
+
                     let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
-                        flst_id_part: format!("{id}:{ebene}:{obj_id}"),
+                        flst_id_part,
                         poly_cut: intersect_poly.clone(),
                     };
                     is.push(qq);
@@ -1324,10 +1331,6 @@ impl AenderungenClean {
             }
         }
 
-        let mut flst_parts_changed = BTreeMap::new();
-        for i in is.iter() {
-            flst_parts_changed.entry(i.flst_id_part.clone()).or_insert_with(|| Vec::new()).push(i.clone());
-        }
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
         for (flst_part_id, areas_to_subtract) in flst_parts_changed {
@@ -1343,7 +1346,7 @@ impl AenderungenClean {
                 Some(s) => s.clone(),
                 None => continue,
             };
-            
+
             let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
                 Some(s) => s.clone(),
                 None => continue,
@@ -1355,7 +1358,8 @@ impl AenderungenClean {
             };
 
             log_status(&format!("joining subtractions for {flst_part_id}"));
-            let areas_to_subtract_joined = match join_polys(&areas_to_subtract.iter().map(|s| s.poly_cut.clone()).collect::<Vec<_>>(), false, false) {
+            let jp = join_polys(&areas_to_subtract.iter().map(|(_, s)| s.clone()).collect::<Vec<_>>(), false, false);
+            let areas_to_subtract_joined = match jp {
                 Some(s) => s,
                 None => continue,
             };
