@@ -1192,8 +1192,24 @@ pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
 
 impl AenderungenIntersections {
     pub fn deduplicate(&self) -> Self {
-        // TODO
-        self.clone()
+        let mut aenderungen_2 = BTreeMap::new();
+
+        for a in self.0.iter() {
+            let poly_s = match serde_json::to_string(&a.poly_cut) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+            aenderungen_2.insert(poly_s, (a.alt.clone(), a.neu.clone(), a.flst_id.clone()));
+        }
+
+        Self(aenderungen_2.into_iter().filter_map(|(k, (alt, neu, flst_id))| {
+            Some(AenderungenIntersection {
+                poly_cut: serde_json::from_str(&k).ok()?,
+                alt,
+                neu,
+                flst_id,
+            })
+        }).collect())
     }
     pub fn merge_to_nearest(&self) -> Self {
         // TODO
@@ -1862,7 +1878,7 @@ impl Aenderungen {
     }
 
     pub fn deduplicate(&self) -> Self {
-        
+
         let s = self.round_to_3decimal();
 
         let mut aenderung_2 = BTreeMap::new();
