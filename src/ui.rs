@@ -1274,9 +1274,7 @@ impl AenderungenClean {
         let mut is = Vec::new();
         
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
-
-        let mut subtracted_original_polys = BTreeMap::new();
-
+        
         for (aenderung_i, (id, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -1284,13 +1282,8 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            let mut all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
-            let ids_to_insert = all_touching_flst_parts.iter().filter_map(|(k, _)| subtracted_original_polys.get(k).cloned().map(|v: Vec<TaggedPolygon>| (k.clone(), v.clone()))).collect::<BTreeMap<_, _>>();
-            all_touching_flst_parts.retain(|(k, _)| !ids_to_insert.contains_key(k));
-            all_touching_flst_parts.extend(ids_to_insert.iter().flat_map(|(k, v)| v.iter().map(|tp| (k.clone(), tp.clone()))));
-
+            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
             log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", aenderung_i + 1, all_touching_flst_parts.len()));
-            let mut subtracted_changed_thisloop = BTreeMap::new();
 
             for (id, potentially_intersecting) in all_touching_flst_parts {
                 
@@ -1312,6 +1305,9 @@ impl AenderungenClean {
 
                 for intersect_poly in intersect_polys(&anew, &bnew, true) {
                     let intersect_poly = intersect_poly.round_to_3dec();
+                    if intersect_poly.is_zero_area() {
+                        continue;
+                    }
                     let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
@@ -1321,154 +1317,67 @@ impl AenderungenClean {
                     };
                     is.push(qq);
                 }
-                
-                subtracted_changed_thisloop.entry(id.clone()).or_insert_with(|| Vec::new()).extend({
-                    xor_polys(&anew, &bnew, true)
-                    .into_iter()
-                    .filter(|p| crate::nas::polys_overlap(p, &anew))
-                    .map(|svg_poly| {
-                        TaggedPolygon {
-                            attributes: potentially_intersecting.attributes.clone(),
-                            poly: svg_poly.round_to_3dec(),
-                        }
-                    })
-                });
-            }
-        
-            for (k, v) in subtracted_changed_thisloop {
-                subtracted_original_polys.insert(k, v);
             }
         }
 
-        for (id, tp) in subtracted_original_polys {
-            for tp in tp {
-                
-                let ebene = match tp.attributes.get("AX_Ebene") {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-                let flurstueck_id = match tp.attributes.get("AX_Flurstueck") {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-                let alt_kuerzel = match tp.get_auto_kuerzel(&ebene) {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let qq = AenderungenIntersection {
-                    alt: alt_kuerzel.clone(),
-                    neu: alt_kuerzel.clone(),
-                    flst_id: flurstueck_id.clone(),
-                    flst_id_part: id.clone(),
-                    poly_cut: tp.poly.clone(),
-                };
-                is.push(qq);
-            }
+        let mut flst_parts_changed = BTreeMap::new();
+        for i in is.iter() {
+            flst_parts_changed.entry(i.flst_id_part.clone()).or_insert_with(|| Vec::new()).push(i.clone());
         }
-        log_status(&format!("OK: {} Teilflächen generiert", is.len()));
+        log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
-        /*
-        let is = is.into_iter().filter_map(|s| {
-            if s.poly_cut.is_zero_area() {
-                None 
-            } else {
-                Some(s)
-            }
-        }).collect::<Vec<_>>();
-         */
-
-        log_status(&format!("OK: {} Teilflächen generiert", is.len()));
-
-        let flst_changed = is.iter().filter_map(|s| {
-            if s.alt != s.neu {
-                Some(s.format_flst_id())
-            } else {
-                None
-            }
-        }).collect::<BTreeSet<_>>();
-
-        log_status(&format!("OK: {} Flurstücke verändert", flst_changed.len()));
-
-        let mut is = is.into_iter().filter(|s| {
-            flst_changed.contains(&s.format_flst_id())
-        }).collect::<Vec<_>>();
-
-        log_status(&format!("OK: {} Teilflächen nach Filterung", is.len()));
-
-        let flst_changed_len = flst_changed.len();
-
-        /*
-        for (i, flst_id) in flst_changed.iter().enumerate() {
-            
-            let fs = FlstIdParsed::from_str(flst_id);
-            let fs_nice = fs.parse_num().unwrap_or_default();
-            let fs_nice_flur = fs_nice.flur;
-            let fs_nice_flst = fs_nice.format_str_zero();
-
-            let ae_is = is.iter().filter(|s| s.format_flst_id().as_str() == flst_id.as_str()).collect::<Vec<_>>();
-            if ae_is.is_empty() {
-                log_status(&format!("WARN: Kann Flurstück {flst_id} nicht finden"));
-                continue;
-            }
-
-            let ae_is_joined = ae_is.iter().map(|s| s.poly_cut.round_to_3dec()).collect::<Vec<_>>();
-            let ae_is_joined = ae_is_joined.iter().collect::<Vec<_>>();
-
-            let found_flst = self.nas_xml_quadtree.original.flurstuecke_nutzungen.iter()
-            .find(|(k, v)| AenderungenIntersection::format_flst_id_func(k.as_str()).as_str() == flst_id);
-
-            let flst = match found_flst {
-                Some((_, s)) => s,
+        for (flst_part_id, areas_to_subtract) in flst_parts_changed {
+            let flst_part = match self.nas_xml_quadtree.original.get_flst_part_by_id(&flst_part_id) {
+                Some(s) => s,
                 None => {
-                    log_status(&format!("WARN: Kann Flurstück {flst_id} nicht finden"));
-                    continue;
-                },
-            };
-
-            log_status(&format!("[{} / {flst_changed_len}] Fl. {fs_nice_flur} Flst. {fs_nice_flst}: Subtrahiere {} Änderungen von {} Teilflächen", i + 1, ae_is.len(), flst.len()));
-
-            for flst_part in flst {
-
-                let ebene = match flst_part.attributes.get("AX_Ebene") {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-
-                let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-
-                let flurstueck_id = match flst_part.attributes.get("AX_Flurstueck") {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-
-                let mut subtracted = flst_part.poly.round_to_3dec();
-                log_status(&format!("subtrahiere..."));
-                subtracted = subtract_from_poly(&subtracted, &ae_is_joined).round_to_3dec();
-                log_status(&format!("ok!"));
-
-                if subtracted.is_zero_area() {
+                    log_status(&format!("WARN: Kann Flurstücksteil {flst_part_id} nicht finden"));
                     continue;
                 }
+            };
+            
+            let ebene = match flst_part.attributes.get("AX_Ebene") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            let flurstueck_id = match flst_part.attributes.get("AX_Flurstueck") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            log_status(&format!("joining subtractions for {flst_part_id}"));
+            let areas_to_subtract_joined = match join_polys(&areas_to_subtract.iter().map(|s| s.poly_cut.clone()).collect::<Vec<_>>(), false, false) {
+                Some(s) => s,
+                None => continue,
+            };
+            log_status("ok joined!");
+
+            for xor_area in xor_polys(&flst_part.poly, &areas_to_subtract_joined, true) {
+                let xor_area = xor_area.round_to_3dec();
+                if xor_area.is_zero_area() {
+                    continue;
+                }
+
                 let qq = AenderungenIntersection {
                     alt: alt_kuerzel.clone(),
                     neu: alt_kuerzel.clone(),
                     flst_id: flurstueck_id.clone(),
-                    poly_cut: subtracted.round_to_3dec(),
+                    flst_id_part: flst_part_id.clone(),
+                    poly_cut: xor_area,
                 };
                 
                 is.push(qq);
             }
         }
 
-        */
-        /*
-        let is = is.into_iter().filter(|i| {
-            !i.poly_cut.is_empty() && !i.poly_cut.is_zero_area()
-        }).collect::<Vec<_>>();
-        */
+        let is = is.into_iter()
+        .filter(|i| !i.poly_cut.is_zero_area())
+        .collect::<Vec<_>>();
 
         AenderungenIntersections(is).deduplicate().merge_to_nearest()
     }
