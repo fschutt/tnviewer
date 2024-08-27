@@ -2020,6 +2020,12 @@ impl Relate {
     }
 }
 
+
+pub fn polys_overlap(a: &SvgPolygon, b: &SvgPolygon) -> bool {
+    let r = relate(a, b);
+    r.a_contained_in_b() || r.b_contained_in_a()
+}
+
 pub fn relate(a: &SvgPolygon, b: &SvgPolygon) -> Relate {
     let is_1 = only_touches_internal(a, b);
     let is_2 = only_touches_internal(b, a);

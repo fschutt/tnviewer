@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, subtract_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, subtract_polys, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1320,18 +1320,19 @@ impl AenderungenClean {
                         poly_cut: intersect_poly.clone(),
                     };
                     is.push(qq);
-                    subtracted_changed_thisloop.entry(id.clone()).or_insert_with(|| Vec::new()).extend({
-                        subtract_polys(&anew, &intersect_poly, true)
-                        .into_iter()
-                        .map(|svg_poly| {
-                            TaggedPolygon {
-                                attributes: potentially_intersecting.attributes.clone(),
-                                poly: svg_poly.round_to_3dec(),
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                    });
                 }
+                
+                subtracted_changed_thisloop.entry(id.clone()).or_insert_with(|| Vec::new()).extend({
+                    xor_polys(&anew, &bnew, true)
+                    .into_iter()
+                    .filter(|p| crate::nas::polys_overlap(p, &anew))
+                    .map(|svg_poly| {
+                        TaggedPolygon {
+                            attributes: potentially_intersecting.attributes.clone(),
+                            poly: svg_poly.round_to_3dec(),
+                        }
+                    })
+                });
             }
         
             for (k, v) in subtracted_changed_thisloop {
@@ -1339,6 +1340,31 @@ impl AenderungenClean {
             }
         }
 
+        for (id, tp) in subtracted_original_polys {
+            for tp in tp {
+                
+                let ebene = match tp.attributes.get("AX_Ebene") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let flurstueck_id = match tp.attributes.get("AX_Flurstueck") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let alt_kuerzel = match tp.get_auto_kuerzel(&ebene) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                let qq = AenderungenIntersection {
+                    alt: alt_kuerzel.clone(),
+                    neu: alt_kuerzel.clone(),
+                    flst_id: flurstueck_id.clone(),
+                    flst_id_part: id.clone(),
+                    poly_cut: tp.poly.clone(),
+                };
+                is.push(qq);
+            }
+        }
         log_status(&format!("OK: {} Teilflächen generiert", is.len()));
 
         /*
