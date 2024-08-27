@@ -1200,12 +1200,12 @@ impl AenderungenIntersections {
                 Ok(o) => o,
                 Err(_) => continue,
             };
-            aenderungen_2.insert(poly_s, (a.alt.clone(), a.neu.clone(), a.flst_id.clone(), a.flst_id_part.clone()));
+            aenderungen_2.insert(poly_s, (a.poly_cut.clone(), a.alt.clone(), a.neu.clone(), a.flst_id.clone(), a.flst_id_part.clone()));
         }
 
-        Self(aenderungen_2.into_iter().filter_map(|(k, (alt, neu, flst_id, flst_id_part))| {
+        Self(aenderungen_2.into_iter().filter_map(|(k, (poly, alt, neu, flst_id, flst_id_part))| {
             Some(AenderungenIntersection {
-                poly_cut: serde_json::from_str(&k).ok()?,
+                poly_cut: poly,
                 alt,
                 neu,
                 flst_id_part,
