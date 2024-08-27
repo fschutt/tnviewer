@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use serde_derive::{Serialize, Deserialize};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, point_is_in_polygon, subtract_polys, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1365,7 +1365,19 @@ impl AenderungenClean {
             };
             log_status("ok joined!");
 
-            for xor_area in xor_polys(&flst_part.poly, &areas_to_subtract_joined, true) {
+            let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, true)
+            .into_iter()
+            .filter_map(|p| {
+                let relate = crate::nas::relate(&p, &flst_part.poly);
+                log_status(&format!("relate: {flst_part_id}: {relate:?}"));
+                if relate.a_contained_in_b() || relate.b_contained_in_a() {
+                    Some(p)
+                } else {
+                    None
+                }
+            }).collect::<Vec<_>>();
+
+            for xor_area in xor_polys {
                 let xor_area = xor_area.round_to_3dec();
                 if xor_area.is_zero_area() {
                     continue;

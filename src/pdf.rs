@@ -1056,9 +1056,8 @@ pub fn get_flurstuecke(
 
     Flurstuecke { flst }
 }
-
-
-// only called in stage11 + get_intersections!
+ 
+// only called in stage11
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
@@ -1089,7 +1088,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         }
         let relate = nas::relate(&fi, &i);
         if relate.only_touches() {
-            log_1(&"only touches, continue!".into());
             continue;
         }
         if relate.b_contained_in_a() {
@@ -1119,7 +1117,6 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     }
 
     first.correct_winding_order();
-    log_1(&"ok done!".into());
     first
 }
 
