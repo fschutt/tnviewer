@@ -12,7 +12,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    intersect_polys, parse_nas_xml, relate, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -1097,6 +1097,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if relate.a_contained_in_b() {
             fi.insert_points_from(&i, 0.01);
         }
+        i = i.inverse_point_order();
         log_1(&"subtract_from_poly".into());
         log_1(&serde_json::to_string(&fi).unwrap_or_default().into());
         log_1(&serde_json::to_string(&i).unwrap_or_default().into());
@@ -1137,7 +1138,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         }
         let mut fi = first.round_to_3dec();
         fi.correct_winding_order();
-        i.correct_winding_order();
+        // i.correct_winding_order();
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
@@ -1214,9 +1215,7 @@ pub fn get_fluren(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Fluren {
             let polys = v.iter()
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
-            log_status(&format!("joining fluren flur {k}..."));
             let joined = join_polys(&polys, false, true)?;
-            log_status("joined!");
             Some(TaggedPolygon {
                 attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
                 poly: joined,

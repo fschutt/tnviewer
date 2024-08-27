@@ -145,8 +145,6 @@ pub fn optimize_labels(
         }).collect(),
     };
 
-    log_status(&format!("label height in pixels: {}", config.label_height_pixel()));
-
     let maxiterations = 10;
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first

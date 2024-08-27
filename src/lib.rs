@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use nas::{parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
@@ -50,8 +50,8 @@ struct GeoJSONResult {
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
-    let poly_string1 = r#"{"outer_rings":[{"points":[{"x":430663.988,"y":5887949.297},{"x":430769.339,"y":5888140.393},{"x":430903.586,"y":5888057.721},{"x":430787.849,"y":5887847.355},{"x":430685.908,"y":5887930.184},{"x":430663.988,"y":5887949.297}]}],"inner_rings":[]}"#;
-    let poly_string2 = r#"{"outer_rings":[{"points":[{"x":430898.907,"y":5888221.303},{"x":430754.21,"y":5888043.653},{"x":430828.958,"y":5888000.322},{"x":430930.133,"y":5888196.506},{"x":430922.404,"y":5888208.075},{"x":430898.907,"y":5888221.303}]}],"inner_rings":[]}"#;
+    let poly_string1 =     "{\"outer_rings\":[{\"points\":[{\"x\":430663.701,\"y\":5887948.777},{\"x\":430786.899,\"y\":5887845.629},{\"x\":430817.786,\"y\":5887901.771},{\"x\":430842.12,\"y\":5887946.001},{\"x\":430896.089,\"y\":5888044.095},{\"x\":430930.879,\"y\":5888107.331},{\"x\":430963.646,\"y\":5888166.888},{\"x\":430991.858,\"y\":5888218.169},{\"x\":431009.35,\"y\":5888249.962},{\"x\":430875.316,\"y\":5888332.624},{\"x\":430663.701,\"y\":5887948.777}]}],\"inner_rings\":[]}";
+    let poly_string2 =     "{\"outer_rings\":[{\"points\":[{\"x\":430685.908,\"y\":5887930.184},{\"x\":430787.849,\"y\":5887847.355},{\"x\":430903.586,\"y\":5888057.721},{\"x\":430869.413,\"y\":5888078.766},{\"x\":430828.958,\"y\":5888000.322},{\"x\":430754.21,\"y\":5888043.653},{\"x\":430811.738,\"y\":5888114.283},{\"x\":430769.339,\"y\":5888140.393},{\"x\":430663.988,\"y\":5887949.297},{\"x\":430685.908,\"y\":5887930.184}]}],\"inner_rings\":[]}";
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 

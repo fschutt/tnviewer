@@ -1287,19 +1287,22 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
 
-                for intersect_poly in intersect_polys(&anew, &bnew, true, true) {
-                    is.push(AenderungenIntersection {
+                for intersect_poly in intersect_polys(&anew, &bnew, true) {
+                    let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
-                    });
+                    };
+                    log_status(&format!("pushing {qq:?}"));
+                    is.push(qq);
                 }
             }
         }
 
         log_status(&format!("OK: {} Teilflächen generiert", is.len()));
 
+        /*
         let is = is.into_iter().filter_map(|s| {
             if s.poly_cut.is_zero_area() {
                 None 
@@ -1307,6 +1310,9 @@ impl AenderungenClean {
                 Some(s)
             }
         }).collect::<Vec<_>>();
+         */
+
+        log_status(&format!("OK: {} Teilflächen generiert", is.len()));
 
         let flst_changed = is.iter().filter_map(|s| {
             if s.alt != s.neu {
@@ -1321,6 +1327,8 @@ impl AenderungenClean {
         let mut is = is.into_iter().filter(|s| {
             flst_changed.contains(&s.format_flst_id())
         }).collect::<Vec<_>>();
+
+        log_status(&format!("OK: {} Teilflächen nach Filterung", is.len()));
 
         let flst_changed_len = flst_changed.len();
 
@@ -1835,8 +1843,6 @@ impl Aenderungen {
         }
 
         for (k, pn) in changed_mut.na_polygone_neu.iter_mut() {
-
-            use web_sys::console::log_1;
             
             let pn_rect = pn.poly.get_rect();
             let kuerzel = match pn.nutzung.clone() { Some(s) => s, None => continue, };
@@ -1848,10 +1854,7 @@ impl Aenderungen {
             .collect::<Vec<_>>();
 
             let pn_poly_clone = pn.poly.clone();
-            log_1(&format!("subtracting {} poly from {}", higher_order_polys.len(), kuerzel).into());
-            log_1(&serde_json::to_string(&higher_order_polys).unwrap_or_default().into());
             let subtracted = subtract_from_poly(&pn_poly_clone, &higher_order_polys);
-            log_1(&serde_json::to_string(&subtracted).unwrap_or_default().into());
             pn.poly = subtracted;
         }
 

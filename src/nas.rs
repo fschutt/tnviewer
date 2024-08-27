@@ -1701,7 +1701,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
         let polys = polys.iter().flat_map(|p| {
-            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false, false);
+            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
             intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
                 attributes: {
                     let mut attrs = p.attributes.clone();
@@ -1727,13 +1727,26 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 
 pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     let s = s.round_to_3dec();
+
     let outer_rings = s.outer_rings.iter()
-    .filter(|r| calc_area(&r.points) > 1.0)
-    .map(|r| clean_ring_2(r))
+    .filter_map(|r| {
+        let mut s =  SvgPolygon { outer_rings: vec![r.clone()], inner_rings: Vec::new() };
+        s.correct_winding_order();
+        if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
+    })
+    .map(|r| clean_ring_2(&r))
     .collect();
+
     let inner_rings = s.inner_rings.iter()
-    .filter(|r| calc_area(&r.points) > 1.0)
-    .map(|r| clean_ring_2(r)).collect();
+    .filter_map(|r| {
+        let mut s =  SvgPolygon { outer_rings: vec![r.clone()], inner_rings: Vec::new() };
+        s.correct_winding_order();
+        if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
+    })
+    .map(|r| clean_ring_2(&r))
+    .map(|l| l.reverse())
+    .collect();
+
     SvgPolygon {
         outer_rings,
         inner_rings,
@@ -1751,6 +1764,8 @@ fn clean_ring_2(r: &SvgLine) -> SvgLine {
         points: p2,
     })
 }
+
+const CLEAN_LINE_DST: f64 = 0.1;
 
 fn clean_points(points: &[SvgPoint]) -> Vec<SvgPoint> {
     // insert points whenever a line ends on another line
@@ -1809,74 +1824,7 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     }
 }
 
-pub fn calc_area(p: &[SvgPoint]) -> f64 {
-    let mut res = 0.0;
-
-    for i in p.windows(2) {
-        let (p, q) = match &i {
-            &[a, b] => (a, b),
-            _ => continue,
-        };
-        res += (p.x - q.x) * (p.y + q.y);
-    }
-
-    f64::abs(res) / 2.0
-}
-
-const CLEAN_LINE_DST: f64 = 0.1;
-
-
-fn clean_internal(list_of_points: &Vec<SvgPoint>) -> (usize, Vec<SvgPoint>) {
-    
-    let mut p_new_global = list_of_points.clone();
-    let mut moved_points = 0;
-
-    loop {
-        let mut moved = false;
-        let mut start = match p_new_global.first() {
-            Some(s) => *s,
-            None => return (moved_points, Vec::new()),
-        };
-        let mut p_new = vec![start];
-
-        for (i, p) in p_new_global.iter().enumerate().skip(1) {
-
-            let point_on_line = p_new_global
-            .iter().enumerate()
-            .filter(|(i2, q)| {
-                !q.equals(&start) && !q.equals(&p)
-            })
-            .map(|(i2, q)| {
-                (i2, q, dist_to_segment(*q, start, *p).distance)
-            })
-            .filter(|(i2, q, dist)| {
-                *dist < CLEAN_LINE_DST
-            })
-            .min_by_key(|(i2, q, dist)| ((dist + start.dist(q) + p.dist(q)) * 100.0) as usize)
-            .map(|(i2, u, _)| (i2, u));
-
-            p_new.push(match point_on_line {
-                Some(s) => {
-                    moved = true;
-                    moved_points += 1;
-                    *s.1
-                },
-                None => *p,
-            });
-
-            start = *p;
-        }
-        p_new.dedup_by(|a, b| a.equals(&b));
-        p_new_global = p_new;
-        if !moved {
-            break;
-        }
-    }
-
-    (moved_points, p_new_global)
-}
-
-pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_touches_check: bool) -> Vec<SvgPolygon> {
+pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
     use geo::BooleanOps;
     let mut a = a.round_to_3dec();
     let mut b = b.round_to_3dec();
@@ -1901,19 +1849,26 @@ pub fn intersect_polys(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool, only_tou
     if relate.only_touches() {
         return Vec::new();
     }
+    log_status("intersecting...");
+    log_status(&serde_json::to_string(&a).unwrap_or_default());
+    log_status(&serde_json::to_string(&b).unwrap_or_default());
     let a = translate_to_geo_poly(&a);
     let b = translate_to_geo_poly(&b);
     let intersect = a.intersection(&b);
-    log_1(&"intersected!".into());
+    log_status("intersected!");
     let mut s = translate_from_geo_poly(&intersect);
     for q in s.iter_mut() {
         q.correct_winding_order();
+        log_status(&format!("intersected area m2: {}", q.area_m2()));
     }
+    s
+    /* 
     if autoclean {
         s.iter().map(cleanup_poly).collect()
     } else {
         s
     }
+    */
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
