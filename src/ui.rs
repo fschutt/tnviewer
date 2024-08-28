@@ -2,7 +2,7 @@ use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
 use float_cmp::approx_eq;
-use quadtree_f32::QuadTree;
+use quadtree_f32::{Item, QuadTree};
 use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
@@ -2022,8 +2022,14 @@ impl Aenderungen {
             log_1(&"insert_points 3".into());
 
             let all_points_to_question = btree
-            .get_points_contained_by(&points_to_rect(&(a, b)));
-            log_1(&format!("got {} points to question", all_points_to_question.len()).into());
+            .get_ids_that_overlap(&points_to_rect(&(a, b)))
+            .into_iter()
+            .filter_map(|i| btree.get_item(&i))
+            .filter_map(|a| match a {
+                Item::Point(p) => Some(p),
+                _ => None
+            }).collect::<Vec<_>>();
+            log_1(&format!("got {} points to question: {all_points_to_question:?}", all_points_to_question.len()).into());
 
             let mut all_points_to_question = all_points_to_question
             .into_iter()
@@ -2033,7 +2039,7 @@ impl Aenderungen {
                     return None;
                 }
                 let dst = dist_to_segment(p, a, b);
-                if dst.distance > 1.0 {
+                if dst.distance.abs() > 1.0 {
                     None
                 } else {
                     Some((dst.distance, p))
@@ -2041,7 +2047,7 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
-            log_1(&format!("got {} points to insert", all_points_to_question.len()).into());
+            log_1(&format!("got {} points to insert: {all_points_to_question:?}", all_points_to_question.len()).into());
 
             for q in all_points_to_question {
                 log_1(&"inserting point!".into());
