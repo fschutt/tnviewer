@@ -1232,39 +1232,28 @@ impl AenderungenIntersections {
             .filter(|q| !q.poly_cut.is_zero_area())
             .map(|q| {
 
-                let outer_rings = q.poly_cut.outer_rings.iter()
-                .filter(|s| {
-                    !SvgPolygon::from_line(s).is_zero_area()
-                })
-                .filter_map(|p| {
-                    crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
-                    .outer_rings.get(0).cloned()
-                })
-                .filter(|s| {
-                    !SvgPolygon::from_line(s).is_zero_area()
-                })
-                .map(|w| w.clone())
-                .collect::<Vec<_>>();
+                let filter = |rings: &[SvgLine]| {
+                    rings.iter()
+                    .filter(|s| {
+                        !SvgPolygon::from_line(s).is_zero_area()
+                    })
+                    .filter_map(|p| {
+                        crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
+                        .outer_rings.get(0).cloned()
+                    })
+                    .filter(|s| {
+                        !SvgPolygon::from_line(s).is_zero_area()
+                    })
+                    .map(|w| w.clone())
+                    .collect::<Vec<_>>()
+                };
 
-                let inner_rings = q.poly_cut.outer_rings.iter()
-                .filter(|s| {
-                    !SvgPolygon::from_line(s).is_zero_area()
-                })
-                .filter_map(|p| {
-                    crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
-                    .outer_rings.get(0).cloned()
-                })
-                .filter(|s| {
-                    !SvgPolygon::from_line(s).is_zero_area()
-                })
-                .map(|w| w.clone())
-                .collect::<Vec<_>>();
-                
                 let mut q = q.clone();
-                q.poly_cut.outer_rings = outer_rings;
-                q.poly_cut.inner_rings = inner_rings;
+                q.poly_cut.outer_rings = filter(&q.poly_cut.outer_rings);
+                q.poly_cut.inner_rings = filter(&q.poly_cut.inner_rings);
                 q
             })
+            .filter(|q| !q.poly_cut.is_zero_area())
             .collect::<Vec<_>>()
         )
     }
@@ -1395,7 +1384,7 @@ impl AenderungenClean {
 
         let is = AenderungenIntersections(is)
         .deduplicate()
-        // .clean_zero_size_areas()
+        .clean_zero_size_areas()
         .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
@@ -1482,7 +1471,7 @@ impl AenderungenClean {
         }
 
         AenderungenIntersections(is)
-        // s.deduplicate()
+        .deduplicate()
         .clean_zero_size_areas()
         .merge_to_nearest()
     }
