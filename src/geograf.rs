@@ -291,9 +291,7 @@ pub fn calc_splitflaechen(
 
     let aenderungen = aenderungen.clean_stage11(split_nas, &mut Vec::new());
 
-    let aenderungen = aenderungen.split_aenderungen_by_flst(original_xml, &mut Vec::new());
-
-    let aenderungen = aenderungen.clean_stage1(split_nas, &mut Vec::new(), 0.2, 0.2);
+    let aenderungen = aenderungen.split_aenderungen_by_flst(split_nas, original_xml, &mut Vec::new());
 
     let qt = split_nas.create_quadtree();
 

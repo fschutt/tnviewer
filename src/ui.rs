@@ -1935,8 +1935,26 @@ impl Aenderungen {
         changed_mut.round_to_3decimal()
     }
 
-    pub fn split_aenderungen_by_flst(&self, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
-        let changed_mut = self.round_to_3decimal();
+    fn clean_internal(&self) -> Aenderungen {
+        Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: self.na_polygone_neu
+            .iter()
+            .map(|(k, v)| {
+                (k.clone(), PolyNeu {
+                    nutzung: v.nutzung.clone(),
+                    poly: crate::nas::cleanup_poly(&v.poly.round_to_3dec()),
+                })
+            })
+            .filter(|s| !s.1.poly.is_zero_area())
+            .collect()
+        }
+    }
+
+    pub fn split_aenderungen_by_flst(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+        
+        let changed_mut = self.clean_internal().clean_stage1(split_nas, &mut Vec::new(), 0.1, 0.1);
         let mut adefault = Aenderungen {
             na_definiert: self.na_definiert.clone(),
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
@@ -1958,12 +1976,15 @@ impl Aenderungen {
             }
             for potential_overlap_flst in flst_in_radius.iter().filter_map(|i| ebenen.get(*i)) {
                 for is in intersect_polys(&potential_overlap_flst.poly, &an.poly, false) {
+                    if is.is_zero_area() {
+                        continue;
+                    }
                     adefault.na_polygone_neu.insert(uuid(), PolyNeu { poly: is, nutzung: an.nutzung.clone() });
                 }
             }
         }
 
-        adefault
+        adefault.clean_internal()
     }
 
     pub fn deduplicate(&self) -> Self {
@@ -2038,7 +2059,7 @@ impl Aenderungen {
         
         let changed_mut = changed_mut.clean_stage11(split_nas, log);
 
-        let changed_mut = changed_mut.split_aenderungen_by_flst(original_xml, log);
+        let changed_mut = changed_mut.split_aenderungen_by_flst(split_nas, original_xml, log);
 
         let changed_mut = changed_mut.deduplicate();
 
