@@ -1862,9 +1862,9 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
     pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
         use geo::BooleanOps;
         let mut a = a.round_to_3dec();
-        let mut b = b.round_to_3dec();
+        let b = b.round_to_3dec();
         a.correct_winding_order();
-        b.correct_winding_order();
+        // b.correct_winding_order();
         if a.is_zero_area() {
             return Vec::new();
         }
