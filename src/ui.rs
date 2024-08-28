@@ -1983,14 +1983,14 @@ impl Aenderungen {
 
         let qt_len = all_points_vec.len().saturating_div(20).max(500);
         let all_points_btree = QuadTree::new_with_max_items_per_quad(
-            all_points_vec.into_iter().enumerate()
+            all_points_vec.iter().enumerate()
             .map(|(i, v)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: v.x, y: v.y }))), 
             qt_len,
         );
 
         for v in changed_mut.na_polygone_neu.values_mut() {
-            let ol = v.poly.outer_rings.iter().map(|p| Self::insert_points(p, &all_points_btree)).collect::<Vec<_>>();
-            let il = v.poly.inner_rings.iter().map(|p| Self::insert_points(p, &all_points_btree)).collect::<Vec<_>>();
+            let ol = v.poly.outer_rings.iter().map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec)).collect::<Vec<_>>();
+            let il = v.poly.inner_rings.iter().map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec)).collect::<Vec<_>>();
             v.poly = SvgPolygon {
                 outer_rings: ol,
                 inner_rings: il,
@@ -2001,7 +2001,7 @@ impl Aenderungen {
 
     }
 
-    fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree) -> SvgLine {
+    fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree, ap_vec: &[SvgPoint]) -> SvgLine {
         let first = match l.points.first() {
             Some(s) => s.clone(),
             None => return SvgLine::default(),
@@ -2016,11 +2016,9 @@ impl Aenderungen {
             let all_points_to_question = btree
             .get_ids_that_overlap(&points_to_rect(&(a, b)))
             .into_iter()
-            .filter_map(|i| btree.get_item(&i))
-            .filter_map(|a| match a {
-                Item::Point(p) => Some(p),
-                _ => None
-            }).collect::<Vec<_>>();
+            .filter_map(|i| ap_vec.get(i.0))
+            .cloned()
+            .collect::<Vec<_>>();
 
             let mut all_points_to_question = all_points_to_question
             .into_iter()
