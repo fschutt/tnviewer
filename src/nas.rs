@@ -1741,6 +1741,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
                 let ebene = p.attributes.get("AX_Ebene")?;
                 let kuerzel = tp.get_auto_kuerzel(&ebene)?;
                 log_status(&format!("{id}: {ebene}: {kuerzel} - {} m2", tp.poly.area_m2()));
+                log_status(&serde_json::to_string(&p.poly).unwrap_or_default());
                 Some(tp)
             })
         }).collect::<Vec<_>>();
