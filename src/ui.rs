@@ -1975,6 +1975,7 @@ impl Aenderungen {
         }
 
 
+        /* 
         let all_points_vec = changed_mut.na_polygone_neu.iter()
         .flat_map(|(k, q)| {
             let mut v = q.poly.outer_rings.iter().flat_map(|p| p.points.clone()).collect::<Vec<_>>();
@@ -1997,6 +1998,7 @@ impl Aenderungen {
                 inner_rings: il,
             };
         }
+        */
 
         changed_mut.round_to_3decimal()
 
