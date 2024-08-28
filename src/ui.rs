@@ -996,18 +996,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(6);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Änderungen</p>
-                        <p>säubern 6</p>
-                    </div>
-                </label>
-            </div>
-
-            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
@@ -1020,13 +1008,13 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(9)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Änderungen</p>
-                        <p>säubern 9 ALL</p>
+                        <p>säubern 7 ALL</p>
                     </div>
                 </label>
             </div>
@@ -1905,7 +1893,7 @@ impl Aenderungen {
 
     }
 
-    pub fn clean_stage11(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage4(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
         
         let mut changed_mut = self.round_to_3decimal();
         let mut aenderungen_split = Vec::new();
@@ -1988,7 +1976,7 @@ impl Aenderungen {
             }
         }
 
-        adefault.clean_internal()
+        adefault.clean_internal().deduplicate()
     }
 
     pub fn deduplicate(&self) -> Self {
@@ -2061,7 +2049,7 @@ impl Aenderungen {
             konfiguration.merge.stage3_maxdeviation_followline,
         );
         
-        let changed_mut = changed_mut.clean_stage11(split_nas, log);
+        let changed_mut = changed_mut.clean_stage4(split_nas, log);
 
         let changed_mut = changed_mut.split_aenderungen_by_flst(split_nas, original_xml, log);
 
