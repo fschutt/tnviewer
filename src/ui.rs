@@ -1856,10 +1856,6 @@ impl Aenderungen {
         let mut changed_mut = self.clean_stage0(split_nas, log, maxdst_point);
 
         let mut modified_tree = changed_mut.na_polygone_neu.clone();
-        let mut changes_list = changed_mut.na_polygone_neu.values().map(|s| s.poly.clone()).collect::<Vec<_>>();
-        let mut changes_btree = QuadTree::new(
-            changes_list.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.get_rect())))
-        );
 
         log.push(format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
 
@@ -1867,6 +1863,14 @@ impl Aenderungen {
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
+
+            let changes_list = modified_tree.iter().filter_map(|(k, s)| {
+                if k == id { None } else { Some(s.poly.clone()) }
+            }).collect::<Vec<_>>();
+
+            let changes_btree = QuadTree::new(
+                changes_list.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.get_rect())))
+            );
 
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
@@ -1885,13 +1889,7 @@ impl Aenderungen {
             
             if (modified) {
                 modified_counter += 1;
-
-                // rebuild btree
                 modified_tree.insert(id.clone(), polyneu.clone());
-                changes_list = modified_tree.values().map(|s| s.poly.clone()).collect::<Vec<_>>();
-                changes_btree = QuadTree::new(
-                    changes_list.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.get_rect())))
-                );
             }
         }
 
@@ -1908,9 +1906,15 @@ impl Aenderungen {
         maxdev_followline: f64,
     ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
-        let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(self);
         log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
-        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+        let mut changed_mut_copy = changed_mut.clone();
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+
+            let mut modified = false;
+            let mut changed_mut_copy_local = changed_mut_copy.clone();
+            changed_mut_copy_local.na_polygone_neu.remove(id);
+            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut_copy_local);
+
             for line in polyneu.poly.outer_rings.iter_mut() {
                 
                 let mut nextpoint;
@@ -1927,6 +1931,7 @@ impl Aenderungen {
                     let end = p;
                     newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
                     if !newpoints.is_empty() {
+                        modified = true;
                         log.push(format!("insert {} points", newpoints.len()));
                     }
                     newpoints.push(*end);
@@ -1936,6 +1941,10 @@ impl Aenderungen {
                 newpoints.dedup_by(|a, b| a.equals(b));
 
                 line.points = newpoints;
+            }
+
+            if modified {
+                changed_mut_copy.na_polygone_neu.insert(id.clone(), polyneu.clone());
             }
         }
 
