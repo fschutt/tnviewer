@@ -1395,7 +1395,7 @@ impl AenderungenClean {
 
         let is = AenderungenIntersections(is)
         .deduplicate()
-        .clean_zero_size_areas()
+        // .clean_zero_size_areas()
         .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
