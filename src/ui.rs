@@ -2033,7 +2033,7 @@ impl Aenderungen {
                     return None;
                 }
                 let dst = dist_to_segment(p, a, b);
-                if dst.distance > 0.01 {
+                if dst.distance > 1.0 {
                     None
                 } else {
                     Some((dst.distance, p))
