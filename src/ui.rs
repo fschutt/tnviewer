@@ -1971,6 +1971,10 @@ impl Aenderungen {
                         continue;
                     }
                     log_status(&format!("{:?}: {:?} {:?}", potential_overlap_flst.attributes.get("flurstueckskennzeichen"), is.area_m2(), an.nutzung));
+                    log_status(&serde_json::to_string(&is).unwrap_or_default());
+                    log_status(&serde_json::to_string(&potential_overlap_flst.poly).unwrap_or_default());
+                    log_status(&serde_json::to_string(&an.poly).unwrap_or_default());
+
                     adefault.na_polygone_neu.insert(uuid(), PolyNeu { poly: is, nutzung: an.nutzung.clone() });
                 }
             }
