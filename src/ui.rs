@@ -6,7 +6,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::js_sys::Atomics::xor;
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1009,6 +1009,19 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(6);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 6</p>
+                    </div>
+                </label>
+            </div>
+
+
+            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
@@ -1857,7 +1870,48 @@ impl Aenderungen {
         changed_mut.round_to_3decimal()
     }
 
-    pub fn clean_stage2(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
+    // 1.5: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
+    pub fn clean_stage2(
+        &self, 
+        log: &mut Vec<String>, 
+        maxdst_line: f64, 
+        maxdst_line2: f64,
+        maxdev_followline: f64,
+    ) -> Aenderungen {
+        let mut changed_mut = self.round_to_3decimal();
+        let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(self);
+
+        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            for line in polyneu.poly.outer_rings.iter_mut() {
+                
+                let mut nextpoint;
+                let mut newpoints = match line.points.get(0) {
+                    Some(s) => {
+                        nextpoint = s.clone();
+                        vec![s.clone()]
+                    },
+                    None => continue,
+                };
+
+                for p in line.points.iter().skip(1) {
+                    let start = nextpoint.clone();
+                    let end = p;
+                    newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
+                    newpoints.push(*end);
+                    nextpoint = *end;
+                }
+
+                newpoints.dedup_by(|a, b| a.equals(b));
+
+                line.points = newpoints;
+            }
+        }
+
+        changed_mut.round_to_3decimal()
+
+    }
+
+    pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
 
         // log.push(format!("created split nas quadtree over {} items", qt.items));
@@ -1879,7 +1933,7 @@ impl Aenderungen {
     }
 
     // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
-    pub fn clean_stage3(
+    pub fn clean_stage4(
         &self, 
         original_xml: &NasXMLFile, 
         log: &mut Vec<String>, 
@@ -1920,7 +1974,7 @@ impl Aenderungen {
 
     }
 
-    pub fn clean_stage4(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
         
         let mut changed_mut = self.round_to_3decimal();
         let mut aenderungen_split = Vec::new();
@@ -1967,7 +2021,8 @@ impl Aenderungen {
         }
     }
 
-    pub fn split_aenderungen_by_flst(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+    // Änderungen nach Flurstücken splitten
+    pub fn clean_stage6(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
         
         let changed_mut = self.clean_internal()
         .clean_stage1(split_nas, &mut Vec::new(), 0.1, 0.1);
@@ -2071,18 +2126,25 @@ impl Aenderungen {
 
         let changed_mut = self.clean_stage1(split_nas, log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
 
-        let changed_mut = changed_mut.clean_stage2(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
+        let changed_mut = changed_mut.clean_stage2(
+            log, 
+            konfiguration.merge.stage3_maxdst_line, 
+            konfiguration.merge.stage3_maxdst_line2,
+            konfiguration.merge.stage3_maxdeviation_followline,
+        );
 
-        let changed_mut = changed_mut.clean_stage3(
+        let changed_mut = changed_mut.clean_stage3(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
+
+        let changed_mut = changed_mut.clean_stage4(
             original_xml, log, 
             konfiguration.merge.stage3_maxdst_line, 
             konfiguration.merge.stage3_maxdst_line2,
             konfiguration.merge.stage3_maxdeviation_followline,
         );
         
-        let changed_mut = changed_mut.clean_stage4(split_nas, log);
+        let changed_mut = changed_mut.clean_stage5(split_nas, log);
 
-        let changed_mut = changed_mut.split_aenderungen_by_flst(split_nas, original_xml, log);
+        let changed_mut = changed_mut.clean_stage6(split_nas, original_xml, log);
 
         let qt = split_nas.create_quadtree();
 

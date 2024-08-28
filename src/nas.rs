@@ -1622,6 +1622,40 @@ pub struct NasXmlQuadTree {
 }
 
 impl NasXmlQuadTree {
+    pub fn from_aenderungen(aenderungen: &Aenderungen) -> Self {
+
+        let original = NasXMLFile {
+            crs: "".to_string(),
+            ebenen: aenderungen.na_polygone_neu.iter().map(|(k, v)| {
+                (k.clone(), vec![TaggedPolygon {
+                    attributes: BTreeMap::new(),
+                    poly: v.poly.clone(),
+                }])
+            }).collect::<BTreeMap<_, _>>()
+        };
+    
+        let mut ebenen_map = BTreeMap::new();
+        let mut items = BTreeMap::new();
+        let mut itemid = 0;
+        for (flst_id, polys) in original.ebenen.iter() {
+            for (i, p) in polys.iter().enumerate() {
+                let id = quadtree_f32::ItemId(itemid);
+                itemid += 1;
+                items.insert(id, quadtree_f32::Item::Rect(p.get_rect()));
+                ebenen_map.insert(id, (flst_id.clone(), i));
+            }
+        }
+        
+        let qt = QuadTree::new(items.into_iter());
+
+        Self {
+            items: itemid + 1,
+            original: original.clone(),
+            qt: qt,
+            ebenen_map,
+        }
+    }
+
     pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<TaggedPolygon> {
         self.qt.get_ids_that_overlap(rect)
         .into_iter()
