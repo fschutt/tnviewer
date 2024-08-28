@@ -12,7 +12,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    translate_from_geo_poly, translate_to_geo_poly, EqualsAnyRingStatus, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -1078,13 +1078,15 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
             log_1(&"fi is zero area, nothing to subtract from!".into());
             return SvgPolygon::default();
         }
-        if fi.equals_any_ring(&i).is_some() {
-            log_1(&"equals ring 1".into());
-            return fi;
+        match fi.equals_any_ring(&i) {
+            EqualsAnyRingStatus::EqualToRing(_) => return fi,
+            EqualsAnyRingStatus::Touches => return fi,
+            EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
-        if i.equals_any_ring(&fi).is_some() {
-            log_1(&"equals ring 2".into());
-            return i;
+        match i.equals_any_ring(&fi) {
+            EqualsAnyRingStatus::EqualToRing(_) => return i,
+            EqualsAnyRingStatus::Touches => return i,
+            EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
         let relate = nas::relate(&fi, &i);
         if relate.only_touches() {

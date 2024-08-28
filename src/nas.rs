@@ -6,6 +6,7 @@ use float_cmp::ApproxEq;
 use float_cmp::F64Margin;
 use geo::Area;
 use geo::Centroid;
+use geo::ConvexHull;
 use geo::CoordsIter;
 use geo::TriangulateEarcut;
 use polylabel_mini::LineString;
@@ -740,6 +741,13 @@ pub struct SvgPolygon {
     pub inner_rings: Vec<SvgLine>,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub enum EqualsAnyRingStatus {
+    EqualToRing(usize),
+    Touches,
+    NotEqualToAnyRing,
+}
+
 impl SvgPolygon {
 
     pub fn from_line(l: &SvgLine) -> Self {
@@ -991,22 +999,35 @@ impl SvgPolygon {
         crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>()
     }
 
-    pub fn equals_any_ring(&self, other: &Self) -> Option<usize> {
+    pub fn equals_any_ring(&self, other: &Self) -> EqualsAnyRingStatus {
         if self.outer_rings.len() != 1 {
-            return None;
+            return EqualsAnyRingStatus::NotEqualToAnyRing;
         }
         let first_ring = &self.outer_rings[0];
 
         for (i, or) in other.outer_rings.iter().enumerate() {
             if or.equals(first_ring) {
-                return Some(i);
+                return EqualsAnyRingStatus::EqualToRing(i);
             }
             if Self::equals_ring_dst(first_ring, or) {
-                return Some(i);
+                if Self::is_center_inside(first_ring, or) || Self::is_center_inside(or, first_ring) {
+                    return EqualsAnyRingStatus::EqualToRing(i);
+                } else {
+                    return EqualsAnyRingStatus::Touches;
+                }
             }
         }
 
-        None
+        EqualsAnyRingStatus::NotEqualToAnyRing
+    }
+
+    fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
+        let a = match translate_geoline(a).centroid() {
+            Some(s) => SvgPoint { x: s.x(), y: s.y() },
+            None => return false,
+        };
+        
+        point_in_line(&a, b)
     }
 
     fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
@@ -1878,6 +1899,8 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         
     pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
         use geo::BooleanOps;
+        use crate::nas::EqualsAnyRingStatus::*;
+
         let mut a = a.round_to_3dec();
         let mut b = b.round_to_3dec();
         a.correct_winding_order();
@@ -1891,11 +1914,26 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         if a.equals(&b) {
             return vec![a];
         }
-        if a.equals_any_ring(&b).is_some() {
-            return vec![a];
-        }
-        if b.equals_any_ring(&a).is_some() {
-            return vec![b];
+        let a_eq_b = a.equals_any_ring(&b);
+        let b_eq_a = b.equals_any_ring(&a);
+        match (a_eq_b.clone(), b_eq_a.clone()) {
+            (EqualToRing(_), _) => return vec![a],
+            (_, EqualToRing(_)) => return vec![b],
+            (Touches, _) | (_, Touches) => {
+                match $op {
+                    geo::OpType::Intersection => return Vec::new(),
+                    geo::OpType::Xor => return vec![xor_combine(&a, &b)],
+                    geo::OpType::Union => return union(&a, &b),
+                    geo::OpType::Difference => {
+                        if a_eq_b == Touches {
+                            return vec![a];
+                        } else {
+                            return vec![b];
+                        }
+                    },
+                }
+            },
+            _ => { },
         }
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
@@ -1915,6 +1953,22 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         */
     }
 };}
+
+fn xor_combine(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolygon {
+    let mut aor = a.outer_rings.clone();
+    let mut air = a.inner_rings.clone();
+    aor.extend(b.outer_rings.iter().cloned());
+    air.extend(b.inner_rings.iter().cloned());
+    SvgPolygon {
+        outer_rings: aor,
+        inner_rings: air,
+    }
+}
+
+fn union(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
+    let xor = xor_combine(a, b);
+    translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&xor).convex_hull()]))
+}
 
 define_func!(intersect_polys, geo::OpType::Intersection);
 define_func!(xor_polys, geo::OpType::Xor);
