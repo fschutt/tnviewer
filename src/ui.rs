@@ -1974,8 +1974,6 @@ impl Aenderungen {
             }
         }
 
-
-        /* 
         let all_points_vec = changed_mut.na_polygone_neu.iter()
         .flat_map(|(k, q)| {
             let mut v = q.poly.outer_rings.iter().flat_map(|p| p.points.clone()).collect::<Vec<_>>();
@@ -1998,7 +1996,6 @@ impl Aenderungen {
                 inner_rings: il,
             };
         }
-        */
 
         changed_mut.round_to_3decimal()
 
@@ -2033,14 +2030,14 @@ impl Aenderungen {
                     return None;
                 }
                 let dst = dist_to_segment(p, a, b);
-                if dst.distance.abs() > 1.0 {
+                if dst.distance.abs() > 0.10 {
                     None
                 } else {
                     Some((dst.distance, p))
                 }
             }).collect::<Vec<_>>();
 
-            all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
+            all_points_to_question.sort_by(|r, s| r.1.dist(&a).total_cmp(&s.1.dist(&a)));
 
             for q in all_points_to_question {
                 finalized.push(q.1);
