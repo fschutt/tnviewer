@@ -2007,7 +2007,7 @@ impl Aenderungen {
     }
 
     fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree) -> SvgLine {
-        let mut first = match l.points.first() {
+        let first = match l.points.first() {
             Some(s) => s.clone(),
             None => return SvgLine::default(),
         };
@@ -2034,8 +2034,11 @@ impl Aenderungen {
             all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
             
             for q in all_points_to_question {
+                log_1(&"inserting point!".into());
                 finalized.push(q.1);
             }
+
+            finalized.push(b);
         }
 
         SvgLine { points: finalized }
