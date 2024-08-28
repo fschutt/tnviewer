@@ -1713,8 +1713,6 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         (ItemId(*k), Item::Rect(v.get_rect()))
     }));
 
-    log_status_clear();
-
     let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
 
         let id = flst.attributes.get("flurstueckskennzeichen")?.replace("_", "");
