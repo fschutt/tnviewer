@@ -1227,7 +1227,46 @@ impl AenderungenIntersections {
     }
 
     pub fn clean_zero_size_areas(&self) -> Self {
-        self.clone() // TODO
+        Self(
+            self.0.iter()
+            .filter(|q| !q.poly_cut.is_zero_area())
+            .map(|q| {
+
+                let outer_rings = q.poly_cut.outer_rings.iter()
+                .filter(|s| {
+                    !SvgPolygon::from_line(s).is_zero_area()
+                })
+                .filter_map(|p| {
+                    crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
+                    .outer_rings.get(0).cloned()
+                })
+                .filter(|s| {
+                    !SvgPolygon::from_line(s).is_zero_area()
+                })
+                .map(|w| w.clone())
+                .collect::<Vec<_>>();
+
+                let inner_rings = q.poly_cut.outer_rings.iter()
+                .filter(|s| {
+                    !SvgPolygon::from_line(s).is_zero_area()
+                })
+                .filter_map(|p| {
+                    crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
+                    .outer_rings.get(0).cloned()
+                })
+                .filter(|s| {
+                    !SvgPolygon::from_line(s).is_zero_area()
+                })
+                .map(|w| w.clone())
+                .collect::<Vec<_>>();
+                
+                let mut q = q.clone();
+                q.poly_cut.outer_rings = outer_rings;
+                q.poly_cut.inner_rings = inner_rings;
+                q
+            })
+            .collect::<Vec<_>>()
+        )
     }
     
     pub fn get_texte(s: &[AenderungenIntersection]) -> Vec<TextPlacement> {
@@ -1353,6 +1392,11 @@ impl AenderungenClean {
                 intersection_sizes.insert((flst_id_part, aenderung_i.clone()), is_size);
             }
         }
+
+        let is = AenderungenIntersections(is)
+        .deduplicate()
+        .clean_zero_size_areas()
+        .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 

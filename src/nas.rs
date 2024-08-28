@@ -736,6 +736,10 @@ pub struct SvgPolygon {
 
 impl SvgPolygon {
 
+    pub fn from_line(l: &SvgLine) -> Self {
+        Self { outer_rings: vec![l.clone()], inner_rings: Vec::new() }
+    }
+
     pub fn contains_polygon(&self, other: &Self) -> bool {
         for l in other.outer_rings.iter() {
             for p in l.points.iter() {
@@ -1760,7 +1764,7 @@ pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
 
     let outer_rings = s.outer_rings.iter()
     .filter_map(|r| {
-        let mut s =  SvgPolygon { outer_rings: vec![r.clone()], inner_rings: Vec::new() };
+        let mut s =  SvgPolygon::from_line(r);
         s.correct_winding_order();
         if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
     })
@@ -1769,7 +1773,7 @@ pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
 
     let inner_rings = s.inner_rings.iter()
     .filter_map(|r| {
-        let mut s =  SvgPolygon { outer_rings: vec![r.clone()], inner_rings: Vec::new() };
+        let mut s =  SvgPolygon::from_line(r);
         s.correct_winding_order();
         if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
     })
