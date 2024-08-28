@@ -1383,8 +1383,8 @@ impl AenderungenClean {
         }
 
         let is = AenderungenIntersections(is)
-        .deduplicate()
         .clean_zero_size_areas()
+        .deduplicate()
         .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
@@ -1471,8 +1471,8 @@ impl AenderungenClean {
         }
 
         AenderungenIntersections(is)
-        .deduplicate()
         .clean_zero_size_areas()
+        .deduplicate()
         .merge_to_nearest()
     }
 }
