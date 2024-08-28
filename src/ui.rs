@@ -1982,15 +1982,12 @@ impl Aenderungen {
             v.into_iter()
         }).collect::<Vec<_>>();
 
-        let ap_len = all_points_vec.len();
         let qt_len = all_points_vec.len().saturating_div(20).max(500);
         let all_points_btree = QuadTree::new_with_max_items_per_quad(
             all_points_vec.into_iter().enumerate()
             .map(|(i, v)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: v.x, y: v.y }))), 
             qt_len,
         );
-
-        log_1(&format!("all_points_btree: {ap_len} items").into());
 
         for v in changed_mut.na_polygone_neu.values_mut() {
             let ol = v.poly.outer_rings.iter().map(|p| Self::insert_points(p, &all_points_btree)).collect::<Vec<_>>();
@@ -2006,20 +2003,16 @@ impl Aenderungen {
     }
 
     fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree) -> SvgLine {
-        log_1(&"insert_points".into());
         let first = match l.points.first() {
             Some(s) => s.clone(),
             None => return SvgLine::default(),
         };
-        log_1(&"insert_points 2".into());
         let mut finalized = vec![first];
         for p in l.points.windows(2).skip(1) {
             let (a, b) = match p {
                 &[a, b] => (a, b),
                 _ => continue,
             };
-
-            log_1(&"insert_points 3".into());
 
             let all_points_to_question = btree
             .get_ids_that_overlap(&points_to_rect(&(a, b)))
@@ -2029,7 +2022,6 @@ impl Aenderungen {
                 Item::Point(p) => Some(p),
                 _ => None
             }).collect::<Vec<_>>();
-            log_1(&format!("got {} points to question: {all_points_to_question:?}", all_points_to_question.len()).into());
 
             let mut all_points_to_question = all_points_to_question
             .into_iter()
@@ -2047,17 +2039,13 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
-            log_1(&format!("got {} points to insert: {all_points_to_question:?}", all_points_to_question.len()).into());
 
             for q in all_points_to_question {
-                log_1(&"inserting point!".into());
                 finalized.push(q.1);
             }
 
             finalized.push(b);
         }
-
-        log_1(&"insert_points 3".into());
 
         SvgLine { points: finalized }
     }
