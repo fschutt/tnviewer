@@ -2014,10 +2014,9 @@ impl Aenderungen {
             };
 
             let all_points_to_question = btree
-            .get_ids_that_overlap(&points_to_rect(&(a, b)))
+            .get_ids_contained_by(&points_to_rect(&(a, b)))
             .into_iter()
-            .filter_map(|i| ap_vec.get(i.0))
-            .cloned()
+            .map(|i| ap_vec[i.0].clone())
             .collect::<Vec<_>>();
 
             let mut all_points_to_question = all_points_to_question
