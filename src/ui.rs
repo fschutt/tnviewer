@@ -1346,6 +1346,7 @@ impl AenderungenClean {
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
+                    log_status(&format!("insert {flurstueck_id}: {qq:?}"));
                     is.push(qq);
                 }
             
@@ -1355,6 +1356,7 @@ impl AenderungenClean {
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
+        /* 
         for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
             
             let ebene = match flst_part.attributes.get("AX_Ebene") {
@@ -1416,6 +1418,7 @@ impl AenderungenClean {
                 is.push(qq);
             }
         }
+        */
 
         let is = is.into_iter()
         .filter(|i| !i.poly_cut.is_zero_area())
@@ -1435,7 +1438,7 @@ impl AenderungenClean {
         }
 
         AenderungenIntersections(is)
-        .deduplicate()
+        // s.deduplicate()
         .clean_zero_size_areas()
         .merge_to_nearest()
     }
