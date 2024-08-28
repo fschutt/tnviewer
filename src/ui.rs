@@ -1,6 +1,7 @@
 use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
+use quadtree_f32::QuadTree;
 use serde_derive::{Serialize, Deserialize};
 use web_sys::js_sys::Atomics::xor;
 
@@ -1665,35 +1666,70 @@ pub struct DstToLine {
     }
 }
 
+enum CorrectPointItem {
+    NearPoint(SvgPoint),
+    NearLine(DstToLine),
+}
+
+impl CorrectPointItem {
+    pub fn get_point(&self) -> SvgPoint {
+        use self::CorrectPointItem::*;
+        match self {
+            NearPoint(p) => *p,
+            NearLine(dst) => dst.nearest_point,
+        }
+    }
+}
+
 impl Aenderungen {
     pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
         // TODO: Welche beschrifteten Objekte gibt es?
         String::new()
     }
 
-    pub fn correct_point(p: &mut SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
-        let mut nearest_point = None;
+    pub fn correct_point(p: &mut SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> bool {
+        let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, allow_correctline);
+        if let Some(np) = np {
+            *p = np;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> Option<SvgPoint> {
+        let mut near_points = Vec::new();
+        
+        for poly in i.iter() {
+            near_points.append(&mut Self::get_points_near_point(p, &poly.outer_rings, maxdst_point, maxdst_line, allow_correctline));
+            near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, allow_correctline));
+        }
+
+        near_points.sort_by(|a, b| a.0.total_cmp(&b.0));
+        near_points.first().map(|p| p.1.get_point())
+    }
+
+    fn get_points_near_point(p: &SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> Vec<(f64, CorrectPointItem)> {
+        let mut v = Vec::new();
         for line in i.iter() {
             let line: &crate::nas::SvgLine = line;
             for ab in line.points.windows(2) {
                 match &ab {
                     &[a, b] => {
                         let dist_ap = dist(*a, *p);
-                        let dist_bp = dist(*b, *p);
-                        let distance_to_current_nearest = nearest_point.as_ref()
-                        .map(|cur_near_p| dist(*cur_near_p, *p)).unwrap_or(f64::MAX);
+                        if dist_ap < maxdst_point {
+                            v.push((dist_ap, CorrectPointItem::NearPoint(*a)));
+                        }
 
-                        if dist_ap < distance_to_current_nearest && dist_ap < maxdst_point {
-                            // log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *a));
-                            nearest_point = Some(*a);
-                        } else if dist_bp < distance_to_current_nearest && dist_bp < maxdst_point {
-                            // log.push(format!("correcting point {:?} -> {:?} (maxdst_point = {maxdst_point})", *p, *b));
-                            nearest_point = Some(*b);
-                        } else {
-                            let nearest_point_on_line = dist_to_segment(*p, *a, *b);
-                            if nearest_point_on_line.distance < distance_to_current_nearest && nearest_point_on_line.distance < maxdst_line {
-                                // log.push(format!("point on line {:?} -> {:?} (maxdst_line = {maxdst_line})", *p, nearest_point_on_line));
-                                nearest_point = Some(nearest_point_on_line.nearest_point);
+                        let dist_bp = dist(*b, *p);
+                        if dist_bp < maxdst_point {
+                            v.push((dist_bp, CorrectPointItem::NearPoint(*b)));
+                        }
+                        
+                        if allow_correctline {
+                            let dst = dist_to_segment(*p, *a, *b);
+                            if dst.distance < maxdst_line {
+                                v.push((dst.distance, CorrectPointItem::NearLine(dst)));
                             }
                         }
                     },
@@ -1701,12 +1737,7 @@ impl Aenderungen {
                 }
             }
         }
-
-        if let Some(np) = nearest_point {
-            *p = np;
-        }
-
-        nearest_point.is_some()
+        v
     }
 
     pub fn round_to_3decimal(&self) -> Aenderungen {
@@ -1782,36 +1813,29 @@ impl Aenderungen {
     pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let mut changed_mut = self.clean_stage0(split_nas, log, maxdst_point);
 
-        let mut aenderungen_self_merge_lines = 
-        changed_mut.na_polygone_neu.iter().map(|(k, p)| {
-            (k.clone(), p.poly.outer_rings.clone())
-        }).collect::<BTreeMap<_, _>>();
+        let mut modified_tree = changed_mut.na_polygone_neu.clone();
+        let mut changes_list = changed_mut.na_polygone_neu.values().map(|s| s.poly.clone()).collect::<Vec<_>>();
+        let mut changes_btree = QuadTree::new(
+            changes_list.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.get_rect())))
+        );
 
         log.push(format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
+
         let mut modified_counter = 0;
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
+
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
 
-                    let overlapping_aenderungen_lines = aenderungen_self_merge_lines.iter()
-                    .filter_map(|(k, v)| {
-                        if k == id {
-                            return None; // prevent self-intersection
-                        }
-                        if v.is_empty() {
-                            return None;
-                        }
-                        Some(v.clone())
-                    })
-                    .flat_map(|v| v.into_iter())
-                    .collect::<Vec<_>>()
+                    let p_rect = p.get_rect(maxdst_point.max(maxdst_line));
+                    let overlap = changes_btree.get_ids_that_overlap(&p_rect)
                     .into_iter()
-                    .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(maxdst_point.max(maxdst_line))))
-                    .collect::<Vec<SvgLine>>();
-
-                    if Self::correct_point(p, &overlapping_aenderungen_lines, maxdst_point, maxdst_line, log) {
+                    .filter_map(|i| changes_list.get(i.0).cloned())
+                    .collect::<Vec<_>>();
+                
+                    if Self::correct_point(p, &overlap, maxdst_point, maxdst_line, true) {
                         modified = true;
                     }
                 }
@@ -1819,8 +1843,13 @@ impl Aenderungen {
             
             if (modified) {
                 modified_counter += 1;
-                *aenderungen_self_merge_lines.entry(id.clone())
-                .or_insert_with(|| Vec::new()) = polyneu.poly.outer_rings.clone();
+
+                // rebuild btree
+                modified_tree.insert(id.clone(), polyneu.clone());
+                changes_list = modified_tree.values().map(|s| s.poly.clone()).collect::<Vec<_>>();
+                changes_btree = QuadTree::new(
+                    changes_list.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.get_rect())))
+                );
             }
         }
 
@@ -1839,10 +1868,8 @@ impl Aenderungen {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
                     let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
-                    for (_, poly) in overlapping_flst_nutzungen.iter() {
-                        Self::correct_point(p, &poly.poly.outer_rings, maxdst_point, maxdst_line, log);
-                        Self::correct_point(p, &poly.poly.inner_rings, maxdst_point, maxdst_line, log);
-                    }
+                    let overlapping_flst_nutzungen = overlapping_flst_nutzungen.into_iter().map(|(id, v)| v.poly).collect::<Vec<_>>();
+                    Self::correct_point(p, &overlapping_flst_nutzungen, maxdst_point, maxdst_line, true);
                 }
             }
         }
