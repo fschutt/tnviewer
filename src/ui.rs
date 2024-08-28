@@ -2128,9 +2128,7 @@ impl Aenderungen {
 
         let changed_mut = changed_mut.clean_stage2(
             log, 
-            konfiguration.merge.stage3_maxdst_line, 
-            konfiguration.merge.stage3_maxdst_line2,
-            konfiguration.merge.stage3_maxdeviation_followline,
+            1.0, 1.0, 10.0,
         );
 
         let changed_mut = changed_mut.clean_stage3(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
