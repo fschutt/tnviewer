@@ -1127,7 +1127,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         None => return None,
     };
     for i in polys.iter().skip(1) {
-        let mut i = i.round_to_3dec();
+        let i = i.round_to_3dec();
         if first.equals(&i) {
             continue;
         }
@@ -1136,7 +1136,6 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         }
         let mut fi = first.round_to_3dec();
         fi.correct_winding_order();
-        // i.correct_winding_order();
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);

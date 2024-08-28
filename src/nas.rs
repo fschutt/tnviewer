@@ -501,6 +501,11 @@ impl TaggedPolygon {
         map.get(kuerzel.trim()).map(|s| s.wia.clone())
     }
 
+    pub fn get_nutzungsartenkennung(kuerzel: &str) -> Option<String> {
+        let map = crate::get_map();
+        map.get(kuerzel.trim()).map(|s| s.nak.clone())
+    }
+
     pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
 
         let vegetationsmerkmal = self.attributes.get("vegetationsmerkmal").map(|s| s.as_str());
@@ -1722,7 +1727,9 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
-        let polys = polys.iter().flat_map(|p| {
+        let flst_area = flst.poly.area_m2();
+
+        let mut polys = polys.iter().flat_map(|p| {
             let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
             intersection_mp
             .into_iter()
@@ -1736,20 +1743,29 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
                         attrs
                     },
                     poly: svg_poly,
-                };            
-            
+                };
                 let ebene = p.attributes.get("AX_Ebene")?;
                 let kuerzel = tp.get_auto_kuerzel(&ebene)?;
-                log_status(&format!("{id}: {ebene}: {kuerzel} - {} m2", tp.poly.area_m2()));
-                log_status(&serde_json::to_string(&p.poly).unwrap_or_default());
-                Some(tp)
+                let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?.parse::<usize>().ok()?;
+                Some((tp, nak))
             })
         }).collect::<Vec<_>>();
 
-        if polys.is_empty() {
+        polys.sort_by(|a, b| a.1.cmp(&b.1));
+        let mut sum_poly_areas = 0.0;
+        let mut final_polys = Vec::new();
+        for tp in polys.iter() {
+            let tp_area = tp.0.poly.area_m2();
+            sum_poly_areas += tp_area;
+            if sum_poly_areas < (flst_area + 1.0) {
+                final_polys.push(tp.0.clone());
+            }
+        }
+
+        if final_polys.is_empty() {
             None
         } else {
-            Some((id.clone(), polys))
+            Some((id.clone(), final_polys))
         }
     }).collect();
 
@@ -1863,9 +1879,9 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
     pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
         use geo::BooleanOps;
         let mut a = a.round_to_3dec();
-        let b = b.round_to_3dec();
+        let mut b = b.round_to_3dec();
         a.correct_winding_order();
-        // b.correct_winding_order();
+        b.correct_winding_order();
         if a.is_zero_area() {
             return Vec::new();
         }
