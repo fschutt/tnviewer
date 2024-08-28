@@ -1966,7 +1966,7 @@ impl Aenderungen {
             }
             log_status(&format!("{} potential_overlap_flst", flst_in_radius.len()));
             for potential_overlap_flst in flst_in_radius.iter().filter_map(|i| ebenen.get(*i)) {
-                for is in intersect_polys(&potential_overlap_flst.poly, &an.poly, false) {
+                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
                     if is.is_zero_area() {
                         continue;
                     }
