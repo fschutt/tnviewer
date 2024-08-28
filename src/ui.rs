@@ -4,7 +4,7 @@ use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 use float_cmp::approx_eq;
 use quadtree_f32::QuadTree;
 use serde_derive::{Serialize, Deserialize};
-use web_sys::js_sys::Atomics::xor;
+use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
     csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
@@ -1680,6 +1680,7 @@ pub struct DstToLine {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 enum CorrectPointItem {
     NearPoint(SvgPoint),
     NearLine(DstToLine),
@@ -1695,7 +1696,7 @@ impl CorrectPointItem {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 enum GetNearestPointFilter {
     Points,
     Lines,
@@ -1740,7 +1741,7 @@ impl Aenderungen {
         }
     }
 
-    fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
+    fn get_nearest_points(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Vec<(f64, CorrectPointItem)> {
         let mut near_points = Vec::new();
         
         for poly in i.iter() {
@@ -1748,9 +1749,21 @@ impl Aenderungen {
             near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
-        near_points.retain(|(dst, _)| approx_eq!(f64, *dst, 0.0, epsilon = 0.001));
+        if mode == GetNearestPointFilter::Lines {
+            near_points.retain(|(dst, _)| approx_eq!(f64, *dst, 0.0, epsilon = 0.001));
+        }
+        
+        if !near_points.is_empty() {
+            log_1(&serde_json::to_string(&near_points).unwrap_or_default().into());
+        }
+
         near_points.sort_by(|a, b| a.0.total_cmp(&b.0));
-        near_points.first().map(|p| p.1.get_point())
+        near_points
+    }
+
+    fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
+        let np = Self::get_nearest_points(p, i, maxdst_point, maxdst_line, mode);
+        np.first().map(|p| p.1.get_point())
     }
 
     fn get_points_near_point(p: &SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Vec<(f64, CorrectPointItem)> {
@@ -1770,7 +1783,8 @@ impl Aenderungen {
                             if dist_bp < maxdst_point {
                                 v.push((dist_bp, CorrectPointItem::NearPoint(*b)));
                             }    
-                        } else {
+                        }
+                        if mode == GetNearestPointFilter::Lines || mode == GetNearestPointFilter::PointsAndLines {
                             let dst = dist_to_segment(*p, *a, *b);
                             if dst.distance < maxdst_line {
                                 v.push((dst.distance, CorrectPointItem::NearLine(dst)));
