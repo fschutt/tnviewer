@@ -2019,10 +2019,16 @@ impl Aenderungen {
             };
 
             let mut all_points_to_question = btree
-            .get_points_contained_by(&points_to_rect(&(a, b)))
+            .get_points_contained_by(&points_to_rect(&(a, b)));
+            log_1(&format!("got {} points to question", all_points_to_question.len()).into());
+
+            let mut all_points_to_question = all_points_to_question
             .into_iter()
             .filter_map(|p| {
                 let p = SvgPoint { x: p.x, y: p.y };
+                if p.equals(&a) || p.equals(&b) {
+                    return None;
+                }
                 let dst = dist_to_segment(p, a, b);
                 if dst.distance > 0.01 {
                     None
@@ -2032,7 +2038,8 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
-            
+            log_1(&format!("got {} points to insert", all_points_to_question.len()).into());
+
             for q in all_points_to_question {
                 log_1(&"inserting point!".into());
                 finalized.push(q.1);
