@@ -7,7 +7,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, nas::{self, intersect_polys, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1978,9 +1978,69 @@ impl Aenderungen {
             }
         }
 
+
+        let all_points_vec = changed_mut.na_polygone_neu.iter()
+        .flat_map(|(k, q)| {
+            let mut v = q.poly.outer_rings.iter().flat_map(|p| p.points.clone()).collect::<Vec<_>>();
+            v.extend(q.poly.inner_rings.iter().flat_map(|p| p.points.clone()));
+            v.into_iter()
+        }).collect::<Vec<_>>();
+
+        let qt_len = all_points_vec.len().saturating_div(20).max(500);
+        let all_points_btree = QuadTree::new_with_max_items_per_quad(
+            all_points_vec.into_iter().enumerate()
+            .map(|(i, v)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: v.x, y: v.y }))), 
+            qt_len,
+        );
+
+        for v in changed_mut.na_polygone_neu.values_mut() {
+            let ol = v.poly.outer_rings.iter().map(|p| Self::insert_points(p, &all_points_btree)).collect::<Vec<_>>();
+            let il = v.poly.inner_rings.iter().map(|p| Self::insert_points(p, &all_points_btree)).collect::<Vec<_>>();
+            v.poly = SvgPolygon {
+                outer_rings: ol,
+                inner_rings: il,
+            };
+        }
+
         changed_mut.round_to_3decimal()
 
     }
+
+    fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree) -> SvgLine {
+        let mut first = match l.points.first() {
+            Some(s) => s.clone(),
+            None => return SvgLine::default(),
+        };
+        let mut finalized = vec![first];
+        for p in l.points.windows(2).skip(1) {
+            let (a, b) = match p {
+                &[a, b] => (a, b),
+                _ => continue,
+            };
+
+            let mut all_points_to_question = btree
+            .get_points_contained_by(&points_to_rect(&(a, b)))
+            .into_iter()
+            .filter_map(|p| {
+                let p = SvgPoint { x: p.x, y: p.y };
+                let dst = dist_to_segment(p, a, b);
+                if dst.distance > 0.01 {
+                    None
+                } else {
+                    Some((dst.distance, p))
+                }
+            }).collect::<Vec<_>>();
+
+            all_points_to_question.sort_by(|r, s| a.dist(&r.1).total_cmp(&a.dist(&s.1)));
+            
+            for q in all_points_to_question {
+                finalized.push(q.1);
+            }
+        }
+
+        SvgLine { points: finalized }
+    }
+
 
     pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
