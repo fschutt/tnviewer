@@ -1880,7 +1880,7 @@ impl Aenderungen {
     ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(self);
-
+        log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 
@@ -1897,6 +1897,9 @@ impl Aenderungen {
                     let start = nextpoint.clone();
                     let end = p;
                     newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
+                    if !newpoints.is_empty() {
+                        log.push(format!("insert {} points", newpoints.len()));
+                    }
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
