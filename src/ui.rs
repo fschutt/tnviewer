@@ -2007,7 +2007,7 @@ impl Aenderungen {
             None => return SvgLine::default(),
         };
         let mut finalized = vec![first];
-        for p in l.points.windows(2).skip(1) {
+        for p in l.points.windows(2) {
             let (a, b) = match p {
                 &[a, b] => (a, b),
                 _ => continue,
@@ -2035,7 +2035,7 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|d, e| a.dist(&d).total_cmp(&a.dist(&e)));
-            all_points_to_question.reverse();
+            // all_points_to_question.reverse();
 
             for q in all_points_to_question {
                 finalized.push(q);
@@ -2044,8 +2044,6 @@ impl Aenderungen {
             finalized.push(b);
         }
 
-        finalized.push(first);
-        
         SvgLine { points: finalized }
     }
 
