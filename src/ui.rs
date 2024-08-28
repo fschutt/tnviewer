@@ -1954,7 +1954,9 @@ impl Aenderungen {
 
     pub fn split_aenderungen_by_flst(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
         
-        let changed_mut = self.clean_internal().clean_stage1(split_nas, &mut Vec::new(), 0.1, 0.1);
+        let changed_mut = self.clean_internal()
+        .clean_stage1(split_nas, &mut Vec::new(), 0.1, 0.1);
+
         let mut adefault = Aenderungen {
             na_definiert: self.na_definiert.clone(),
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
@@ -1974,11 +1976,13 @@ impl Aenderungen {
             if flst_in_radius.is_empty() {
                 continue;
             }
+            log_status(&format!("{} potential_overlap_flst", flst_in_radius.len()));
             for potential_overlap_flst in flst_in_radius.iter().filter_map(|i| ebenen.get(*i)) {
                 for is in intersect_polys(&potential_overlap_flst.poly, &an.poly, false) {
                     if is.is_zero_area() {
                         continue;
                     }
+                    log_status(&format!("{:?}: {:?} {:?}", potential_overlap_flst.attributes.get("flurstueckskennzeichen"), is.area_m2(), an.nutzung));
                     adefault.na_polygone_neu.insert(uuid(), PolyNeu { poly: is, nutzung: an.nutzung.clone() });
                 }
             }
