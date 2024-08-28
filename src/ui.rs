@@ -1984,7 +1984,7 @@ impl Aenderungen {
         let qt_len = all_points_vec.len().saturating_div(20).max(500);
         let all_points_btree = QuadTree::new_with_max_items_per_quad(
             all_points_vec.iter().enumerate()
-            .map(|(i, v)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: v.x, y: v.y }))), 
+            .map(|(i, v)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(v.get_rect(0.01)))), 
             qt_len,
         );
 
@@ -2016,7 +2016,8 @@ impl Aenderungen {
             let all_points_to_question = btree
             .get_ids_contained_by(&points_to_rect(&(a, b)))
             .into_iter()
-            .map(|i| ap_vec[i.0].clone())
+            .filter_map(|i| ap_vec.get(i.0))
+            .cloned()
             .collect::<Vec<_>>();
 
             let mut all_points_to_question = all_points_to_question
