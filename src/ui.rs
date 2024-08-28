@@ -1756,11 +1756,11 @@ impl Aenderungen {
             near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
-        let mut near_points = near_points.into_iter().filter(|(dst, v)| {
-            if v.is_line() {
-                dst.abs() > 0.001
+        let mut near_points = near_points.into_iter().filter_map(|(dst, v)| {
+            if v.is_line() && dst.abs() < 0.001 {
+                None
             } else {
-                true
+                Some((dst, v))
             }
         }).collect::<Vec<_>>();
 
