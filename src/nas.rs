@@ -1676,11 +1676,15 @@ impl NasXmlQuadTree {
         maxdst_line: f64, 
         maxdst_line2: f64,
         maxdev_followline: f64,
+        exclude_id: Option<String>,
     ) -> Vec<SvgPoint> {
         let mut polys = self.get_overlapping_flst(&start.get_rect(maxdst_line));
         polys.extend(self.get_overlapping_flst(&end.get_rect(maxdst_line)));
         polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
         polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
+        if let Some(eid) = exclude_id {
+            polys.retain(|r| r.attributes.get("id").as_deref() != Some(&eid));
+        }
         for p in polys {
             let v = p.get_line_between_points(start, end, log, maxdst_line2, maxdev_followline);
             if !v.is_empty() {

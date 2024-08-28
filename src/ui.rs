@@ -1905,9 +1905,12 @@ impl Aenderungen {
         maxdst_line2: f64,
         maxdev_followline: f64,
     ) -> Aenderungen {
+
+        log.push(format!("clean stage2!!!"));
         let mut changed_mut = self.round_to_3decimal();
         log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
         let mut changed_mut_copy = changed_mut.clone();
+
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
 
             let mut modified = false;
@@ -1929,7 +1932,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
+                    newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
                     if !newpoints.is_empty() {
                         modified = true;
                         log.push(format!("insert {} points", newpoints.len()));
@@ -1954,8 +1957,6 @@ impl Aenderungen {
 
     pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
-
-        // log.push(format!("created split nas quadtree over {} items", qt.items));
 
         // 2. Naheliegende Punktkoordinaten auf Linien ziehen
         let mut changed_mut = self.clone();
@@ -1985,7 +1986,7 @@ impl Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
-        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 
                 let mut nextpoint;
@@ -2000,7 +2001,7 @@ impl Aenderungen {
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline).into_iter());
+                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
