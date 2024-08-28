@@ -1,6 +1,7 @@
 use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
+use float_cmp::approx_eq;
 use quadtree_f32::QuadTree;
 use serde_derive::{Serialize, Deserialize};
 use web_sys::js_sys::Atomics::xor;
@@ -1739,7 +1740,7 @@ impl Aenderungen {
         }
     }
 
-    pub fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
+    fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
         let mut near_points = Vec::new();
         
         for poly in i.iter() {
@@ -1747,6 +1748,7 @@ impl Aenderungen {
             near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
+        near_points.retain(|(dst, _)| approx_eq!(f64, *dst, 0.0, epsilon = 0.001));
         near_points.sort_by(|a, b| a.0.total_cmp(&b.0));
         near_points.first().map(|p| p.1.get_point())
     }
