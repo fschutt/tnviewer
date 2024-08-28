@@ -1713,6 +1713,8 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         (ItemId(*k), Item::Rect(v.get_rect()))
     }));
 
+    log_status_clear();
+
     let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
 
         let id = flst.attributes.get("flurstueckskennzeichen")?.replace("_", "");
@@ -1722,7 +1724,6 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
-        log_status_clear();
         let polys = polys.iter().flat_map(|p| {
             let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
             intersection_mp
