@@ -1694,6 +1694,13 @@ impl CorrectPointItem {
             NearLine(dst) => dst.nearest_point,
         }
     }
+    pub fn is_line(&self) -> bool {
+        use self::CorrectPointItem::*;
+        match self {
+            NearPoint(_) => false,
+            NearLine(_) => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
@@ -1749,10 +1756,8 @@ impl Aenderungen {
             near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
-        if mode == GetNearestPointFilter::Lines {
-            near_points.retain(|(dst, _)| approx_eq!(f64, *dst, 0.0, epsilon = 0.001));
-        }
-        
+        near_points.retain(|(dst, q)| if q.is_line() { approx_eq!(f64, *dst, 0.0, epsilon = 0.001) } else { true });
+
         if !near_points.is_empty() {
             log_1(&serde_json::to_string(&near_points).unwrap_or_default().into());
         }
