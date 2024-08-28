@@ -2035,6 +2035,7 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|d, e| a.dist(&d).total_cmp(&a.dist(&e)));
+            all_points_to_question.reverse();
 
             for q in all_points_to_question {
                 finalized.push(q);
@@ -2043,6 +2044,8 @@ impl Aenderungen {
             finalized.push(b);
         }
 
+        finalized.push(first);
+        
         SvgLine { points: finalized }
     }
 
