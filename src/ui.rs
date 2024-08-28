@@ -1951,21 +1951,21 @@ impl Aenderungen {
             na_polygone_neu: BTreeMap::new(),
         };
 
-        let ebenen = match nas_xml.ebenen.get("AX_Flurstueck") {
+        let flurstuecke = match nas_xml.ebenen.get("AX_Flurstueck") {
             Some(s) => s,
             None => return adefault,
         };
-        let ebenen_rects = ebenen.iter().map(|p| p.poly.get_rect()).collect::<Vec<_>>();
+        let flurstuecke_rects = quadtree_f32::QuadTree::new(
+            flurstuecke.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.poly.get_rect())))
+        );
+        
         for an in changed_mut.na_polygone_neu.values() {
-            let an_rect = an.poly.get_rect();
-            let flst_in_radius = ebenen_rects.iter().enumerate().filter_map(|(i, rect)| {
-                if rect.overlaps_rect(&an_rect) { Some(i) } else { None }
-            }).collect::<BTreeSet<_>>();
-            if flst_in_radius.is_empty() {
-                continue;
-            }
+            let flst_in_radius = flurstuecke_rects.get_ids_that_overlap(&an.poly.get_rect())
+            .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
+            
             log_status(&format!("{} potential_overlap_flst", flst_in_radius.len()));
-            for potential_overlap_flst in flst_in_radius.iter().filter_map(|i| ebenen.get(*i)) {
+            
+            for potential_overlap_flst in flst_in_radius.iter() {
                 for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
                     if is.is_zero_area() {
                         continue;
@@ -2056,8 +2056,6 @@ impl Aenderungen {
         let changed_mut = changed_mut.clean_stage4(split_nas, log);
 
         let changed_mut = changed_mut.split_aenderungen_by_flst(split_nas, original_xml, log);
-
-        let changed_mut = changed_mut.deduplicate();
 
         let qt = split_nas.create_quadtree();
 

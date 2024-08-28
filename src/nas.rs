@@ -744,7 +744,8 @@ pub struct SvgPolygon {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum EqualsAnyRingStatus {
     EqualToRing(usize),
-    Touches,
+    TouchesInside,
+    TouchesOutside,
     NotEqualToAnyRing,
 }
 
@@ -1010,10 +1011,10 @@ impl SvgPolygon {
                 return EqualsAnyRingStatus::EqualToRing(i);
             }
             if Self::equals_ring_dst(first_ring, or) {
-                if Self::is_center_inside(first_ring, or) || Self::is_center_inside(or, first_ring) {
-                    return EqualsAnyRingStatus::EqualToRing(i);
+                if Self::is_center_inside(first_ring, or) {
+                    return EqualsAnyRingStatus::TouchesInside;
                 } else {
-                    return EqualsAnyRingStatus::Touches;
+                    return EqualsAnyRingStatus::TouchesOutside;
                 }
             }
         }
@@ -1022,12 +1023,22 @@ impl SvgPolygon {
     }
 
     fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
-        let a = match translate_geoline(a).centroid() {
-            Some(s) => SvgPoint { x: s.x(), y: s.y() },
+        let tr = translate_to_geo_poly(&SvgPolygon::from_line(a));
+        let a_poly = match tr.0.get(0) {
+            Some(s) => s,
             None => return false,
         };
-        
-        point_in_line(&a, b)
+    
+        let mut b_poly = SvgPolygon::from_line(b);
+        b_poly.correct_winding_order();
+
+        for tri in a_poly.earcut_triangles_iter() {
+            let cen = tri.centroid();
+            let cen = SvgPoint { x: cen.x(), y: cen.y() };
+            return point_is_in_polygon(&cen, &b_poly);
+        }
+
+        return false;
     }
 
     fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
@@ -1919,13 +1930,16 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         match (a_eq_b.clone(), b_eq_a.clone()) {
             (EqualToRing(_), _) => return vec![a],
             (_, EqualToRing(_)) => return vec![b],
-            (Touches, _) | (_, Touches) => {
+            (TouchesInside, _) | (_, TouchesInside) => {
+
+            },
+            (TouchesOutside, _) | (_, TouchesOutside) => {
                 match $op {
                     geo::OpType::Intersection => return Vec::new(),
                     geo::OpType::Xor => return vec![xor_combine(&a, &b)],
                     geo::OpType::Union => return union(&a, &b),
                     geo::OpType::Difference => {
-                        if a_eq_b == Touches {
+                        if a_eq_b == TouchesOutside {
                             return vec![a];
                         } else {
                             return vec![b];

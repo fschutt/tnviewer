@@ -1080,12 +1080,14 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         }
         match fi.equals_any_ring(&i) {
             EqualsAnyRingStatus::EqualToRing(_) => return fi,
-            EqualsAnyRingStatus::Touches => return fi,
+            EqualsAnyRingStatus::TouchesOutside => return fi,
+            EqualsAnyRingStatus::TouchesInside => { },
             EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
         match i.equals_any_ring(&fi) {
             EqualsAnyRingStatus::EqualToRing(_) => return i,
-            EqualsAnyRingStatus::Touches => return i,
+            EqualsAnyRingStatus::TouchesOutside => return i,
+            EqualsAnyRingStatus::TouchesInside => { },
             EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
         let relate = nas::relate(&fi, &i);
