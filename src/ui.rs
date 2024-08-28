@@ -1694,6 +1694,13 @@ impl CorrectPointItem {
     }
 }
 
+#[derive(Copy, Clone, PartialEq)]
+enum GetNearestPointFilter {
+    Points,
+    Lines,
+    PointsAndLines,
+}
+
 impl Aenderungen {
     pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
         // TODO: Welche beschrifteten Objekte gibt es?
@@ -1701,45 +1708,67 @@ impl Aenderungen {
     }
 
     pub fn correct_point(p: &mut SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> bool {
-        let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, allow_correctline);
-        if let Some(np) = np {
-            *p = np;
-            true
+        if !allow_correctline {
+            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points);
+            if let Some(np) = np {
+                *p = np;
+                true
+            } else {
+                false
+            }
         } else {
-            false
+            
+            let mut modified = false;
+            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points);
+            if let Some(np) = np {
+                *p = np;
+                modified = true;
+            } else {
+                modified = false;
+            }
+
+            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Lines);
+            if let Some(np) = np {
+                *p = np;
+                modified = true;
+            } else {
+                modified = false;
+            }
+
+            modified
         }
     }
 
-    pub fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> Option<SvgPoint> {
+    pub fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
         let mut near_points = Vec::new();
         
         for poly in i.iter() {
-            near_points.append(&mut Self::get_points_near_point(p, &poly.outer_rings, maxdst_point, maxdst_line, allow_correctline));
-            near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, allow_correctline));
+            near_points.append(&mut Self::get_points_near_point(p, &poly.outer_rings, maxdst_point, maxdst_line, mode));
+            near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
         near_points.sort_by(|a, b| a.0.total_cmp(&b.0));
         near_points.first().map(|p| p.1.get_point())
     }
 
-    fn get_points_near_point(p: &SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> Vec<(f64, CorrectPointItem)> {
+    fn get_points_near_point(p: &SvgPoint, i: &[SvgLine], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Vec<(f64, CorrectPointItem)> {
         let mut v = Vec::new();
         for line in i.iter() {
             let line: &crate::nas::SvgLine = line;
             for ab in line.points.windows(2) {
                 match &ab {
                     &[a, b] => {
-                        let dist_ap = dist(*a, *p);
-                        if dist_ap < maxdst_point {
-                            v.push((dist_ap, CorrectPointItem::NearPoint(*a)));
-                        }
-
-                        let dist_bp = dist(*b, *p);
-                        if dist_bp < maxdst_point {
-                            v.push((dist_bp, CorrectPointItem::NearPoint(*b)));
-                        }
-                        
-                        if allow_correctline {
+                        if mode == GetNearestPointFilter::Points || mode == GetNearestPointFilter::PointsAndLines {
+                            let dist_ap = dist(*a, *p);
+                            if dist_ap < maxdst_point {
+                                v.push((dist_ap, CorrectPointItem::NearPoint(*a)));
+                            }
+    
+                            let dist_bp = dist(*b, *p);
+                            if dist_bp < maxdst_point {
+                                v.push((dist_bp, CorrectPointItem::NearPoint(*b)));
+                            }    
+                        } else {
                             let dst = dist_to_segment(*p, *a, *b);
                             if dst.distance < maxdst_line {
                                 v.push((dst.distance, CorrectPointItem::NearLine(dst)));
