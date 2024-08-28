@@ -24,6 +24,7 @@ use crate::search::NutzungsArt;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
 use crate::uuid_wasm::log_status;
+use crate::uuid_wasm::log_status_clear;
 use crate::xlsx::FlstIdParsed;
 use crate::xml::XmlNode;
 use crate::xml::get_all_nodes_in_subtree;
@@ -1709,14 +1710,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
     }
 
     let nutzungs_qt = QuadTree::new(btree_id_to_poly.iter().map(|(k, v)| {
-        let [[min_y, min_x], [max_y, max_x]] = v.get_fit_bounds();
-        let bounds = Rect {
-            max_x: max_x,
-            max_y: max_y,
-            min_x: min_x,
-            min_y: min_y,
-        };
-        (ItemId(*k), Item::Rect(bounds))
+        (ItemId(*k), Item::Rect(v.get_rect()))
     }));
 
     let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
@@ -1724,25 +1718,31 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let id = flst.attributes.get("flurstueckskennzeichen")?.replace("_", "");
         let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
 
-        let [[min_y, min_x], [max_y, max_x]] = flst.get_fit_bounds();
-        let bounds = Rect {
-            max_x: max_x,
-            max_y: max_y,
-            min_x: min_x,
-            min_y: min_y,
-        };
+        let bounds = flst.get_rect();
         let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
         let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
 
+        log_status_clear();
         let polys = polys.iter().flat_map(|p| {
             let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
-            intersection_mp.into_iter().map(|svg_poly| TaggedPolygon {
-                attributes: {
-                    let mut attrs = p.attributes.clone();
-                    attrs.insert("AX_Flurstueck".to_string(), id.clone());
-                    attrs
-                },
-                poly: svg_poly,
+            intersection_mp
+            .into_iter()
+            .filter(|p| !p.is_zero_area())
+            .filter_map(|svg_poly| {
+
+                let tp = TaggedPolygon {
+                    attributes: {
+                        let mut attrs = p.attributes.clone();
+                        attrs.insert("AX_Flurstueck".to_string(), id.clone());
+                        attrs
+                    },
+                    poly: svg_poly,
+                };            
+            
+                let ebene = p.attributes.get("AX_Ebene")?;
+                let kuerzel = tp.get_auto_kuerzel(&ebene)?;
+                log_status(&format!("{id}: {ebene}: {kuerzel} - {} m2", tp.poly.area_m2()));
+                Some(tp)
             })
         }).collect::<Vec<_>>();
 
