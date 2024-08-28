@@ -1756,7 +1756,7 @@ impl Aenderungen {
             near_points.append(&mut Self::get_points_near_point(p, &poly.inner_rings, maxdst_point, maxdst_line, mode));
         }
 
-        near_points.retain(|(dst, q)| if q.is_line() { approx_eq!(f64, *dst, 0.0, epsilon = 0.001) } else { true });
+        let mut near_points = near_points.into_iter().filter(|(dst, v)| dst.abs() == 0.0).collect::<Vec<_>>();
 
         if !near_points.is_empty() {
             log_1(&serde_json::to_string(&near_points).unwrap_or_default().into());
