@@ -2467,7 +2467,7 @@ impl Aenderungen {
 
         for tr in to_remove {
             log_1(&format!("removing {tr:?}").into());
-            changed_mut.na_polygone_neu.remove(&tr);
+            // changed_mut.na_polygone_neu.remove(&tr);
         }
 
         changed_mut
