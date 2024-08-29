@@ -2031,15 +2031,23 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
             },
             _ => { },
         }
+
+        if $op == geo::OpType::Xor {
+            log_status("xor!");
+            log_status(&serde_json::to_string(&a).unwrap_or_default());
+            log_status(&serde_json::to_string(&b).unwrap_or_default());
+        }
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
-        a.intersection(&b);
         let mut s = if $op == geo::OpType::Xor {
             translate_from_geo_poly_special(&intersect)
         } else {
             translate_from_geo_poly(&intersect)
         };
+        if $op == geo::OpType::Xor {
+            log_status(&serde_json::to_string(&s).unwrap_or_default());
+        }
         for q in s.iter_mut() {
             q.correct_winding_order();
         }

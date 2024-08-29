@@ -1433,6 +1433,7 @@ impl AenderungenClean {
                 continue;
             }
 
+            log_status(&format!("xoring {flurstueck_id}"));
             let xor_polys_1 = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
             .map(|mut p| {
@@ -1442,6 +1443,7 @@ impl AenderungenClean {
             .into_iter()
             .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
             .collect::<Vec<_>>();
+            log_status(&format!("ok: {} polygons generated", xor_polys_1.len()));
 
             let mut xor_polys = xor_polys_1.clone();
             xor_polys.dedup_by(|a, b| a.equals(&b));
