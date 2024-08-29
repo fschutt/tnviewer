@@ -1342,7 +1342,7 @@ impl AenderungenClean {
             };
 
             let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&polyneu.poly.get_rect());
-            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {id} mit {} überlappenden Flächen", id + 1, all_touching_flst_parts.len()));
+            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {aenderung_i} mit {} überlappenden Flächen", id + 1, all_touching_flst_parts.len()));
 
             for (potentially_touching_id, potentially_intersecting) in all_touching_flst_parts {
                 
@@ -1389,7 +1389,6 @@ impl AenderungenClean {
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
-                    log_status(&format!("insert {flurstueck_id}: {qq:?}"));
                     is.push(qq);
                 }
             
@@ -1602,7 +1601,7 @@ impl AenderungenClean {
         }).collect::<BTreeMap<_, _>>();
 
         for (flst_id, (soll, ist)) in alle_flst_areas.iter() {
-            if soll != ist {
+            if (soll.round() - ist.round()).abs() > 2.0 {
                 log_status(&format!("Teil von Flst {flst_id} fehlt: soll = {soll}, ist = {ist}"));        
             }
         }
@@ -2295,7 +2294,6 @@ impl Aenderungen {
                 outer_rings: or_new,
                 inner_rings: ir_new,
             };
-            log_1(&format!("aenderung {a} touches {b}").into());
         }    
 
         Aenderungen {
@@ -2460,10 +2458,8 @@ impl Aenderungen {
                 Some(s) => s,
                 None => continue,
             };
-            log_1(&format!("stage5: {a} ({b}) - {c} ({d}) ({nak_a} - {nak_b}) overlaps").into());
             let area_to_subtract_from = if nak_a < nak_b { a } else { c };
             let area_to_subtract = if nak_a < nak_b { c } else { a };
-            log_1(&format!("subtracting {area_to_subtract} from {area_to_subtract_from}").into());
             let poly_to_subtract_from = match changed_mut.na_polygone_neu.get(area_to_subtract_from) {
                 Some(s) => s.clone(),
                 None => continue,
@@ -2519,9 +2515,7 @@ impl Aenderungen {
         for an in changed_mut.na_polygone_neu.values() {
             let flst_in_radius = flurstuecke_rects.get_ids_that_overlap(&an.poly.get_rect())
             .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
-            
-            log_status(&format!("{} potential_overlap_flst", flst_in_radius.len()));
-            
+                        
             for potential_overlap_flst in flst_in_radius.iter() {
                 for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
                     if is.is_zero_area() {
