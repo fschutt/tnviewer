@@ -1035,18 +1035,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(7);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Änderungen</p>
-                        <p>säubern 7</p>
-                    </div>
-                </label>
-            </div>
-
-            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(8)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
@@ -1409,14 +1397,13 @@ impl AenderungenClean {
             }
         }
 
-        let is = AenderungenIntersections(is)
+        let mut is = AenderungenIntersections(is)
         .clean_zero_size_areas()
         .deduplicate()
         .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
-        /* 
         for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
             
             let ebene = match flst_part.attributes.get("AX_Ebene") {
@@ -1478,7 +1465,6 @@ impl AenderungenClean {
                 is.push(qq);
             }
         }
-        */
 
         let is = is.into_iter()
         .filter(|i| !i.poly_cut.is_zero_area())
@@ -2425,6 +2411,7 @@ impl Aenderungen {
         adefault.clean_internal().deduplicate()
     }
 
+    /* 
     // Änderungen, die eine NA-Fläche mit derselben Nutzungsart überlappen, entfernen
     pub fn clean_stage7(&self, split_nas: &SplitNasXml) -> Aenderungen {
         
@@ -2472,6 +2459,8 @@ impl Aenderungen {
 
         changed_mut
     }
+
+    */
 
     pub fn deduplicate(&self) -> Self {
 
@@ -2551,8 +2540,6 @@ impl Aenderungen {
         let changed_mut = changed_mut.clean_stage5(split_nas, log);
 
         let changed_mut = changed_mut.clean_stage6(split_nas, original_xml, log);
-
-        let changed_mut = changed_mut.clean_stage7(split_nas);
 
         let qt = split_nas.create_quadtree();
 
