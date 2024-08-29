@@ -1421,13 +1421,11 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            log_status(&format!("joining subtractions for {flst_part_id}"));
             let jp = join_polys(&areas_to_subtract.iter().map(|(_, s)| s.clone()).collect::<Vec<_>>(), false, false);
             let areas_to_subtract_joined = match jp {
                 Some(s) => s,
                 None => continue,
             };
-            log_status("ok joined!");
 
             let orig_size = flst_part.poly.area_m2();
             let areas_to_subtract_ids = areas_to_subtract.iter().map(|(id, _)| id.clone()).collect::<BTreeSet<_>>();
@@ -1435,17 +1433,18 @@ impl AenderungenClean {
             if orig_size - size_of_all_intersections < 1.0 {
                 continue;
             }
-            log_status(&format!("original size: {orig_size}, size of intersections: {size_of_all_intersections}"));
 
             let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
-            .filter(|p| p.area_m2().round() as usize != orig_size.round() as usize)
-            .filter(|p| {
-                let relate = crate::nas::relate(&flst_part.poly, p);
-                let result = relate.a_contained_in_b() || relate.b_contained_in_a();
-                log_status(&format!("{flst_part_id}: XOR: {relate:?} - {result}"));
-                result
+            .map(|mut p| {
+                p.correct_winding_order();
+                p
             })
+            .collect::<Vec<_>>();
+
+            let xor_polys = xor_polys
+            .into_iter()
+            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
             .collect::<Vec<_>>();
 
             for xor_area in xor_polys {
@@ -1562,8 +1561,8 @@ impl AenderungenClean {
 
         // insert other flst areas (bleibt)
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let default = Vec::new();
         for flst_id in flst_touched.iter() {
-            let default = Vec::new();
             for part in self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id).unwrap_or(&default) {
                 let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
                     Some(s) => s.clone(),
@@ -1592,6 +1591,19 @@ impl AenderungenClean {
                     flst_id_part: flst_part_id,
                     poly_cut: part.poly.clone(),
                 });
+            }
+        }
+
+        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let alle_flst_areas = alle_flst.into_iter().map(|flst_id| {
+            let area = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>();
+            let area_is = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>();
+            (flst_id, (area, area_is))
+        }).collect::<BTreeMap<_, _>>();
+
+        for (flst_id, (soll, ist)) in alle_flst_areas.iter() {
+            if soll != ist {
+                log_status(&format!("Teil von Flst {flst_id} fehlt: soll = {soll}, ist = {ist}"));        
             }
         }
 

@@ -58,7 +58,7 @@ fixup_js = "\r\n".join([
 pkg_viewer_js_fixed = []
 emit_wr = True
 for line in pkg_viewer_js.splitlines():
-    if "async function __wbg_init(input) {" in line:
+    if "async function __wbg_init(" in line:
         emit_wr = False
         for l in fixup_js.splitlines():
             pkg_viewer_js_fixed.append(l)

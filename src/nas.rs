@@ -763,6 +763,16 @@ pub enum EqualsAnyRingStatus {
 
 impl SvgPolygon {
 
+    pub fn is_inside_of(&self, other: &Self) -> bool {
+
+        let triangle_points = translate_to_geo_poly(&self).0
+        .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
+        .map(|p| SvgPoint { x: p.x(), y: p.y() })
+        .collect::<Vec<_>>();
+        
+        triangle_points.iter().all(|p| point_is_in_polygon(p, other))
+    }
+
     pub fn from_line(l: &SvgLine) -> Self {
         Self { outer_rings: vec![l.clone()], inner_rings: Vec::new() }
     }
