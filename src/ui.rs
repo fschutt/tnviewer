@@ -8,7 +8,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, polys_overlap, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1034,15 +1034,26 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 </label>
             </div>
 
-
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(7);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Änderungen</p>
-                        <p>säubern 7 ALL</p>
+                        <p>säubern 7</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(8)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 8 ALL</p>
                     </div>
                 </label>
             </div>
@@ -2414,6 +2425,44 @@ impl Aenderungen {
         adefault.clean_internal().deduplicate()
     }
 
+    // Änderungen, die eine NA-Fläche mit derselben Nutzungsart überlappen, entfernen
+    pub fn clean_stage7(&self, split_nas: &SplitNasXml) -> Aenderungen {
+        
+        let mut changed_mut = self.clone();
+        let quadtree = split_nas.create_quadtree();
+
+        let mut to_remove = BTreeSet::new();
+
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter() {
+            
+            let na_polys_gleiche_nutzung = quadtree.get_overlapping_flst(&polyneu.poly.get_rect())
+            .into_iter()
+            .filter_map(|(_, tp)| {
+                let kuerzel = tp.get_auto_kuerzel(tp.attributes.get("AX_Ebene")?)?;
+                if kuerzel == polyneu.nutzung.clone()? {
+                    Some(tp)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+            if na_polys_gleiche_nutzung.is_empty() {
+                continue;
+            }
+
+            if na_polys_gleiche_nutzung.iter().any(|p| polys_overlap(&polyneu.poly, &p.poly)) {
+                to_remove.insert(id.clone());
+            }
+        }
+
+        for tr in to_remove {
+            changed_mut.na_polygone_neu.remove(&tr);
+        }
+
+        changed_mut
+    }
+
     pub fn deduplicate(&self) -> Self {
 
         let s = self.round_to_3decimal();
@@ -2492,6 +2541,8 @@ impl Aenderungen {
         let changed_mut = changed_mut.clean_stage5(split_nas, log);
 
         let changed_mut = changed_mut.clean_stage6(split_nas, original_xml, log);
+
+        let changed_mut = changed_mut.clean_stage7(split_nas);
 
         let qt = split_nas.create_quadtree();
 

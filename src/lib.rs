@@ -187,7 +187,8 @@ pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>
         },
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "6" => aenderungen.clean_stage6(&split_nas_xml, &nas_original, &mut log),
-        "7" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
+        "7" => aenderungen.clean_stage7(&split_nas_xml),
+        "8" => aenderungen.clean_stage7_test(&split_nas_xml, &nas_original, &mut log, &konfiguration),
         _ => return format!("wrong id {id}"),
     };
 
