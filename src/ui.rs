@@ -1560,11 +1560,14 @@ impl AenderungenClean {
         // löcher fixen
         let flst = nas_xml.ebenen.get("AX_Flurstueck").unwrap_or(&default);
         let flst = flst.iter().filter_map(|f| {
-            let flst_id = f.attributes.get("flurstueckskennzeichen")?.clone();
-            Some((flst_id, f))
+            let id = f.attributes.get("flurstueckskennzeichen")?.replace("_", "");
+            let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
+            Some((id, f))
         }).collect::<BTreeMap<_, _>>();
 
         for l in loecher {
+            log_status(&format!("Behebe Loch in Flst {l}..."));
+
             let f = match flst.get(&l) {
                 Some(s) => *s,
                 None => {
