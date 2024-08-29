@@ -2451,12 +2451,22 @@ impl Aenderungen {
                 continue;
             }
 
+            log_1(&format!("id {id:?}: {} teilflaechen mit gleicher nutzung", na_polys_gleiche_nutzung.len()).into());
+            for tp in na_polys_gleiche_nutzung.iter() {
+                let a_eq_b = polyneu.poly.equals_any_ring(&tp.poly);
+                let b_eq_a = tp.poly.equals_any_ring(&polyneu.poly);
+                log_1(&format!("-- relate: {:?}", nas::relate(&polyneu.poly, &tp.poly)).into());
+                log_1(&format!("-- polys overlap: {:?}", polys_overlap(&polyneu.poly, &tp.poly)).into());
+                log_1(&format!("-- a_eq_b: {a_eq_b:?}, b_eq_a: {b_eq_a:?}").into());
+            }
+
             if na_polys_gleiche_nutzung.iter().any(|p| polys_overlap(&polyneu.poly, &p.poly)) {
                 to_remove.insert(id.clone());
             }
         }
 
         for tr in to_remove {
+            log_1(&format!("removing {tr:?}").into());
             changed_mut.na_polygone_neu.remove(&tr);
         }
 
