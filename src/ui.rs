@@ -1433,19 +1433,30 @@ impl AenderungenClean {
                 continue;
             }
 
-            let xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
+            let xor_polys_1 = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
             .map(|mut p| {
                 p.correct_winding_order();
                 p
             })
-            .collect::<Vec<_>>();
-
-            let xor_polys = xor_polys
             .into_iter()
             .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
             .collect::<Vec<_>>();
 
+            let mut xor_polys_2 = xor_polys(&areas_to_subtract_joined, &flst_part.poly, false)
+            .into_iter()
+            .map(|mut p| {
+                p.correct_winding_order();
+                p
+            })
+            .into_iter()
+            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
+            .collect::<Vec<_>>();
+
+            let mut xor_polys = xor_polys_1.clone();
+            xor_polys.append(&mut xor_polys_2);
+            xor_polys.dedup_by(|a, b| a.equals(&b));
+            
             for xor_area in xor_polys {
 
                 if xor_area.is_zero_area() {
