@@ -1443,20 +1443,9 @@ impl AenderungenClean {
             .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
             .collect::<Vec<_>>();
 
-            let mut xor_polys_2 = xor_polys(&areas_to_subtract_joined, &flst_part.poly, false)
-            .into_iter()
-            .map(|mut p| {
-                p.correct_winding_order();
-                p
-            })
-            .into_iter()
-            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
-            .collect::<Vec<_>>();
-
             let mut xor_polys = xor_polys_1.clone();
-            xor_polys.append(&mut xor_polys_2);
             xor_polys.dedup_by(|a, b| a.equals(&b));
-            
+
             for xor_area in xor_polys {
 
                 if xor_area.is_zero_area() {
@@ -1556,6 +1545,51 @@ impl AenderungenClean {
 
         // let is = merge_adjacent_intersections(is);
 
+        let default = Vec::new();
+        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let loecher = alle_flst.into_iter().filter_map(|flst_id| {
+            let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>().round();
+            let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>().round();
+            if (soll - ist).abs() > 1.0 {
+                Some(flst_id)
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        // löcher fixen
+        let flst = nas_xml.ebenen.get("AX_Flurstueck").unwrap_or(&default);
+        let flst = flst.iter().filter_map(|f| {
+            let flst_id = f.attributes.get("flurstueckskennzeichen")?.clone();
+            Some((flst_id, f))
+        }).collect::<BTreeMap<_, _>>();
+
+        for l in loecher {
+            let f = match flst.get(&l) {
+                Some(s) => *s,
+                None => {
+                    log_status(&format!("WARN: konnte Loch in Flst {l} nicht beheben"));
+                    continue;
+                }
+            };
+
+            let is_joined = is.iter().filter(|s| s.flst_id == l).map(|s| s.poly_cut.clone()).collect::<Vec<_>>();
+            let joined = match join_polys(&is_joined, false, false) {
+                Some(s) => s,
+                None => {
+                    log_status(&format!("WARN: konnte Join für Flächen in Flst {l} nicht ausführen"));
+                    continue;
+                }
+            };
+
+            log_status(&format!("subtracting {l}..."));
+            let subtracted = subtract_from_poly(&f.poly, &[&joined]);
+            log_status("subtracted");
+
+        }
+
+        log_status("ok löcher gestopft!");
+
         // Remove splitflächen für flurstücke die keine Änderung haben
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
         let to_remove_flst = flst_touched.iter().filter_map(|flst_id| {
@@ -1571,7 +1605,6 @@ impl AenderungenClean {
 
         // insert other flst areas (bleibt)
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
-        let default = Vec::new();
         for flst_id in flst_touched.iter() {
             for part in self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id).unwrap_or(&default) {
                 let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
@@ -1607,18 +1640,6 @@ impl AenderungenClean {
         let is = AenderungenIntersections(is)
         .clean_zero_size_areas()
         .deduplicate().0;
-
-        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
-        let alle_flst_areas = alle_flst.into_iter().map(|flst_id| {
-
-            let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>();
-            let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>();
-            if (soll.round() - ist.round()).abs() > 2.0 {
-                log_status(&format!("Teil von Flst {flst_id} fehlt: soll = {soll}, ist = {ist}"));
-            }
-
-            (flst_id, (soll, ist))
-        }).collect::<BTreeMap<_, _>>();
 
         AenderungenIntersections(is).merge_to_nearest()
     }

@@ -770,7 +770,7 @@ impl SvgPolygon {
         .map(|p| SvgPoint { x: p.x(), y: p.y() })
         .collect::<Vec<_>>();
         
-        triangle_points.iter().any(|p| point_is_in_polygon(p, other))
+        triangle_points.iter().all(|p| point_is_in_polygon(p, other))
     }
 
     pub fn from_line(l: &SvgLine) -> Self {
