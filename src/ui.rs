@@ -2016,7 +2016,7 @@ impl Aenderungen {
             let all_points_to_question = btree
             .get_ids_contained_by(&points_to_rect(&(a, b)))
             .into_iter()
-            .map(|i| ap_vec[i.0])
+            .filter_map(|i| ap_vec.get(i.0))
             .collect::<Vec<_>>();
 
             let mut all_points_to_question = all_points_to_question
@@ -2027,7 +2027,7 @@ impl Aenderungen {
                     return None;
                 }
                 let dst = dist_to_segment(p, a, b).distance.abs();
-                if dst < 0.05 {
+                if dst < 0.5 {
                     Some(p)
                 } else {
                     None
@@ -2035,7 +2035,6 @@ impl Aenderungen {
             }).collect::<Vec<_>>();
 
             all_points_to_question.sort_by(|d, e| a.dist(&d).total_cmp(&a.dist(&e)));
-            // all_points_to_question.reverse();
 
             for q in all_points_to_question {
                 finalized.push(q);
