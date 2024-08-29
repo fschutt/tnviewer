@@ -514,9 +514,9 @@ impl TaggedPolygon {
         map.get(kuerzel.trim()).map(|s| s.wia.clone())
     }
 
-    pub fn get_nutzungsartenkennung(kuerzel: &str) -> Option<String> {
+    pub fn get_nutzungsartenkennung(kuerzel: &str) -> Option<usize> {
         let map = crate::get_map();
-        map.get(kuerzel.trim()).map(|s| s.nak.clone())
+        map.get(kuerzel.trim()).and_then(|s| s.nak.parse::<usize>().ok())
     }
 
     pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
@@ -1034,7 +1034,7 @@ impl SvgPolygon {
         EqualsAnyRingStatus::NotEqualToAnyRing
     }
 
-    fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
+    pub fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
         let tr = translate_to_geo_poly(&SvgPolygon::from_line(a));
         let a_poly = match tr.0.get(0) {
             Some(s) => s,
@@ -1852,7 +1852,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
                 };
                 let ebene = p.attributes.get("AX_Ebene")?;
                 let kuerzel = tp.get_auto_kuerzel(&ebene)?;
-                let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?.parse::<usize>().ok()?;
+                let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?;
                 Some((tp, nak))
             })
         }).collect::<Vec<_>>();
@@ -2079,6 +2079,10 @@ pub struct SvgPolyInternalResult {
 }
 
 impl SvgPolyInternalResult {
+    pub fn overlaps_other_poly(&self) -> bool {
+        self.points_inside_other_poly != 0
+    }
+
     pub fn is_contained_in_other_poly(&self) -> bool {
         self.points_touching_lines + self.points_inside_other_poly >= self.num_points
     }
@@ -2196,6 +2200,11 @@ impl Relate {
         } else {
             false
         }
+    }
+
+    pub fn overlaps(&self) -> bool {
+        self.is_1.overlaps_other_poly() ||
+        self.is_2.overlaps_other_poly()
     }
 
     pub fn a_contained_in_b(&self) -> bool {

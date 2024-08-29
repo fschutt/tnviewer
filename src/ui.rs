@@ -2302,21 +2302,57 @@ impl Aenderungen {
             aenderungen_split.push((kuerzel, k.clone(), pn.poly.clone()));
         }
 
-        for (k, pn) in changed_mut.na_polygone_neu.iter_mut() {
+        let mut overlap_items = BTreeSet::new();
+
+        for (pid, pn) in changed_mut.na_polygone_neu.iter() {
             let pn_rect = pn.poly.get_rect();
+            let p_nutzung = match pn.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
             let higher_order_polys = aenderungen_split.iter()
-            .filter(|(_, id, _)|  id != k)
+            .filter(|(_, id, _)|  id != pid)
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
             .filter(|(k, id, s)| {
-                let relate = crate::nas::relate(&pn.poly, s);
-                relate.a_contained_in_b() || relate.b_contained_in_a() 
+                let relate: nas::Relate = crate::nas::relate(&pn.poly, s);
+                relate.a_contained_in_b() || relate.b_contained_in_a() || relate.overlaps()
             })
-            .map(|s| &s.2)
+            .map(|s| (s.0.clone(), s.1.clone()))
             .collect::<Vec<_>>();
 
-            let pn_poly_clone = pn.poly.clone();
-            let subtracted = subtract_from_poly(&pn_poly_clone, &higher_order_polys);
-            pn.poly = subtracted;
+            for (hk, hid) in higher_order_polys {
+                let (a, b) = if hid > *pid {
+                    ((hid, hk), (pid.to_string(), p_nutzung.to_string()))
+                } else {
+                    ((pid.to_string(), p_nutzung.to_string()), (hid, hk))
+                };
+                overlap_items.insert((a, b));
+            }
+        }
+
+        for ((a, b), (c, d)) in overlap_items.iter() {
+            let nak_a = match TaggedPolygon::get_nutzungsartenkennung(b) {
+                Some(s) => s,
+                None => continue,
+            };
+            let nak_b = match TaggedPolygon::get_nutzungsartenkennung(d) {
+                Some(s) => s,
+                None => continue,
+            };
+            log_1(&format!("stage5: {a} ({b}) - {c} ({d}) ({nak_a} - {nak_b}) overlaps").into());
+            let area_to_subtract_from = if nak_a < nak_b { a } else { c };
+            let area_to_subtract = if nak_a < nak_b { c } else { a };
+            log_1(&format!("subtracting {area_to_subtract} from {area_to_subtract_from}").into());
+            let poly_to_subtract_from = match changed_mut.na_polygone_neu.get(area_to_subtract_from) {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+            let poly_to_subtract = match changed_mut.na_polygone_neu.get(area_to_subtract) {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+            let subtracted = subtract_from_poly(&poly_to_subtract_from.poly, &[&poly_to_subtract.poly]);
+            changed_mut.na_polygone_neu.get_mut(area_to_subtract_from).unwrap().poly = subtracted;
         }
 
         changed_mut.round_to_3decimal()
