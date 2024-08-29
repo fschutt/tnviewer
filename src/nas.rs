@@ -34,10 +34,20 @@ use crate::geograf::LinienQuadTree;
 
 pub const LATLON_STRING: &str = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NasXMLFile {
     pub ebenen: BTreeMap<String, Vec<TaggedPolygon>>,
+    #[serde(default = "default_etrs33")]
     pub crs: String,
+}
+
+impl Default for NasXMLFile {
+    fn default() -> Self {
+        Self {
+            ebenen: BTreeMap::new(),
+            crs: default_etrs33(),
+        }
+    }
 }
 
 impl NasXMLFile {
@@ -457,6 +467,8 @@ impl TaggedPolygon {
             _ => 0.0,
         }).sum::<f64>();
         
+        ret.retain(|p| !p.equals(&start) && !p.equals(&end));
+
         if len_original + maxdev_followline > len_merged {
             ret
         } else {
@@ -1573,11 +1585,25 @@ pub fn fixup_flst_groesse(unprojected: &SplitNasXml, projected: &mut SplitNasXml
 
 pub type FlstId = String;
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SplitNasXml {
+    #[serde(default = "default_etrs33")]
     pub crs: String,
     // Flurstücke, indexiert nach Flst ID, mit Nutzungen als Polygonen
     pub flurstuecke_nutzungen: BTreeMap<FlstId, Vec<TaggedPolygon>>,
+}
+
+impl Default for SplitNasXml {
+    fn default() -> Self {
+        Self {
+            flurstuecke_nutzungen: BTreeMap::new(),
+            crs: default_etrs33(),
+        }
+    }
+}
+
+fn default_etrs33() -> String {
+    "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33".to_string()
 }
 
 impl SplitNasXml {
@@ -1691,7 +1717,7 @@ impl NasXmlQuadTree {
         polys.sort_by(|a, b| a.attributes.get("id").cmp(&b.attributes.get("id")));
         polys.dedup_by(|a, b| a.attributes.get("id") == b.attributes.get("id"));
         if let Some(eid) = exclude_id {
-            polys.retain(|r| r.attributes.get("id").as_deref() != Some(&eid));
+            polys.retain(|r| r.attributes.get("aenderungId").as_deref() != Some(&eid));
         }
         for p in polys {
             let v = p.get_line_between_points(start, end, log, maxdst_line2, maxdev_followline);
@@ -2032,6 +2058,15 @@ fn union(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
     translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&xor).convex_hull()]))
 }
 
+pub fn convex_hull_polys(a: &SvgPolygon, b: &[SvgPolygon]) -> SvgPolygon {
+    let mut x = a.clone();
+    for b in b.iter() {
+        x = xor_combine(&x, b);
+    }
+    translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&x).convex_hull()]))
+    .get(0).cloned().unwrap_or_default()
+}
+
 define_func!(intersect_polys, geo::OpType::Intersection);
 define_func!(xor_polys, geo::OpType::Xor);
 
@@ -2143,6 +2178,12 @@ pub struct Relate {
 }
 
 impl Relate {
+
+    pub fn touches_other_poly_outside(&self) -> bool {
+        (self.is_1.points_inside_other_poly == 0 && self.is_2.points_inside_other_poly == 0) &&
+        (self.is_1.points_touching_lines != 0 || self.is_2.points_touching_lines != 0)
+    }
+
     pub fn only_touches(&self) -> bool {
         // no intersection of the two polygons possible
         if self.is_1.points_inside_other_poly == 0 && self.is_2.points_inside_other_poly == 0 {
@@ -2209,7 +2250,7 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     }
 }
 
-fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon) -> bool {
+pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon) -> bool {
     for line in poly.outer_rings.iter() {
         for q in line.points.windows(2) {
             match &q {

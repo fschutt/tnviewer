@@ -2,12 +2,13 @@ use core::f64;
 use std::{collections::{BTreeMap, BTreeSet}, f64::MAX, vec};
 
 use float_cmp::approx_eq;
+use geo::{Centroid, TriangulateEarcut};
 use quadtree_f32::{Item, QuadTree};
 use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1741,7 +1742,7 @@ impl Aenderungen {
         } else {
             let np1 = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points, moved_points);
             let np2 = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Lines, moved_points);
-            np2.or(np1)
+            np1.or(np2)
         }
     }
 
@@ -1819,7 +1820,7 @@ impl Aenderungen {
         }
     }
 
-    pub fn clean_stage0(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64) -> Aenderungen {
+    pub fn clean_stage0(&self, maxdst_point: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         
         // deduplicate aenderungen
@@ -1876,8 +1877,8 @@ impl Aenderungen {
         changed_mut.round_to_3decimal()
     }
 
-    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
-        let mut changed_mut = self.clean_stage0(split_nas, log, maxdst_point);
+    pub fn clean_stage1(&self, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
+        let mut changed_mut = self.clean_stage0(maxdst_point);
 
         let mut modified_tree = changed_mut.na_polygone_neu.clone();
 
@@ -1933,48 +1934,63 @@ impl Aenderungen {
         maxdev_followline: f64,
     ) -> Aenderungen {
 
-        log.push(format!("clean stage2!!!"));
         let mut changed_mut = self.round_to_3decimal();
         log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
-        let mut changed_mut_copy = changed_mut.clone();
 
-        for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+        let mut total_modified = 0;
+        let mut total_cleaned = BTreeSet::new();
 
-            let mut modified = false;
-            let mut changed_mut_copy_local = changed_mut_copy.clone();
-            changed_mut_copy_local.na_polygone_neu.remove(id);
-            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut_copy_local);
+        'outer: loop {
+            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut);
+            let mut polys_modified = 0;
 
-            for line in polyneu.poly.outer_rings.iter_mut() {
-                
-                let mut nextpoint;
-                let mut newpoints = match line.points.get(0) {
-                    Some(s) => {
-                        nextpoint = s.clone();
-                        vec![s.clone()]
-                    },
-                    None => continue,
-                };
-
-                for p in line.points.iter().skip(1) {
-                    let start = nextpoint.clone();
-                    let end = p;
-                    newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
-                    if !newpoints.is_empty() {
-                        modified = true;
-                        log.push(format!("insert {} points", newpoints.len()));
-                    }
-                    newpoints.push(*end);
-                    nextpoint = *end;
+            for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+                let mut local_modified = 0;
+                if total_cleaned.contains(id) {
+                    continue;
                 }
 
-                newpoints.dedup_by(|a, b| a.equals(b));
+                for line in polyneu.poly.outer_rings.iter_mut() {
+                    
+                    let orig_points_len = line.points.len();
+                    let mut nextpoint;
+                    let mut newpoints = match line.points.get(0) {
+                        Some(s) => {
+                            nextpoint = s.clone();
+                            vec![s.clone()]
+                        },
+                        None => continue,
+                    };
+    
+                    for p in line.points.iter().skip(1) {
+                        let start = nextpoint.clone();
+                        let end = p;
+                        newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
+                        newpoints.push(*end);
+                        nextpoint = *end;
+                    }
+    
+                    newpoints.dedup_by(|a, b| a.equals(b));
+    
+                    let newpoints_len = newpoints.len();
+                    if newpoints_len != orig_points_len {
+                        local_modified += newpoints_len.saturating_sub(orig_points_len);
+                        log.push(format!("{id}: insert {} points", newpoints_len.saturating_sub(orig_points_len)));
+                    }
 
-                line.points = newpoints;
+                    line.points = newpoints;
+                }
+
+                total_modified += local_modified;
+                polys_modified += local_modified;
+                if local_modified != 0 {
+                    total_cleaned.insert(id.clone());
+                    continue 'outer;
+                }
             }
 
-            if modified {
-                changed_mut_copy.na_polygone_neu.insert(id.clone(), polyneu.clone());
+            if polys_modified == 0 {
+                break 'outer;
             }
         }
 
@@ -2050,8 +2066,179 @@ impl Aenderungen {
         SvgLine { points: finalized }
     }
 
-
     // 3: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
+    pub fn clean_stage25(&self) -> Aenderungen {
+        self.clean_stage25_internal()
+        .clean_stage1(&mut Vec::new(), 0.1, 0.1)
+        .clean_stage25_internal()
+        .move_lines_touching()
+        .clean_stage25_internal()
+    }
+
+    fn move_lines_touching(&self) -> Aenderungen {
+
+        let aenderungen_by_kuerzel = self.na_polygone_neu.iter().filter_map(|(id, k)| {
+            let nutzung = k.nutzung.clone()?;
+            Some((nutzung, k.poly.clone()))
+        }).collect::<Vec<(_, _)>>();
+        
+        let mut aenderungen_by_kuerzel_map = BTreeMap::new();
+        for (k, v) in aenderungen_by_kuerzel.into_iter() {
+            aenderungen_by_kuerzel_map.entry(k.clone()).or_insert_with(|| Vec::new()).push(v);
+        }
+
+        let na_poly_clone = self.na_polygone_neu.clone();
+        let mut touching_polys = BTreeMap::new();
+        for (id, poly) in self.na_polygone_neu.iter() {
+            touching_polys.extend(na_poly_clone.iter().filter_map(|(idn, q)| {
+                if idn == id {
+                    return None;
+                }
+                if q.nutzung.is_none() || poly.nutzung.is_none() {
+                    return None;
+                }
+                if q.nutzung != poly.nutzung {
+                    return None;
+                }
+
+                let relate = nas::relate(&poly.poly, &q.poly);
+
+                if relate.touches_other_poly_outside() {
+                    let sm = id.max(idn);
+                    let lg = id.min(idn);
+                    Some((sm.clone(), lg.clone()))
+                } else {
+                    None
+                }
+            }));
+        }
+
+        let mut na_poly_neu = self.na_polygone_neu.clone();
+
+        for (a, b) in touching_polys.iter() {
+            let poly_a = match self.na_polygone_neu.get(a) {
+                Some(s) => s,
+                None => continue,
+            };
+            let poly_b = match self.na_polygone_neu.get(b) {
+                Some(s) => s,
+                None => continue,
+            };
+            let triangle_points_b = translate_to_geo_poly(&poly_b.poly).0
+            .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
+            .map(|p| SvgPoint { x: p.x(), y: p.y() })
+            .collect::<Vec<_>>();
+
+            fn get_nearest_point(a: &SvgPoint, list_b: &[SvgPoint]) -> SvgPoint {
+                let mut dst = f64::MAX;
+                let mut point = a.clone();
+                for b in list_b.iter() {
+                    let dst_new = b.dist(a);
+                    if dst_new < dst { 
+                        dst = dst_new;
+                        point = *b;
+                    }
+                }
+                if a.equals(&point) {
+                    point
+                } else {
+                    SvgPoint {
+                        x: a.x + ((point.x - a.x) / 100.0),
+                        y: a.y + ((point.y - a.y) / 100.0),
+                    }
+                }
+            }
+
+            fn mini_correct_line(a: &SvgLine, b: &SvgPolygon, list_b: &[SvgPoint]) -> SvgLine {
+                let mut p_final = Vec::new();
+                let p_coords = b.get_all_pointcoords_sorted();
+                for p in a.points.iter() {
+                    let p_test = [(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize];
+                    if p_coords.contains(&p_test) {
+                        p_final.push(*p);
+                    } else if nas::point_is_on_any_line(p, b) {
+                        p_final.push(get_nearest_point(p, list_b));
+                    } else {
+                        p_final.push(*p);
+                    }
+
+                }
+
+                SvgLine { points: p_final }
+            }
+
+            let or_new = poly_a.poly.outer_rings.iter().map(|l| mini_correct_line(l, &poly_b.poly, &triangle_points_b)).collect::<Vec<_>>();
+            let ir_new = poly_a.poly.inner_rings.iter().map(|l| mini_correct_line(l, &poly_b.poly, &triangle_points_b)).collect::<Vec<_>>();
+
+            na_poly_neu.get_mut(a).unwrap().poly = SvgPolygon {
+                outer_rings: or_new,
+                inner_rings: ir_new,
+            };
+            // na_poly_neu.remove(b);
+            log_1(&format!("aenderung {a} touches {b}").into());
+        }    
+
+        /* 
+        let mut aenderungen_alt = self.na_polygone_neu.iter().filter_map(|(id, v)| {
+            if v.nutzung.is_none() {
+                Some((id.clone(), v.clone()))
+            } else {
+                None
+            }
+        }).collect::<BTreeMap<_, _>>();
+
+        aenderungen_alt.extend(joined.into_iter());
+        */
+
+        Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: na_poly_neu,
+        }.round_to_3decimal()
+    }
+
+    fn clean_stage25_internal(&self) -> Aenderungen {
+
+        let aenderungen_by_kuerzel = self.na_polygone_neu.iter().filter_map(|(id, k)| {
+            let nutzung = k.nutzung.clone()?;
+            Some((nutzung, k.poly.clone()))
+        }).collect::<Vec<(_, _)>>();
+        
+        let mut aenderungen_by_kuerzel_map = BTreeMap::new();
+        for (k, v) in aenderungen_by_kuerzel.into_iter() {
+            aenderungen_by_kuerzel_map.entry(k.clone()).or_insert_with(|| Vec::new()).push(v);
+        }
+
+        let joined = aenderungen_by_kuerzel_map.iter().flat_map(|(kuerzel, v)| {
+            let joined = match join_polys(&v, false, false) {
+                Some(s) => s,
+                None => return Vec::new(),
+            };
+
+            joined.outer_rings.iter().map(|l| (uuid(), PolyNeu {
+                poly: SvgPolygon::from_line(l),
+                nutzung: Some(kuerzel.clone()),
+            })).collect()
+        }).collect::<BTreeMap<_, _>>();
+
+        let mut aenderungen_alt = self.na_polygone_neu.iter().filter_map(|(id, v)| {
+            if v.nutzung.is_none() {
+                Some((id.clone(), v.clone()))
+            } else {
+                None
+            }
+        }).collect::<BTreeMap<_, _>>();
+
+        aenderungen_alt.extend(joined.into_iter());
+
+        Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: aenderungen_alt,
+        }.round_to_3decimal()
+    }
+    
+    /* 
     pub fn clean_stage25(&self) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let mut joined_polys = BTreeSet::new();
@@ -2159,6 +2346,7 @@ impl Aenderungen {
 
         changed_mut
     }
+    */
 
     // 2. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
     pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
@@ -2277,7 +2465,7 @@ impl Aenderungen {
     pub fn clean_stage6(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
         
         let changed_mut = self.clean_internal()
-        .clean_stage1(split_nas, &mut Vec::new(), 0.1, 0.1);
+        .clean_stage1(&mut Vec::new(), 0.1, 0.1);
 
         let mut adefault = Aenderungen {
             na_definiert: self.na_definiert.clone(),
@@ -2371,7 +2559,7 @@ impl Aenderungen {
         konfiguration: &Konfiguration
     ) -> AenderungenClean {
 
-        let changed_mut = self.clean_stage1(split_nas, log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
+        let changed_mut = self.clean_stage1(log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
 
         let changed_mut = changed_mut.clean_stage2(
             log, 
