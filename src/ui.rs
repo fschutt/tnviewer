@@ -2174,21 +2174,8 @@ impl Aenderungen {
                 outer_rings: or_new,
                 inner_rings: ir_new,
             };
-            // na_poly_neu.remove(b);
             log_1(&format!("aenderung {a} touches {b}").into());
         }    
-
-        /* 
-        let mut aenderungen_alt = self.na_polygone_neu.iter().filter_map(|(id, v)| {
-            if v.nutzung.is_none() {
-                Some((id.clone(), v.clone()))
-            } else {
-                None
-            }
-        }).collect::<BTreeMap<_, _>>();
-
-        aenderungen_alt.extend(joined.into_iter());
-        */
 
         Aenderungen {
             na_definiert: self.na_definiert.clone(),
@@ -2238,116 +2225,6 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
     
-    /* 
-    pub fn clean_stage25(&self) -> Aenderungen {
-        let mut changed_mut = self.round_to_3decimal();
-        let mut joined_polys = BTreeSet::new();
-        let mut polys_to_remove = BTreeSet::new();
-
-        'outer: loop {
-            let mut joined = 0;
-            let mut newpolys = Vec::new();
-
-            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut);
-
-            for (id, poly) in changed_mut.na_polygone_neu.iter_mut() {
-                
-                let touching_aenderungen = aenderungen_quadtree.get_overlapping_flst(&poly.poly.get_rect());
-                
-                let aenderung_ids = touching_aenderungen.iter()
-                .filter_map(|s| {
-                    let orig_nutzung = poly.nutzung.as_ref()?;
-                    let nutzung = s.attributes.get("nutzung").cloned()?;
-                    if nutzung != *orig_nutzung {
-                        return None;
-                    }
-
-                    let idn = s.attributes.get("aenderungID").cloned()?;
-                    if idn == *id {
-                        return None;
-                    }
-
-                    let polyneu = PolyNeu {
-                        nutzung: Some(nutzung),
-                        poly: s.poly.clone(),
-                    };
-
-                    Some((idn, polyneu))
-                })
-                .collect::<Vec<_>>();
-
-                let aenderung_ids = aenderung_ids.into_iter()
-                .filter_map(|(idn, polyneu)| {
-                    use crate::nas::EqualsAnyRingStatus::*;
-
-                    if joined_polys.contains(&idn) {
-                        return None;
-                    }
-
-                    let relate = nas::relate(&poly.poly, &polyneu.poly);
-                    let overlap = relate.a_contained_in_b() || relate.b_contained_in_a();
-                    if overlap {
-                        return Some((idn, polyneu));
-                    }
-                    let touches = relate.only_touches();
-                    if touches {
-                        return Some((idn, polyneu));
-                    }
-
-                    let a_eq_b = poly.poly.equals_any_ring(&polyneu.poly);
-                    log_1(&format!("ID {id} - {idn}: a_eq_b: {a_eq_b:?}").into());
-                    let b_eq_a = polyneu.poly.equals_any_ring(&poly.poly);
-                    log_1(&format!("ID {id} - {idn}: b_eq_a: {b_eq_a:?}").into());
-
-                    if a_eq_b == TouchesOutside || 
-                       b_eq_a == TouchesOutside || 
-                       a_eq_b == TouchesInside || 
-                       b_eq_a == TouchesInside {
-                        Some((idn, polyneu))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-
-                if aenderung_ids.is_empty() {
-                    newpolys.push((id.clone(), poly.clone()));
-                    joined_polys.insert(id.clone());
-                } else {
-                    let mut polys_to_join = vec![poly.poly.clone()];
-                    for (k, v) in aenderung_ids.iter() {
-                        polys_to_join.push(v.poly.clone());
-                    }
-                    let joined_poly = join_polys(&polys_to_join, false, true).unwrap();
-                    newpolys.push((uuid(), PolyNeu {
-                        nutzung: poly.nutzung.clone(),
-                        poly: joined_poly.clone()
-                    }));
-                    joined += 1;
-                    joined_polys.insert(id.clone());
-                    polys_to_remove.insert(id.clone());
-                    for (k, _) in aenderung_ids.iter() {
-                        joined_polys.insert(k.clone());
-                        polys_to_remove.insert(k.clone());
-                    }
-                }
-            }
-
-            if joined == 0 {
-                break 'outer;
-            } else {
-                changed_mut.na_polygone_neu = newpolys.into_iter().collect();
-            }
-        }
-
-        for p in polys_to_remove {
-            changed_mut.na_polygone_neu.remove(&p);
-        }
-
-        changed_mut
-    }
-    */
-
     // 2. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
     pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
@@ -2414,6 +2291,7 @@ impl Aenderungen {
 
     }
 
+    // Subtrahiere Änderungen, die über Änderungen liegen
     pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
         
         let mut changed_mut = self.round_to_3decimal();
@@ -2431,7 +2309,7 @@ impl Aenderungen {
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
             .filter(|(k, id, s)| {
                 let relate = crate::nas::relate(&pn.poly, s);
-                relate.only_touches() 
+                relate.a_contained_in_b() || relate.b_contained_in_a() 
             })
             .map(|s| &s.2)
             .collect::<Vec<_>>();
