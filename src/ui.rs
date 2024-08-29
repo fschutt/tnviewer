@@ -1346,11 +1346,11 @@ impl AenderungenClean {
 
             for (potentially_touching_id, potentially_intersecting) in all_touching_flst_parts {
                 
-                let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
+                let flurstueck_id = match potentially_intersecting.attributes.get("AX_Flurstueck") {
                     Some(s) => s.clone(),
                     None => continue,
                 };
-                let flurstueck_id = match potentially_intersecting.attributes.get("AX_Flurstueck") {
+                let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
                     Some(s) => s.clone(),
                     None => continue,
                 };
@@ -1466,7 +1466,7 @@ impl AenderungenClean {
             }
         }
 
-        let is = is.into_iter()
+        let mut is = is.into_iter()
         .filter(|i| !i.poly_cut.is_zero_area())
         .collect::<Vec<_>>();
 
@@ -1475,12 +1475,124 @@ impl AenderungenClean {
         .map(|s| s.flst_id_part.clone())
         .collect::<BTreeSet<_>>();
 
-        for na_def in self.aenderungen.na_definiert.iter() {
+        for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
+            
+            if na_bereits_definiert.contains(na_def) {
+                continue;
+            }
 
+            let flst_part = match self.nas_xml_quadtree.original.get_flst_part_by_id(&na_def) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let kuerzel = match flst_part.attributes.get("AX_Ebene").and_then(|k| flst_part.get_auto_kuerzel(k)) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let flst_id = match flst_part.attributes.get("AX_Flurstueck") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            is.push(AenderungenIntersection {
+                alt: kuerzel,
+                neu: neu_kuerzel.clone(),
+                flst_id: flst_id,
+                flst_id_part: na_def.clone(),
+                poly_cut: flst_part.poly.clone(),
+            });
         }
 
+        // insert gebaeude geänderte flst
         for geb in self.aenderungen.gebaeude_loeschen.values() {
+            for flst_id in geb.flst_id.iter() {
+                let default = Vec::new();
+                for part in self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id).unwrap_or(&default) {
+                    let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+                    let ebene = match part.attributes.get("AX_Ebene") {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+                    let obj_id = match part.attributes.get("id") {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+                    let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}");
+                    if na_bereits_definiert.contains(&flst_part_id) {
+                        continue;
+                    }
+                    let kuerzel = match part.get_auto_kuerzel(&ebene) {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    is.push(AenderungenIntersection {
+                        alt: kuerzel.clone(),
+                        neu: kuerzel,
+                        flst_id: flurstueck_id,
+                        flst_id_part: flst_part_id,
+                        poly_cut: part.poly.clone(),
+                    });
+                }
+            }
+        }
 
+        let mut is = is.into_iter()
+        .filter(|i| !i.poly_cut.is_zero_area())
+        .collect::<Vec<_>>();
+
+        // let is = merge_adjacent_intersections(is);
+
+        // Remove splitflächen für flurstücke die keine Änderung haben
+        let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let to_remove_flst = flst_touched.iter().filter_map(|flst_id| {
+            if is.iter().filter(|s| s.flst_id == *flst_id).all(|s| s.alt == s.neu) {
+                Some(flst_id)
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+        if !to_remove_flst.is_empty() {
+            is.retain(|s| !to_remove_flst.contains(&s.flst_id));
+        }
+
+        // insert other flst areas (bleibt)
+        let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        for flst_id in flst_touched.iter() {
+            let default = Vec::new();
+            for part in self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(flst_id).unwrap_or(&default) {
+                let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let ebene = match part.attributes.get("AX_Ebene") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let obj_id = match part.attributes.get("id") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}");
+                if na_bereits_definiert.contains(&flst_part_id) {
+                    continue;
+                }
+                let kuerzel = match part.get_auto_kuerzel(&ebene) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                is.push(AenderungenIntersection {
+                    alt: kuerzel.clone(),
+                    neu: kuerzel,
+                    flst_id: flurstueck_id,
+                    flst_id_part: flst_part_id,
+                    poly_cut: part.poly.clone(),
+                });
+            }
         }
 
         AenderungenIntersections(is)
