@@ -2035,7 +2035,11 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
         a.intersection(&b);
-        let mut s = translate_from_geo_poly(&intersect);
+        let mut s = if $op == geo::OpType::Xor {
+            translate_from_geo_poly_special(&intersect)
+        } else {
+            translate_from_geo_poly(&intersect)
+        };
         for q in s.iter_mut() {
             q.correct_winding_order();
         }
@@ -2306,6 +2310,19 @@ pub fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygon> {
         }
     }).collect()
 }
+
+pub fn translate_from_geo_poly_special(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygon> {
+    a.0.iter().flat_map(|s| {
+        let mut q = vec![translate_ring(s.exterior())];
+        q.extend(s.interiors().iter().map(translate_ring));
+        q.iter().map(|l| {
+            let mut p = SvgPolygon::from_line(l); 
+            p.correct_winding_order();
+            p
+        }).collect::<Vec<_>>()
+    }).collect()
+}
+
 
 fn translate_ring(a: &geo::LineString<f64>) -> SvgLine {
     SvgLine {

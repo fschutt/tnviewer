@@ -1586,7 +1586,9 @@ impl AenderungenClean {
             };
 
             log_status(&format!("subtracting {l}..."));
+            /* 
             let subtracted = subtract_from_poly(&f.poly, &[&joined]);
+
             is.push(AenderungenIntersection {
                 alt: "WAF".to_string(),
                 neu: "A".to_string(),
@@ -1594,6 +1596,7 @@ impl AenderungenClean {
                 flst_id: l,
                 poly_cut: subtracted,
             });
+            */
             log_status("subtracted");
 
         }
