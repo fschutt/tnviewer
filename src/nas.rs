@@ -1660,8 +1660,6 @@ pub struct NasXmlQuadTree {
 impl NasXmlQuadTree {
     pub fn from_aenderungen(aenderungen: &Aenderungen) -> Self {
 
-        log_1(&"creating NasXmlQuadTree from aenderungen".into());
-
         let original = NasXMLFile {
             crs: "".to_string(),
             ebenen: aenderungen.na_polygone_neu.iter().map(|(k, v)| {

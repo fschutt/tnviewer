@@ -304,7 +304,7 @@ pub fn calc_splitflaechen(
 
     log_status(&format!("Verschneide Änderungen.."));
 
-    aenderungen.get_aenderungen_intersections()
+    aenderungen.get_aenderungen_intersections(original_xml)
 }
 
 pub fn generate_risse_shp(

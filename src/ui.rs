@@ -1326,7 +1326,7 @@ impl AenderungenIntersections {
 }
 
 impl AenderungenClean {
-    pub fn get_aenderungen_intersections(&self) -> AenderungenIntersections {
+    pub fn get_aenderungen_intersections(&self, nas_xml: &NasXMLFile) -> AenderungenIntersections {
         
         let mut is = Vec::new();
         
@@ -1593,23 +1593,23 @@ impl AenderungenClean {
             }
         }
 
+        let is = AenderungenIntersections(is)
+        .clean_zero_size_areas()
+        .deduplicate().0;
+
         let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
         let alle_flst_areas = alle_flst.into_iter().map(|flst_id| {
-            let area = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>();
-            let area_is = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>();
-            (flst_id, (area, area_is))
+
+            let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>();
+            let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>();
+            if (soll.round() - ist.round()).abs() > 2.0 {
+                log_status(&format!("Teil von Flst {flst_id} fehlt: soll = {soll}, ist = {ist}"));
+            }
+
+            (flst_id, (soll, ist))
         }).collect::<BTreeMap<_, _>>();
 
-        for (flst_id, (soll, ist)) in alle_flst_areas.iter() {
-            if (soll.round() - ist.round()).abs() > 2.0 {
-                log_status(&format!("Teil von Flst {flst_id} fehlt: soll = {soll}, ist = {ist}"));        
-            }
-        }
-
-        AenderungenIntersections(is)
-        .clean_zero_size_areas()
-        .deduplicate()
-        .merge_to_nearest()
+        AenderungenIntersections(is).merge_to_nearest()
     }
 }
 
@@ -2616,7 +2616,7 @@ impl Aenderungen {
 
         let aenderungen = self.clean(split_nas, original_xml, log, konfiguration);
 
-        let intersections = aenderungen.get_aenderungen_intersections();
+        let intersections = aenderungen.get_aenderungen_intersections(original_xml);
 
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
