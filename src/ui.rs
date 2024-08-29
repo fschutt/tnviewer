@@ -974,6 +974,18 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(25);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>säubern 2.5</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(3);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
@@ -1716,39 +1728,24 @@ impl Aenderungen {
         String::new()
     }
 
-    pub fn correct_point(p: &mut SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, allow_correctline: bool) -> bool {
+    pub fn correct_point(
+        p: &SvgPoint, 
+        i: &[SvgPolygon], 
+        maxdst_point: f64, 
+        maxdst_line: f64, 
+        allow_correctline: bool, 
+        moved_points: &Vec<(SvgPoint, SvgPoint)>
+    ) -> Option<SvgPoint> {
         if !allow_correctline {
-            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points);
-            if let Some(np) = np {
-                *p = np;
-                true
-            } else {
-                false
-            }
+            Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points, moved_points)
         } else {
-            
-            let mut modified = false;
-            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points);
-            if let Some(np) = np {
-                *p = np;
-                modified = true;
-            } else {
-                modified = false;
-            }
-
-            let np = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Lines);
-            if let Some(np) = np {
-                *p = np;
-                modified = true;
-            } else {
-                modified = false;
-            }
-
-            modified
+            let np1 = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Points, moved_points);
+            let np2 = Self::get_nearest_point(p, i, maxdst_point, maxdst_line, GetNearestPointFilter::Lines, moved_points);
+            np2.or(np1)
         }
     }
 
-    fn get_nearest_points(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Vec<(f64, CorrectPointItem)> {
+    fn get_nearest_points(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter, moved_points: &Vec<(SvgPoint, SvgPoint)>) -> Vec<(f64, CorrectPointItem)> {
         let mut near_points = Vec::new();
         
         for poly in i.iter() {
@@ -1757,6 +1754,10 @@ impl Aenderungen {
         }
 
         let mut near_points = near_points.into_iter().filter_map(|(dst, v)| {
+            let current_target_point = v.get_point();
+            if moved_points.iter().any(|(orig_point, _target_point)| orig_point.equals(&current_target_point)) {
+                return None; // prevent "swapping" of point positions
+            }
             if v.is_line() && dst.abs() < 0.001 {
                 None
             } else {
@@ -1768,8 +1769,8 @@ impl Aenderungen {
         near_points
     }
 
-    fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter) -> Option<SvgPoint> {
-        let np = Self::get_nearest_points(p, i, maxdst_point, maxdst_line, mode);
+    fn get_nearest_point(p: &SvgPoint, i: &[SvgPolygon], maxdst_point: f64, maxdst_line: f64, mode: GetNearestPointFilter, moved_points: &Vec<(SvgPoint, SvgPoint)>) -> Option<SvgPoint> {
+        let np = Self::get_nearest_points(p, i, maxdst_point, maxdst_line, mode, moved_points);
         np.first().map(|p| p.1.get_point())
     }
 
@@ -1882,7 +1883,8 @@ impl Aenderungen {
 
         log.push(format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
 
-        let mut modified_counter = 0;
+        let mut moved_points = Vec::new();
+
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
@@ -1898,29 +1900,31 @@ impl Aenderungen {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
 
+                    let p_orig = p.clone();
                     let p_rect = p.get_rect(maxdst_point.max(maxdst_line));
                     let overlap = changes_btree.get_ids_that_overlap(&p_rect)
                     .into_iter()
                     .filter_map(|i| changes_list.get(i.0).cloned())
                     .collect::<Vec<_>>();
                 
-                    if Self::correct_point(p, &overlap, maxdst_point, maxdst_line, true) {
+                    if let Some(newp) = Self::correct_point(p, &overlap, maxdst_point, maxdst_line, true, &moved_points) {
+                        *p = newp;
                         modified = true;
+                        moved_points.push((p_orig, newp));
                     }
                 }
             }
             
             if (modified) {
-                modified_counter += 1;
                 modified_tree.insert(id.clone(), polyneu.clone());
             }
         }
 
-        log.push(format!("moved {modified_counter} points"));
+        log.push(format!("moved {} points", moved_points.len()));
         changed_mut.round_to_3decimal()
     }
 
-    // 1.5: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
+    // 2: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
     pub fn clean_stage2(
         &self, 
         log: &mut Vec<String>, 
@@ -2027,7 +2031,7 @@ impl Aenderungen {
                     return None;
                 }
                 let dst = dist_to_segment(p, a, b).distance.abs();
-                if dst < 0.5 {
+                if dst < 1.0 {
                     Some(p)
                 } else {
                     None
@@ -2047,17 +2051,131 @@ impl Aenderungen {
     }
 
 
+    // 3: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
+    pub fn clean_stage25(&self) -> Aenderungen {
+        let mut changed_mut = self.round_to_3decimal();
+        let mut joined_polys = BTreeSet::new();
+        let mut polys_to_remove = BTreeSet::new();
+
+        'outer: loop {
+            let mut joined = 0;
+            let mut newpolys = Vec::new();
+
+            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut);
+
+            for (id, poly) in changed_mut.na_polygone_neu.iter_mut() {
+                
+                let touching_aenderungen = aenderungen_quadtree.get_overlapping_flst(&poly.poly.get_rect());
+                
+                let aenderung_ids = touching_aenderungen.iter()
+                .filter_map(|s| {
+                    let orig_nutzung = poly.nutzung.as_ref()?;
+                    let nutzung = s.attributes.get("nutzung").cloned()?;
+                    if nutzung != *orig_nutzung {
+                        return None;
+                    }
+
+                    let idn = s.attributes.get("aenderungID").cloned()?;
+                    if idn == *id {
+                        return None;
+                    }
+
+                    let polyneu = PolyNeu {
+                        nutzung: Some(nutzung),
+                        poly: s.poly.clone(),
+                    };
+
+                    Some((idn, polyneu))
+                })
+                .collect::<Vec<_>>();
+
+                let aenderung_ids = aenderung_ids.into_iter()
+                .filter_map(|(idn, polyneu)| {
+                    use crate::nas::EqualsAnyRingStatus::*;
+
+                    if joined_polys.contains(&idn) {
+                        return None;
+                    }
+
+                    let relate = nas::relate(&poly.poly, &polyneu.poly);
+                    let overlap = relate.a_contained_in_b() || relate.b_contained_in_a();
+                    if overlap {
+                        return Some((idn, polyneu));
+                    }
+                    let touches = relate.only_touches();
+                    if touches {
+                        return Some((idn, polyneu));
+                    }
+
+                    let a_eq_b = poly.poly.equals_any_ring(&polyneu.poly);
+                    log_1(&format!("ID {id} - {idn}: a_eq_b: {a_eq_b:?}").into());
+                    let b_eq_a = polyneu.poly.equals_any_ring(&poly.poly);
+                    log_1(&format!("ID {id} - {idn}: b_eq_a: {b_eq_a:?}").into());
+
+                    if a_eq_b == TouchesOutside || 
+                       b_eq_a == TouchesOutside || 
+                       a_eq_b == TouchesInside || 
+                       b_eq_a == TouchesInside {
+                        Some((idn, polyneu))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
+                if aenderung_ids.is_empty() {
+                    newpolys.push((id.clone(), poly.clone()));
+                    joined_polys.insert(id.clone());
+                } else {
+                    let mut polys_to_join = vec![poly.poly.clone()];
+                    for (k, v) in aenderung_ids.iter() {
+                        polys_to_join.push(v.poly.clone());
+                    }
+                    let joined_poly = join_polys(&polys_to_join, false, true).unwrap();
+                    newpolys.push((uuid(), PolyNeu {
+                        nutzung: poly.nutzung.clone(),
+                        poly: joined_poly.clone()
+                    }));
+                    joined += 1;
+                    joined_polys.insert(id.clone());
+                    polys_to_remove.insert(id.clone());
+                    for (k, _) in aenderung_ids.iter() {
+                        joined_polys.insert(k.clone());
+                        polys_to_remove.insert(k.clone());
+                    }
+                }
+            }
+
+            if joined == 0 {
+                break 'outer;
+            } else {
+                changed_mut.na_polygone_neu = newpolys.into_iter().collect();
+            }
+        }
+
+        for p in polys_to_remove {
+            changed_mut.na_polygone_neu.remove(&p);
+        }
+
+        changed_mut
+    }
+
+    // 2. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
     pub fn clean_stage3(&self, split_nas: &SplitNasXml, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
         let qt = split_nas.create_quadtree();
 
-        // 2. Naheliegende Punktkoordinaten auf Linien ziehen
+        let mut moved_points = Vec::new();
         let mut changed_mut = self.clone();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
+                    let p_orig = p.clone();
                     let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
                     let overlapping_flst_nutzungen = overlapping_flst_nutzungen.into_iter().map(|(id, v)| v.poly).collect::<Vec<_>>();
-                    Self::correct_point(p, &overlapping_flst_nutzungen, maxdst_point, maxdst_line, true);
+                    if let Some(newp) = Self::correct_point(p, &overlapping_flst_nutzungen, maxdst_point, maxdst_line, true, &moved_points) {
+                        *p = newp;
+                        moved_points.push((p_orig, newp));
+                    }
                 }
             }
         }
@@ -2066,7 +2184,7 @@ impl Aenderungen {
 
     }
 
-    // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
+    // 3: Punkte einfügen auf Linien, die nahe Flurstücks- / Nutzungsartengrenzen liegen
     pub fn clean_stage4(
         &self, 
         original_xml: &NasXMLFile, 

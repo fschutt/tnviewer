@@ -185,6 +185,7 @@ pub fn lib_get_aenderungen_clean(id: String, aenderungen: String, split_nas_xml:
     let clean = match id.as_str() {
         "1" => aenderungen.clean_stage1(&split_nas_xml, &mut log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line),
         "2" => aenderungen.clean_stage2(&mut log, 1.0, 1.0, 10.0),
+        "25" => aenderungen.clean_stage25(),
         "3" => aenderungen.clean_stage3(&split_nas_xml, &mut log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line),
         "4" => aenderungen.clean_stage4(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2, konfiguration.merge.stage3_maxdeviation_followline),
         "13" => {

@@ -1630,7 +1630,15 @@ impl NasXmlQuadTree {
             crs: "".to_string(),
             ebenen: aenderungen.na_polygone_neu.iter().map(|(k, v)| {
                 (k.clone(), vec![TaggedPolygon {
-                    attributes: BTreeMap::new(),
+                    attributes: {
+                        let mut q = vec![
+                            ("aenderungID".to_string(), k.to_string()),
+                        ];
+                        if let Some(n) = v.nutzung.clone() {
+                            q.push(("nutzung".to_string(), n.to_string()));
+                        }
+                        q.into_iter().collect()
+                    },
                     poly: v.poly.clone(),
                 }])
             }).collect::<BTreeMap<_, _>>()
