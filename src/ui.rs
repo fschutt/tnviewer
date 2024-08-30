@@ -1553,55 +1553,12 @@ impl AenderungenClean {
             let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>().round();
             let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>().round();
             if (soll - ist).abs() > 1.0 {
+                log_status(&format!("WARN: Loch in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
                 Some(flst_id)
             } else {
                 None
             }
         }).collect::<BTreeSet<_>>();
-
-        // löcher fixen
-        let flst = nas_xml.ebenen.get("AX_Flurstueck").unwrap_or(&default);
-        let flst = flst.iter().filter_map(|f| {
-            let id = f.attributes.get("flurstueckskennzeichen")?.replace("_", "");
-            let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
-            Some((id, f))
-        }).collect::<BTreeMap<_, _>>();
-
-        for l in loecher {
-            log_status(&format!("Behebe Loch in Flst {l}..."));
-
-            let f = match flst.get(&l) {
-                Some(s) => *s,
-                None => {
-                    log_status(&format!("WARN: konnte Loch in Flst {l} nicht beheben"));
-                    continue;
-                }
-            };
-
-            let is_joined = is.iter().filter(|s| s.flst_id == l).map(|s| s.poly_cut.clone()).collect::<Vec<_>>();
-            let joined = match join_polys(&is_joined, false, false) {
-                Some(s) => s,
-                None => {
-                    log_status(&format!("WARN: konnte Join für Flächen in Flst {l} nicht ausführen"));
-                    continue;
-                }
-            };
-
-            log_status(&format!("subtracting {l}..."));
-            /* 
-            let subtracted = subtract_from_poly(&f.poly, &[&joined]);
-
-            is.push(AenderungenIntersection {
-                alt: "WAF".to_string(),
-                neu: "A".to_string(),
-                flst_id_part: "".to_string(),
-                flst_id: l,
-                poly_cut: subtracted,
-            });
-            */
-            log_status("subtracted");
-
-        }
 
         log_status("ok löcher gestopft!");
 
