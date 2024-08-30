@@ -1057,10 +1057,12 @@ pub fn get_flurstuecke(
     Flurstuecke { flst }
 }
  
-// only called in stage11
+// only called in stage5 (subtracting overlapping Aenderungen)
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
+    log_status(&format!("subtract from poly: {}", serde_json::to_string(&first).unwrap_or_default()));
+    log_status(&format!("subtracting: {}", serde_json::to_string(&subtract).unwrap_or_default()));
     for i in subtract.iter() {
         let mut fi = first.round_to_3dec();
         let mut i = i.round_to_3dec();
@@ -1113,7 +1115,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = crate::nas::cleanup_poly(&new);
+        first = new; // crate::nas::cleanup_poly(&new);
     }
 
     first.correct_winding_order();
