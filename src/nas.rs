@@ -129,7 +129,7 @@ impl NasXMLFile {
             let flst = ax_flurstuecke_map.iter()
             .filter(|(id, r, poly)| flst_rect.overlaps_rect(r))
             .filter(|(id, r, poly)| {
-                crate::nas::relate(poly, &tp.poly).overlaps()
+                crate::nas::relate(poly, &tp.poly, 1.0).overlaps()
             })
             .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
@@ -2252,14 +2252,9 @@ impl Relate {
     }
 }
 
-pub fn polys_overlap(a: &SvgPolygon, b: &SvgPolygon) -> bool {
-    let r = relate(a, b);
-    r.a_contained_in_b() || r.b_contained_in_a()
-}
-
-pub fn relate(a: &SvgPolygon, b: &SvgPolygon) -> Relate {
-    let is_1 = only_touches_internal(a, b);
-    let is_2 = only_touches_internal(b, a);
+pub fn relate(a: &SvgPolygon, b: &SvgPolygon, dst: f64) -> Relate {
+    let is_1 = only_touches_internal(a, b, dst);
+    let is_2 = only_touches_internal(b, a, dst);
     Relate {
         is_1,
         is_2,
@@ -2276,7 +2271,7 @@ pub fn line_contained_in_line(outer: &SvgLine, inner: &SvgLine) -> bool {
 }
 
 // Only touches the other polygon but does not intersect
-pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalResult {
+pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon, dst: f64) -> SvgPolyInternalResult {
 
     let points_a = a.outer_rings.iter().flat_map(|l| l.points.iter()).collect::<Vec<_>>();
     // let b_geo = translate_to_geo_poly(b);
@@ -2285,7 +2280,7 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     let mut points_inside_other_poly = 0;
     let mut all_points_are_on_line = true;
     for start_a in points_a.iter() {
-        if point_is_on_any_line(start_a, &b) {
+        if point_is_on_any_line(start_a, &b, dst) {
             points_touching_lines += 1;
         } else if point_is_in_polygon(*start_a, &b) {
             points_inside_other_poly += 1;
@@ -2303,12 +2298,12 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolyInternalR
     }
 }
 
-pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon) -> bool {
+pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon, dst: f64) -> bool {
     for line in poly.outer_rings.iter() {
         for q in line.points.windows(2) {
             match &q {
                 &[sa, eb] => {
-                    if dist_to_segment(*p, *sa, *eb).distance < 0.5 {
+                    if dist_to_segment(*p, *sa, *eb).distance < dst {
                         return true;
                     }
                 },

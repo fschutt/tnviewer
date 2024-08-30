@@ -8,7 +8,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, polys_overlap, translate_to_geo_poly, xor_polys, EqualsAnyRingStatus, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, translate_to_geo_poly, xor_polys, EqualsAnyRingStatus, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -2210,7 +2210,7 @@ impl Aenderungen {
                     return None;
                 }
 
-                let relate = nas::relate(&poly.poly, &q.poly);
+                let relate = nas::relate(&poly.poly, &q.poly, 1.0);
 
                 if relate.touches_other_poly_outside() {
                     let sm = id.max(idn);
@@ -2265,7 +2265,7 @@ impl Aenderungen {
                     let p_test = [(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize];
                     if p_coords.contains(&p_test) {
                         p_final.push(*p);
-                    } else if nas::point_is_on_any_line(p, b) {
+                    } else if nas::point_is_on_any_line(p, b, 1.0) {
                         p_final.push(get_nearest_point(p, list_b));
                     } else {
                         p_final.push(*p);
@@ -2523,7 +2523,7 @@ impl Aenderungen {
             changed_mut.na_polygone_neu.insert(id.to_string(), np);
         }
 
-        changed_mut.round_to_3decimal()
+        changed_mut.round_to_3decimal().deduplicate()
 
     }
 
@@ -2608,7 +2608,7 @@ impl Aenderungen {
         }
     }
 
-
+    
     pub fn show_splitflaechen(
         &self,
         split_nas: &SplitNasXml,
