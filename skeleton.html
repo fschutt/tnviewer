@@ -641,6 +641,21 @@
     }
   }
   
+
+  function onAenderungClicked(e) {
+      var aenderung_id = e.target.feature.properties.newPolyId;
+      console.log(aenderung_id);
+      if (aenderung_id) {
+        alert(aenderung_id);
+      }
+  }
+
+  function aenderungClicked(feature, layer) {
+        layer.on({
+            click: onAenderungClicked
+        });
+    }
+
   function reinitMapDrawnStaticLayers() {
     if (current_edit_layer != null) {
       map.removeLayer(current_edit_layer);
@@ -677,7 +692,8 @@
             "weight": 5,
             "opacity": 1.0,
             "fillOpacity": 0.3,
-          }
+          },
+          "onEachFeature": aenderungClicked
         });
       } else if (L.geoJSON) {
         myLayer = L.geoJSON(geojson, {
@@ -687,7 +703,8 @@
             "weight": 5,
             "opacity": 1.0,
             "fillOpacity": 0.3,
-          }
+          },
+          "onEachFeature": aenderungClicked
         });
       }
 

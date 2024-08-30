@@ -2468,8 +2468,11 @@ impl Aenderungen {
 
             use crate::nas::EqualsAnyRingStatus::*;
 
+            let s_rect = s.poly.get_rect();
+
             let overlaps = self.na_polygone_neu.iter()
             .filter(|(q, _)| *q != id)
+            .filter(|(_, s)| s.poly.get_rect().overlaps_rect(&s_rect))
             .find_map(|(qid, q)| {
                 let a_eq_b = q.poly.equals_any_ring(&s.poly);
                 let b_eq_a = q.poly.equals_any_ring(&s.poly);
@@ -2500,11 +2503,9 @@ impl Aenderungen {
                 Some(s) => s,
                 None => continue,
             };
-            if fa < fb {
-                changed_mut.na_polygone_neu.remove(a);
-            } else {
-                changed_mut.na_polygone_neu.remove(b);
-            }
+            let remove = if fa < fb { a } else { b };
+            log_1(&format!("removing aenderung {remove}").into());
+            changed_mut.na_polygone_neu.remove(remove);
         }
 
         changed_mut
