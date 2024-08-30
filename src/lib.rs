@@ -32,6 +32,32 @@ pub fn get_new_poly_id() -> String {
     crate::uuid_wasm::uuid()
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct SaveFile {
+    info: ProjektInfo,
+    risse: Risse,
+    csv: CsvDataType,
+    aenderungen: Aenderungen,
+}
+
+#[wasm_bindgen]
+pub fn format_savefile(info: String, risse: Option<String>, csv: Option<String>, aenderungen: Option<String>) -> String {
+    
+    let info = serde_json::from_str::<ProjektInfo>(info.as_str()).unwrap_or_default();
+    let risse = serde_json::from_str::<Risse>(&risse.unwrap_or_default()).unwrap_or_default();
+    let csv = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
+
+    let savefile = SaveFile {
+        info,
+        risse,
+        csv,
+        aenderungen,
+    };
+
+    serde_json::to_string_pretty(&savefile).unwrap_or_default()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CleanStageResult {
     pub aenderungen: Aenderungen,
@@ -187,7 +213,6 @@ pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>
             .clean_stage4(&nas_original, &mut log, konfiguration.merge.stage3_maxdst_line, konfiguration.merge.stage3_maxdst_line2, konfiguration.merge.stage3_maxdeviation_followline)
         },
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
-        "6" => aenderungen.clean_stage6(&split_nas_xml, &nas_original, &mut log),
         "63" => aenderungen.clean_nas(),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original),
         _ => return format!("wrong id {id}"),

@@ -1016,18 +1016,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(6);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>6: Änd. mit</p>
-                        <p>Flst. verschneiden</p>
-                    </div>
-                </label>
-            </div>
-
-            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
@@ -1428,7 +1416,6 @@ impl AenderungenClean {
                 continue;
             }
 
-            log_status(&format!("subtracting {flurstueck_id}"));
             let subtracted = subtract_from_poly(&flst_part.poly, &[&areas_to_subtract_joined]);
 
             let qq = AenderungenIntersection {
@@ -1440,40 +1427,6 @@ impl AenderungenClean {
             };
             
             is.push(qq);
-
-            /*
-            let mut xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined)
-            .into_iter()
-            .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
-            .map(|mut p| {
-                p.correct_winding_order();
-                p
-            })
-            .into_iter()
-            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else {
-                log_status(&format!("{flurstueck_id}: removing polygon not inside of flst: {}", serde_json::to_string(&p).unwrap_or_default()));
-                 None 
-            })
-            .collect::<Vec<_>>();
-
-            log_status(&format!("ok: {} polygons generated", xor_polys.len()));
-
-            xor_polys.dedup_by(|a, b| a.equals(&b));
-
-            for xor_area in xor_polys {
-                
-                let qq = AenderungenIntersection {
-                    alt: alt_kuerzel.clone(),
-                    neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
-                    flst_id: flurstueck_id.clone(),
-                    flst_id_part: flst_part_id.clone(),
-                    poly_cut: xor_area.round_to_3dec(),
-                };
-                
-                is.push(qq);
-            }
-             */
-            log_status(&format!("subtract ok!"));
         }
 
         let mut is = is.into_iter()
@@ -1564,19 +1517,6 @@ impl AenderungenClean {
         // let is = merge_adjacent_intersections(is);
 
         let default = Vec::new();
-        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
-        let loecher = alle_flst.into_iter().filter_map(|flst_id| {
-            let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>().round();
-            let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>().round();
-            if (soll - ist).abs() > 1.0 {
-                log_status(&format!("WARN: Loch in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
-                Some(flst_id)
-            } else {
-                None
-            }
-        }).collect::<BTreeSet<_>>();
-
-        log_status("ok löcher gestopft!");
 
         // Remove splitflächen für flurstücke die keine Änderung haben
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
@@ -1633,7 +1573,25 @@ impl AenderungenClean {
         .clean_zero_size_areas()
         .deduplicate().0;
 
-        AenderungenIntersections(is).merge_to_nearest()
+        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let _ = alle_flst.into_iter().filter_map(|flst_id| {
+            let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>().round();
+            let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>().round();
+            if ist + 1.0 < soll {
+                log_status(&format!("WARN: Loch in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
+                Some(flst_id)
+            } else if ist > soll {
+                log_status(&format!("WARN: Doppelte Fläche in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
+                Some(flst_id)
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        log_status("ok löcher gestopft!");
+
+        AenderungenIntersections(is)
+        .merge_to_nearest()
     }
 }
 
@@ -2573,44 +2531,6 @@ impl Aenderungen {
             .filter(|s| !s.1.poly.is_zero_area())
             .collect()
         }
-    }
-
-    // Änderungen nach Flurstücken splitten
-    pub fn clean_stage6(&self, split_nas: &SplitNasXml, nas_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
-        
-        let changed_mut = self.clean_internal()
-        .clean_stage1(&mut Vec::new(), 0.1, 0.1);
-
-        let mut adefault = Aenderungen {
-            na_definiert: self.na_definiert.clone(),
-            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
-            na_polygone_neu: BTreeMap::new(),
-        };
-
-        let flurstuecke = match nas_xml.ebenen.get("AX_Flurstueck") {
-            Some(s) => s,
-            None => return adefault,
-        };
-        let flurstuecke_rects = quadtree_f32::QuadTree::new(
-            flurstuecke.iter().enumerate()
-            .map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.poly.get_rect())))
-        );
-        
-        for an in changed_mut.na_polygone_neu.values() {
-            let flst_in_radius = flurstuecke_rects.get_ids_that_overlap(&an.poly.get_rect())
-            .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
-                        
-            for potential_overlap_flst in flst_in_radius.iter() {
-                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly) {
-                    if is.is_zero_area() {
-                        continue;
-                    }
-                    adefault.na_polygone_neu.insert(uuid(), PolyNeu { poly: is, nutzung: an.nutzung.clone() });
-                }
-            }
-        }
-
-        adefault.clean_internal().deduplicate()
     }
 
     pub fn deduplicate(&self) -> Self {

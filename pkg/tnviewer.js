@@ -275,6 +275,38 @@ export function get_new_poly_id() {
 }
 
 /**
+* @param {string} info
+* @param {string | undefined} [risse]
+* @param {string | undefined} [csv]
+* @param {string | undefined} [aenderungen]
+* @returns {string}
+*/
+export function format_savefile(info, risse, csv, aenderungen) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(info, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(risse) ? 0 : passStringToWasm0(risse, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(csv) ? 0 : passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len2 = WASM_VECTOR_LEN;
+        var ptr3 = isLikeNone(aenderungen) ? 0 : passStringToWasm0(aenderungen, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len3 = WASM_VECTOR_LEN;
+        wasm.format_savefile(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred5_0 = r0;
+        deferred5_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_3(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
 * @returns {string}
 */
 export function get_problem_geojson() {
@@ -1546,6 +1578,7 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_updateexportstatus_dff9b10d495f2e73 = function(arg0, arg1) {
         let deferred0_0;
         let deferred0_1;
@@ -1560,7 +1593,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
         console.log(getObject(arg0));
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_exportstatusclear_696b2edfbc03c672 = typeof export_status_clear == 'function' ? export_status_clear : notDefined('export_status_clear');
     imports.wbg.__wbindgen_memory = function() {
         const ret = wasm.memory;

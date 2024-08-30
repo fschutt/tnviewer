@@ -1075,7 +1075,7 @@
 
     function saveProjectDataToFile() {
       if (!window.csv_data || window.csv_data == null) {
-        alert("Kein Projekt geladen!");
+        window.csv_data = {};
       }
       var s = {
         info: window.info,
@@ -1083,7 +1083,18 @@
         csv: window.csv_data,
         aenderungen: window.aenderungen,
       };
-      var b = JSON.stringify(s, null, 4);
+      var b = "";
+      try {
+        b = format_savefile(
+          JSON.stringify(window.info),
+          JSON.stringify(window.risse),
+          JSON.stringify(window.csv),
+          JSON.stringify(window.aenderungen),
+        );
+      } catch (error) {
+        b = JSON.stringify(s, null, 4);        
+      }
+
       downloadBlob(b, window.info.antragsnr + ".json", 'application/octet-stream');
     }
 
