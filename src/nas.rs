@@ -1893,21 +1893,23 @@ pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     let s = s.round_to_3dec();
 
     let outer_rings = s.outer_rings.iter()
+    .filter_map(|l| if SvgPolygon::from_line(l).is_zero_area() { None } else { Some(l) })
     .filter_map(|r| {
         let mut s =  SvgPolygon::from_line(r);
         s.correct_winding_order();
         if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
     })
-    .map(|r| clean_ring_2(&r))
+    .flat_map(|r| clean_ring_2(&r))
     .collect();
 
     let inner_rings = s.inner_rings.iter()
+    .filter_map(|l| if SvgPolygon::from_line(l).is_zero_area() { None } else { Some(l) })
     .filter_map(|r| {
         let mut s =  SvgPolygon::from_line(r);
         s.correct_winding_order();
         if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
     })
-    .map(|r| clean_ring_2(&r))
+    .flat_map(|r| clean_ring_2(&r))
     .map(|l| l.reverse())
     .collect();
 
@@ -1917,16 +1919,16 @@ pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     }
 }
 
-fn clean_ring_2(r: &SvgLine) -> SvgLine {
+fn clean_ring_2(r: &SvgLine) -> Vec<SvgLine> {
     
     let mut p1 = clean_points(&r.points);
     p1.reverse();
     let mut p2 = clean_points(&p1);
     p2.reverse();
 
-    clean_ring_selfintersection(&SvgLine {
-        points: p2,
-    })
+    let mut v = Vec::new();
+    clean_ring_selfintersection(&SvgLine { points: p2 }, &mut v);
+    v
 }
 
 const CLEAN_LINE_DST: f64 = 0.1;
@@ -1960,7 +1962,7 @@ fn clean_points(points: &[SvgPoint]) -> Vec<SvgPoint> {
     points
 }
 
-fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
+fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
     let mut ranges_selfintersection = Vec::new();
     for (i, p) in line.points.iter().enumerate().skip(1) {
         for (q, r) in line.points.iter().enumerate().skip(i + 1) {
@@ -1972,8 +1974,19 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
     ranges_selfintersection.retain(|r| !r.is_empty());
     ranges_selfintersection.sort_by(|a, b| a.start.cmp(&b.start));
     ranges_selfintersection.dedup();
+
+    // fix "bridge" polygons
+    for r in ranges_selfintersection.iter() {
+        let points = line.points[r.clone()].to_vec();
+        let l = SvgLine { points: points };
+        if !SvgPolygon::from_line(&line).is_zero_area() {
+            clean_ring_selfintersection(&l, v);
+        }
+    }
+
     if ranges_selfintersection.is_empty() {
-        return line.clone();
+        v.push(line.clone());
+        return;
     }
     let mut newpoints = Vec::new();
     for (i, p) in line.points.iter().enumerate() {
@@ -1983,9 +1996,9 @@ fn clean_ring_selfintersection(line: &SvgLine) -> SvgLine {
         newpoints.push(*p);
     }
     newpoints.dedup_by(|a, b| a.equals(&b));
-    SvgLine {
+    v.push(SvgLine {
         points: newpoints,
-    }
+    });
 }
 
 macro_rules! define_func {($fn_name:ident, $op:expr) => {

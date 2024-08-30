@@ -1436,6 +1436,7 @@ impl AenderungenClean {
             log_status(&format!("xoring {flurstueck_id}"));
             let mut xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
             .into_iter()
+            .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
             .map(|mut p| {
                 p.correct_winding_order();
                 p
@@ -1452,16 +1453,7 @@ impl AenderungenClean {
             xor_polys.dedup_by(|a, b| a.equals(&b));
 
             for xor_area in xor_polys {
-
-                if xor_area.is_zero_area() {
-                    log_status(&format!(
-                        "{flurstueck_id}: removing zero-size polygon (size = {}): {}", 
-                        xor_area.area_m2(), 
-                        serde_json::to_string(&xor_area).unwrap_or_default()
-                    ));
-                    continue;
-                }
-
+                
                 let qq = AenderungenIntersection {
                     alt: alt_kuerzel.clone(),
                     neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
