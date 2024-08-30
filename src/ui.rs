@@ -1441,9 +1441,12 @@ impl AenderungenClean {
                 p
             })
             .into_iter()
-            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else { None })
+            .filter_map(|p| if p.is_inside_of(&flst_part.poly) { Some(p) } else {
+                log_status(&format!("{flurstueck_id}: removing polygon not inside of flst: {}", serde_json::to_string(&p).unwrap_or_default()));
+                 None 
+            })
             .collect::<Vec<_>>();
-        
+
             log_status(&format!("ok: {} polygons generated", xor_polys.len()));
 
             xor_polys.dedup_by(|a, b| a.equals(&b));
@@ -1451,6 +1454,11 @@ impl AenderungenClean {
             for xor_area in xor_polys {
 
                 if xor_area.is_zero_area() {
+                    log_status(&format!(
+                        "{flurstueck_id}: removing zero-size polygon (size = {}): {}", 
+                        xor_area.area_m2(), 
+                        serde_json::to_string(&xor_area).unwrap_or_default()
+                    ));
                     continue;
                 }
 
