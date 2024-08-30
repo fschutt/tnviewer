@@ -1041,32 +1041,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 </label>
             </div>
 
-            <!--
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(63);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Änderungen</p>
-                        <p>NAS clean</p>
-                    </div>
-                </label>
-            </div>
-            -->
-
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(65);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>Dopp. Änd.</p>
-                        <p>entfernen</p>
-                    </div>
-                </label>
-            </div>
-
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
@@ -1883,10 +1857,6 @@ enum GetNearestPointFilter {
 }
 
 impl Aenderungen {
-    pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
-        // TODO: Welche beschrifteten Objekte gibt es?
-        String::new()
-    }
 
     pub fn correct_point(
         p: &SvgPoint, 
@@ -2462,55 +2432,6 @@ impl Aenderungen {
         }
     }
 
-    pub fn doppelte_aenderungen_entfernen(&self) -> Aenderungen {
-
-        let to_remove = self.na_polygone_neu.iter().filter_map(|(id, s)|{
-
-            use crate::nas::EqualsAnyRingStatus::*;
-
-            let s_rect = s.poly.get_rect();
-
-            let overlaps = self.na_polygone_neu.iter()
-            .filter(|(q, _)| *q != id)
-            .filter(|(_, s)| s.poly.get_rect().overlaps_rect(&s_rect))
-            .find_map(|(qid, q)| {
-                let a_eq_b = q.poly.equals_any_ring(&s.poly);
-                let b_eq_a = q.poly.equals_any_ring(&s.poly);
-                match (a_eq_b, b_eq_a) {
-                    (DistinctOutside, _) | (_, DistinctOutside) |
-                    (TouchesOutside, _) | (_, TouchesOutside) |
-                    (NotEqualToAnyRing, _) | (_, NotEqualToAnyRing) => None,
-                    _ => Some(qid.clone()),
-                }
-            });
-
-            if let Some(s) = overlaps {
-                let lg = id.max(&s);
-                let sm = id.min(&s);
-                Some((lg.to_string(), sm.to_string()))
-            } else {
-                None
-            }
-        }).collect::<BTreeSet<_>>();
-
-        let mut changed_mut = self.clone();
-        for (a, b) in to_remove.iter() {
-            let fa = match changed_mut.na_polygone_neu.get(a).map(|s| s.poly.area_m2()) {
-                Some(s) => s,
-                None => continue,
-            };
-            let fb = match changed_mut.na_polygone_neu.get(b).map(|s| s.poly.area_m2()) {
-                Some(s) => s,
-                None => continue,
-            };
-            let remove = if fa < fb { a } else { b };
-            log_1(&format!("removing aenderung {remove}").into());
-            changed_mut.na_polygone_neu.remove(remove);
-        }
-
-        changed_mut
-    }
-
     pub fn remerge_lines(&self) -> Aenderungen {
 
         // deduplicate and un-merge all lines
@@ -2577,95 +2498,58 @@ impl Aenderungen {
         
         log_status("stage 5 begin");
 
-        let mut changed_mut = self.round_to_3decimal();
-        let mut overlap_items = BTreeSet::new();
-        let mut changed_pairs = BTreeSet::new();
+        let mut changed_mut = self.clone();
+        let mut geaendert = BTreeMap::new();
 
-        loop {
+        for (pid, pn) in changed_mut.na_polygone_neu.iter() {
+            let pn_rect = pn.poly.get_rect();
+            let p_nutzung = match pn.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+            let nak = match TaggedPolygon::get_nutzungsartenkennung(&p_nutzung) {
+                Some(s) => s,
+                None => continue,
+            };
 
-            let mut newpolys = BTreeMap::new();
-
-            for (pid, pn) in changed_mut.na_polygone_neu.iter() {
-                let pn_rect = pn.poly.get_rect();
-                let p_nutzung = match pn.nutzung.clone() {
-                    Some(s) => s,
-                    None => continue,
-                };
-
-                let higher_order_polys = changed_mut.na_polygone_neu.iter()
-                .filter_map(|(id, v)| {
-                    let nutzung = v.nutzung.clone()?;
-                    Some((nutzung, id.clone(), &v.poly))
-                })
-                .filter(|(_, id, _)|  id != pid)
-                .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
-                .filter_map(|(k, id, s)| {
-                    let relate: nas::Relate = crate::nas::relate(&pn.poly, s);
-                    if relate.a_contained_in_b() || relate.b_contained_in_a() || relate.overlaps() {
-                        Some((k, id, s))
-                    } else {
-                        None
-                    }
-                })
-                .map(|s| (s.0.clone(), s.1.clone()))
-                .collect::<Vec<_>>();
-    
-                for (hk, hid) in higher_order_polys {
-                    let (a, b) = if hid > *pid {
-                        ((hid, hk), (pid.to_string(), p_nutzung.to_string()))
-                    } else {
-                        ((pid.to_string(), p_nutzung.to_string()), (hid, hk))
-                    };
-                    overlap_items.insert((a, b));
+            let higher_order_polys = changed_mut.na_polygone_neu.iter()
+            .filter_map(|(id, v)| {
+                let nutzung = v.nutzung.clone()?;
+                Some((nutzung, id.clone(), &v.poly))
+            })
+            .filter_map(|(k, id, s)| {
+                if TaggedPolygon::get_nutzungsartenkennung(&k)? > nak { 
+                    Some((k, id, s)) 
+                } else { 
+                    None 
                 }
-            }
-    
-            for ((a, b), (c, d)) in overlap_items.iter() {
-                let nak_a = match TaggedPolygon::get_nutzungsartenkennung(b) {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let nak_b = match TaggedPolygon::get_nutzungsartenkennung(d) {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let area_to_subtract_from = if nak_a < nak_b { a } else { c };
-                let area_to_subtract = if nak_a < nak_b { c } else { a };
-                if changed_pairs.contains(&(area_to_subtract_from.clone(), area_to_subtract.clone())) {
-                    continue;
+            })
+            .filter(|(_, id, _)|  id != pid)
+            .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
+            .filter_map(|(k, id, s)| {
+                let relate: nas::Relate = crate::nas::relate(&pn.poly, s);
+                if relate.a_contained_in_b() || relate.b_contained_in_a() || relate.overlaps() {
+                    Some((k, id, s))
+                } else {
+                    None
                 }
-                log_status(&format!("subtracting Änderung {area_to_subtract} from {area_to_subtract_from} ({b} - {d})"));
-                let poly_to_subtract_from = match changed_mut.na_polygone_neu.get(area_to_subtract_from) {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-                let poly_to_subtract = match changed_mut.na_polygone_neu.get(area_to_subtract) {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-                let subtracted = subtract_from_poly(&poly_to_subtract_from.poly, &[&poly_to_subtract.poly]);
-                newpolys.insert(area_to_subtract_from, PolyNeu {
-                    nutzung: poly_to_subtract_from.nutzung.clone(),
-                    poly: subtracted,
-                });
-                changed_pairs.insert((area_to_subtract_from.clone(), area_to_subtract.clone()));
-                log_status(&format!("ok subtracted! {area_to_subtract_from} = subtracted"));
-            }
+            })
+            .map(|s| s.2)
+            .collect::<Vec<_>>();
 
-            if newpolys.is_empty() {
-                break;
-            }
-
-            log_status(&format!("updating {newpolys:?} ------"));
-
-            for (id, np) in newpolys.into_iter() {
-                changed_mut.na_polygone_neu.insert(id.to_string(), np);
-            }
+            let subtracted = subtract_from_poly(&pn.poly, &higher_order_polys);
+            geaendert.insert(pid.clone(), PolyNeu {
+                nutzung: pn.nutzung.clone(),
+                poly: subtracted,
+            });
         }
 
-        log_status("stage 5 done");
+        for (id, np) in geaendert.into_iter() {
+            changed_mut.na_polygone_neu.insert(id.to_string(), np);
+        }
 
         changed_mut.round_to_3decimal()
+
     }
 
     fn clean_internal(&self) -> Aenderungen {
@@ -2773,52 +2657,7 @@ impl Aenderungen {
             }).collect()
         }.round_to_3decimal()
     }
-    
-    /*
-    pub fn clean(
-        &self, 
-        split_nas: &SplitNasXml, 
-        original_xml: &NasXMLFile, 
-        log: &mut Vec<String>, 
-        konfiguration: &Konfiguration
-    ) -> AenderungenClean {
 
-        let changed_mut = self.clean_stage1(log, konfiguration.merge.stage1_maxdst_point, konfiguration.merge.stage1_maxdst_line);
-
-        let changed_mut = changed_mut.clean_stage2(
-            log, 
-            1.0, 1.0, 10.0,
-        );
-
-        let changed_mut = changed_mut.clean_stage3(split_nas, log, konfiguration.merge.stage2_maxdst_point, konfiguration.merge.stage2_maxdst_line);
-
-        let changed_mut = changed_mut.clean_stage4(
-            original_xml, log, 
-            konfiguration.merge.stage3_maxdst_line, 
-            konfiguration.merge.stage3_maxdst_line2,
-            konfiguration.merge.stage3_maxdeviation_followline,
-        );
-        
-        let changed_mut = changed_mut.clean_stage5(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage6(split_nas, original_xml, log);
-
-        let qt = split_nas.create_quadtree();
-
-        AenderungenClean {
-            nas_xml_quadtree: qt,
-            aenderungen: changed_mut,
-        }
-    }
-    */
-}
-
-fn get_ranking(s: &str) -> usize {
-    match s {
-        "WALD" => 2,
-        "WAS" | "WAF" => 3,
-        _ => 0,
-    }
 }
 
 pub fn render_main(

@@ -189,7 +189,6 @@ pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "6" => aenderungen.clean_stage6(&split_nas_xml, &nas_original, &mut log),
         "63" => aenderungen.clean_nas(),
-        "65" => aenderungen.doppelte_aenderungen_entfernen(),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original),
         _ => return format!("wrong id {id}"),
     };
