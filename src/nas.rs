@@ -128,7 +128,9 @@ impl NasXMLFile {
             let flst_rect = tp.get_rect();
             let flst = ax_flurstuecke_map.iter()
             .filter(|(id, r, poly)| flst_rect.overlaps_rect(r))
-            .filter(|(id, r, poly)| poly.overlaps_polygon(&tp.poly))
+            .filter(|(id, r, poly)| {
+                crate::nas::relate(poly, &tp.poly).overlaps()
+            })
             .map(|(id, _, _)| id.clone())
             .collect::<Vec<_>>();
 
@@ -798,25 +800,6 @@ impl SvgPolygon {
         }
 
         true
-    }
-    
-    pub fn overlaps_polygon(&self, other: &Self) -> bool {
-        for l in other.outer_rings.iter() {
-            for p in l.points.iter() {
-                if point_is_in_polygon(p, self) {
-                    return true;
-                }
-            }
-        }
-        for l in other.inner_rings.iter() {
-            for p in l.points.iter() {
-                if point_is_in_polygon(p, self) {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
     
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {
@@ -1894,7 +1877,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         let flst_area = flst.poly.area_m2();
 
         let mut polys = polys.iter().flat_map(|p| {
-            let intersection_mp = intersect_polys(&flst.poly, &p.poly, false);
+            let intersection_mp = intersect_polys(&flst.poly, &p.poly);
             intersection_mp
             .into_iter()
             .filter(|p| !p.is_zero_area())
@@ -2064,7 +2047,7 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
 
 macro_rules! define_func {($fn_name:ident, $op:expr) => {
         
-    pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
+    pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
         use geo::BooleanOps;
         use crate::nas::EqualsAnyRingStatus::*;
 
@@ -2081,36 +2064,6 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         if a.equals(&b) {
             return vec![a];
         }
-        /*
-        let a_eq_b = a.equals_any_ring(&b);
-        let b_eq_a = b.equals_any_ring(&a);
-
-        match (a_eq_b.clone(), b_eq_a.clone()) {
-            (EqualToRing(_), _) => return vec![a],
-            (_, EqualToRing(_)) => return vec![b],
-            (TouchesOutside, _) | (_, TouchesOutside) => {
-                match $op {
-                    geo::OpType::Intersection => { }, //return Vec::new(),
-                    geo::OpType::Xor => return vec![xor_combine(&a, &b)],
-                    geo::OpType::Union => return union(&a, &b),
-                    geo::OpType::Difference => {
-                        if a_eq_b == TouchesOutside {
-                            return vec![a];
-                        } else {
-                            return vec![b];
-                        }
-                    },
-                }
-            }
-            _ => { },
-        }
-        */
-
-        if $op == geo::OpType::Xor {
-            log_status("xor!");
-            log_status(&serde_json::to_string(&a).unwrap_or_default());
-            log_status(&serde_json::to_string(&b).unwrap_or_default());
-        }
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
@@ -2122,13 +2075,6 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
             q.correct_winding_order();
         }
         s
-        /* 
-        if autoclean {
-            s.iter().map(cleanup_poly).collect()
-        } else {
-            s
-        }
-        */
     }
 };}
 

@@ -491,13 +491,6 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     )
                 },
                 DarstellungPdfAllgemein => {
-                    
-                    /*
-                        pub ax_flur_stil: PdfEbenenStyle,
-                        pub ax_bauraum_stil: PdfEbenenStyle,
-                        pub lagebez_mit_hsnr: PtoStil,
-                    */
-
                     format!("
                         <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
                             <div>
@@ -947,13 +940,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
-    /*
-    2: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
-2.5: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
-3. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
-4: Punkte einfügen auf Linien, die nahe Flurstücks- / Nutzungsartengrenzen liegen
-5: Überlappende Änderungen subtrahieren
-    */
     let clean_stage7_test = {
         format!("
 
@@ -1259,12 +1245,6 @@ impl AenderungenIntersections {
                     .filter(|s| {
                         !SvgPolygon::from_line(s).is_zero_area()
                     })
-                    /* 
-                    .filter_map(|p| {
-                        crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
-                        .outer_rings.get(0).cloned()
-                    })
-                    */
                     .filter(|s| {
                         !SvgPolygon::from_line(s).is_zero_area()
                     })
@@ -1375,7 +1355,7 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.round_to_3dec();
 
-                let is_polys = intersect_polys(&anew, &bnew, true);
+                let is_polys = intersect_polys(&anew, &bnew);
                 let mut is_size = 0.0;
                 let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
                 for intersect_poly in is_polys {
@@ -1443,7 +1423,7 @@ impl AenderungenClean {
             }
 
             log_status(&format!("xoring {flurstueck_id}"));
-            let mut xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined, false)
+            let mut xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined)
             .into_iter()
             .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
             .map(|mut p| {
@@ -2526,21 +2506,17 @@ impl Aenderungen {
             })
             .filter(|(_, id, _)|  id != pid)
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
-            .filter_map(|(k, id, s)| {
-                if s.is_inside_of(&pn.poly) {
-                    Some((k, id, s))
-                } else {
-                    None
-                }
-            })
             .map(|s| s.2)
             .collect::<Vec<_>>();
 
-            let subtracted = subtract_from_poly(&pn.poly, &higher_order_polys);
-            geaendert.insert(pid.clone(), PolyNeu {
-                nutzung: pn.nutzung.clone(),
-                poly: subtracted,
-            });
+            if !higher_order_polys.is_empty() {
+                log_1(&format!("{pid}: {} higher order polys", higher_order_polys.len()).into());
+                let subtracted = subtract_from_poly(&pn.poly, &higher_order_polys);
+                geaendert.insert(pid.clone(), PolyNeu {
+                    nutzung: pn.nutzung.clone(),
+                    poly: subtracted,
+                });
+            }
         }
 
         for (id, np) in geaendert.into_iter() {
@@ -2594,7 +2570,7 @@ impl Aenderungen {
             .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
                         
             for potential_overlap_flst in flst_in_radius.iter() {
-                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
+                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly) {
                     if is.is_zero_area() {
                         continue;
                     }
@@ -2946,14 +2922,6 @@ fn render_csv_editable(
     }).collect::<Vec<_>>().join("");
 
     content
-    /* 
-    format!("
-        <div id='toggle-visible-flst' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 20px;'>
-            <input onchange='toggleRenderOut(event);' type='checkbox'>Filter bearbeitete Flurstücke</input>
-        </div>
-        {content}
-    ")
-    */
 }
 
 pub fn normalize_for_js(s: String) -> String {

@@ -1061,8 +1061,6 @@ pub fn get_flurstuecke(
 pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
-    log_status(&format!("subtract from poly: {}", serde_json::to_string(&first).unwrap_or_default()));
-    log_status(&format!("subtracting: {}", serde_json::to_string(&subtract).unwrap_or_default()));
     for i in subtract.iter() {
         let mut fi = first.round_to_3dec();
         let mut i = i.round_to_3dec();
@@ -1072,37 +1070,18 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
             continue;
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
-        let mut i = i.round_to_3dec();
+        let i = i.round_to_3dec();
         if i.is_zero_area() {
             continue;
         }
         if fi.is_zero_area() {
-            log_1(&"fi is zero area, nothing to subtract from!".into());
             return SvgPolygon::default();
         }
-        match fi.equals_any_ring(&i) {
-            EqualsAnyRingStatus::EqualToRing(_) => return fi,
-            EqualsAnyRingStatus::TouchesOutside => return fi,
-            EqualsAnyRingStatus::NotEqualToAnyRing => continue,
-            EqualsAnyRingStatus::TouchesInside => { },
-            EqualsAnyRingStatus::OverlapsAndTouches => { },
-            EqualsAnyRingStatus::OverlapsWithoutTouching => { },
-            EqualsAnyRingStatus::ContainedInside => { },
-            EqualsAnyRingStatus::DistinctOutside => { },
-        }
-        match i.equals_any_ring(&fi) {
-            EqualsAnyRingStatus::EqualToRing(_) => return i,
-            EqualsAnyRingStatus::TouchesOutside => return i,
-            EqualsAnyRingStatus::NotEqualToAnyRing => continue,
-            EqualsAnyRingStatus::TouchesInside => { },
-            EqualsAnyRingStatus::OverlapsAndTouches => { },
-            EqualsAnyRingStatus::OverlapsWithoutTouching => { },
-            EqualsAnyRingStatus::ContainedInside => { },
-            EqualsAnyRingStatus::DistinctOutside => { },
-        }
+        log_1(&"subtracting...".into());
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
+        log_1(&"subtracted!".into());
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {
@@ -1148,13 +1127,6 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
             }).collect(),
         };
         first = new;
-        /* 
-        if autoclean {
-            first = crate::nas::cleanup_poly(&new);
-        } else {
-            first = new;
-        }
-        */
     }
 
     first.correct_winding_order();
