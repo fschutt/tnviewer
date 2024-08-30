@@ -759,7 +759,10 @@ pub enum EqualsAnyRingStatus {
     TouchesInside,
     TouchesOutside,
     NotEqualToAnyRing,
-    Overlaps,
+    OverlapsAndTouches,
+    OverlapsWithoutTouching,
+    ContainedInside,
+    DistinctOutside,
 }
 
 impl SvgPolygon {
@@ -1033,19 +1036,24 @@ impl SvgPolygon {
             if or.equals(first_ring) {
                 return EqualsAnyRingStatus::EqualToRing(i);
             }
-            if Self::equals_ring_dst(first_ring, or) {
-                if Self::is_center_inside(first_ring, or) {
-                    if Self::any_point_outside(first_ring, or) {
-                        return EqualsAnyRingStatus::Overlaps;
-                    } else {
-                        return EqualsAnyRingStatus::TouchesInside;
-                    }
-                } else {
-                    if Self::any_point_outside(first_ring, or) {
-                        return EqualsAnyRingStatus::Overlaps;
-                    } else {
-                        return EqualsAnyRingStatus::TouchesOutside;
-                    }
+
+            let points_outside = Self::is_center_inside(first_ring, or);
+            let points_inside = Self::is_center_inside(first_ring, or);
+            let all_points_on_line = Self::equals_ring_dst(first_ring, or);
+            
+            if all_points_on_line {
+                match (points_outside, points_inside) {
+                    (true, false) => return EqualsAnyRingStatus::TouchesOutside,
+                    (false, true) => return EqualsAnyRingStatus::TouchesInside,
+                    (true, true) => return EqualsAnyRingStatus::OverlapsAndTouches,
+                    (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
+                }
+            } else {
+                match (points_outside, points_inside) {
+                    (true, false) => return EqualsAnyRingStatus::DistinctOutside,
+                    (false, true) => return EqualsAnyRingStatus::ContainedInside,
+                    (true, true) => return EqualsAnyRingStatus::OverlapsWithoutTouching,
+                    (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
                 }
             }
         }

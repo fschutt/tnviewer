@@ -8,7 +8,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, polys_overlap, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, polys_overlap, translate_to_geo_poly, xor_polys, EqualsAnyRingStatus, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1041,6 +1041,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 </label>
             </div>
 
+            <!--
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(63);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
@@ -1052,6 +1053,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     </div>
                 </label>
             </div>
+            -->
 
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(65);' class='__application-ribbon-action-vertical-large'>
@@ -1059,8 +1061,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>remerge</p>
+                        <p>Dopp. Änd.</p>
+                        <p>entfernen</p>
                     </div>
                 </label>
             </div>
@@ -2458,6 +2460,54 @@ impl Aenderungen {
                 })
             }).collect()
         }
+    }
+
+    pub fn doppelte_aenderungen_entfernen(&self) -> Aenderungen {
+
+        let to_remove = self.na_polygone_neu.iter().filter_map(|(id, s)|{
+
+            use crate::nas::EqualsAnyRingStatus::*;
+
+            let overlaps = self.na_polygone_neu.iter()
+            .filter(|(q, _)| *q != id)
+            .find_map(|(qid, q)| {
+                let a_eq_b = q.poly.equals_any_ring(&s.poly);
+                let b_eq_a = q.poly.equals_any_ring(&s.poly);
+                match (a_eq_b, b_eq_a) {
+                    (DistinctOutside, _) | (_, DistinctOutside) |
+                    (TouchesOutside, _) | (_, TouchesOutside) |
+                    (NotEqualToAnyRing, _) | (_, NotEqualToAnyRing) => None,
+                    _ => Some(qid.clone()),
+                }
+            });
+
+            if let Some(s) = overlaps {
+                let lg = id.max(&s);
+                let sm = id.min(&s);
+                Some((lg.to_string(), sm.to_string()))
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        let mut changed_mut = self.clone();
+        for (a, b) in to_remove.iter() {
+            let fa = match changed_mut.na_polygone_neu.get(a).map(|s| s.poly.area_m2()) {
+                Some(s) => s,
+                None => continue,
+            };
+            let fb = match changed_mut.na_polygone_neu.get(b).map(|s| s.poly.area_m2()) {
+                Some(s) => s,
+                None => continue,
+            };
+            if fa < fb {
+                changed_mut.na_polygone_neu.remove(a);
+            } else {
+                changed_mut.na_polygone_neu.remove(b);
+            }
+        }
+
+        changed_mut
     }
 
     pub fn remerge_lines(&self) -> Aenderungen {
