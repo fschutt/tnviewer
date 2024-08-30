@@ -2061,8 +2061,10 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         if a.equals(&b) {
             return vec![a];
         }
+        /*
         let a_eq_b = a.equals_any_ring(&b);
         let b_eq_a = b.equals_any_ring(&a);
+
         match (a_eq_b.clone(), b_eq_a.clone()) {
             (EqualToRing(_), _) => return vec![a],
             (_, EqualToRing(_)) => return vec![b],
@@ -2082,6 +2084,7 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
             }
             _ => { },
         }
+        */
 
         if $op == geo::OpType::Xor {
             log_status("xor!");
@@ -2098,11 +2101,14 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         for q in s.iter_mut() {
             q.correct_winding_order();
         }
+        s
+        /* 
         if autoclean {
             s.iter().map(cleanup_poly).collect()
         } else {
             s
         }
+        */
     }
 };}
 

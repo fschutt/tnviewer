@@ -1252,10 +1252,12 @@ impl AenderungenIntersections {
                     .filter(|s| {
                         !SvgPolygon::from_line(s).is_zero_area()
                     })
+                    /* 
                     .filter_map(|p| {
                         crate::nas::cleanup_poly(&SvgPolygon::from_line(p))
                         .outer_rings.get(0).cloned()
                     })
+                    */
                     .filter(|s| {
                         !SvgPolygon::from_line(s).is_zero_area()
                     })
@@ -1459,7 +1461,7 @@ impl AenderungenClean {
                     neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
                     flst_id: flurstueck_id.clone(),
                     flst_id_part: flst_part_id.clone(),
-                    poly_cut: crate::nas::cleanup_poly(&xor_area).round_to_3dec(),
+                    poly_cut: xor_area.round_to_3dec(),
                 };
                 
                 is.push(qq);
@@ -2267,8 +2269,8 @@ impl Aenderungen {
                     point
                 } else {
                     SvgPoint {
-                        x: a.x + ((point.x - a.x) / 100.0),
-                        y: a.y + ((point.y - a.y) / 100.0),
+                        x: a.x + ((point.x - a.x) / 50.0),
+                        y: a.y + ((point.y - a.y) / 50.0),
                     }
                 }
             }
@@ -2519,7 +2521,7 @@ impl Aenderungen {
             .map(|(k, v)| {
                 (k.clone(), PolyNeu {
                     nutzung: v.nutzung.clone(),
-                    poly: crate::nas::cleanup_poly(&v.poly.round_to_3dec()),
+                    poly: v.poly.round_to_3dec(),
                 })
             })
             .filter(|s| !s.1.poly.is_zero_area())

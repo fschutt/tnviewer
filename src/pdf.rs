@@ -1152,11 +1152,14 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
+        first = new;
+        /* 
         if autoclean {
             first = crate::nas::cleanup_poly(&new);
         } else {
             first = new;
         }
+        */
     }
 
     first.correct_winding_order();
