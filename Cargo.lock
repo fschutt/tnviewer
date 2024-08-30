@@ -616,6 +616,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "highway"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c706f1711006204c2ba8fb1a7bd55f689bbf7feca9ff40325206b5e140cff6df"
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1357,6 +1363,7 @@ dependencies = [
  "float-cmp",
  "geo 0.28.0",
  "geo-rasterize",
+ "highway",
  "ndarray",
  "polylabel-mini",
  "printpdf",

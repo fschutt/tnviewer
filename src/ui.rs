@@ -947,6 +947,13 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
+    /*
+    2: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
+2.5: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
+3. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
+4: Punkte einfügen auf Linien, die nahe Flurstücks- / Nutzungsartengrenzen liegen
+5: Überlappende Änderungen subtrahieren
+    */
     let clean_stage7_test = {
         format!("
 
@@ -956,8 +963,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 1</p>
+                        <p>1: Punkte auf</p>
+                        <p>Änd. ziehen</p>
                     </div>
                 </label>
             </div>
@@ -968,8 +975,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 2</p>
+                        <p>2: Punkte einf.</p>
+                        <p>von nahen Änder.</p>
                     </div>
                 </label>
             </div>
@@ -980,8 +987,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 2.5</p>
+                        <p>2.5: Änderungen</p>
+                        <p>mergen nach Typ</p>
                     </div>
                 </label>
             </div>
@@ -992,8 +999,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 3</p>
+                        <p>3: Punkte auf</p>
+                        <p>Flst. ziehen</p>
                     </div>
                 </label>
             </div>
@@ -1004,8 +1011,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 4</p>
+                        <p>4: Punkte einf.</p>
+                        <p>von nahen Flst.</p>
                     </div>
                 </label>
             </div>
@@ -1016,8 +1023,8 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 5</p>
+                        <p>5: Überlappende</p>
+                        <p>Änd. subtrahieren</p>
                     </div>
                 </label>
             </div>
@@ -1028,20 +1035,44 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>Änderungen</p>
-                        <p>säubern 6</p>
+                        <p>6: Änd. mit</p>
+                        <p>Flst. verschneiden</p>
                     </div>
                 </label>
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(8)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(63);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Änderungen</p>
-                        <p>säubern 8 ALL</p>
+                        <p>NAS clean</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(65);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>remerge</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>zu Splitfl.</p>
                     </div>
                 </label>
             </div>
@@ -2416,6 +2447,80 @@ impl Aenderungen {
 
     }
 
+    pub fn clean_nas(&self) -> Aenderungen {
+        Aenderungen {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: self.na_polygone_neu.iter().map(|(k, v)| {
+                (k.clone(), PolyNeu {
+                    nutzung: v.nutzung.clone(),
+                    poly: crate::nas::cleanup_poly(&v.poly),
+                })
+            }).collect()
+        }
+    }
+
+    pub fn remerge_lines(&self) -> Aenderungen {
+
+        // deduplicate and un-merge all lines
+        let mut all_rings = BTreeMap::new();
+        for s in self.na_polygone_neu.iter() {
+            for or in s.1.poly.outer_rings.iter() {
+                all_rings.insert(or.get_hash(), or);
+            }
+            for ir in s.1.poly.inner_rings.iter() {
+                all_rings.insert(ir.get_hash(), ir);
+            }
+        }
+        
+        // recombine lines based on inside / outside (set nutzung = None for now)
+        let mut recombined: Vec<Vec<&&SvgLine>> = Vec::new();
+        'outer: for (_, line) in all_rings.iter() {
+            for r in recombined.iter_mut() {
+                let first_line: SvgLine = match r.first().cloned() {
+                    Some(s) => (*s).clone(),
+                    None => break,
+                };
+                if nas::line_contained_in_line(&first_line, line) {
+                    // line is an inner ring, push to end
+                    r.push(line);
+                    continue 'outer;
+                } else if nas::line_contained_in_line(&line, &first_line) {
+                    // line is an outer ring, push to start
+                    r.push(line);
+                    r.reverse();
+                    continue 'outer;
+                }
+            }
+
+            recombined.push(vec![line]);
+        }
+
+        let mut polygons_recombined = recombined.iter().filter_map(|s| Some(SvgPolygon {
+            outer_rings: vec![(**s.get(0)?).clone()],
+            inner_rings: s.iter().skip(1).map(|s| (**s).clone()).collect(),
+        })).collect::<Vec<_>>();
+
+        let mut new_inner_rings_polys = polygons_recombined.iter().flat_map(|p| {
+            p.inner_rings.iter().map(|l| SvgPolygon::from_line(l))
+        }).collect::<Vec<_>>();
+
+        polygons_recombined.append(&mut new_inner_rings_polys);
+
+        // TODO: add nutzungen again based on triangle test with original changes
+
+        Aenderungen {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: polygons_recombined.into_iter().map(|p| {
+                (uuid(), PolyNeu {
+                    nutzung: None,
+                    poly: p,
+                })
+            }).collect(),
+        }
+    }
+
     // Subtrahiere Änderungen, die über Änderungen liegen
     pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
         
@@ -2567,57 +2672,6 @@ impl Aenderungen {
         adefault.clean_internal().deduplicate()
     }
 
-    /* 
-    // Änderungen, die eine NA-Fläche mit derselben Nutzungsart überlappen, entfernen
-    pub fn clean_stage7(&self, split_nas: &SplitNasXml) -> Aenderungen {
-        
-        let mut changed_mut = self.clone();
-        let quadtree = split_nas.create_quadtree();
-
-        let mut to_remove = BTreeSet::new();
-
-        for (id, polyneu) in changed_mut.na_polygone_neu.iter() {
-            
-            let na_polys_gleiche_nutzung = quadtree.get_overlapping_flst(&polyneu.poly.get_rect())
-            .into_iter()
-            .filter_map(|(_, tp)| {
-                let kuerzel = tp.get_auto_kuerzel(tp.attributes.get("AX_Ebene")?)?;
-                if kuerzel == polyneu.nutzung.clone()? {
-                    Some(tp)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-            if na_polys_gleiche_nutzung.is_empty() {
-                continue;
-            }
-
-            log_1(&format!("id {id:?}: {} teilflaechen mit gleicher nutzung", na_polys_gleiche_nutzung.len()).into());
-            for tp in na_polys_gleiche_nutzung.iter() {
-                let a_eq_b = polyneu.poly.equals_any_ring(&tp.poly);
-                let b_eq_a = tp.poly.equals_any_ring(&polyneu.poly);
-                log_1(&format!("-- relate: {:?}", nas::relate(&polyneu.poly, &tp.poly)).into());
-                log_1(&format!("-- polys overlap: {:?}", polys_overlap(&polyneu.poly, &tp.poly)).into());
-                log_1(&format!("-- a_eq_b: {a_eq_b:?}, b_eq_a: {b_eq_a:?}").into());
-            }
-
-            if na_polys_gleiche_nutzung.iter().any(|p| polys_overlap(&polyneu.poly, &p.poly)) {
-                to_remove.insert(id.clone());
-            }
-        }
-
-        for tr in to_remove {
-            log_1(&format!("removing {tr:?}").into());
-            // changed_mut.na_polygone_neu.remove(&tr);
-        }
-
-        changed_mut
-    }
-
-    */
-
     pub fn deduplicate(&self) -> Self {
 
         let s = self.round_to_3decimal();
@@ -2644,17 +2698,17 @@ impl Aenderungen {
         }
     }
 
-    pub fn clean_stage7_test(
-        &self, 
-        split_nas: &SplitNasXml, 
+
+    pub fn show_splitflaechen(
+        &self,
+        split_nas: &SplitNasXml,
         original_xml: &NasXMLFile, 
-        log: &mut Vec<String>, 
-        konfiguration: &Konfiguration
     ) -> Aenderungen {
 
-        let aenderungen = self.clean(split_nas, original_xml, log, konfiguration);
-
-        let intersections = aenderungen.get_aenderungen_intersections(original_xml);
+        let intersections = AenderungenClean {
+            nas_xml_quadtree: split_nas.create_quadtree(),
+            aenderungen: self.clone(),
+        }.get_aenderungen_intersections(original_xml);
 
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
@@ -2668,7 +2722,8 @@ impl Aenderungen {
             }).collect()
         }.round_to_3decimal()
     }
-
+    
+    /*
     pub fn clean(
         &self, 
         split_nas: &SplitNasXml, 
@@ -2704,6 +2759,7 @@ impl Aenderungen {
             aenderungen: changed_mut,
         }
     }
+    */
 }
 
 fn get_ranking(s: &str) -> usize {

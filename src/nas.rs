@@ -1198,6 +1198,18 @@ pub struct SvgLine {
 
 impl SvgLine {
 
+    pub fn get_hash(&self) -> [u64;4] {
+        use highway::{HighwayHasher, HighwayHash};
+        let rounded = SvgPolygon::from_line(self).round_to_3dec().get_all_pointcoords_sorted();
+        let bytes = rounded.iter().flat_map(|[a,b]| {
+            let mut a = a.to_le_bytes().to_vec();
+            a.extend(b.to_le_bytes().into_iter());
+            a
+        }).collect::<Vec<_>>();
+        let res3: [u64; 4] = HighwayHasher::default().hash256(&bytes);
+        res3
+    }
+
     pub fn inverse_point_order(&self) -> SvgLine {
         SvgLine {
             points: {
@@ -2286,7 +2298,6 @@ impl Relate {
     }
 }
 
-
 pub fn polys_overlap(a: &SvgPolygon, b: &SvgPolygon) -> bool {
     let r = relate(a, b);
     r.a_contained_in_b() || r.b_contained_in_a()
@@ -2299,6 +2310,15 @@ pub fn relate(a: &SvgPolygon, b: &SvgPolygon) -> Relate {
         is_1,
         is_2,
     }
+}
+
+pub fn line_contained_in_line(outer: &SvgLine, inner: &SvgLine) -> bool {
+    for p in inner.points.iter() {
+        if !point_in_line(p, outer) {
+            return false;
+        }
+    }
+    true
 }
 
 // Only touches the other polygon but does not intersect
