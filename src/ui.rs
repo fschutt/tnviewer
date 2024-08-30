@@ -2527,8 +2527,7 @@ impl Aenderungen {
             .filter(|(_, id, _)|  id != pid)
             .filter(|(k, id, v)| v.get_rect().overlaps_rect(&pn_rect))
             .filter_map(|(k, id, s)| {
-                let relate: nas::Relate = crate::nas::relate(&pn.poly, s);
-                if relate.a_contained_in_b() || relate.b_contained_in_a() || relate.overlaps() {
+                if s.is_inside_of(&pn.poly) {
                     Some((k, id, s))
                 } else {
                     None

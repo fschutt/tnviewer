@@ -1083,34 +1083,23 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         match fi.equals_any_ring(&i) {
             EqualsAnyRingStatus::EqualToRing(_) => return fi,
             EqualsAnyRingStatus::TouchesOutside => return fi,
+            EqualsAnyRingStatus::NotEqualToAnyRing => continue,
             EqualsAnyRingStatus::TouchesInside => { },
             EqualsAnyRingStatus::OverlapsAndTouches => { },
             EqualsAnyRingStatus::OverlapsWithoutTouching => { },
             EqualsAnyRingStatus::ContainedInside => { },
             EqualsAnyRingStatus::DistinctOutside => { },
-            EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
         match i.equals_any_ring(&fi) {
             EqualsAnyRingStatus::EqualToRing(_) => return i,
             EqualsAnyRingStatus::TouchesOutside => return i,
+            EqualsAnyRingStatus::NotEqualToAnyRing => continue,
             EqualsAnyRingStatus::TouchesInside => { },
             EqualsAnyRingStatus::OverlapsAndTouches => { },
             EqualsAnyRingStatus::OverlapsWithoutTouching => { },
             EqualsAnyRingStatus::ContainedInside => { },
             EqualsAnyRingStatus::DistinctOutside => { },
-            EqualsAnyRingStatus::NotEqualToAnyRing => { },
         }
-        let relate = nas::relate(&fi, &i);
-        if relate.only_touches() {
-            continue;
-        }
-        if relate.b_contained_in_a() {
-            i.insert_points_from(&fi, 0.01);
-        }
-        if relate.a_contained_in_b() {
-            fi.insert_points_from(&i, 0.01);
-        }
-        i = i.inverse_point_order();
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
@@ -1123,7 +1112,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
                 s.inner_rings.clone().into_iter()
             }).collect(),
         };
-        first = new; // crate::nas::cleanup_poly(&new);
+        first = new;
     }
 
     first.correct_winding_order();
