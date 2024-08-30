@@ -2040,11 +2040,7 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
-        let mut s = if $op == geo::OpType::Xor {
-            translate_from_geo_poly_special(&intersect)
-        } else {
-            translate_from_geo_poly(&intersect)
-        };
+        let mut s = translate_from_geo_poly(&intersect);
         if $op == geo::OpType::Xor {
             log_status(&serde_json::to_string(&s).unwrap_or_default());
         }
