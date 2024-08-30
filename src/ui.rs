@@ -1467,7 +1467,7 @@ impl AenderungenClean {
                     neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
                     flst_id: flurstueck_id.clone(),
                     flst_id_part: flst_part_id.clone(),
-                    poly_cut: xor_area.round_to_3dec(),
+                    poly_cut: crate::nas::cleanup_poly(&xor_area).round_to_3dec(),
                 };
                 
                 is.push(qq);
