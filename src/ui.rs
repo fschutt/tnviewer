@@ -1422,7 +1422,20 @@ impl AenderungenClean {
                 continue;
             }
 
-            log_status(&format!("xoring {flurstueck_id}"));
+            log_status(&format!("subtracting {flurstueck_id}"));
+            let subtracted = subtract_from_poly(&flst_part.poly, &[&areas_to_subtract_joined]);
+
+            let qq = AenderungenIntersection {
+                alt: alt_kuerzel.clone(),
+                neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
+                flst_id: flurstueck_id.clone(),
+                flst_id_part: flst_part_id.clone(),
+                poly_cut: subtracted.round_to_3dec(),
+            };
+            
+            is.push(qq);
+
+            /*
             let mut xor_polys = xor_polys(&flst_part.poly, &areas_to_subtract_joined)
             .into_iter()
             .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
@@ -1453,6 +1466,8 @@ impl AenderungenClean {
                 
                 is.push(qq);
             }
+             */
+            log_status(&format!("subtract ok!"));
         }
 
         let mut is = is.into_iter()
