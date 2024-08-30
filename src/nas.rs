@@ -1669,16 +1669,31 @@ impl SplitNasXml {
 
     pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
         let split = flstpartid.split(":").collect::<Vec<_>>();
-        let (ax_flurstueck, ax_ebene, cut_obj_id) = match &split[..] {
-            &[a, e, o] => (a, e, o),
+        let (ax_flurstueck, ax_ebene, cut_obj_id, intersect_id) = match &split[..] {
+            &[a, e, o, i] => (a, e, o, Some(i)),
+            &[a, e, o] => (a, e, o, None),
             _ => return None,
         };
-        self.flurstuecke_nutzungen.get(ax_flurstueck)?
-        .iter()
-        .find(|p| {
-            p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
-            p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
-        })
+
+        match intersect_id {
+            Some(s) => {
+                self.flurstuecke_nutzungen.get(ax_flurstueck)?
+                .iter()
+                .find(|p| {
+                    p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
+                    p.attributes.get("AX_IntersectionId").map(|s| s.as_str()) == Some(s) &&
+                    p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
+                })
+            },
+            None => {
+                self.flurstuecke_nutzungen.get(ax_flurstueck)?
+                .iter()
+                .find(|p| {
+                    p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
+                    p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
+                })
+            }
+        }
     }
 }
 
@@ -1881,12 +1896,14 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
             intersection_mp
             .into_iter()
             .filter(|p| !p.is_zero_area())
-            .filter_map(|svg_poly| {
+            .enumerate()
+            .filter_map(|(i, svg_poly)| {
 
                 let tp = TaggedPolygon {
                     attributes: {
                         let mut attrs = p.attributes.clone();
                         attrs.insert("AX_Flurstueck".to_string(), id.clone());
+                        attrs.insert("AX_IntersectionId".to_string(), i.to_string());
                         attrs
                     },
                     poly: svg_poly,

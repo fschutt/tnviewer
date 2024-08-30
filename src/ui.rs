@@ -1339,6 +1339,12 @@ impl AenderungenClean {
                     Some(s) => s.clone(),
                     None => continue,
                 };
+
+                let intersect_id = potentially_intersecting.attributes
+                .get("AX_IntersectionId")
+                .map(|w| format!(":{w}"))
+                .unwrap_or_default();
+
                 let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
                     Some(s) => s.clone(),
                     None => continue,
@@ -1357,7 +1363,7 @@ impl AenderungenClean {
 
                 let is_polys = intersect_polys(&anew, &bnew);
                 let mut is_size = 0.0;
-                let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}");
+                let flst_id_part = format!("{potentially_touching_id}:{ebene}:{obj_id}{intersect_id}");
                 for intersect_poly in is_polys {
                     let intersect_poly = intersect_poly.round_to_3dec();
                     if intersect_poly.is_zero_area() {
@@ -1526,7 +1532,13 @@ impl AenderungenClean {
                         Some(s) => s.clone(),
                         None => continue,
                     };
-                    let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}");
+
+                    let intersect_id = part.attributes
+                    .get("AX_IntersectionId")
+                    .map(|w| format!(":{w}"))
+                    .unwrap_or_default();
+
+                    let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
                     if na_bereits_definiert.contains(&flst_part_id) {
                         continue;
                     }
@@ -1595,7 +1607,11 @@ impl AenderungenClean {
                     Some(s) => s.clone(),
                     None => continue,
                 };
-                let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}");
+                let intersect_id = part.attributes
+                .get("AX_IntersectionId")
+                .map(|w| format!(":{w}"))
+                .unwrap_or_default();
+                let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
                 if na_bereits_definiert.contains(&flst_part_id) {
                     continue;
                 }
@@ -2915,7 +2931,11 @@ fn render_csv_editable(
                             let ax_ebene = tp.attributes.get("AX_Ebene")?;
                             let ax_flurstueck = flstidparsed.format_start_str();
                             let cut_obj_id = tp.attributes.get("id")?;
-                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
+                            let intersect_id = tp.attributes
+                            .get("AX_IntersectionId")
+                            .map(|w| format!(":{w}"))
+                            .unwrap_or_default();
+                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}{intersect_id}");
                             let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
                             let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
                             let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
