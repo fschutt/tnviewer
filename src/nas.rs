@@ -759,6 +759,7 @@ pub enum EqualsAnyRingStatus {
     TouchesInside,
     TouchesOutside,
     NotEqualToAnyRing,
+    Overlaps,
 }
 
 impl SvgPolygon {
@@ -1034,14 +1035,43 @@ impl SvgPolygon {
             }
             if Self::equals_ring_dst(first_ring, or) {
                 if Self::is_center_inside(first_ring, or) {
-                    return EqualsAnyRingStatus::TouchesInside;
+                    if Self::any_point_outside(first_ring, or) {
+                        return EqualsAnyRingStatus::Overlaps;
+                    } else {
+                        return EqualsAnyRingStatus::TouchesInside;
+                    }
                 } else {
-                    return EqualsAnyRingStatus::TouchesOutside;
+                    if Self::any_point_outside(first_ring, or) {
+                        return EqualsAnyRingStatus::Overlaps;
+                    } else {
+                        return EqualsAnyRingStatus::TouchesOutside;
+                    }
                 }
             }
         }
 
         EqualsAnyRingStatus::NotEqualToAnyRing
+    }
+
+    pub fn any_point_outside(a: &SvgLine, b: &SvgLine) -> bool {
+        let tr = translate_to_geo_poly(&SvgPolygon::from_line(a));
+        let a_poly = match tr.0.get(0) {
+            Some(s) => s,
+            None => return false,
+        };
+    
+        let mut b_poly = SvgPolygon::from_line(b);
+        b_poly.correct_winding_order();
+
+        for tri in a_poly.earcut_triangles_iter() {
+            let cen = tri.centroid();
+            let cen = SvgPoint { x: cen.x(), y: cen.y() };
+            if !point_is_in_polygon(&cen, &b_poly) {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
@@ -2011,6 +2041,7 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
     });
 }
 
+
 macro_rules! define_func {($fn_name:ident, $op:expr) => {
         
     pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon, autoclean: bool) -> Vec<SvgPolygon> {
@@ -2035,9 +2066,6 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         match (a_eq_b.clone(), b_eq_a.clone()) {
             (EqualToRing(_), _) => return vec![a],
             (_, EqualToRing(_)) => return vec![b],
-            (TouchesInside, _) | (_, TouchesInside) => {
-
-            },
             (TouchesOutside, _) | (_, TouchesOutside) => {
                 match $op {
                     geo::OpType::Intersection => return Vec::new(),
@@ -2051,7 +2079,7 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
                         }
                     },
                 }
-            },
+            }
             _ => { },
         }
 
@@ -2078,6 +2106,9 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
     }
 };}
 
+define_func!(intersect_polys, geo::OpType::Intersection);
+define_func!(xor_polys, geo::OpType::Xor);
+
 fn xor_combine(a: &SvgPolygon, b: &SvgPolygon) -> SvgPolygon {
     let mut aor = a.outer_rings.clone();
     let mut air = a.inner_rings.clone();
@@ -2102,9 +2133,6 @@ pub fn convex_hull_polys(a: &SvgPolygon, b: &[SvgPolygon]) -> SvgPolygon {
     translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&x).convex_hull()]))
     .get(0).cloned().unwrap_or_default()
 }
-
-define_func!(intersect_polys, geo::OpType::Intersection);
-define_func!(xor_polys, geo::OpType::Xor);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {

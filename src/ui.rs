@@ -2544,7 +2544,8 @@ impl Aenderungen {
             None => return adefault,
         };
         let flurstuecke_rects = quadtree_f32::QuadTree::new(
-            flurstuecke.iter().enumerate().map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.poly.get_rect())))
+            flurstuecke.iter().enumerate()
+            .map(|(i, p)| (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(p.poly.get_rect())))
         );
         
         for an in changed_mut.na_polygone_neu.values() {
@@ -2552,7 +2553,7 @@ impl Aenderungen {
             .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
                         
             for potential_overlap_flst in flst_in_radius.iter() {
-                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, true) {
+                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
                     if is.is_zero_area() {
                         continue;
                     }
