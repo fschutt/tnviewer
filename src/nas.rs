@@ -2070,14 +2070,11 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         for q in s.iter_mut() {
             q.correct_winding_order();
         }
-        s
-        /* 
         if autoclean {
             s.iter().map(cleanup_poly).collect()
         } else {
             s
         }
-        */
     }
 };}
 

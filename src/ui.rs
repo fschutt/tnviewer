@@ -2552,7 +2552,7 @@ impl Aenderungen {
             .into_iter().filter_map(|f| flurstuecke.get(f.0)).collect::<Vec<_>>();
                         
             for potential_overlap_flst in flst_in_radius.iter() {
-                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, false) {
+                for is in intersect_polys(&an.poly, &potential_overlap_flst.poly, true) {
                     if is.is_zero_area() {
                         continue;
                     }
