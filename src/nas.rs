@@ -1978,7 +1978,10 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
     // fix "bridge" polygons
     for r in ranges_selfintersection.iter() {
         let points = line.points[r.clone()].to_vec();
-        let l = SvgLine { points: points };
+        let mut l = SvgLine { points: points };
+        if !l.is_closed() {
+            l.points.push(line.points[r.end]);
+        }
         if !SvgPolygon::from_line(&line).is_zero_area() {
             clean_ring_selfintersection(&l, v);
         }
