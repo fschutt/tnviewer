@@ -2068,7 +2068,7 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
             (_, EqualToRing(_)) => return vec![b],
             (TouchesOutside, _) | (_, TouchesOutside) => {
                 match $op {
-                    geo::OpType::Intersection => return Vec::new(),
+                    geo::OpType::Intersection => { }, //return Vec::new(),
                     geo::OpType::Xor => return vec![xor_combine(&a, &b)],
                     geo::OpType::Union => return union(&a, &b),
                     geo::OpType::Difference => {
