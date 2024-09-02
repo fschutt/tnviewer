@@ -367,11 +367,12 @@ export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_origi
 * @param {string | undefined} [split_nas_xml]
 * @param {string | undefined} [nas_original]
 * @param {string | undefined} [konfiguration]
+* @param {string | undefined} [csv]
 * @returns {string}
 */
-export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original, konfiguration) {
-    let deferred6_0;
-    let deferred6_1;
+export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original, konfiguration, csv) {
+    let deferred7_0;
+    let deferred7_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         var ptr0 = isLikeNone(id) ? 0 : passStringToWasm0(id, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -384,15 +385,17 @@ export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_or
         var len3 = WASM_VECTOR_LEN;
         var ptr4 = isLikeNone(konfiguration) ? 0 : passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         var len4 = WASM_VECTOR_LEN;
-        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var ptr5 = isLikeNone(csv) ? 0 : passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len5 = WASM_VECTOR_LEN;
+        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred6_0 = r0;
-        deferred6_1 = r1;
+        deferred7_0 = r0;
+        deferred7_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_3(deferred6_0, deferred6_1, 1);
+        wasm.__wbindgen_export_3(deferred7_0, deferred7_1, 1);
     }
 }
 
@@ -1578,6 +1581,7 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_updateexportstatus_dff9b10d495f2e73 = function(arg0, arg1) {
         let deferred0_0;
         let deferred0_1;
@@ -1589,7 +1593,6 @@ function __wbg_get_imports() {
             wasm.__wbindgen_export_3(deferred0_0, deferred0_1, 1);
         }
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
         console.log(getObject(arg0));
     };

@@ -6,6 +6,7 @@ use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
 use wasm_bindgen::prelude::*;
+use xlsx::FlstIdParsed;
 use xml::XmlNode;
 use crate::ui::UiData;
 use crate::csv::CsvDataType;
@@ -70,6 +71,16 @@ struct GeoJSONResult {
     pub geojson1: String,
     pub geojson2: String,
     pub bounds: [[f64;2];2],
+}
+
+pub fn get_main_gemarkung(csv: &CsvDataType) -> usize {
+    for flst_id in csv.keys() {
+        if let Some(f) = FlstIdParsed::from_str(&flst_id).parse_num().map(|f| f.gemarkung) {
+            log_status(&format!("Gemarkungsnr.: {f}"));
+            return f;
+        }   
+    }
+    0
 }
 
 #[wasm_bindgen]
@@ -178,7 +189,14 @@ pub fn lib_nutzungen_saeubern(
 }
 
 #[wasm_bindgen]
-pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>, split_nas_xml: Option<String>, nas_original: Option<String>, konfiguration: Option<String>) -> String {
+pub fn lib_get_aenderungen_clean(
+    id: Option<String>, 
+    aenderungen: Option<String>, 
+    split_nas_xml: Option<String>, 
+    nas_original: Option<String>, 
+    konfiguration: Option<String>,
+    csv: Option<String>,
+) -> String {
     
     let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()) {
         Ok(o) => o,
@@ -188,6 +206,7 @@ pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>
     let split_nas_xml = serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()).unwrap_or_default();
     let nas_original = serde_json::from_str::<NasXMLFile>(&nas_original.unwrap_or_default()).unwrap_or_default();
     let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration.unwrap_or_default()).unwrap_or_default();
+    let csv_data = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
 
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas_xml.crs) {
         Ok(o) => o,
@@ -214,7 +233,7 @@ pub fn lib_get_aenderungen_clean(id: Option<String>, aenderungen: Option<String>
         },
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "63" => aenderungen.clean_nas(),
-        "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original),
+        "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original, &csv_data),
         _ => return format!("wrong id {id}"),
     };
 

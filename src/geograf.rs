@@ -1,6 +1,6 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
-use dxf::{Vector, XData, XDataItem};
+use dxf::{Header, Vector, XData, XDataItem};
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
@@ -138,7 +138,7 @@ pub fn export_aenderungen_geograf(
     }
 
     log_status("Berechne Splitflächen...");
-    let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml);
+    let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml, &csv_data);
 
     log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
 
@@ -161,9 +161,11 @@ pub fn export_aenderungen_geograf(
     log_status(&format!("QuadTree ok!"));
 
     if risse.is_empty() {
+        let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, None);
         export_splitflaechen(
             &mut files, 
             projekt_info, 
+            &calc,
             konfiguration,
             None, 
             &splitflaechen.0, 
@@ -187,10 +189,12 @@ pub fn export_aenderungen_geograf(
                 .iter()
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
-            
+            let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, Some(extent_rect.clone()));
+
             export_splitflaechen(
                 &mut files, 
                 projekt_info, 
+                &calc,
                 konfiguration,
                 Some(format!("Riss{}", i + 1)), 
                 &splitflaechen_for_riss, 
@@ -287,6 +291,7 @@ pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
     original_xml: &NasXMLFile,
+    csv: &CsvDataType,
 ) -> AenderungenIntersections {
 
     let qt = split_nas.create_quadtree();
@@ -298,7 +303,7 @@ pub fn calc_splitflaechen(
 
     log_status(&format!("Verschneide Änderungen.."));
 
-    aenderungen.get_aenderungen_intersections(original_xml)
+    aenderungen.get_aenderungen_intersections(original_xml, crate::get_main_gemarkung(csv))
 }
 
 pub fn generate_risse_shp(
@@ -338,6 +343,7 @@ pub fn generate_risse_shp(
 pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
+    calc: &HeaderCalcConfig,
     konfiguration: &Konfiguration,
     parent_dir: Option<String>,
     splitflaechen: &[AenderungenIntersection],
@@ -351,7 +357,7 @@ pub fn export_splitflaechen(
 
     log_status(&format!("[{num_riss} / {total_risse}] Export {} Teilflächen", splitflaechen.len()));
 
-    let header = generate_header_pdf(info, split_nas, riss.as_ref().map(|(_, s)| s.get_rect()), num_riss, total_risse);
+    let header = generate_header_pdf(info, calc, split_nas, riss.as_ref().map(|(_, s)| s.get_rect()), num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
     let legende = generate_legende_xlsx(splitflaechen);
@@ -402,6 +408,7 @@ pub fn export_splitflaechen(
         crate::pdf::generate_pdf_internal(
             (num_riss, total_risse),
             info,
+            calc,
             konfiguration,
             split_nas,
             rc,
@@ -731,6 +738,7 @@ pub fn generate_anschlussriss_pdf(num: usize, total: usize, vert: bool) -> Vec<u
 
 pub fn generate_header_pdf(
     info: &ProjektInfo,
+    calc: &HeaderCalcConfig,
     split_nas: &SplitNasXml,
     extent_rect: Option<Rect>,
     num_riss: usize,
@@ -764,10 +772,9 @@ pub fn generate_header_pdf(
     let _ = write_header(
         &mut layer1,
         info,
-        split_nas,
+        calc,
         &times_roman,
         &times_roman_bold,
-        extent_rect.clone(),
         num_riss,
         total_risse,
         0.0,
@@ -777,13 +784,65 @@ pub fn generate_header_pdf(
     doc.save_to_bytes().unwrap_or_default()
 }
 
+pub struct HeaderCalcConfig {
+    pub gemarkungs_nr: usize,
+    pub fluren: BTreeSet<usize>,
+    pub flst: BTreeSet<String>,
+}
+
+impl HeaderCalcConfig {
+    pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_rect: Option<Rect>) -> Self {
+
+        let target_gemarkung_nr = crate::get_main_gemarkung(csv);
+
+        log_status(&format!("target gemarkung nr. {target_gemarkung_nr}"));
+        log_status(&format!("target rect = {extent_rect:?}"));
+
+        let mut flst_overlaps = BTreeSet::new();
+
+        let fluren_overlaps = split_nas.flurstuecke_nutzungen
+        .values()
+        .flat_map(|flst| flst.iter())
+        .filter(|tp| match extent_rect {
+            None => true,
+            Some(s) => tp.get_rect().overlaps_rect(&s),
+        })
+        .filter_map(|s| {
+            let flst = s.attributes.get("AX_Flurstueck")?;
+            let flst_id = FlstIdParsed::from_str(&flst);
+            let gemarkung = flst_id.gemarkung.parse::<usize>().ok()?;
+            if gemarkung == target_gemarkung_nr {
+                let flur = flst_id.flur.parse::<usize>().ok()?;
+                let flst_string = flst_id.parse_num()?.format_str();
+                flst_overlaps.insert(flst_string);
+                Some(flur)
+            } else {
+                None
+            }
+        })
+        .collect::<BTreeSet<_>>();
+
+        if fluren_overlaps.len() > 1 {
+            flst_overlaps = BTreeSet::new();
+        } else if flst_overlaps.len() > 2 {
+            flst_overlaps = BTreeSet::new();
+        }
+
+        Self {
+            gemarkungs_nr: target_gemarkung_nr,
+            fluren: fluren_overlaps,
+            flst: flst_overlaps,
+        }
+    }
+}
+
+
 pub fn write_header(
     layer1: &mut PdfLayerReference,
     info: &ProjektInfo,
-    split_nas: &SplitNasXml,
+    calc: &HeaderCalcConfig,
     times_roman: &IndirectFontRef,
     times_roman_bold: &IndirectFontRef,
-    extent_rect: Option<Rect>,
     num_riss: usize,
     total_risse: usize,
     offset_top: f32,
@@ -791,26 +850,6 @@ pub fn write_header(
 ) -> Option<()> {
 
     layer1.save_graphics_state();
-
-    let target_gemarkung_nr = info.gemarkung_nr.parse::<usize>().unwrap_or(0);
-
-    let fluren_overlaps = split_nas.flurstuecke_nutzungen
-    .values()
-    .flat_map(|flst| flst.iter())
-    .filter(|tp| match extent_rect {
-        None => true,
-        Some(s) => tp.get_rect().overlaps_rect(&s),
-    })
-    .filter_map(|s| {
-        let flst = s.attributes.get("AX_Flurstueck")?;
-        let flst_id = FlstIdParsed::from_str(&flst);
-        if flst_id.gemarkung.parse::<usize>().ok()? != target_gemarkung_nr {
-            None
-        } else {
-            flst_id.flur.parse::<usize>().ok()
-        }
-    })
-    .collect::<BTreeSet<_>>();
 
     let header_font_size = 14.0; // pt
     let medium_font_size = 10.0; // pt
@@ -833,6 +872,9 @@ pub fn write_header(
     let text = "Instrument/Nr.";
     layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 3.0), &times_roman);    
 
+    let text = "-";
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 2.0), &times_roman);    
+
     let text = "Flurstücke";
     layer1.use_text(text, small_font_size, Mm(offset_right + 20.0), Mm(offset_top + 10.0), &times_roman);    
 
@@ -848,6 +890,9 @@ pub fn write_header(
     let text = "Grenztermin vom";
     layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 25.0), &times_roman);    
 
+    let text = "-";
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 120.0), Mm(offset_top + 21.0), &times_roman);    
+
     let text = "Verwendete Vermessungsun-";
     layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 17.0), &times_roman);    
     let text = "terlagen";
@@ -856,45 +901,55 @@ pub fn write_header(
     let text = format!("ALKIS ({})", info.alkis_aktualitaet);
     layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 10.0), &times_roman);    
     let text = format!("Orthophoto ({})", info.orthofoto_datum);
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 6.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 6.5), &times_roman);    
     let text = format!("GIS-Feldblöcke ({})", info.gis_feldbloecke_datum);
     layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 3.0), &times_roman);    
 
     let text = "Archivblatt: *";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 25.0), &times_roman);    
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 21.0), &times_roman);    
 
     let text = "Antrags-Nr.: *";
     layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 17.0), &times_roman);    
 
+    let text = info.antragsnr.trim().to_string();
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 14.0), &times_roman);    
+
     let text = "Katasteramt:";
     layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 10.0), &times_roman);    
 
-    let text = info.gemeinde.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 22.0), &times_roman);    
+    let text = info.katasteramt.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 150.0), Mm(offset_top + 2.0), &times_roman);    
 
-    let text = format!("{} ({})", info.gemarkung.trim(), info.gemarkung_nr);
+    let text = info.gemeinde.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 21.0), &times_roman);    
+
+    let text = format!("{} ({})", info.gemarkung.trim(), calc.gemarkungs_nr);
     layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 14.0), &times_roman);    
 
-    let text = "diverse";
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 37.0), Mm(offset_top + 7.0), &times_roman);    
+    let text = if calc.flst.is_empty() {
+        "diverse".to_string()
+    } else {
+        calc.flst.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ").trim().to_string()
+    };
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 7.0), &times_roman);    
 
     let text = info.bearbeitung_beendet_am.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 73.0), Mm(offset_top + 22.0), &times_roman);    
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 73.0), Mm(offset_top + 21.0), &times_roman);    
 
     let text = info.vermessungsstelle.trim();
     layer1.use_text(text, medium_font_size, Mm(offset_right + 68.0), Mm(offset_top + 2.0), &times_roman);    
 
-    let text = fluren_overlaps.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ");
-    layer1.use_text(&text, medium_font_size, Mm(offset_right + 10.0), Mm(offset_top + 10.0), &times_roman);    
+    let text = calc.fluren.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ").trim().to_string();
+    layer1.use_text(&text, medium_font_size, Mm(offset_right + 8.0), Mm(offset_top + 7.0), &times_roman);    
     
     let lines = &[
         ((offset_right + 0.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 28.0)),
         ((offset_right + 0.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
-        ((offset_right + 0.0, offset_top + 13.0), (offset_right + 105.0, offset_top + 13.0)),
+        ((offset_right + 0.0, offset_top + 13.0), (offset_right + 102.0, offset_top + 13.0)),
+        ((offset_right + 139.0, offset_top + 13.0), (offset_right + 175.0, offset_top + 13.0)),
         ((offset_right + 0.0, offset_top + 6.0), (offset_right + 60.0, offset_top + 6.0)),
-        ((offset_right + 139.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
 
-        ((offset_right + 20.0, offset_top + 13.0), (offset_right + 20.0, offset_top + 6.0)),
+        ((offset_right + 17.0, offset_top + 13.0), (offset_right + 17.0, offset_top + 6.0)),
         ((offset_right + 60.0, offset_top + 28.0), (offset_right + 60.0, offset_top + 0.0)),
         ((offset_right + 102.0, offset_top + 28.0), (offset_right + 102.0, offset_top + 0.0)),
         ((offset_right + 139.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 0.0)),

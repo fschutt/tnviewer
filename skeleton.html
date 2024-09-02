@@ -76,7 +76,10 @@
       beruf_kuerzel: "GM",
       gemeinde: "Carmzow-Wallmow",
       gemarkung: "Cremzow",
-      gemarkung_nr: "3911",
+      bearbeitung_beendet_am: new Date().toLocaleDateString(),
+      alkis_aktualitaet: new Date().toLocaleDateString(),
+      orthofoto_datum: "18.04.2020",
+      gis_feldbloecke_datum: "11.02.2022",
     };
     window.risse = {};
     window.configuration = {
@@ -636,8 +639,14 @@
       window.info.gemeinde = newvalue;
     } else if (id == 'gemarkung') {
       window.info.gemarkung = newvalue;
-    } else if (id == 'gemarkung_nr') {
-      window.info.gemarkung_nr = newvalue;
+    } else  if (id == 'bearbeitung_beendet_am') {
+      window.info.bearbeitung_beendet_am = newvalue;
+    } else  if (id == 'alkis_aktualitaet') {
+      window.info.alkis_aktualitaet = newvalue;
+    } else  if (id == 'orthofoto_datum') {
+      window.info.orthofoto_datum = newvalue;
+    } else  if (id == 'gis_feldbloecke_datum') {
+      window.info.gis_feldbloecke_datum = newvalue;
     }
   }
   
@@ -1690,6 +1699,7 @@
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
         JSON.stringify(window.configuration),
+        JSON.stringify(window.csv_data),
       );
       try {
         n = JSON.parse(f);

@@ -1352,7 +1352,7 @@ impl AenderungenIntersections {
 }
 
 impl AenderungenClean {
-    pub fn get_aenderungen_intersections(&self, nas_xml: &NasXMLFile) -> AenderungenIntersections {
+    pub fn get_aenderungen_intersections(&self, nas_xml: &NasXMLFile, gemarkung: usize) -> AenderungenIntersections {
         
         let mut is = Vec::new();
         
@@ -1630,9 +1630,30 @@ impl AenderungenClean {
             }
         }
 
-        let is = AenderungenIntersections(is)
+        let mut is = AenderungenIntersections(is)
         .clean_zero_size_areas()
         .deduplicate().0;
+
+        // Remove Änderungen, wo nichts am Flurstück geändert wurde
+        let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+        let to_remove = alle_flst.iter().filter_map(|flst_id| {
+            let all_splitflaechen_fuer_flst = is.iter().filter_map(|s| if s.flst_id == *flst_id { Some(s) } else { None }).collect::<Vec<_>>();
+            if all_splitflaechen_fuer_flst.iter().all(|s| s.alt == s.neu) {
+                Some(flst_id)
+            } else {
+                None
+            }
+        }).collect::<BTreeSet<_>>();
+
+        is.retain(|s| !to_remove.contains(&s.flst_id));
+
+        for a in to_remove.iter() {
+            log_status(&format!("WARN: Lösche Änderung an Flst. {}: keine Änderungen", FlstIdParsed::from_str(&a).to_nice_string()));
+        }
+
+        is.retain(|s: &AenderungenIntersection| {
+            FlstIdParsed::from_str(&s.flst_id).gemarkung == gemarkung.to_string()
+        });
 
         let alle_flst = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
         let _ = alle_flst.into_iter().filter_map(|flst_id| {
@@ -2620,12 +2641,13 @@ impl Aenderungen {
         &self,
         split_nas: &SplitNasXml,
         original_xml: &NasXMLFile, 
+        csv: &CsvDataType,
     ) -> Aenderungen {
 
         let intersections = AenderungenClean {
             nas_xml_quadtree: split_nas.create_quadtree(),
             aenderungen: self.clone(),
-        }.get_aenderungen_intersections(original_xml);
+        }.get_aenderungen_intersections(original_xml, crate::get_main_gemarkung(csv));
 
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
@@ -2784,7 +2806,10 @@ fn render_risse_ui(
                 {beruf_kuerzel}
                 {gemeinde}
                 {gemarkung}
-                {gemarkung_nr}
+                {bearbeitung_beendet_am}
+                {alkis_akt}
+                {ortho_akt}
+                {feldbloecke_vom}
             </div>
             <div id='risse' style='display:flex;flex-direction:column;'>
                 <h2 style='font-size:16px;font-weight:bold;margin-top:20px;'>Risse</h2>
@@ -2799,7 +2824,10 @@ fn render_risse_ui(
         beruf_kuerzel = render_config_field(("Beruf (Kürzel)", &projekt_info.beruf_kuerzel, "beruf_kuerzel")),
         gemeinde = render_config_field(("Gemeinde", &projekt_info.gemeinde, "gemeinde")),
         gemarkung = render_config_field(("Gemarkung", &projekt_info.gemarkung, "gemarkung")),
-        gemarkung_nr = render_config_field(("Gemarkungsnr.", &projekt_info.gemarkung_nr, "gemarkung_nr")),
+        bearbeitung_beendet_am = render_config_field(("Bearb. beendet am", &projekt_info.bearbeitung_beendet_am, "bearbeitung_beendet_am")),
+        alkis_akt = render_config_field(("ALKIS Daten vom", &projekt_info.alkis_aktualitaet, "alkis_aktualitaet")),
+        ortho_akt = render_config_field(("Orthofoto vom", &projekt_info.orthofoto_datum, "orthofoto_datum")),
+        feldbloecke_vom = render_config_field(("Feldblöcke vom", &projekt_info.gis_feldbloecke_datum, "gis_feldbloecke_datum")),
         risse = risse.iter().enumerate().map(|(riss_num, (id, rc))| {
             format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #cccccc;border-radius: 3px;'>
 

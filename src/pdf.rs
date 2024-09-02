@@ -6,7 +6,7 @@ use printpdf::{CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDoc
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
-use crate::geograf::{get_aenderungen_rote_linien, LinienQuadTree};
+use crate::geograf::{get_aenderungen_rote_linien, HeaderCalcConfig, LinienQuadTree};
 use crate::optimize::{OptimizeConfig, OptimizedTextPlacement};
 use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
@@ -310,7 +310,6 @@ pub struct ProjektInfo {
     pub beruf_kuerzel: String,
     pub gemeinde: String,
     pub gemarkung: String,
-    pub gemarkung_nr: String,
     #[serde(default)]
     pub bearbeitung_beendet_am: String,
     #[serde(default)]
@@ -393,6 +392,7 @@ impl Gebaeude {
 pub fn generate_pdf_internal(
     riss_von: (usize, usize), // Riss X von Y
     projekt_info: &ProjektInfo,
+    calc: &HeaderCalcConfig,
     konfiguration: &Konfiguration,
     nutzungsarten: &SplitNasXml,
     rc: &RissConfig,
@@ -485,10 +485,9 @@ pub fn generate_pdf_internal(
         &mut layer, 
         &rc,
         projekt_info,
-        &nutzungsarten,
+        calc,
         &times_roman,
         &times_roman_bold,
-        Some(riss_extent.get_rect()),
         riss_von.0,
         riss_von.1,
         16.5
@@ -842,10 +841,9 @@ fn write_border(
     layer: &mut PdfLayerReference,
     riss: &RissConfig,
     info: &ProjektInfo,
-    split_nas: &SplitNasXml,
+    calc: &HeaderCalcConfig,
     times_roman: &IndirectFontRef,
     times_roman_bold: &IndirectFontRef,
-    extent_rect: Option<quadtree_f32::Rect>,
     num_riss: usize,
     total_risse: usize,
     border_width_mm: f32,
@@ -914,10 +912,9 @@ fn write_border(
     let _ = crate::geograf::write_header(
         layer,
         info,
-        split_nas,
+        calc,
         times_roman,
         times_roman_bold,
-        extent_rect,
         num_riss,
         total_risse,
         riss.height_mm - border_width_mm - 35.0,
