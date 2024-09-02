@@ -678,14 +678,15 @@ fn write_na_untergehend_linien(
     layer.save_graphics_state();
 
     layer.set_outline_color(printpdf::Color::Rgb(Rgb {
-        r: 255.0,
-        g: 0.0,
-        b: 0.0,
+        r: 235.0,
+        g: 140.0,
+        b: 52.0,
         icc_profile: None,
     }));
 
     layer.set_line_dash_pattern(LineDashPattern {
         dash_1: Some(1),
+        gap_1: Some(1),
         .. Default::default()
     });
     layer.set_outline_thickness(1.0);
