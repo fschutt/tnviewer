@@ -451,8 +451,8 @@ pub fn generate_pdf_internal(
     let _ = write_rote_linien(&mut layer, &rote_linien);
 
     log_status(&format!("Rendere NA untergehend Linien..."));
-    let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
-    let _ = write_na_untergehend_linien(&mut layer, &rote_linien);
+    let na_untergehend_linien = na_untergehend_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
+    let _ = write_na_untergehend_linien(&mut layer, &na_untergehend_linien);
 
     log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte = crate::optimize::optimize_labels(
@@ -677,8 +677,8 @@ fn write_na_untergehend_linien(
     layer.save_graphics_state();
 
     layer.set_outline_color(printpdf::Color::Rgb(Rgb {
-        r: 255.0,
-        g: 0.0,
+        r: 0.0,
+        g: 255.0,
         b: 0.0,
         icc_profile: None,
     }));
@@ -724,7 +724,7 @@ fn write_rote_linien(
     layer.set_outline_thickness(1.0);
     layer.set_line_cap_style(printpdf::LineCapStyle::Round);
     layer.set_line_join_style(printpdf::LineJoinStyle::Round);
-    
+
     for l in linien.iter() {
         layer.add_line(printpdf::Line { 
             points: l.points.iter().map(|p| (printpdf::Point {
