@@ -1056,9 +1056,9 @@ impl SvgPolygon {
 
             let points_outside = Self::is_center_inside(first_ring, or);
             let points_inside = Self::is_center_inside(first_ring, or);
-            let all_points_on_line = Self::equals_ring_dst(first_ring, or);
-            
-            if all_points_on_line {
+            let any_points_on_line = Self::any_points_equal(first_ring, or);
+
+            if any_points_on_line {
                 match (points_outside, points_inside) {
                     (true, false) => return EqualsAnyRingStatus::TouchesOutside,
                     (false, true) => return EqualsAnyRingStatus::TouchesInside,
@@ -1127,6 +1127,19 @@ impl SvgPolygon {
         b_points.dedup_by(|a, b| a.equals(b));
         
         a_points.iter().all(|a| {
+            b_points.iter().any(|p| p.dist(a) < 0.005)
+        })
+    }
+
+    fn any_points_equal(a: &SvgLine, b: &SvgLine) -> bool {
+        
+        let mut a_points = a.points.clone();
+        a_points.dedup_by(|a, b| a.equals(b));
+        
+        let mut b_points = b.points.clone();
+        b_points.dedup_by(|a, b| a.equals(b));
+        
+        a_points.iter().any(|a| {
             b_points.iter().any(|p| p.dist(a) < 0.005)
         })
     }

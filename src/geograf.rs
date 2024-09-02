@@ -672,6 +672,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         }
 
         for (id2, s2) in it {
+            use crate::nas::EqualsAnyRingStatus::*;
             if id1 == id2 {
                 continue;
             }
@@ -681,11 +682,18 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             if pairs.contains(&pair) {
                 continue;
             }
-            let relate = crate::nas::relate(&s1.poly_cut, &s2.poly_cut, 0.1);
-            if !relate.only_touches() {
+            let a_eq_b = s1.poly_cut.equals_any_ring(&s2.poly_cut);
+            let b_eq_a = s2.poly_cut.equals_any_ring(&s1.poly_cut);
+
+            match (a_eq_b, b_eq_a) {
+                (TouchesOutside, _) | (_, TouchesOutside) => { },
+                _ => continue,
+            }
+
+            if s1.alt == s2.alt && s1.neu == s2.neu {
                 continue;
             }
-            if s1.alt == s2.alt && s1.neu == s2.neu {
+            if !(s1.alt == s2.alt || s1.alt == s2.neu || s1.neu == s2.alt || s1.neu == s2.neu) {
                 continue;
             }
             if !(s1.neu == s2.alt) {
