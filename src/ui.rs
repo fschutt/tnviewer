@@ -1500,7 +1500,7 @@ impl AenderungenClean {
 
         for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
             
-            if na_bereits_definiert.iter().any(|s| na_def.starts_with(s)) {
+            if na_bereits_definiert.iter().any(|s| na_def.starts_with(s) || s.starts_with(na_def)) {
                 continue;
             }
 
@@ -1533,7 +1533,6 @@ impl AenderungenClean {
         let na_bereits_definiert = is.iter()
         .map(|s| s.flst_id_part.clone())
         .collect::<BTreeSet<_>>();
-    na_bereits_definiert.iter().for_each(|f| log_status(&format!("2: {f}")));
 
         // insert gebaeude geänderte flst
         for geb in self.aenderungen.gebaeude_loeschen.values() {
