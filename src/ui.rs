@@ -1219,6 +1219,8 @@ impl AenderungenIntersections {
     
     pub fn merge_to_nearest(&self) -> Self {
 
+        return self.clone();
+        /* 
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
         for s in self.0.iter() {
@@ -1266,6 +1268,7 @@ impl AenderungenIntersections {
         }).collect();
 
         Self(new_sf)
+        */
     }
 
     pub fn clean_zero_size_areas(&self) -> Self {
@@ -1635,10 +1638,10 @@ impl AenderungenClean {
         let _ = alle_flst.into_iter().filter_map(|flst_id| {
             let soll = self.nas_xml_quadtree.original.flurstuecke_nutzungen.get(&flst_id).unwrap_or(&default).iter().map(|tp| tp.poly.area_m2()).sum::<f64>().round();
             let ist = is.iter().filter_map(|s| if s.flst_id == flst_id { Some(s.poly_cut.area_m2()) } else { None }).sum::<f64>().round();
-            if ist + 1.0 < soll {
+            if ist + 2.0 < soll {
                 log_status(&format!("WARN: Loch in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
                 Some(flst_id)
-            } else if ist > soll {
+            } else if ist > soll + 2.0 {
                 log_status(&format!("WARN: Doppelte Fläche in Flst {}: soll = {soll}, ist = {ist}", FlstIdParsed::from_str(&flst_id).to_nice_string()));
                 Some(flst_id)
             } else {
