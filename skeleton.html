@@ -1014,7 +1014,10 @@
   function selectFlst(id) {
     window.uidata.selected_edit_flst = id;
     replaceProjectContent();
-    document.getElementById('csv_flst_' + id).scrollIntoView();
+    var v = document.getElementById('csv_flst_' + id);
+    if (v) {
+      v.scrollIntoView();
+    }
   }
 
     function focusFlst(event) {

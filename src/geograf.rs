@@ -661,7 +661,16 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
 pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], lq: &LinienQuadTree) -> Vec<SvgLine> {
     let mut pairs = BTreeSet::new();
     for (id1, s1) in splitflaechen.iter().enumerate() {
-        for (id2, s2) in splitflaechen.iter().enumerate() {
+
+        let rect = s1.poly_cut.get_rect();
+        let it = splitflaechen.iter().enumerate()
+        .filter_map(|(i, p)| if p.poly_cut.get_rect().overlaps_rect(&rect) { Some((i, p)) } else { None });
+
+        if s1.alt == s1.neu {
+            continue;
+        }
+        
+        for (id2, s2) in it {
             if id1 == id2 {
                 continue;
             }
@@ -688,7 +697,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        log_status(&format!("NA untergehend zwischen {} and {}", a.flst_id_part, b.flst_id_part));
+        log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {})", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu));
     }
 
     Vec::new()
