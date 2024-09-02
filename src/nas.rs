@@ -2085,12 +2085,12 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         
     pub fn $fn_name(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgPolygon> {
         use geo::BooleanOps;
-        use crate::nas::EqualsAnyRingStatus::*;
 
         let mut a = a.round_to_3dec();
         let mut b = b.round_to_3dec();
         a.correct_winding_order();
         b.correct_winding_order();
+
         if a.is_zero_area() {
             return Vec::new();
         }
@@ -2100,16 +2100,16 @@ macro_rules! define_func {($fn_name:ident, $op:expr) => {
         if a.equals(&b) {
             return vec![a];
         }
+
         let a = translate_to_geo_poly(&a);
         let b = translate_to_geo_poly(&b);
         let intersect = a.boolean_op(&b, $op);
         let mut s = translate_from_geo_poly(&intersect);
-        if $op == geo::OpType::Xor {
-            log_status(&serde_json::to_string(&s).unwrap_or_default());
-        }
+
         for q in s.iter_mut() {
             q.correct_winding_order();
         }
+        
         s
     }
 };}

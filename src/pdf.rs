@@ -1077,11 +1077,9 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
         if fi.is_zero_area() {
             return SvgPolygon::default();
         }
-        log_1(&"subtracting...".into());
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
-        log_1(&"subtracted!".into());
         let s = translate_from_geo_poly(&join);
         let new = SvgPolygon {
             outer_rings: s.iter().flat_map(|s| {

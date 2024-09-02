@@ -1230,20 +1230,25 @@ impl AenderungenIntersections {
         }
 
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
-            for k in v.values_mut() {
+            for (k1, k) in v.iter_mut() {
                 if k.len() < 2 {
                     continue;
                 }
 
                 let polys_to_join = k.iter().cloned().collect::<Vec<_>>();
 
-                log_status(&format!("Splitflächen: merge {} Polygone auf Flurstück {}", polys_to_join.len(), k0.0));
+                let polys_to_join_len = polys_to_join.len();
 
                 let joined = match join_polys(&polys_to_join, false, false) {
                     Some(s) => s.recombine_polys(),
                     None => continue,
                 };
 
+                let joined_len = joined.len();
+
+                if joined_len != polys_to_join_len {
+                    log_status(&format!("{}: verbinde {polys_to_join_len} Flächen {:?} zu {joined_len} Flächen", FlstIdParsed::from_str(&k0.0).to_nice_string(), k1));
+                }
                 *k = joined;
             }
         }
@@ -1413,6 +1418,7 @@ impl AenderungenClean {
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
                     };
+                    log_status(&format!("Splitflächen (Stufe 1): {flst_id_part}: {alt_kuerzel} -> {neu_kuerzel} = {} m2", intersect_poly.area_m2().round()));
                     is.push(qq);
                 }
             
@@ -1459,14 +1465,21 @@ impl AenderungenClean {
 
             let subtracted = subtract_from_poly(&flst_part.poly, &[&areas_to_subtract_joined]);
 
+            let neu_kuerzel = self.aenderungen.na_definiert
+            .iter()
+            .find_map(|(k, v)| if k.starts_with(&flst_part_id) { Some(v) } else { None })
+            .unwrap_or(&alt_kuerzel).clone();
+
             let qq = AenderungenIntersection {
                 alt: alt_kuerzel.clone(),
-                neu: self.aenderungen.na_definiert.get(&flst_part_id).unwrap_or(&alt_kuerzel).clone(),
+                neu: neu_kuerzel.clone(),
                 flst_id: flurstueck_id.clone(),
                 flst_id_part: flst_part_id.clone(),
                 poly_cut: subtracted.round_to_3dec(),
             };
             
+            log_status(&format!("Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2", subtracted.area_m2().round()));
+
             is.push(qq);
         }
 
@@ -1481,7 +1494,7 @@ impl AenderungenClean {
 
         for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
             
-            if na_bereits_definiert.contains(na_def) {
+            if na_bereits_definiert.iter().any(|s| s.starts_with(na_def)) {
                 continue;
             }
 
@@ -1501,12 +1514,14 @@ impl AenderungenClean {
             };
 
             is.push(AenderungenIntersection {
-                alt: kuerzel,
+                alt: kuerzel.clone(),
                 neu: neu_kuerzel.clone(),
                 flst_id: flst_id,
                 flst_id_part: na_def.clone(),
                 poly_cut: flst_part.poly.clone(),
             });
+
+            log_status(&format!("Splitflächen (Stufe 3): {na_def}: {kuerzel} -> {neu_kuerzel} = {} m2", flst_part.poly.area_m2().round()));
         }
 
         // insert gebaeude geänderte flst
@@ -1533,7 +1548,7 @@ impl AenderungenClean {
                     .unwrap_or_default();
 
                     let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
-                    if na_bereits_definiert.contains(&flst_part_id) {
+                    if na_bereits_definiert.iter().any(|s| s.starts_with(&flst_part_id)) {
                         continue;
                     }
                     let kuerzel = match part.get_auto_kuerzel(&ebene) {
@@ -1542,11 +1557,12 @@ impl AenderungenClean {
                     };
                     is.push(AenderungenIntersection {
                         alt: kuerzel.clone(),
-                        neu: kuerzel,
+                        neu: kuerzel.clone(),
                         flst_id: flurstueck_id,
-                        flst_id_part: flst_part_id,
+                        flst_id_part: flst_part_id.clone(),
                         poly_cut: part.poly.clone(),
                     });
+                    log_status(&format!("Splitflächen (Stufe 4): {flst_part_id}: {kuerzel} -> {kuerzel} = {} m2", part.poly.area_m2().round()));
                 }
             }
         }
@@ -1593,7 +1609,7 @@ impl AenderungenClean {
                 .map(|w| format!(":{w}"))
                 .unwrap_or_default();
                 let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
-                if na_bereits_definiert.contains(&flst_part_id) {
+                if na_bereits_definiert.iter().any(|s| s.starts_with(&flst_part_id)) {
                     continue;
                 }
                 let kuerzel = match part.get_auto_kuerzel(&ebene) {
@@ -1602,11 +1618,12 @@ impl AenderungenClean {
                 };
                 is.push(AenderungenIntersection {
                     alt: kuerzel.clone(),
-                    neu: kuerzel,
-                    flst_id: flurstueck_id,
-                    flst_id_part: flst_part_id,
+                    neu: kuerzel.clone(),
+                    flst_id: flurstueck_id.clone(),
+                    flst_id_part: flst_part_id.clone(),
                     poly_cut: part.poly.clone(),
                 });
+                log_status(&format!("Splitflächen (Stufe 5): {flst_part_id}: {kuerzel} -> {kuerzel} = {} m2", part.poly.area_m2().round()));
             }
         }
 
@@ -1628,8 +1645,6 @@ impl AenderungenClean {
                 None
             }
         }).collect::<BTreeSet<_>>();
-
-        log_status("ok löcher gestopft!");
 
         AenderungenIntersections(is)
         .merge_to_nearest()
@@ -2506,8 +2521,6 @@ impl Aenderungen {
     // Subtrahiere Änderungen, die über Änderungen liegen
     pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
         
-        log_status("stage 5 begin");
-
         let mut changed_mut = self.clone();
         let mut geaendert = BTreeMap::new();
 
@@ -2540,7 +2553,6 @@ impl Aenderungen {
             .collect::<Vec<_>>();
 
             if !higher_order_polys.is_empty() {
-                log_1(&format!("{pid}: {} higher order polys", higher_order_polys.len()).into());
                 let subtracted = subtract_from_poly(&pn.poly, &higher_order_polys);
                 geaendert.insert(pid.clone(), PolyNeu {
                     nutzung: pn.nutzung.clone(),
@@ -2892,12 +2904,11 @@ fn render_csv_editable(
                             let ax_ebene = tp.attributes.get("AX_Ebene")?;
                             let ax_flurstueck = flstidparsed.format_start_str();
                             let cut_obj_id = tp.attributes.get("id")?;
-                            let intersect_id = tp.attributes
-                            .get("AX_IntersectionId")
-                            .map(|w| format!(":{w}"))
-                            .unwrap_or_default();
-                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}{intersect_id}");
+                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
                             let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
+                            if quadratmeter == "0" {
+                                return None;
+                            }
                             let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
                             let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
                             Some(format!(
