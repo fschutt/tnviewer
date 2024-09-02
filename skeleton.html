@@ -693,7 +693,7 @@
 
   function aenderungClicked(feature, layer) {
         layer.on({
-            click: onAenderungClicked
+            dblclick: onAenderungClicked
         });
     }
 
@@ -873,6 +873,13 @@
     window.uidata.selected_edit_flst = flst_id.replace("_", "");
     console.log(flst_id.replace("_", ""));
     replaceProjectContent();
+    var found = searchFlst(window.uidata.selected_edit_flst, window.projectdata);
+    if (found) {
+      selectFlst(window.uidata.selected_edit_flst);
+      highlightPolygon(found.flst);
+    } else {
+      alert("Flurstück " + window.uidata.selected_edit_flst + " nicht in XML-Daten gefunden!");
+    }
   }
 
   function splitNasDataOnEachFeature(feature, layer) {
@@ -1545,7 +1552,7 @@
 
     function gebaeudeFeatureClick(feature, layer) {
         layer.on({
-            click: gebauedeClicked
+            dblclick: gebauedeClicked
         });
     }
 

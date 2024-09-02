@@ -1472,7 +1472,7 @@ impl AenderungenClean {
 
             let neu_kuerzel = self.aenderungen.na_definiert
             .iter()
-            .find_map(|(k, v)| if k.starts_with(&flst_part_id) { Some(v) } else { None })
+            .find_map(|(k, v)| if flst_part_id.starts_with(k) { Some(v) } else { None })
             .unwrap_or(&alt_kuerzel).clone();
 
             let qq = AenderungenIntersection {
@@ -1499,7 +1499,7 @@ impl AenderungenClean {
 
         for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
             
-            if na_bereits_definiert.iter().any(|s| s.starts_with(na_def)) {
+            if na_bereits_definiert.iter().any(|s| na_def.starts_with(s)) {
                 continue;
             }
 
@@ -1553,7 +1553,7 @@ impl AenderungenClean {
                     .unwrap_or_default();
 
                     let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
-                    if na_bereits_definiert.iter().any(|s| s.starts_with(&flst_part_id)) {
+                    if na_bereits_definiert.iter().any(|s| flst_part_id.starts_with(s)) {
                         continue;
                     }
                     let kuerzel = match part.get_auto_kuerzel(&ebene) {
@@ -1614,7 +1614,7 @@ impl AenderungenClean {
                 .map(|w| format!(":{w}"))
                 .unwrap_or_default();
                 let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
-                if na_bereits_definiert.iter().any(|s| s.starts_with(&flst_part_id)) {
+                if na_bereits_definiert.iter().any(|s| flst_part_id.starts_with(s)) {
                     continue;
                 }
                 let kuerzel = match part.get_auto_kuerzel(&ebene) {
@@ -2897,7 +2897,7 @@ fn render_csv_editable(
         let selected = if selected_edit_flst.is_empty() {
             false 
         } else {
-            k.starts_with(&selected_edit_flst) 
+            selected_edit_flst.starts_with(k) 
         };
         Some(format!("
         <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background: {background_col};padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
