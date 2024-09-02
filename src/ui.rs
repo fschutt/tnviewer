@@ -1580,10 +1580,6 @@ impl AenderungenClean {
         .filter(|i| !i.poly_cut.is_zero_area())
         .collect::<Vec<_>>();
 
-        let na_bereits_definiert = is.iter()
-        .map(|s| s.flst_id_part.clone())
-        .collect::<BTreeSet<_>>();
-
         // let is = merge_adjacent_intersections(is);
 
         let default = Vec::new();
