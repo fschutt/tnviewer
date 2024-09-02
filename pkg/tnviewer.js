@@ -1604,6 +1604,7 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
+    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_updateexportstatus_dff9b10d495f2e73 = function(arg0, arg1) {
         let deferred0_0;
         let deferred0_1;
@@ -1615,7 +1616,6 @@ function __wbg_get_imports() {
             wasm.__wbindgen_export_3(deferred0_0, deferred0_1, 1);
         }
     };
-    imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
     imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
         console.log(getObject(arg0));
     };

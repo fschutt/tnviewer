@@ -5,7 +5,7 @@ use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::{reproject_poly, translate_to_geo_poly, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -659,6 +659,38 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
 }
 
 pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], lq: &LinienQuadTree) -> Vec<SvgLine> {
+    let mut pairs = BTreeSet::new();
+    for (id1, s1) in splitflaechen.iter().enumerate() {
+        for (id2, s2) in splitflaechen.iter().enumerate() {
+            if id1 == id2 {
+                continue;
+            }
+            let hi = id1.max(id2);
+            let lo = id1.min(id2);
+            let pair = (lo, hi);
+            if pairs.contains(&pair) {
+                continue;
+            }
+            let relate = crate::nas::relate(&s1.poly_cut, &s2.poly_cut, 0.1);
+            if !relate.only_touches() {
+                continue;
+            }
+            if s1.alt == s2.alt && s1.neu == s2.neu {
+                continue;
+            }
+            if !(s1.neu == s2.alt) {
+                continue;
+            }
+            pairs.insert(pair);
+        }
+    }
+
+    for (a, b) in pairs.iter() {
+        let a = &splitflaechen[*a];
+        let b = &splitflaechen[*b];
+        log_status(&format!("NA untergehend zwischen {} and {}", a.flst_id_part, b.flst_id_part));
+    }
+
     Vec::new()
 }
 
