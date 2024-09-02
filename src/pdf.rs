@@ -284,21 +284,6 @@ impl RissExtentReprojected {
             max_y: self.max_y,
         }
     }
-    pub fn get_poly(&self) -> SvgPolygon {
-        let mut v = vec![
-            SvgPoint { x: self.min_x, y: self.min_y },
-            SvgPoint { x: self.min_x, y: self.max_y },
-            SvgPoint { x: self.max_x, y: self.max_y },
-            SvgPoint { x: self.max_x, y: self.min_y },
-            SvgPoint { x: self.min_x, y: self.min_y },
-        ];
-        v.reverse();
-        SvgPolygon { outer_rings: vec![
-            SvgLine {
-                points: v
-            }
-        ], inner_rings: Vec::new() }
-    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -328,6 +313,8 @@ pub struct RissConfig {
     pub width_mm: f32,
     pub height_mm: f32,
     pub scale: f32,
+    #[serde(default)]
+    pub rissgebiet: Option<SvgPolygon>,
 }
 
 pub struct Fluren {

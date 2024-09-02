@@ -50,7 +50,10 @@
     var gebaeude_loeschen_layer = null;
     var current_edit_layer = null;
     var guideLayers = [];
-
+    var rissgebiet_layer = null;
+    var current_rissgebiet_layer = null;
+    var active_rissgebiet = null;
+    
     var defaultdate = new Date().getFullYear() + "-31-XXX";
     window.split_flurstuecke = null; // split XML NAS data
     window.projectdata = null; // project XML NAS data
@@ -546,6 +549,7 @@
       height_mm: 420.0,
       scale: 3500.0,
     };
+    active_rissgebiet = null;
     replaceProjectContent();
     rerenderRisse();  
   }
@@ -560,6 +564,8 @@
   window.rissLoeschen = rissLoeschen;
 
   function removeRisseLayer() {
+      removeRissGebietLayer();
+      removeRissGebietEinzeichnenLayer();
       for (var [riss_id, riss_objekte] of Object.entries(leaflet_risse)) {
         map.removeLayer(riss_objekte.leaflet_rect);
         map.removeLayer(riss_objekte.leaflet_center_handle);
@@ -569,6 +575,7 @@
 
   function rerenderRisse() {
     removeRisseLayer();
+    removeRissGebietLayer();
     for (var [riss_id, riss_config] of Object.entries(window.risse)) {
       var rect = calculate_coords(
         riss_config.width_mm, 
@@ -591,6 +598,31 @@
         };
         map_extent.addTo(map);
         map_handle_center.addTo(map);
+      }
+      if (riss_id == active_rissgebiet && riss_config.rissgebiet) {
+        var f = get_rissgebiet_geojson(
+          JSON.stringify(riss_config.rissgebiet),
+        );
+        var rissgebiet = JSON.parse(f);
+        var myLayer = null;
+        var style = {
+          "color": "#ffcc00",
+          "fillColor": "#ffcc00",
+          "weight": 0.0,
+          "opacity": 0.5,
+          "fillOpacity": 0.5
+        };
+        if (L.geoJSON) {
+          myLayer = L.geoJSON(rissgebiet, {
+            "style": style,
+          });
+        } else if (L.geoJson) {
+          myLayer = L.geoJson(rissgebiet, {
+            "style": style,
+          });
+        }
+        rissgebiet_layer = myLayer;
+        map.addLayer(rissgebiet_layer);
       }
     }
   }
@@ -1337,12 +1369,111 @@
       removeGebaeudeLoeschenLayer();
       removeNutzungEinzeichnenLayer();
       removeRisseLayer();
+      removeRissGebietLayer();
+      removeRissGebietEinzeichnenLayer();
       if (highlight_layer) {
         map.removeLayer(highlight_layer);
         highlight_layer = null;
       }
     }
 
+    function showHideRissGebiet(event) {
+      if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        window.uidata.tool = 'rissgebiet-zeichnen';
+        active_rissgebiet = event.target.dataset.rissId;
+      } else {
+        window.uidata.tool == null;
+        active_rissgebiet = null;
+      }
+      rerenderRisse();
+      reinitRissGebietLayer();
+    }
+
+    window.showHideRissGebiet = showHideRissGebiet;
+
+    function reinitRissGebietLayer() {
+      if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        return;
+      }
+      if (active_rissgebiet == null) {
+        return;
+      }
+      if (!window.risse) {
+        return;
+      }
+      var riss = window.risse[active_rissgebiet];
+      if (!riss) {
+        return;
+      }
+
+      guideLayers = [];
+      var snapEdit = new L.EditToolbar.SnapEdit(map, {
+          featureGroup: L.featureGroup([]),
+          snapOptions: {
+              guideLayers: guideLayers
+          }
+      });
+
+      map.drawControl.setDrawingOptions({
+          polyline: {
+              guideLayers: guideLayers
+          },
+          polygon: {
+              guideLayers: guideLayers,
+              snapDistance: 5
+          },
+          marker: {
+              guideLayers: guideLayers,
+              snapVertices: false
+          },
+          rectangle: false,
+          circle: false
+      });
+
+      map.on('draw:created', function(e) {
+          var layer = e.layer;
+          current_rissgebiet_layer = layer;
+          map.addLayer(layer);
+      });
+
+      map.on('draw:drawstop', function (e) {
+        if (e.layerType != 'polyline') {
+          return;
+        }
+        var layers = e.target._layers;
+        var keys = Object.keys(layers);
+        var lastkey = keys[keys.length - 1];
+        var l = layers[lastkey];
+        if ((!l) || (!l.editing)) {
+          return;
+        }
+        var points = l.editing.latlngs[0];
+        if (points.length == 0) {
+          return;
+        }
+        var f = JSON.parse(fixup_polyline(
+          JSON.stringify(window.projectdata), 
+          JSON.stringify(window.split_flurstuecke), 
+          JSON.stringify(points),
+        ));
+        window.risse[active_rissgebiet].rissgebiet = f.poly;
+        window.uidata.tool = null;
+        rerenderRisse();
+      });
+    }
+
+    function removeRissGebietEinzeichnenLayer() {
+      if (current_rissgebiet_layer && current_rissgebiet_layer != null) {
+        map.removeLayer(current_rissgebiet_layer);
+      }
+    }
+
+    function removeRissGebietLayer() {
+      if (rissgebiet_layer && rissgebiet_layer != null) {
+        map.removeLayer(rissgebiet_layer);
+      }
+    }
+    
     // Gebäude löschen
     function showHideGebaeudeLoeschenLayer() {
       removeAllExtraLayers();

@@ -83,6 +83,17 @@ pub fn get_main_gemarkung(csv: &CsvDataType) -> usize {
     0
 }
 
+
+#[wasm_bindgen]
+pub fn get_rissgebiet_geojson(poly: String) -> String {
+    let s1 = serde_json::from_str::<SvgPolygon>(&poly.trim()).unwrap_or_default();
+    let v1 = vec![TaggedPolygon {
+        poly: s1.clone(),
+        attributes: BTreeMap::new(),
+    }];
+    crate::nas::tagged_polys_to_featurecollection(&v1)
+}
+
 #[wasm_bindgen]
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";

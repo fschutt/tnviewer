@@ -29,6 +29,8 @@ pub struct UiData {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum Tool {
+    #[serde(rename = "rissgebiet-zeichnen")]
+    RissgebietZeichnen,
     #[serde(rename = "gebaeude-loeschen")]
     GebaeudeLoeschen,
     #[serde(rename = "nutzung-einzeichnen")]
@@ -2853,6 +2855,8 @@ fn render_risse_ui(
                     <label for='projekt-info-{id}' style='font-weight: bold;margin-right: 5px;'>Maßstab:</label>
                     <input id='riss-{id}-scale' type='number' value='{scale}' style='display:flex;flex-grow:1;margin-right:0px;' data-riss-id='{id}' data-input-id='scale' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
                 </div>
+
+                <button id='riss-{id}-rissgebiet-zeichnen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideRissGebiet(event);'>Rissgebiet zeichnen</button>
 
                 <!--
                 <button id='riss-{id}-flm-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideFlurMarker(event);'>Flurmarker setzen</button>
