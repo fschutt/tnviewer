@@ -863,6 +863,24 @@
 
   window.get_layer_style = get_layer_style;
   
+  function splitNasDataOnEachFeatureClicked(e) {
+    console.log("splitNasDataOnEachFeatureClicked");
+    console.log(e.target);
+    var flst_id = e.target.feature.properties.flurstueckskennzeichen;
+    if (!flst_id) {
+      return;
+    }
+    window.uidata.selected_edit_flst = flst_id.replace("_", "");
+    console.log(flst_id.replace("_", ""));
+    replaceProjectContent();
+  }
+
+  function splitNasDataOnEachFeature(feature, layer) {
+        layer.on({
+            dblclick: splitNasDataOnEachFeatureClicked
+        });
+    }
+
   function replaceDataNasXML() {
     var input = document.createElement('input');
     input.type = 'file';
@@ -937,7 +955,8 @@
                   "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
-                }
+                },
+                "onEachFeature": splitNasDataOnEachFeature,
               });
             } else if (L.geoJSON) {
               myLayer = L.geoJSON(geojson, {
@@ -947,7 +966,8 @@
                   "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
-                }
+                },
+                "onEachFeature": splitNasDataOnEachFeature,
               });
             }
             
