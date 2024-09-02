@@ -418,7 +418,7 @@ pub fn export_splitflaechen(
 
         let mini_split_nas = get_mini_nas_xml(split_nas, riss_extent);
         let flst = get_flurstuecke(nas_xml, riss_extent);
-        let fluren = get_fluren(nas_xml, riss_extent);
+        let fluren = get_fluren(nas_xml, &Some(riss_extent.get_rect()));
         let gebaeude = get_gebaeude(nas_xml, riss_extent);
 
         crate::pdf::generate_pdf_internal(

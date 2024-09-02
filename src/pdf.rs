@@ -12,7 +12,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    intersect_polys, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -284,6 +284,22 @@ impl RissExtentReprojected {
             max_y: self.max_y,
         }
     }
+    pub fn get_poly(&self) -> SvgPolygon {
+        SvgPolygon {
+            outer_rings: vec![
+                SvgLine {
+                    points: vec![
+                        SvgPoint { x: self.min_x, y: self.min_y },
+                        SvgPoint { x: self.min_x, y: self.max_y },
+                        SvgPoint { x: self.max_x, y: self.max_y },
+                        SvgPoint { x: self.max_x, y: self.min_y },
+                        SvgPoint { x: self.min_x, y: self.min_y },
+                    ]
+                }
+            ],
+            inner_rings: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -319,6 +335,41 @@ pub struct RissConfig {
 
 pub struct Fluren {
     pub fluren: Vec<TaggedPolygon>,
+}
+
+pub struct FlurLabel {
+    pub gemarkung_nr: usize,
+    pub flur_nr: usize,
+    pub pos: SvgPoint,
+}
+
+impl FlurLabel {
+    pub fn text(&self, calc: &HeaderCalcConfig) -> String {
+        if calc.gemarkungs_nr == self.gemarkung_nr {
+            format!("Flur {}", self.flur_nr)
+        } else {
+            format!("G{} Flur {}", self.gemarkung_nr, self.flur_nr)
+        }
+    }
+}
+
+impl Fluren {
+    pub fn get_labels(&self, rect: &Option<SvgPolygon>) -> Vec<FlurLabel> {
+        self.fluren.iter().filter_map(|flst| {
+            let poly = match rect {
+                Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
+                None => flst.poly.clone(),
+            };
+            let pos = poly.get_label_pos()?;
+            let gemarkung = flst.attributes.get("berechneteGemarkung")?.parse::<usize>().ok()?;
+            let flur = flst.attributes.get("AX_Flur")?.parse::<usize>().ok()?;
+            Some(FlurLabel {
+                pos,
+                gemarkung_nr: gemarkung,
+                flur_nr: flur,
+            })
+        }).collect()
+    }
 }
 
 pub struct FlurenInPdfSpace {
@@ -445,6 +496,9 @@ pub fn generate_pdf_internal(
 
     log_status(&format!("Rendere Fluren..."));
     let _ = write_fluren(&mut layer, &fluren.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
+
+    log_status(&format!("Rendere Fluren Texte..."));
+    let _ = write_flur_texte(&mut layer, &fluren, &helvetica, rc, &riss_extent, calc);
 
     log_status(&format!("Rendere rote Linien..."));
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
@@ -706,6 +760,41 @@ fn write_na_untergehend_linien(
     layer.restore_graphics_state();
     
     
+    Some(())
+}
+
+fn write_flur_texte(
+    layer: &mut PdfLayerReference,
+    fluren: &Fluren,
+    font: &IndirectFontRef,
+    riss: &RissConfig,
+    riss_extent: &RissExtentReprojected,
+    calc: &HeaderCalcConfig,
+) -> Option<()> {
+
+    let flurcolor = csscolorparser::parse("#ee22ff").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let texte = fluren.get_labels(&Some(riss_extent.get_poly()))
+    .into_iter()
+    .map(|fl| (point_into_pdf_space(&fl.pos, riss_extent, riss), fl.text(calc)))
+    .collect::<Vec<_>>();
+
+    layer.save_graphics_state();
+    
+    layer.set_fill_color(flurcolor.clone());
+    for (pos, t) in texte {
+        layer.begin_text_section();
+        layer.set_font(&font, 20.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(pos.x as f32), Mm(pos.y as f32));
+        layer.write_text(t, &font);
+        layer.end_text_section();
+    }
+
+    layer.restore_graphics_state();
+
     Some(())
 }
 
@@ -1187,13 +1276,14 @@ pub fn get_gebaeude(
     Gebaeude { gebaeude }
 }
 
-pub fn get_fluren(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Fluren {
+pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren {
 
     let mut flst = xml.ebenen.get("AX_Flurstueck").cloned().unwrap_or_default();
-    flst.retain(|s| {
-        let rb = riss.get_rect();
-        rb.overlaps_rect(&s.get_rect())
-    });
+    if let Some(q) = rect.as_ref() {
+        flst.retain(|s| {
+            q.overlaps_rect(&s.get_rect())
+        });
+    }
 
     let mut fluren_map = BTreeMap::new();
     for v in flst.iter() {
@@ -1207,17 +1297,20 @@ pub fn get_fluren(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Fluren {
             None => continue,
         };
 
-        fluren_map.entry(flst.gemarkung).or_insert_with(|| Vec::new()).push(v);
+        fluren_map.entry(flst.gemarkung).or_insert_with(|| (flst.flur, Vec::new())).1.push(v);
     }
 
     Fluren {
-        fluren: fluren_map.iter().filter_map(|(k, v)| {
+        fluren: fluren_map.iter().filter_map(|(k, (flurnr, v))| {
             let polys = v.iter()
             .map(|s| s.poly.clone())
             .collect::<Vec<_>>();
             let joined = join_polys(&polys, false, true)?;
             Some(TaggedPolygon {
-                attributes: vec![("berechneteGemarkung".to_string(), k.to_string())].into_iter().collect(),
+                attributes: vec![
+                    ("berechneteGemarkung".to_string(), k.to_string()),
+                    ("AX_Flur".to_string(), flurnr.to_string())
+                ].into_iter().collect(),
                 poly: joined,
             })
         }).collect()
