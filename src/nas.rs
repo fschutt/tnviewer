@@ -53,6 +53,22 @@ impl Default for NasXMLFile {
 
 impl NasXMLFile {
 
+    pub fn get_linien_quadtree(&self) -> LinienQuadTree {
+
+        let mut alle_linie_split_flurstuecke = self.ebenen.iter().flat_map(|(_, s)| {
+            s.iter().flat_map(|q| {
+                let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
+                lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
+                lines
+            })
+        }).collect::<Vec<_>>();
+        alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
+        alle_linie_split_flurstuecke.dedup();
+        let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
+
+        LinienQuadTree::new(alle_linie_split_flurstuecke)
+    }
+
     pub fn create_quadtree(&self) -> NasXmlQuadTree {
 
         let mut ebenen_map = BTreeMap::new();

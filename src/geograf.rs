@@ -158,8 +158,6 @@ pub fn export_aenderungen_geograf(
 
     let lq = split_nas.get_linien_quadtree();
 
-    log_status(&format!("QuadTree ok!"));
-
     if risse.is_empty() {
         let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, None);
         export_splitflaechen(
