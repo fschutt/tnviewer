@@ -732,7 +732,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let b = &splitflaechen[*b];
         let shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
         log_status(&format!("pushing {} NA untergehend lines", shared_lines.len()));
-        let shared_lines_2 = shared_lines.into_iter()
+        let mut shared_lines_2 = shared_lines.into_iter()
         .filter_map(|s| {
             let first = s.points.first()?;
             let last = s.points.last()?;
@@ -743,6 +743,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             }
         }).collect::<Vec<_>>();
         log_status(&format!("--> pushing {} NA untergehend lines", shared_lines_2.len()));
+        v.append(&mut shared_lines_2);
     }
 
     v
