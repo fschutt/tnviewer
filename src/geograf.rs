@@ -696,8 +696,11 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        v.append(&mut get_shared_lines(&a.poly_cut, &b.poly_cut));
-        log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {})", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu));
+        let mut shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
+        if !shared_lines.is_empty() {
+            v.append(&mut shared_lines);
+            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien: {shared_lines:?}", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
+        }
     }
 
     v
