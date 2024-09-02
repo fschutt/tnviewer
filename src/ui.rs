@@ -1496,6 +1496,7 @@ impl AenderungenClean {
         let na_bereits_definiert = is.iter()
         .map(|s| s.flst_id_part.clone())
         .collect::<BTreeSet<_>>();
+        na_bereits_definiert.iter().for_each(|f| log_status(&format!("1: {f}")));
 
         for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
             
@@ -1532,6 +1533,7 @@ impl AenderungenClean {
         let na_bereits_definiert = is.iter()
         .map(|s| s.flst_id_part.clone())
         .collect::<BTreeSet<_>>();
+    na_bereits_definiert.iter().for_each(|f| log_status(&format!("2: {f}")));
 
         // insert gebaeude geänderte flst
         for geb in self.aenderungen.gebaeude_loeschen.values() {
@@ -1600,6 +1602,7 @@ impl AenderungenClean {
         let na_bereits_definiert = is.iter()
         .map(|s| s.flst_id_part.clone())
         .collect::<BTreeSet<_>>();
+        na_bereits_definiert.iter().for_each(|f| log_status(&format!("3: {f}")));
 
         // insert other flst areas (bleibt)
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
