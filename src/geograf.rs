@@ -430,6 +430,7 @@ pub fn export_splitflaechen(
             riss_extent,
             splitflaechen,
             &aenderungen_rote_linien,
+            &aenderungen_nutzungsarten_linien,
             &aenderungen_texte,
             &fluren,
             &flst,
@@ -669,7 +670,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         if s1.alt == s1.neu {
             continue;
         }
-        
+
         for (id2, s2) in it {
             if id1 == id2 {
                 continue;
@@ -694,13 +695,25 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         }
     }
 
+    let mut v = Vec::new();
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
+        let point_a = match a.poly_cut.get_label_pos() {
+            Some(s) => s,
+            None => continue,
+        };
+        let point_b = match b.poly_cut.get_label_pos() {
+            Some(s) => s,
+            None => continue,
+        };
+        v.push(SvgLine {
+            points: vec![point_a, point_b],
+        });
         log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {})", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu));
     }
 
-    Vec::new()
+    v
 }
 
 fn calc_text_width_pt(text: &String, font_scale: f32, font: &dyn ab_glyph::Font) -> Pt {

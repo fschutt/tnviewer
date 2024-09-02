@@ -387,6 +387,7 @@ pub fn generate_pdf_internal(
 
     splitflaechen: &[AenderungenIntersection],
     rote_linien: &Vec<SvgLine>, // in ETRS space
+    na_untergehend_linien: &Vec<SvgLine>, // in ETRS space
     beschriftungen: &[TextPlacement], // in ETRS space
     fluren: &Fluren, // in ETRS space,
     flst: &Flurstuecke, // in ETRS space
@@ -448,6 +449,10 @@ pub fn generate_pdf_internal(
     log_status(&format!("Rendere rote Linien..."));
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_rote_linien(&mut layer, &rote_linien);
+
+    log_status(&format!("Rendere NA untergehend Linien..."));
+    let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
+    let _ = write_na_untergehend_linien(&mut layer, &rote_linien);
 
     log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte = crate::optimize::optimize_labels(
@@ -664,6 +669,44 @@ fn point_into_pdf_space(
     }
 }
 
+fn write_na_untergehend_linien(
+    layer: &mut PdfLayerReference,
+    linien: &[SvgLine],
+) -> Option<()> {
+
+    layer.save_graphics_state();
+
+    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
+        r: 255.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    }));
+
+    let dash_pattern = printpdf::LineDashPattern {
+        dash_1: Some(5),
+        ..Default::default()
+    };
+    layer.set_line_dash_pattern(dash_pattern);
+    layer.set_line_cap_style(printpdf::LineCapStyle::Round);
+    layer.set_line_join_style(printpdf::LineJoinStyle::Round);
+    layer.set_outline_thickness(1.0);
+
+    for l in linien.iter() {
+        layer.add_line(printpdf::Line { 
+            points: l.points.iter().map(|p| (printpdf::Point {
+                x: Mm(p.x as f32).into_pt(),
+                y: Mm(p.y as f32).into_pt(),
+            }, false)).collect(), 
+            is_closed: l.is_closed() 
+        })
+    }
+
+    layer.restore_graphics_state();
+    
+    Some(())
+}
+
 fn write_rote_linien(
     layer: &mut PdfLayerReference,
     linien: &[SvgLine],
@@ -679,7 +722,9 @@ fn write_rote_linien(
     }));
 
     layer.set_outline_thickness(1.0);
-
+    layer.set_line_cap_style(printpdf::LineCapStyle::Round);
+    layer.set_line_join_style(printpdf::LineJoinStyle::Round);
+    
     for l in linien.iter() {
         layer.add_line(printpdf::Line { 
             points: l.points.iter().map(|p| (printpdf::Point {
