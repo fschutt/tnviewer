@@ -732,19 +732,17 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let b = &splitflaechen[*b];
         let shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
         log_status(&format!("pushing {} NA untergehend lines", shared_lines.len()));
-        for s in shared_lines {
-            let first = match s.points.first() {
-                Some(s) => s,
-                None => continue,
-            };
-            let last = match s.points.last() {
-                Some(s) => s,
-                None => continue,
-            };
-            if !lq.line_overlaps_or_equals(first, last) {
-                v.push(s);
+        let shared_lines_2 = shared_lines.into_iter()
+        .filter_map(|s| {
+            let first = s.points.first()?;
+            let last = s.points.last()?;
+            if lq.line_overlaps_or_equals(first, last) {
+                None
+            } else {
+                Some(s)
             }
-        }
+        }).collect::<Vec<_>>();
+        log_status(&format!("--> pushing {} NA untergehend lines", shared_lines_2.len()));
     }
 
     v

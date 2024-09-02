@@ -55,12 +55,12 @@ impl NasXMLFile {
 
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
 
-        let mut alle_linie_split_flurstuecke = self.ebenen.iter().flat_map(|(_, s)| {
-            s.iter().flat_map(|q| {
-                let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
-                lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
-                lines
-            })
+        let default = Vec::new();
+        let mut alle_linie_split_flurstuecke = self.ebenen.get("AX_Flurstueck")
+        .unwrap_or(&default).iter().flat_map(|q| {
+            let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
+            lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
+            lines
         }).collect::<Vec<_>>();
         alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
         alle_linie_split_flurstuecke.dedup();
@@ -1699,6 +1699,7 @@ fn default_etrs33() -> String {
 
 impl SplitNasXml {
 
+    /*
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
 
         let mut alle_linie_split_flurstuecke = self.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
@@ -1714,6 +1715,7 @@ impl SplitNasXml {
 
         LinienQuadTree::new(alle_linie_split_flurstuecke)
     }
+    */
 
     pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
         let split = flstpartid.split(":").collect::<Vec<_>>();
