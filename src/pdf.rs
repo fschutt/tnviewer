@@ -1312,21 +1312,23 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
             None => continue,
         };
 
-        fluren_map.entry(flst.gemarkung).or_insert_with(|| (flst.flur, Vec::new())).1.push(v);
+        fluren_map.entry(flst.gemarkung).or_insert_with(|| BTreeMap::new()).entry(flst.flur).or_insert_with(|| Vec::new()).push(v);
     }
 
     Fluren {
-        fluren: fluren_map.iter().filter_map(|(k, (flurnr, v))| {
-            let polys = v.iter()
-            .map(|s| s.poly.clone())
-            .collect::<Vec<_>>();
-            let joined = join_polys(&polys, false, true)?;
-            Some(TaggedPolygon {
-                attributes: vec![
-                    ("berechneteGemarkung".to_string(), k.to_string()),
-                    ("AX_Flur".to_string(), flurnr.to_string())
-                ].into_iter().collect(),
-                poly: joined,
+        fluren: fluren_map.iter().flat_map(|(gemarkung_nr, fluren)| {
+            fluren
+            .iter()
+            .filter_map(|(flur_nr, s)| {
+                let polys = s.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
+                let joined = join_polys(&polys, false, true)?;
+                Some(TaggedPolygon {
+                    attributes: vec![
+                        ("berechneteGemarkung".to_string(), gemarkung_nr.to_string()),
+                        ("AX_Flur".to_string(), flur_nr.to_string())
+                    ].into_iter().collect(),
+                    poly: joined,
+                })
             })
         }).collect()
     }
