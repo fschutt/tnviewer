@@ -1,10 +1,11 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
 use dxf::{Header, Vector, XData, XDataItem};
+use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::TaggedPolygon, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::{reproject_poly, translate_to_geo_poly, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -156,7 +157,7 @@ pub fn export_aenderungen_geograf(
 
     log_status(&format!("OK: {num_eigentuemer} Eigentümer exportiert in XLSX"));
 
-    let lq = split_nas.get_linien_quadtree();
+    let lq = nas_xml.get_linien_quadtree();
 
     if risse.is_empty() {
         let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, None);
@@ -183,10 +184,26 @@ pub fn export_aenderungen_geograf(
                 None => continue,
             };
             let extent_rect = extent.get_rect();
-            let splitflaechen_for_riss = splitflaechen.0
+            let mut splitflaechen_for_riss = splitflaechen.0
                 .iter()
                 .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
                 .collect::<Vec<_>>();
+
+            if let Some(rissgebiet) = r.rissgebiet.as_ref().and_then(|rg| {
+                let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
+                let target = proj4rs::Proj::from_proj_string(&split_nas.crs).ok()?;
+                Some(reproject_poly(rg, &source, &target, UseRadians::ForSourceAndTarget))
+            }) {
+                let rissgebiet_geo = translate_to_geo_poly(&rissgebiet);
+                let splitflaechen_overlapped = splitflaechen_for_riss.iter()
+                .filter_map(|s| if translate_to_geo_poly(&s.poly_cut).relate(&rissgebiet_geo).is_overlaps() {
+                    Some(s.flst_id.clone())
+                } else {
+                    None
+                }).collect::<BTreeSet<_>>();
+                splitflaechen_for_riss.retain(|r| splitflaechen_overlapped.contains(&r.flst_id));
+            }
+
             let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, Some(extent_rect.clone()));
 
             export_splitflaechen(
