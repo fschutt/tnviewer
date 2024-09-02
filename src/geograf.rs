@@ -378,7 +378,7 @@ pub fn export_splitflaechen(
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
-    let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas);
+    let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, riss.as_ref().map(|s| s.1.get_rect()));
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
@@ -660,12 +660,18 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
     }).collect::<Vec<_>>()
 }
 
-pub fn get_na_splitflaechen(splitflaechen: &[AenderungenIntersection], split_nas: &SplitNasXml) -> Vec<AenderungenIntersection> {
+pub fn get_na_splitflaechen(splitflaechen: &[AenderungenIntersection], split_nas: &SplitNasXml, rect: Option<quadtree_f32::Rect>) -> Vec<AenderungenIntersection> {
     let mut finalized = splitflaechen.to_vec();
     let existing_flst = splitflaechen.iter().map(|f| &f.flst_id).collect::<BTreeSet<_>>();
     for (k, v) in split_nas.flurstuecke_nutzungen.iter() {
         finalized.extend(v.iter().filter_map(|q| {
 
+            if let Some(r) = rect.as_ref() {
+                if !q.poly.get_rect().overlaps_rect(r) {
+                    return None;
+                }
+            }
+            
             let flst_id = q.attributes.get("AX_Flurstueck")?;
             if existing_flst.contains(flst_id) {
                 return None;
@@ -715,7 +721,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             if !should_insert {
                 continue;
             }
-            
+
             pairs.insert(pair);
         }
     }
@@ -725,10 +731,18 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
         let mut shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
-        if !shared_lines.is_empty() {
-            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
-            // v.push(SvgLine { points: vec![p, q] });
-            v.append(&mut shared_lines);
+        for s in shared_lines {
+            let first = match s.points.first() {
+                Some(s) => s,
+                None => continue,
+            };
+            let last = match s.points.last() {
+                Some(s) => s,
+                None => continue,
+            };
+            if !lq.line_overlaps_or_equals(first, last) {
+                v.push(s);
+            }
         }
     }
 
