@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
+use printpdf::{CustomPdfConformance, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
@@ -678,12 +678,16 @@ fn write_na_untergehend_linien(
     layer.save_graphics_state();
 
     layer.set_outline_color(printpdf::Color::Rgb(Rgb {
-        r: 0.0,
-        g: 255.0,
+        r: 255.0,
+        g: 0.0,
         b: 0.0,
         icc_profile: None,
     }));
 
+    layer.set_line_dash_pattern(LineDashPattern {
+        dash_1: Some(1),
+        .. Default::default()
+    });
     layer.set_outline_thickness(1.0);
     layer.set_line_cap_style(printpdf::LineCapStyle::Round);
     layer.set_line_join_style(printpdf::LineJoinStyle::Round);
