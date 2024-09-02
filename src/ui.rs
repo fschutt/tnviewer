@@ -1529,6 +1529,10 @@ impl AenderungenClean {
             log_status(&format!("Splitflächen (Stufe 3): {na_def}: {kuerzel} -> {neu_kuerzel} = {} m2", flst_part.poly.area_m2().round()));
         }
 
+        let na_bereits_definiert = is.iter()
+        .map(|s| s.flst_id_part.clone())
+        .collect::<BTreeSet<_>>();
+
         // insert gebaeude geänderte flst
         for geb in self.aenderungen.gebaeude_loeschen.values() {
             for flst_id in geb.flst_id.iter() {
@@ -1576,6 +1580,10 @@ impl AenderungenClean {
         .filter(|i| !i.poly_cut.is_zero_area())
         .collect::<Vec<_>>();
 
+        let na_bereits_definiert = is.iter()
+        .map(|s| s.flst_id_part.clone())
+        .collect::<BTreeSet<_>>();
+
         // let is = merge_adjacent_intersections(is);
 
         let default = Vec::new();
@@ -1592,6 +1600,10 @@ impl AenderungenClean {
         if !to_remove_flst.is_empty() {
             is.retain(|s| !to_remove_flst.contains(&s.flst_id));
         }
+
+        let na_bereits_definiert = is.iter()
+        .map(|s| s.flst_id_part.clone())
+        .collect::<BTreeSet<_>>();
 
         // insert other flst areas (bleibt)
         let flst_touched = is.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
