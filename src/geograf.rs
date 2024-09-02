@@ -706,7 +706,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
                 Some(s) => s,
                 None => continue,
             };
-            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien {p:?} -> {q:?}", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
+            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien {shared_lines:?}", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
             // v.push(SvgLine { points: vec![p, q] });
             v.append(&mut shared_lines);
         }
@@ -720,45 +720,42 @@ fn get_shared_lines(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgLine> {
     let lines_b = get_linecoords(b);
     let same = lines_a.intersection(&lines_b).collect::<Vec<_>>();
 
+    /* 
     let mut map = BTreeSet::new();
     for s in same {
-        let hi = if s.0.0 > s.1.0 {
-            s.0
+        let (hi, lo) = if s.0.0 > s.1.0 {
+            (s.0, s.1)
         } else {
-            s.1
-        };
-        let lo = if s.0.0 > s.1.0 {
-            s.1
-        } else {
-            s.0
+            (s.1, s.0)
         };
         map.insert((hi, lo));
     }
+    */
 
-    map.into_iter().map(|((ax, ay), (bx, by))| {
+    same.into_iter().map(|((ax, ay), (bx, by))| {
         SvgLine {
             points: vec![
                 SvgPoint {
-                    x: (ax as f64) / 1000.0,
-                    y: (ay as f64) / 1000.0,
+                    x: (*ax as f64) / 1000.0,
+                    y: (*ay as f64) / 1000.0,
                 },
                 SvgPoint {
-                    x: (bx as f64) / 1000.0,
-                    y: (by as f64) / 1000.0,
+                    x: (*bx as f64) / 1000.0,
+                    y: (*by as f64) / 1000.0,
                 },
             ]
         }
     }).collect()
 }
 
-fn get_linecoords(p: &SvgPolygon) -> BTreeSet<((usize, usize), (usize, usize))> {
+fn get_linecoords(p: &SvgPolygon) -> BTreeSet<((u64, u64), (u64, u64))> {
     let mut lines = p.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
     lines.extend(p.inner_rings.iter().flat_map(crate::geograf::l_to_points));
     lines.into_iter()
     .flat_map(|(a, b)| {
         vec![
-            (((a.x * 1000.0) as usize, (a.y * 1000.0) as usize), ((b.x * 1000.0) as usize, (b.y * 1000.0) as usize)),
-            (((b.x * 1000.0) as usize, (b.y * 1000.0) as usize), ((a.x * 1000.0) as usize, (a.y * 1000.0) as usize)),
+            (((a.x * 1000.0) as u64, (a.y * 1000.0) as u64), ((b.x * 1000.0) as u64, (b.y * 1000.0) as u64)),
+            (((b.x * 1000.0) as u64, (b.y * 1000.0) as u64), ((a.x * 1000.0) as u64, (a.y * 1000.0) as u64)),
         ]
     })
     .collect()
