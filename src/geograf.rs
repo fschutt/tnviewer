@@ -685,7 +685,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             if !relate.touches_other_poly_outside() {
                 continue;
             }
-            if !(s1.neu == s2.alt) {
+            if !(s1.neu == s2.alt || s2.neu == s1.alt) {
                 continue;
             }
             pairs.insert(pair);
@@ -720,19 +720,17 @@ fn get_shared_lines(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgLine> {
     let lines_b = get_linecoords(b);
     let same = lines_a.intersection(&lines_b).collect::<Vec<_>>();
 
-    /* 
     let mut map = BTreeSet::new();
-    for s in same {
-        let (hi, lo) = if s.0.0 > s.1.0 {
-            (s.0, s.1)
+    for (start, end) in same {
+        let (hi, lo) = if start.0 > end.0 {
+            (start, end)
         } else {
-            (s.1, s.0)
+            (end, start)
         };
         map.insert((hi, lo));
     }
-    */
 
-    same.into_iter().map(|((ax, ay), (bx, by))| {
+    map.into_iter().map(|((ax, ay), (bx, by))| {
         SvgLine {
             points: vec![
                 SvgPoint {
