@@ -671,7 +671,7 @@ pub fn get_na_splitflaechen(splitflaechen: &[AenderungenIntersection], split_nas
                     return None;
                 }
             }
-            
+
             let flst_id = q.attributes.get("AX_Flurstueck")?;
             if existing_flst.contains(flst_id) {
                 return None;
@@ -730,7 +730,8 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        let mut shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
+        let shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
+        log_status(&format!("pushing {} NA untergehend lines", shared_lines.len()));
         for s in shared_lines {
             let first = match s.points.first() {
                 Some(s) => s,
