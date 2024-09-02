@@ -1218,8 +1218,49 @@ impl AenderungenIntersections {
     }
     
     pub fn merge_to_nearest(&self) -> Self {
-        // TODO
-        self.clone()
+
+        let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
+
+        for s in self.0.iter() {
+            splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
+            .or_insert_with(|| BTreeMap::new())
+            .entry((s.alt.clone(), s.neu.clone()))
+            .or_insert_with(|| Vec::new())
+            .push(s.poly_cut.clone());
+        }
+
+        for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
+            for k in v.values_mut() {
+                if k.len() < 2 {
+                    continue;
+                }
+
+                let polys_to_join = k.iter().cloned().collect::<Vec<_>>();
+
+                log_status(&format!("Splitflächen: merge {} Polygone auf Flurstück {}", polys_to_join.len(), k0.0));
+
+                let joined = match join_polys(&polys_to_join, false, false) {
+                    Some(s) => s.recombine_polys(),
+                    None => continue,
+                };
+
+                *k = joined;
+            }
+        }
+
+        let new_sf = splitflaechen_by_flst_kuerzel.iter().flat_map(|((flst_id, flst_id_part), v)| {
+            v.iter().flat_map(|((alt, neu), polys)| {
+                polys.iter().map(|p| AenderungenIntersection {
+                    alt: alt.clone(),
+                    neu: neu.clone(),
+                    flst_id: flst_id.clone(),
+                    flst_id_part: flst_id_part.clone(),
+                    poly_cut: p.clone(),
+                })
+            })
+        }).collect();
+
+        Self(new_sf)
     }
 
     pub fn clean_zero_size_areas(&self) -> Self {

@@ -9,6 +9,7 @@ use geo::Centroid;
 use geo::ConvexHull;
 use geo::CoordsIter;
 use geo::TriangulateEarcut;
+use geo::Within;
 use polylabel_mini::LineString;
 use polylabel_mini::Point;
 use polylabel_mini::Polygon;
@@ -768,6 +769,23 @@ pub enum EqualsAnyRingStatus {
 }
 
 impl SvgPolygon {
+
+    pub fn recombine_polys(&self) -> Vec<Self> {
+        let outer_rings = self.outer_rings.iter().map(|l| SvgPolygon::from_line(l)).collect::<Vec<_>>();
+        let inner_rings = self.inner_rings.iter().map(|l| SvgPolygon::from_line(l)).collect::<Vec<_>>();
+        outer_rings.iter().map(|p| {
+            SvgPolygon {
+                outer_rings: p.outer_rings.clone(),
+                inner_rings: inner_rings.iter().flat_map(|q| {
+                    if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(q)) {
+                        q.outer_rings.clone()
+                    } else {
+                        Vec::new()
+                    }
+                }).collect()
+            }
+        }).collect()
+    }
 
     pub fn is_inside_of(&self, other: &Self) -> bool {
 
@@ -1529,6 +1547,7 @@ impl UseRadians {
         }
     }
 }
+
 pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: UseRadians) -> SvgLine {
     SvgLine {
         points: line.points.iter().filter_map(|p| {
