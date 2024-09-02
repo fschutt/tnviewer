@@ -2376,6 +2376,20 @@ pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon, dst: f64) -> bool {
             }
         }
     }
+
+    for line in poly.inner_rings.iter() {
+        for q in line.points.windows(2) {
+            match &q {
+                &[sa, eb] => {
+                    if dist_to_segment(*p, *sa, *eb).distance < dst {
+                        return true;
+                    }
+                },
+                _ => { }
+            }
+        }
+    }
+    
     false
 }
 

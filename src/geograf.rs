@@ -710,15 +710,13 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             if pairs.contains(&pair) {
                 continue;
             }
-            let relate = crate::nas::relate(&s1.poly_cut, &s2.poly_cut, 0.2);
-            if !relate.touches_other_poly_outside() {
-                continue;
-            }
             // Areas used to have distinct kuerzel, now they don't
             let should_insert = s1.alt != s2.alt && s1.neu == s2.neu;
-            if should_insert {
-                pairs.insert(pair);
+            if !should_insert {
+                continue;
             }
+            
+            pairs.insert(pair);
         }
     }
 
@@ -728,15 +726,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let b = &splitflaechen[*b];
         let mut shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
         if !shared_lines.is_empty() {
-            let p = match a.poly_cut.get_label_pos() {
-                Some(s) => s,
-                None => continue,
-            };
-            let q = match b.poly_cut.get_label_pos() {
-                Some(s) => s,
-                None => continue,
-            };
-            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien {shared_lines:?}", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
+            log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {}) {} gemeinsame Linien", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu, shared_lines.len()));    
             // v.push(SvgLine { points: vec![p, q] });
             v.append(&mut shared_lines);
         }
