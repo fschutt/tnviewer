@@ -344,6 +344,16 @@ pub struct FlurLabel {
 }
 
 impl FlurLabel {
+    pub fn text_pdf(&self, calc: &HeaderCalcConfig) -> Vec<String> {
+        if calc.gemarkungs_nr == self.gemarkung_nr {
+            vec![format!("Flur {}", self.flur_nr)]
+        } else {
+            vec![
+                format!("Gem. {}", self.gemarkung_nr),
+                format!("Flur {}", self.flur_nr)
+            ]
+        }
+    }
     pub fn text(&self, calc: &HeaderCalcConfig) -> String {
         if calc.gemarkungs_nr == self.gemarkung_nr {
             format!("Flur {}", self.flur_nr)
@@ -778,18 +788,23 @@ fn write_flur_texte(
 
     let texte = fluren.get_labels(&Some(riss_extent.get_poly()))
     .into_iter()
-    .map(|fl| (point_into_pdf_space(&fl.pos, riss_extent, riss), fl.text(calc)))
+    .map(|fl| (point_into_pdf_space(&fl.pos, riss_extent, riss), fl.text_pdf(calc)))
     .collect::<Vec<_>>();
 
     layer.save_graphics_state();
     
+    let fontsize = 20.0;
     layer.set_fill_color(flurcolor.clone());
     for (pos, t) in texte {
         layer.begin_text_section();
-        layer.set_font(&font, 20.0);
+        layer.set_font(&font, fontsize);
+        layer.set_line_height(fontsize);
         layer.set_text_rendering_mode(TextRenderingMode::Fill);
         layer.set_text_cursor(Mm(pos.x as f32), Mm(pos.y as f32));
-        layer.write_text(t, &font);
+        for v in t.iter() {
+            layer.write_text(v, &font);
+            layer.add_line_break();
+        }
         layer.end_text_section();
     }
 
