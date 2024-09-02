@@ -378,7 +378,8 @@ pub fn export_splitflaechen(
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
-    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&splitflaechen, lq);
+    let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas);
+    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
@@ -659,6 +660,38 @@ fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
     }).collect::<Vec<_>>()
 }
 
+pub fn get_na_splitflaechen(splitflaechen: &[AenderungenIntersection], split_nas: &SplitNasXml) -> Vec<AenderungenIntersection> {
+    let mut finalized = splitflaechen.to_vec();
+    let existing_flst = splitflaechen.iter().map(|f| &f.flst_id).collect::<BTreeSet<_>>();
+    for (k, v) in split_nas.flurstuecke_nutzungen.iter() {
+        finalized.extend(v.iter().filter_map(|q| {
+
+            let flst_id = q.attributes.get("AX_Flurstueck")?;
+            if existing_flst.contains(flst_id) {
+                return None;
+            }
+
+            let ebene = q.attributes.get("AX_Ebene")?;
+            let obj_id = q.attributes.get("id")?;
+            let alt_kuerzel = q.get_auto_kuerzel(&ebene)?;
+            let intersect_id = q.attributes
+            .get("AX_IntersectionId")
+            .map(|w| format!(":{w}"))
+            .unwrap_or_default();
+            let flst_id_part = format!("{flst_id}:{ebene}:{obj_id}{intersect_id}");
+
+            Some(AenderungenIntersection {
+                alt: alt_kuerzel.clone(),
+                neu: alt_kuerzel,
+                flst_id: flst_id.to_string(),
+                flst_id_part: flst_id_part,
+                poly_cut: q.poly.clone(),
+            })
+        }));
+    }
+    finalized
+}
+
 pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersection], lq: &LinienQuadTree) -> Vec<SvgLine> {
     let mut pairs = BTreeSet::new();
     for (id1, s1) in splitflaechen.iter().enumerate() {
@@ -666,10 +699,6 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let rect = s1.poly_cut.get_rect();
         let it = splitflaechen.iter().enumerate()
         .filter_map(|(i, p)| if p.poly_cut.get_rect().overlaps_rect(&rect) { Some((i, p)) } else { None });
-
-        if s1.alt == s1.neu {
-            continue;
-        }
 
         for (id2, s2) in it {
             if id1 == id2 {
@@ -685,10 +714,11 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
             if !relate.touches_other_poly_outside() {
                 continue;
             }
-            if !(s1.neu == s2.alt || s2.neu == s1.alt) {
-                continue;
+            // Areas used to have distinct kuerzel, now they don't
+            let should_insert = s1.alt != s2.alt && s1.neu == s2.neu;
+            if should_insert {
+                pairs.insert(pair);
             }
-            pairs.insert(pair);
         }
     }
 
