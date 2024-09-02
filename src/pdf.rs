@@ -684,13 +684,13 @@ fn write_na_untergehend_linien(
     }));
 
     let dash_pattern = printpdf::LineDashPattern {
-        dash_1: Some(2),
+        dash_1: Some(1),
         ..Default::default()
     };
     layer.set_line_dash_pattern(dash_pattern);
     layer.set_line_cap_style(printpdf::LineCapStyle::Round);
     layer.set_line_join_style(printpdf::LineJoinStyle::Round);
-    layer.set_outline_thickness(0.1);
+    layer.set_outline_thickness(0.5);
 
     for l in linien.iter() {
         layer.add_line(printpdf::Line { 

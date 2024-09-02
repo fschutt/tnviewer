@@ -5,7 +5,7 @@ use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
+use crate::{csv::CsvDataType, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 
 /// Returns the dxf bytes
@@ -696,21 +696,60 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        let point_a = match a.poly_cut.get_label_pos() {
-            Some(s) => s,
-            None => continue,
-        };
-        let point_b = match b.poly_cut.get_label_pos() {
-            Some(s) => s,
-            None => continue,
-        };
-        v.push(SvgLine {
-            points: vec![point_a, point_b],
-        });
+        v.append(&mut get_shared_lines(&a.poly_cut, &b.poly_cut));
         log_status(&format!("NA untergehend zwischen {} ({} -> {}) and {} ({} -> {})", a.flst_id_part, a.alt, a.neu, b.flst_id_part, b.alt, b.neu));
     }
 
     v
+}
+
+fn get_shared_lines(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgLine> {
+    let lines_a = get_linecoords(a);
+    let lines_b = get_linecoords(b);
+    let same = lines_a.intersection(&lines_b).collect::<Vec<_>>();
+
+    let mut map = BTreeSet::new();
+    for s in same {
+        let hi = if s.0.0 > s.1.0 {
+            s.0
+        } else {
+            s.1
+        };
+        let lo = if s.0.0 > s.1.0 {
+            s.1
+        } else {
+            s.0
+        };
+        map.insert((hi, lo));
+    }
+
+    map.into_iter().map(|((ax, ay), (bx, by))| {
+        SvgLine {
+            points: vec![
+                SvgPoint {
+                    x: (ax as f64) / 1000.0,
+                    y: (ay as f64) / 1000.0,
+                },
+                SvgPoint {
+                    x: (bx as f64) / 1000.0,
+                    y: (by as f64) / 1000.0,
+                },
+            ]
+        }
+    }).collect()
+}
+
+fn get_linecoords(p: &SvgPolygon) -> BTreeSet<((usize, usize), (usize, usize))> {
+    let mut lines = p.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
+    lines.extend(p.inner_rings.iter().flat_map(crate::geograf::l_to_points));
+    lines.into_iter()
+    .flat_map(|(a, b)| {
+        vec![
+            (((a.x * 1000.0) as usize, (a.y * 1000.0) as usize), ((b.x * 1000.0) as usize, (b.y * 1000.0) as usize)),
+            (((b.x * 1000.0) as usize, (b.y * 1000.0) as usize), ((a.x * 1000.0) as usize, (a.y * 1000.0) as usize)),
+        ]
+    })
+    .collect()
 }
 
 fn calc_text_width_pt(text: &String, font_scale: f32, font: &dyn ab_glyph::Font) -> Pt {
