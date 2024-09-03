@@ -158,8 +158,7 @@ pub fn optimize_labels(
     let maxpoints_per_iter = 50;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
-    initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label large areas first
-    initial_text_pos_clone.reverse();
+    initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
 
     let mut modifications = BTreeMap::new();
 
