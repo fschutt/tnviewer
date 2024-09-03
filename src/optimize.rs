@@ -141,70 +141,73 @@ pub fn optimize_labels(
         }).collect(),
     };
 
-    log_status("1");
     let maxiterations = 10;
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
-    initial_text_pos_clone.iter_mut().map(|tp| {
+    let mut modifications = BTreeMap::new();
+
+    for (i, tp) in initial_text_pos_clone.iter().enumerate() {
         
         let mut textpos_totry = vec![tp.pos];
-        let mut textpos_found: Option<(SvgPoint, f64)> = None;
+        let mut textpos_found = Vec::new();
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         
-        log_status("2");
-
-        'outer: for i in 0..maxiterations {
-
-            log_status(&format!("trying {} positions", textpos_totry.len()));
+        for i in 0..maxiterations {
 
             for newpostotry in textpos_totry.iter() {
-                if !label_overlaps_feature(
+
+                let label_overlaps_feature = label_overlaps_feature(
                     newpostotry,
                     &overlap_boolmap,
                     &config,
                     tp_width,
-                ) {
-                    // mark region as occupied
-                    let (potential_textpos, dst) = (*newpostotry, newpostotry.dist(&tp.pos));
-                    let (a, t) = textpos_found.get_or_insert((potential_textpos, dst));
-                    if dst < *t {
-                        *a = potential_textpos;
-                        *t = dst;
-                    }
-                }
-            }
-
-            log_status("2.5");
-
-            if let Some((s, _)) = textpos_found.as_ref() {
-                paint_label_onto_map(
-                    s,
-                    &mut overlap_boolmap,
-                    &config,
-                    tp_width,
                 );
-                break 'outer;
+                
+                let distance = newpostotry.dist(&tp.pos);
+                let label_will_overlap_flst_line = 0; // TODO
+                let label_line_will_intersect_other_line = 0; // TODO
+
+                let penalty = if label_overlaps_feature {
+                    u64::MAX
+                } else {
+                    (distance * 10.0).round() as u64 + 
+                    (label_will_overlap_flst_line * 50) +
+                    (label_line_will_intersect_other_line * 1000)
+                };
+
+                textpos_found.push((penalty, *newpostotry));
             }
 
-            log_status("generating next iteration text positions...");
-            let mut np = gen_new_points(&tp.pos, i);
-            np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
-            np.dedup_by(|a, b| a.equals(&b));
-            log_status(&format!("generated {} new positions", np.len()));
-            textpos_totry = np;
+            if !textpos_found.iter().any(|(penalty, pos)| *penalty < 5) {
+                log_status("generating next iteration text positions...");
+                let mut np = gen_new_points(&tp.pos, i);
+                np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
+                np.dedup_by(|a, b| a.equals(&b));
+                log_status(&format!("generated {} new positions", np.len()));
+                textpos_totry = np;
+            } else {
+                break;
+            }
         }
 
+        let least_penalty = textpos_found.iter()
+        .min_by_key(|s| (**s).0).cloned()
+        .unwrap_or((u64::MAX, tp.pos));
 
-        log_status("3");
+        log_status(&format!("placing text {} (penalty = {})", tp.kuerzel, least_penalty.0));
 
-        let optimized_pos = match textpos_found {
-            Some((s, _)) => SvgPoint {
-                x: s.x + 1.0,
-                y: s.y - 1.0,
-            },
-            None => tp.pos,
-        };
+        paint_label_onto_map(
+            &least_penalty.1,
+            &mut overlap_boolmap,
+            &config,
+            tp_width,
+        );
 
+        modifications.insert(i, least_penalty.1);
+    }
+
+    initial_text_pos_clone.iter().enumerate().map(|(i, tp)| {
+        let optimized_pos = modifications.get(&i).cloned().unwrap_or(tp.pos);
         OptimizedTextPlacement {
             optimized: TextPlacement { 
                 kuerzel: tp.kuerzel.clone(), 
