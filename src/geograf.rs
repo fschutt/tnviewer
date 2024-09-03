@@ -983,7 +983,7 @@ impl HeaderCalcConfig {
 
     pub fn get_fluren_string(&self) -> String {
         let internal = self.get_fluren_string_internal();
-        if internal.len() > 3 {
+        if internal.len() > 4 {
             "diverse".to_string()
         } else {
             internal.join(", ").trim().to_string()
@@ -1012,7 +1012,7 @@ impl HeaderCalcConfig {
                 .filter_map(|tp| {
                     let mut poly = tp.1.poly.clone();
                     poly.correct_winding_order();
-                    if poly.is_inside_of(&s) {
+                    if poly.is_completely_inside_of(&s) {
                         Some(tp.1)
                     } else {
                         None
@@ -1158,7 +1158,8 @@ pub fn write_header(
         1 => offset_right + 8.0,
         2 => offset_right + 6.0,
         3 => offset_right + 4.0,
-        _ => offset_right + 8.0,
+        3 => offset_right + 2.0,
+        _ => offset_right + 4.0,
     };
     layer1.use_text(&text, medium_font_size, Mm(offset_right_fluren), Mm(offset_top + 7.0), &times_roman);    
     
