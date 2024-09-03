@@ -158,6 +158,7 @@ pub fn optimize_labels(
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         
         let tp_triangles = tp.poly.get_triangle_points();
+        let mut taken_nearest_points = Vec::new();
 
         for i in 0..maxiterations {
 
@@ -170,34 +171,38 @@ pub fn optimize_labels(
                     tp_width,
                 );
                 
-                let nearest_point = tp_triangles.iter().min_by_key(|s| {
+                let nearest_point = tp_triangles.iter()
+                .filter_map(|t| {
+                    if taken_nearest_points.iter().any(|q: &SvgPoint| q.equals(t)) {
+                        None
+                    } else {
+                        Some(*t)
+                    }
+                })
+                .min_by_key(|s| {
                     (s.dist(newpostotry) * 1000.0) as usize
-                }).unwrap_or(&tp.pos);
+                }).unwrap_or(tp.pos);
 
                 let line_will_overlap = test_line_will_intersect(
                     newpostotry,
-                    nearest_point,
+                    &nearest_point,
                     &overlap_boolmap,
                     &config,
                 );
 
-                let distance = newpostotry.dist(nearest_point);
+                let distance = newpostotry.dist(&nearest_point);
                 let label_will_overlap_flst_line = 0; // TODO
-                let label_line_will_intersect_other_line = if line_will_overlap {
-                    1
-                } else {
-                    0
-                };
 
                 let penalty = if label_overlaps_feature {
                     u64::MAX
                 } else {
                     (distance * 10.0).round() as u64 + 
                     (label_will_overlap_flst_line * 50) +
-                    (label_line_will_intersect_other_line * 1000)
+                    (line_will_overlap as u64 * 1000)
                 };
 
-                textpos_found.push((penalty, *newpostotry, *nearest_point));
+                textpos_found.push((penalty, *newpostotry, nearest_point));
+                taken_nearest_points.push(nearest_point);
             }
 
             if !textpos_found.iter().any(|(penalty, pos, _)| *penalty < 5) {
@@ -262,25 +267,27 @@ fn gen_new_points(p: &SvgPoint, iteration: usize, maxpoints: usize, cache: &[(f6
     }).collect()
 }
 
+// returns how many lines this position will intersect
 fn test_line_will_intersect(
     start: &SvgPoint,
     end: &SvgPoint,
     map: &ndarray::Array2<bool>,
     config: &OptimizeConfig,
-) -> bool {
+) -> usize {
     use bresenham::Bresenham;
     
     let start = config.point_to_pixel(start);
     let end = config.point_to_pixel(end);
 
+    let mut intersections = 0;
     for (x, y) in Bresenham::new((start.x as isize, start.y as isize), (end.x as isize, end.y as isize)) {
         match map.get((x.max(0) as usize, y.max(0) as usize)) {
-            Some(s) => { if *s { return true; } },
+            Some(s) => { if *s { intersections += 1; } },
             _ => { },
         }
     }
 
-    false
+    intersections
 }
 
 fn paint_line_onto_map(
