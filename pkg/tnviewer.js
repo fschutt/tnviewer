@@ -433,10 +433,11 @@ function getArrayU8FromWasm0(ptr, len) {
 * @param {string} aenderungen
 * @param {string} risse
 * @param {string} risse_extente
+* @param {string} risse_extente_nopadding
 * @param {string} csv_data
 * @returns {Uint8Array}
 */
-export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, risse_extente, csv_data) {
+export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, risse_extente, risse_extente_nopadding, csv_data) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(split_nas_xml, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -453,14 +454,16 @@ export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, kon
         const len5 = WASM_VECTOR_LEN;
         const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len6 = WASM_VECTOR_LEN;
-        const ptr7 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr7 = passStringToWasm0(risse_extente_nopadding, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len7 = WASM_VECTOR_LEN;
-        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7);
+        const ptr8 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const len8 = WASM_VECTOR_LEN;
+        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var v9 = getArrayU8FromWasm0(r0, r1).slice();
+        var v10 = getArrayU8FromWasm0(r0, r1).slice();
         wasm.__wbindgen_export_3(r0, r1 * 1, 1);
-        return v9;
+        return v10;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }

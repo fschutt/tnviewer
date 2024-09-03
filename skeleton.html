@@ -1777,10 +1777,19 @@
       }
 
       var risse_extent = {};
+      var risse_extent_nopadding = {};
+      var border_padding = 16.5;
       for (var [riss_id, riss_config] of Object.entries(window.risse)) {
         risse_extent[riss_id] = calculate_coords(
           riss_config.width_mm, 
           riss_config.height_mm, 
+          riss_config.scale, 
+          riss_config.lon, 
+          riss_config.lat
+        );
+        risse_extent_nopadding = calculate_coords(
+          riss_config.width_mm - (border_padding * 2.0), 
+          riss_config.height_mm - (border_padding * 2.0),
           riss_config.scale, 
           riss_config.lon, 
           riss_config.lat
@@ -1795,6 +1804,7 @@
         JSON.stringify(window.aenderungen),
         JSON.stringify(window.risse),
         JSON.stringify(risse_extent),
+        JSON.stringify(risse_extent_nopadding),
         JSON.stringify(window.csv_data),
       );
       

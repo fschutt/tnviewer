@@ -113,6 +113,7 @@ pub fn export_aenderungen_geograf(
     aenderungen: &Aenderungen, 
     risse: &Risse,
     risse_extente: &RissMap,
+    risse_extente_nopadding: &RissMap,
     csv_data: &CsvDataType,
 ) -> Vec<u8> {
 
@@ -177,6 +178,12 @@ pub fn export_aenderungen_geograf(
         );
     } else {
         for (i, (id, r)) in risse.iter().enumerate() {
+            let ex = risse_extente.get(id);
+            let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
+            let extent = match ex {
+                Some(s) => s,
+                None => continue,
+            };
             let ex = risse_extente.get(id);
             let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
             let extent = match ex {

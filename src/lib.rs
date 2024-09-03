@@ -270,6 +270,7 @@ pub fn aenderungen_zu_geograf(
     aenderungen: String,
     risse: String,
     risse_extente: String,
+    risse_extente_nopadding: String,
     csv_data: String,
 ) -> Vec<u8> {
 
@@ -310,6 +311,11 @@ pub fn aenderungen_zu_geograf(
         Err(e) => return e.to_string().as_bytes().to_vec(),
     };
 
+    let risse_extente_nopadding = match serde_json::from_str::<RissMap>(&risse_extente_nopadding) {
+        Ok(o) => o,
+        Err(e) => return e.to_string().as_bytes().to_vec(),
+    };
+
     let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
         Ok(o) => o,
         Err(_) => BTreeMap::default(),
@@ -324,6 +330,7 @@ pub fn aenderungen_zu_geograf(
             &aenderungen,
             &risse,
             &risse_extente,
+            &risse_extente_nopadding,
             &csv_data,
         )
     });
