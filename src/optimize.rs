@@ -155,10 +155,7 @@ pub fn optimize_labels(
     };
 
     let maxiterations = 20;
-    let maxpoints_per_iter = 50;
-    let random_number_cache = (0..(maxiterations * maxpoints_per_iter))
-    .map(|_| (js_random(), js_random(), js_random()))
-    .collect::<Vec<_>>();
+    let maxpoints_per_iter = 400;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
@@ -250,7 +247,7 @@ pub fn optimize_labels(
             }
 
             if !textpos_found.iter().any(|(penalty, pos, _)| *penalty < 5) {
-                let np = gen_new_points(&tp.pos, i, maxpoints_per_iter, &random_number_cache);
+                let np = gen_new_points(&tp.pos, i, maxpoints_per_iter);
                 textpos_totry = np;
             } else {
                 break;
@@ -296,11 +293,10 @@ pub fn optimize_labels(
     }).collect()
 }
 
-fn gen_new_points(p: &SvgPoint, iteration: usize, maxpoints: usize, cache: &[(f64, f64, f64)]) -> Vec<SvgPoint> {
+fn gen_new_points(p: &SvgPoint, iteration: usize, maxpoints: usize) -> Vec<SvgPoint> {
     (0..maxpoints).map(|i| {
-        let random1 = cache[(iteration * maxpoints) + i];
-        let t = 2.0 * PI * random1.0;
-        let u = random1.1 + random1.2;
+        let t = 2.0 * PI * js_random();
+        let u = js_random() + js_random();
         let r = if u > 1.0 { 2.0 - u } else { u };
         let maxdst = (iteration + 1) as f64 * 4.0;
         let xshift = r * t.cos() * maxdst; 
