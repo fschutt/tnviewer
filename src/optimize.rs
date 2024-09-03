@@ -163,6 +163,7 @@ pub fn optimize_labels(
     let mut modifications = BTreeMap::new();
 
     let default_line = SvgLine::default();
+    let mut pointsused = Vec::new();
 
     for (i, tp) in initial_text_pos_clone.iter().enumerate() {
         
@@ -198,7 +199,9 @@ pub fn optimize_labels(
                     tp_width,
                 );
 
-                for nearest_point in tp_triangles.iter() {
+                let tp = tp_triangles.iter().filter_map(|t| if pointsused.iter().any(|p: &SvgPoint| p.equals(t)) { None } else { Some(t) }).collect::<Vec<_>>();
+
+                for nearest_point in tp {
 
                     let line_will_overlap_other_label = test_line_will_intersect(
                         newpostotry,
@@ -233,6 +236,7 @@ pub fn optimize_labels(
                     };
     
                     textpos_found.push((penalty, *newpostotry, *nearest_point));
+                    pointsused.push(*nearest_point);
                 }
             }
 
