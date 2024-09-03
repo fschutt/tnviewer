@@ -1004,6 +1004,13 @@ impl HeaderCalcConfig {
         .filter_map(|tp| match extent_poly.as_ref() {
             None => Some(tp),
             Some(s) => {
+                
+                let s_rect = s.get_rect();
+                let tp_rect = tp.get_rect();
+                if !tp_rect.overlaps_rect(&s_rect) {
+                    return None;
+                }
+
                 let mut poly = tp.poly.clone();
                 poly.correct_winding_order();
                 if poly.is_inside_of(&s) {
