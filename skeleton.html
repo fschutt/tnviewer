@@ -1787,7 +1787,7 @@
           riss_config.lon, 
           riss_config.lat
         );
-        risse_extent_nopadding = calculate_coords(
+        risse_extent_nopadding[riss_id] = calculate_coords(
           riss_config.width_mm - (border_padding * 2.0), 
           riss_config.height_mm - (border_padding * 2.0),
           riss_config.scale, 
