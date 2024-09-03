@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, f64::consts::PI};
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
+use crate::{nas::{point_is_on_any_line, point_is_on_line, translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
 
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
@@ -161,6 +161,8 @@ pub fn optimize_labels(
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
     let mut modifications = BTreeMap::new();
 
+    let default_line = SvgLine::default();
+
     for (i, tp) in initial_text_pos_clone.iter().enumerate() {
         
         let mut textpos_totry = vec![tp.pos];
@@ -168,11 +170,16 @@ pub fn optimize_labels(
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         
         let tp_triangles = tp.poly.get_triangle_points();
-        let mut taken_nearest_points = Vec::new();
+        // let mut taken_nearest_points = Vec::new();
 
         for i in 0..maxiterations {
 
             for newpostotry in textpos_totry.iter() {
+
+                let outer_ring = tp.poly.outer_rings.get(0).unwrap_or(&default_line);
+                if point_is_on_line(newpostotry, outer_ring, 0.5) {
+                    continue;
+                }
 
                 let label_overlaps_background_feature = label_overlaps_feature(
                     newpostotry,
@@ -195,53 +202,61 @@ pub fn optimize_labels(
                     tp_width,
                 );
 
-                let nearest_point = tp_triangles.iter()
+                let mut tp_triangles_clone = tp_triangles
+                .iter()
+                .filter_map(|s| if point_is_on_line(s, outer_ring, 0.1) {
+                    None
+                } else {
+                    Some(s)
+                })
+                /* 
                 .filter_map(|t| {
                     if taken_nearest_points.iter().any(|q: &SvgPoint| q.equals(t)) {
                         None
                     } else {
                         Some(*t)
                     }
-                })
-                .min_by_key(|s| {
-                    (s.dist(newpostotry) * 1000.0) as usize
-                }).unwrap_or(tp.pos);
+                })*/
+                .collect::<Vec<_>>();
 
+                tp_triangles_clone.sort_by(|a, b| a.dist(newpostotry).total_cmp(&b.dist(newpostotry)));
 
-                let line_will_overlap_other_label = test_line_will_intersect(
-                    newpostotry,
-                    &nearest_point,
-                    &label_boolmap,
-                    &config,
-                ) as u64;
+                for nearest_point in tp_triangles_clone {
 
-                let line_will_overlap_other_line = test_line_will_intersect(
-                    newpostotry,
-                    &nearest_point,
-                    &lines_boolmap,
-                    &config,
-                ) as u64;
-
-                let line_will_overlap_background = test_line_will_intersect(
-                    newpostotry,
-                    &nearest_point,
-                    &background_boolmap,
-                    &config,
-                ) as u64;
-
-                let distance = newpostotry.dist(&nearest_point);
-
-                let penalty = if label_overlaps_background_feature || label_overlaps_other_label || label_overlaps_other_line {
-                    u64::MAX
-                } else {
-                    (distance * 10.0).round() as u64 + 
-                    (line_will_overlap_other_label * 1_000_000) +
-                    (line_will_overlap_other_line * 10_000) +
-                    (line_will_overlap_background * 1_000)
-                };
-
-                textpos_found.push((penalty, *newpostotry, nearest_point));
-                taken_nearest_points.push(nearest_point);
+                    let line_will_overlap_other_label = test_line_will_intersect(
+                        newpostotry,
+                        &nearest_point,
+                        &label_boolmap,
+                        &config,
+                    ) as u64;
+    
+                    let line_will_overlap_other_line = test_line_will_intersect(
+                        newpostotry,
+                        &nearest_point,
+                        &lines_boolmap,
+                        &config,
+                    ) as u64;
+    
+                    let line_will_overlap_background = test_line_will_intersect(
+                        newpostotry,
+                        &nearest_point,
+                        &background_boolmap,
+                        &config,
+                    ) as u64;
+    
+                    let distance = newpostotry.dist(&nearest_point);
+    
+                    let penalty = if label_overlaps_background_feature || label_overlaps_other_label || label_overlaps_other_line {
+                        u64::MAX
+                    } else {
+                        (distance * 10.0).round() as u64 + 
+                        (line_will_overlap_other_label * 1_000_000) +
+                        (line_will_overlap_other_line * 10_000) +
+                        (line_will_overlap_background * 1_000)
+                    };
+    
+                    textpos_found.push((penalty, *newpostotry, *nearest_point));
+                }
             }
 
             textpos_totry = gen_new_points(&tp.pos, i, maxpoints_per_iter);

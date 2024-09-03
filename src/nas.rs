@@ -2386,30 +2386,30 @@ pub fn only_touches_internal(a: &SvgPolygon, b: &SvgPolygon, dst: f64) -> SvgPol
     }
 }
 
+pub fn point_is_on_line(p: &SvgPoint, l: &SvgLine, dst: f64) -> bool {
+    for q in l.points.windows(2) {
+        match &q {
+            &[sa, eb] => {
+                if dist_to_segment(*p, *sa, *eb).distance < dst {
+                    return true;
+                }
+            },
+            _ => { }
+        }
+    }
+    false
+}
+
 pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygon, dst: f64) -> bool {
     for line in poly.outer_rings.iter() {
-        for q in line.points.windows(2) {
-            match &q {
-                &[sa, eb] => {
-                    if dist_to_segment(*p, *sa, *eb).distance < dst {
-                        return true;
-                    }
-                },
-                _ => { }
-            }
+        if point_is_on_line(p, line, dst) {
+            return true;
         }
     }
 
     for line in poly.inner_rings.iter() {
-        for q in line.points.windows(2) {
-            match &q {
-                &[sa, eb] => {
-                    if dist_to_segment(*p, *sa, *eb).distance < dst {
-                        return true;
-                    }
-                },
-                _ => { }
-            }
+        if point_is_on_line(p, line, dst) {
+            return true;
         }
     }
     
