@@ -395,12 +395,24 @@ pub fn export_splitflaechen(
 
     let calc_pdf_final = HeaderCalcConfig::from_csv(&split_nas, csv, &Some(riss_extent_cutpoly_noborder.clone()));
 
+    let riss_rect = riss_extent_reprojected.get_rect();
+    let splitflaechen = splitflaechen.iter()
+    .filter_map(|s| {
+        if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
+            Some(s)
+        } else {
+            None
+        }
+    })
+    .cloned()
+    .collect::<Vec<_>>();
+
     log_status(&format!("[{num_riss} / {total_risse}] Export {} Teilflächen", splitflaechen.len()));
 
     let header = generate_header_pdf(info, &calc_pdf_final, split_nas, num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
-    let legende = generate_legende_xlsx(splitflaechen);
+    let legende = generate_legende_xlsx(&splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
     let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
@@ -416,7 +428,7 @@ pub fn export_splitflaechen(
     }
     log_status(&format!("{} rote Linien generiert.", aenderungen_rote_linien.len()));
 
-    let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(splitflaechen);
+    let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(&splitflaechen);
     log_status(&format!("{} Texte generiert", aenderungen_texte.len()));
 
     let aenderungen_texte_bleibt = aenderungen_texte
@@ -452,7 +464,7 @@ pub fn export_splitflaechen(
         &riss,
         &riss_extent_reprojected,
         // TODO: riss_extent_reprojected_noborder
-        splitflaechen,
+        &splitflaechen,
         &aenderungen_rote_linien,
         &aenderungen_nutzungsarten_linien,
         &aenderungen_texte,
