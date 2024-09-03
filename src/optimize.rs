@@ -198,22 +198,7 @@ pub fn optimize_labels(
                     tp_width,
                 );
 
-                let mut tp_triangles_clone = tp_triangles
-                .iter()
-                .filter_map(|s| if point_is_on_any_line(s, &tp.poly, 1.0) {
-                    None
-                } else {
-                    Some(s)
-                })
-                .collect::<Vec<_>>();
-
-                if tp_triangles_clone.is_empty() && textpos_found.is_empty() {
-                    tp_triangles_clone = tp_triangles.iter().collect();
-                }
-
-                tp_triangles_clone.sort_by(|a, b| a.dist(newpostotry).total_cmp(&b.dist(newpostotry)));
-
-                for nearest_point in tp_triangles_clone.into_iter().take(10) {
+                for nearest_point in tp_triangles.iter() {
 
                     let line_will_overlap_other_label = test_line_will_intersect(
                         newpostotry,
