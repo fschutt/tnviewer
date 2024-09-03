@@ -158,7 +158,9 @@ pub fn optimize_labels(
     let maxpoints_per_iter = 10;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
-    initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
+    initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label large areas first
+    initial_text_pos_clone.reverse();
+
     let mut modifications = BTreeMap::new();
 
     let default_line = SvgLine::default();
@@ -177,7 +179,7 @@ pub fn optimize_labels(
             for newpostotry in textpos_totry.iter() {
 
                 let outer_ring = tp.poly.outer_rings.get(0).unwrap_or(&default_line);
-                if point_is_on_line(newpostotry, outer_ring, 0.5) {
+                if point_is_on_line(newpostotry, outer_ring, 1.0) {
                     continue;
                 }
 
@@ -204,20 +206,16 @@ pub fn optimize_labels(
 
                 let mut tp_triangles_clone = tp_triangles
                 .iter()
-                .filter_map(|s| if point_is_on_line(s, outer_ring, 0.1) {
+                .filter_map(|s| if point_is_on_any_line(s, &tp.poly, 2.0) {
                     None
                 } else {
                     Some(s)
                 })
-                /* 
-                .filter_map(|t| {
-                    if taken_nearest_points.iter().any(|q: &SvgPoint| q.equals(t)) {
-                        None
-                    } else {
-                        Some(*t)
-                    }
-                })*/
                 .collect::<Vec<_>>();
+
+                if tp_triangles_clone.is_empty() && textpos_found.is_empty() {
+                    tp_triangles_clone = tp_triangles.iter().collect();
+                }
 
                 tp_triangles_clone.sort_by(|a, b| a.dist(newpostotry).total_cmp(&b.dist(newpostotry)));
 
