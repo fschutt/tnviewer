@@ -982,7 +982,12 @@ impl HeaderCalcConfig {
     }
 
     pub fn get_fluren_string(&self) -> String {
-        self.get_fluren_string_internal().join(", ").trim().to_string()
+        let internal = self.get_fluren_string_internal();
+        if internal.len() > 3 {
+            "diverse".to_string()
+        } else {
+            internal.join(", ").trim().to_string()
+        }
     }
 
     pub fn get_fluren_len(&self) -> usize {

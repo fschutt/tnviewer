@@ -141,6 +141,7 @@ pub fn optimize_labels(
         }).collect(),
     };
 
+    log_status("1");
     let maxiterations = 10;
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
@@ -150,7 +151,12 @@ pub fn optimize_labels(
         let mut textpos_found: Option<(SvgPoint, f64)> = None;
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         
+        log_status("2");
+
         'outer: for i in 0..maxiterations {
+
+            log_status(&format!("trying {} positions", textpos_totry.len()));
+
             for newpostotry in textpos_totry.iter() {
                 if !label_overlaps_feature(
                     newpostotry,
@@ -168,6 +174,8 @@ pub fn optimize_labels(
                 }
             }
 
+            log_status("2.5");
+
             if let Some((s, _)) = textpos_found.as_ref() {
                 paint_label_onto_map(
                     s,
@@ -184,6 +192,8 @@ pub fn optimize_labels(
             textpos_totry = np;
         }
 
+
+        log_status("3");
 
         let optimized_pos = match textpos_found {
             Some((s, _)) => SvgPoint {
