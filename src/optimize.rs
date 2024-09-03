@@ -155,7 +155,7 @@ pub fn optimize_labels(
     };
 
     let maxiterations = 20;
-    let maxpoints_per_iter = 400;
+    let maxpoints_per_iter = 50;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
@@ -240,18 +240,11 @@ pub fn optimize_labels(
                     (line_will_overlap_background * 1_000)
                 };
 
-                // log_status(&format!("{}: testing pos {newpostotry:?}: label_overlaps_background_feature = {label_overlaps_background_feature:?}, line_will_overlap_other_label = {line_will_overlap_other_label:?}, line_will_overlap_other_line = {line_will_overlap_other_line:?}, line_will_overlap_background = {line_will_overlap_background:?}, distance = {distance:?}", tp.kuerzel));
-
                 textpos_found.push((penalty, *newpostotry, nearest_point));
                 taken_nearest_points.push(nearest_point);
             }
 
-            if !textpos_found.iter().any(|(penalty, pos, _)| *penalty < 5) {
-                let np = gen_new_points(&tp.pos, i, maxpoints_per_iter);
-                textpos_totry = np;
-            } else {
-                break;
-            }
+            textpos_totry = gen_new_points(&tp.pos, i, maxpoints_per_iter);
         }
 
         textpos_found.sort_by(|a, b| a.0.cmp(&b.0));
