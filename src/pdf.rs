@@ -584,7 +584,7 @@ pub fn generate_pdf_internal(
         &gebaeude,
         &[],
         &beschriftungen,
-        &OptimizeConfig::new(rc, riss_extent, 0.1 /* mm */) ,
+        &OptimizeConfig::new(rc, riss_extent, 0.4 /* mm */) ,
     );
 
     log_status(&format!("Rendere Beschriftungen..."));
