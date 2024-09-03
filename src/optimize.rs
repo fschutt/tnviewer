@@ -125,7 +125,14 @@ pub fn optimize_labels(
     config: &OptimizeConfig,
 ) -> Vec<OptimizedTextPlacement> {
 
-    let mut overlap_boolmap = match render_overlap_boolmap(
+    let initial = initial_text_pos.iter().map(|s| {
+        OptimizedTextPlacement {
+            optimized: s.clone(),
+            original: s.clone(),
+        }
+    }).collect();
+
+    let background_boolmap = match render_stage1_overlap_boolmap(
         flurstuecke,
         splitflaechen,
         gebaeude,
@@ -133,12 +140,17 @@ pub fn optimize_labels(
         config,
     ) {
         Some(s) => s,
-        None => return initial_text_pos.iter().map(|s| {
-            OptimizedTextPlacement {
-                optimized: s.clone(),
-                original: s.clone(),
-            }
-        }).collect(),
+        None => return initial,
+    };
+
+    let mut label_boolmap = match initialize_empty_boolmap(config) {
+        Some(s) => s,
+        None => return initial,
+    };
+
+    let mut lines_boolmap = match initialize_empty_boolmap(config) {
+        Some(s) => s,
+        None => return initial,
     };
 
     let maxiterations = 20;
@@ -164,9 +176,9 @@ pub fn optimize_labels(
 
             for newpostotry in textpos_totry.iter() {
 
-                let label_overlaps_feature = label_overlaps_feature(
+                let label_overlaps_background_feature = label_overlaps_feature(
                     newpostotry,
-                    &overlap_boolmap,
+                    &background_boolmap,
                     &config,
                     tp_width,
                 );
@@ -183,22 +195,37 @@ pub fn optimize_labels(
                     (s.dist(newpostotry) * 1000.0) as usize
                 }).unwrap_or(tp.pos);
 
-                let line_will_overlap = test_line_will_intersect(
+
+                let line_will_overlap_other_label = test_line_will_intersect(
                     newpostotry,
                     &nearest_point,
-                    &overlap_boolmap,
+                    &label_boolmap,
                     &config,
-                );
+                ) as u64;
+
+                let line_will_overlap_other_line = test_line_will_intersect(
+                    newpostotry,
+                    &nearest_point,
+                    &lines_boolmap,
+                    &config,
+                ) as u64;
+
+                let line_will_overlap_background = test_line_will_intersect(
+                    newpostotry,
+                    &nearest_point,
+                    &background_boolmap,
+                    &config,
+                ) as u64;
 
                 let distance = newpostotry.dist(&nearest_point);
-                let label_will_overlap_flst_line = 0; // TODO
 
-                let penalty = if label_overlaps_feature {
+                let penalty = if label_overlaps_background_feature {
                     u64::MAX
                 } else {
                     (distance * 10.0).round() as u64 + 
-                    (label_will_overlap_flst_line * 50) +
-                    (line_will_overlap as u64 * 1000)
+                    (line_will_overlap_other_label * 1_000_000) +
+                    (line_will_overlap_other_line * 10_000) +
+                    (line_will_overlap_background * 1_000)
                 };
 
                 textpos_found.push((penalty, *newpostotry, nearest_point));
@@ -223,7 +250,7 @@ pub fn optimize_labels(
 
         paint_label_onto_map(
             &newpos,
-            &mut overlap_boolmap,
+            &mut label_boolmap,
             &config,
             tp_width,
         );
@@ -231,7 +258,7 @@ pub fn optimize_labels(
         paint_line_onto_map(
             &newpos,
             &newtargetpos,
-            &mut overlap_boolmap,
+            &mut lines_boolmap,
             &config,
         );
 
@@ -356,16 +383,30 @@ fn label_overlaps_feature(
     false
 }
 
-fn render_overlap_boolmap(
+fn initialize_empty_boolmap(
+    config: &OptimizeConfig
+) -> Option<ndarray::Array2<bool>> {
+
+    let r = geo_rasterize::BinaryBuilder::new()
+    .width(config.width_pixels)
+    .height(config.height_pixels)
+    .build()
+    .ok()?;
+
+    let pixels = r.finish();
+    
+    Some(pixels)
+}
+
+fn render_stage1_overlap_boolmap(
     flurstuecke: &SplitNasXml,
     splitflaechen: &[AenderungenIntersection],
     gebaeude: &Gebaeude,
     do_not_overlap_areas: &[SvgPolygon],
     config: &OptimizeConfig
 ) -> Option<ndarray::Array2<bool>> {
-    use geo_rasterize::BinaryBuilder;
 
-    let mut r = BinaryBuilder::new()
+    let mut r = geo_rasterize::BinaryBuilder::new()
     .width(config.width_pixels)
     .height(config.height_pixels)
     .build()
