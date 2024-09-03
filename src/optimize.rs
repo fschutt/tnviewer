@@ -155,7 +155,7 @@ pub fn optimize_labels(
     };
 
     let maxiterations = 20;
-    let maxpoints_per_iter = 50;
+    let maxpoints_per_iter = 10;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
@@ -221,7 +221,7 @@ pub fn optimize_labels(
 
                 tp_triangles_clone.sort_by(|a, b| a.dist(newpostotry).total_cmp(&b.dist(newpostotry)));
 
-                for nearest_point in tp_triangles_clone {
+                for nearest_point in tp_triangles_clone.into_iter().take(10) {
 
                     let line_will_overlap_other_label = test_line_will_intersect(
                         newpostotry,
