@@ -992,34 +992,35 @@ impl HeaderCalcConfig {
     pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_poly: &Option<SvgPolygon>) -> Self {
 
         let target_gemarkung_nr = crate::get_main_gemarkung(csv);
-        let extent_poly = extent_poly.as_ref().map(|s| {
-            let mut s = s.clone();
-            s.correct_winding_order();
-            s
-        });
+        
+        let mut flst_overlaps = Vec::new();
+        match extent_poly.as_ref() {
+            Some(p) => {
+                let mut s = p.clone();
+                s.correct_winding_order();
 
-        let mut flst_overlaps = split_nas.flurstuecke_nutzungen
-        .values()
-        .flat_map(|flst| flst.iter())
-        .filter_map(|tp| match extent_poly.as_ref() {
-            None => Some(tp),
-            Some(s) => {
+                let qt = split_nas.create_quadtree();
                 
-                let s_rect = s.get_rect();
-                let tp_rect = tp.get_rect();
-                if !tp_rect.overlaps_rect(&s_rect) {
-                    return None;
-                }
-
-                let mut poly = tp.poly.clone();
-                poly.correct_winding_order();
-                if poly.is_inside_of(&s) {
-                    Some(tp)
-                } else {
-                    None
-                }
+                flst_overlaps = 
+                qt.get_overlapping_flst(&s.get_rect())
+                .into_iter()
+                .filter_map(|tp| {
+                    let mut poly = tp.1.poly.clone();
+                    poly.correct_winding_order();
+                    if poly.is_inside_of(&s) {
+                        Some(tp.1)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             },
-        })
+            None => {
+                flst_overlaps = split_nas.flurstuecke_nutzungen.values().flat_map(|flst| flst.iter().cloned()).collect();
+            }
+        }
+
+        let mut flst_overlaps = flst_overlaps.into_iter()
         .filter_map(|s| {
             let flst = s.attributes.get("AX_Flurstueck")?;
             let flst_id = FlstIdParsed::from_str(&flst).parse_num()?;

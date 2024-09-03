@@ -104,11 +104,6 @@ pub fn get_problem_geojson() -> String {
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
-    let v = s1.is_inside_of(&s2);
-    web_sys::console::log_1(&format!("1 poly inside of large poly: {v:?}").into());
-    let v = s2.is_inside_of(&s1);
-    web_sys::console::log_1(&format!("2 poly inside of large poly: {v:?}").into());
-
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
 
