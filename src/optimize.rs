@@ -35,6 +35,7 @@ pub struct OptimizeConfig {
     one_px_y_in_m: f64,
 }
 
+#[derive(Debug, Clone)]
 pub struct Pixel {
     pub x: usize,
     pub y: usize,
@@ -182,7 +183,21 @@ pub fn optimize_labels(
                     &config,
                     tp_width,
                 );
-                
+
+                let label_overlaps_other_label = label_overlaps_feature(
+                    newpostotry,
+                    &label_boolmap,
+                    &config,
+                    tp_width,
+                );
+
+                let label_overlaps_other_line = label_overlaps_feature(
+                    newpostotry,
+                    &lines_boolmap,
+                    &config,
+                    tp_width,
+                );
+
                 let nearest_point = tp_triangles.iter()
                 .filter_map(|t| {
                     if taken_nearest_points.iter().any(|q: &SvgPoint| q.equals(t)) {
@@ -219,7 +234,7 @@ pub fn optimize_labels(
 
                 let distance = newpostotry.dist(&nearest_point);
 
-                let penalty = if label_overlaps_background_feature {
+                let penalty = if label_overlaps_background_feature || label_overlaps_other_label || label_overlaps_other_line {
                     u64::MAX
                 } else {
                     (distance * 10.0).round() as u64 + 
@@ -228,25 +243,25 @@ pub fn optimize_labels(
                     (line_will_overlap_background * 1_000)
                 };
 
+                // log_status(&format!("{}: testing pos {newpostotry:?}: label_overlaps_background_feature = {label_overlaps_background_feature:?}, line_will_overlap_other_label = {line_will_overlap_other_label:?}, line_will_overlap_other_line = {line_will_overlap_other_line:?}, line_will_overlap_background = {line_will_overlap_background:?}, distance = {distance:?}", tp.kuerzel));
+
                 textpos_found.push((penalty, *newpostotry, nearest_point));
                 taken_nearest_points.push(nearest_point);
             }
 
             if !textpos_found.iter().any(|(penalty, pos, _)| *penalty < 5) {
-                log_status("generating next iteration text positions...");
                 let np = gen_new_points(&tp.pos, i, maxpoints_per_iter, &random_number_cache);
-                log_status(&format!("generated {} new positions", np.len()));
                 textpos_totry = np;
             } else {
                 break;
             }
         }
 
-        let (least_penalty, newpos, newtargetpos) = textpos_found.iter()
-        .min_by_key(|s| (**s).0).cloned()
-        .unwrap_or((u64::MAX, tp.pos, tp.pos));
+        textpos_found.sort_by(|a, b| a.0.cmp(&b.0));
 
-        log_status(&format!("placing text {} (penalty = {})", tp.kuerzel, least_penalty));
+        let (least_penalty, newpos, newtargetpos) = textpos_found
+        .first().cloned()
+        .unwrap_or((u64::MAX, tp.pos, tp.pos));
 
         paint_label_onto_map(
             &newpos,
@@ -308,8 +323,10 @@ fn test_line_will_intersect(
 
     let mut intersections = 0;
     for (x, y) in Bresenham::new((start.x as isize, start.y as isize), (end.x as isize, end.y as isize)) {
-        match map.get((x.max(0) as usize, y.max(0) as usize)) {
-            Some(s) => { if *s { intersections += 1; } },
+        match map.get((y.max(0) as usize, x.max(0) as usize)) {
+            Some(s) => { 
+                if *s { intersections += 1; } 
+            },
             _ => { },
         }
     }
@@ -329,7 +346,7 @@ fn paint_line_onto_map(
     let end = config.point_to_pixel(end);
 
     for (x, y) in Bresenham::new((start.x as isize, start.y as isize), (end.x as isize, end.y as isize)) {
-        match map.get_mut((x.max(0) as usize, y.max(0) as usize)) {
+        match map.get_mut((y.max(0) as usize, x.max(0) as usize)) {
             Some(s) => { *s = true; },
             _ => { },
         }
@@ -387,6 +404,7 @@ fn initialize_empty_boolmap(
     config: &OptimizeConfig
 ) -> Option<ndarray::Array2<bool>> {
 
+    log_status(&format!("initializing empty boolmap {} x {}", config.width_pixels, config.height_pixels));
     let r = geo_rasterize::BinaryBuilder::new()
     .width(config.width_pixels)
     .height(config.height_pixels)
