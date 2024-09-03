@@ -155,7 +155,7 @@ pub fn optimize_labels(
     };
 
     let maxiterations = 20;
-    let maxpoints_per_iter = 10;
+    let maxpoints_per_iter = 50;
 
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label large areas first
@@ -177,11 +177,6 @@ pub fn optimize_labels(
         for i in 0..maxiterations {
 
             for newpostotry in textpos_totry.iter() {
-
-                let outer_ring = tp.poly.outer_rings.get(0).unwrap_or(&default_line);
-                if point_is_on_line(newpostotry, outer_ring, 1.0) {
-                    continue;
-                }
 
                 let label_overlaps_background_feature = label_overlaps_feature(
                     newpostotry,
@@ -206,7 +201,7 @@ pub fn optimize_labels(
 
                 let mut tp_triangles_clone = tp_triangles
                 .iter()
-                .filter_map(|s| if point_is_on_any_line(s, &tp.poly, 2.0) {
+                .filter_map(|s| if point_is_on_any_line(s, &tp.poly, 1.0) {
                     None
                 } else {
                     Some(s)
