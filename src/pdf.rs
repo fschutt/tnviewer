@@ -207,12 +207,10 @@ pub struct PpoStil {
     pub svg_base64: Option<String>, // ...
 }
 
-pub type RissMap = BTreeMap<String, RissExtent>;
-pub type RissMapReprojected = BTreeMap<String, RissExtentReprojected>;
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RissExtent {
     pub coords: Vec<LatLng>,
+    pub scale: f64,
     pub projection: String,
 }
 
@@ -251,6 +249,7 @@ impl RissExtent {
 
         Some(RissExtentReprojected {
             crs: target_crs.to_string(),
+            scale: self.scale,
             max_x,
             min_x,
             max_y,
@@ -263,6 +262,7 @@ impl RissExtent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RissExtentReprojected {
     pub crs: String,
+    pub scale: f64,
     pub min_x: f64,
     pub max_x: f64,
     pub min_y: f64,
@@ -285,20 +285,40 @@ impl RissExtentReprojected {
         }
     }
     pub fn get_poly(&self) -> SvgPolygon {
+
+        let header_width_mm = 175.0;
+        let header_height_mm = 35.0;
+        let header_width_m = header_width_mm * self.scale / 1000.0;
+        let header_height_m = header_height_mm * self.scale / 1000.0;
+
+        //
+        //           4------5
+        //    header |      |
+        //  2--------3      |
+        //  |               |
+        //  |               |
+        //  |               |
+        //  |               |
+        //  |               |
+        //  1---------------6
+        // 
+
         SvgPolygon {
             outer_rings: vec![
                 SvgLine {
                     points: vec![
-                        SvgPoint { x: self.min_x, y: self.min_y },
-                        SvgPoint { x: self.min_x, y: self.max_y },
-                        SvgPoint { x: self.max_x, y: self.max_y },
-                        SvgPoint { x: self.max_x, y: self.min_y },
-                        SvgPoint { x: self.min_x, y: self.min_y },
+                        SvgPoint { x: self.min_x, y: self.min_y }, // 1
+                        SvgPoint { x: self.min_x, y: self.max_y - header_height_m }, // 2
+                        SvgPoint { x: self.min_x + header_width_m, y: self.max_y - header_height_m }, // 3
+                        SvgPoint { x: self.min_x + header_width_m, y: self.max_y }, // 4
+                        SvgPoint { x: self.max_x, y: self.max_y }, // 5
+                        SvgPoint { x: self.max_x, y: self.min_y }, // 6
+                        SvgPoint { x: self.min_x, y: self.min_y }, // 1
                     ]
                 }
             ],
             inner_rings: Vec::new(),
-        }
+        }.round_to_3dec()
     }
 }
 
@@ -331,6 +351,45 @@ pub struct RissConfig {
     pub scale: f32,
     #[serde(default)]
     pub rissgebiet: Option<SvgPolygon>,
+}
+
+impl RissConfig {
+    pub fn get_extent(&self, utm_crs: &str, padding_mm: f64) -> Option<RissExtent> {
+
+        let height = self.height_mm as f64 - padding_mm;
+        let width = self.width_mm as f64 - padding_mm;
+        let total_map_meter_vert = height * (self.scale as f64 / 1000.0);
+        let total_map_meter_horz = width * (self.scale as f64 / 1000.0);
+        
+        let utm_result = reproject_point_into_latlon(&SvgPoint {
+            x: self.lon,
+            y: self.lat,
+        }, utm_crs).ok()?;
+
+        let north_utm = utm_result.y + (total_map_meter_vert / 2.0);
+        let south_utm = utm_result.y - (total_map_meter_vert / 2.0);
+        let east_utm = utm_result.x + (total_map_meter_horz / 2.0);
+        let west_utm = utm_result.x - (total_map_meter_horz / 2.0);
+
+        let north_east_deg = reproject_point_back_into_latlon(&SvgPoint { 
+            x: east_utm, 
+            y: north_utm 
+        }, utm_crs).ok()?;
+
+        let south_west_deg = reproject_point_back_into_latlon(&SvgPoint {
+            x: west_utm,
+            y: south_utm,
+        }, utm_crs).ok()?;
+
+        Some(RissExtent {
+            coords: vec![
+                LatLng { lat: north_east_deg.y, lng: north_east_deg.x }, 
+                LatLng { lat: south_west_deg.y, lng: south_west_deg.x }
+            ],
+            scale: self.scale as f64,
+            projection: utm_crs.to_string(),
+        })
+    }
 }
 
 pub struct Fluren {
@@ -370,7 +429,7 @@ impl Fluren {
                 Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
                 None => flst.poly.clone(),
             };
-            let pos = poly.get_label_pos()?;
+            let pos = poly.get_secondary_label_pos()?;
             let gemarkung = flst.attributes.get("berechneteGemarkung")?.parse::<usize>().ok()?;
             let flur = flst.attributes.get("AX_Flur")?.parse::<usize>().ok()?;
             Some(FlurLabel {
@@ -584,6 +643,50 @@ pub fn reproject_aenderungen_into_target_space(
     })
 }
 
+
+pub fn reproject_point_into_latlon(
+    p: &SvgPoint,
+    target_proj: &str,
+) -> Result<SvgPoint, String> {
+
+    let target_proj = proj4rs::Proj::from_proj_string(&target_proj)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", target_proj))?;
+
+    let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
+    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+
+    let mut point3d = (p.x.to_radians(), p.y.to_radians(), 0.0_f64);
+    proj4rs::transform::transform(&latlon_proj, &target_proj, &mut point3d)
+    .map_err(|e| format!("error reprojecting: {e}"))?;
+    
+    Ok(SvgPoint {
+        x: point3d.0, 
+        y: point3d.1,
+    })
+}
+
+
+pub fn reproject_point_back_into_latlon(
+    p: &SvgPoint,
+    source_proj: &str,
+) -> Result<SvgPoint, String> {
+
+    let source_proj = proj4rs::Proj::from_proj_string(&source_proj)
+    .map_err(|e| format!("source_proj_string: {e}: {:?}", source_proj))?;
+
+    let latlon_proj = proj4rs::Proj::from_proj_string(LATLON_STRING)
+    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+
+    let mut point3d = (p.x, p.y, 0.0_f64);
+    proj4rs::transform::transform(&source_proj, &latlon_proj, &mut point3d)
+    .map_err(|e| format!("error reprojecting: {e}"))?;
+
+    Ok(SvgPoint {
+        x: point3d.0.to_degrees(), 
+        y: point3d.1.to_degrees(),
+    })
+}
+
 pub fn reproject_poly_back_into_latlon(
     poly: &SvgPolygon,
     source_proj: &str,
@@ -748,12 +851,7 @@ fn write_na_untergehend_linien(
         icc_profile: None,
     }));
 
-    layer.set_line_dash_pattern(LineDashPattern {
-        dash_1: Some(1),
-        gap_1: Some(1),
-        .. Default::default()
-    });
-    layer.set_outline_thickness(1.0);
+    layer.set_outline_thickness(0.5);
     layer.set_line_cap_style(printpdf::LineCapStyle::Round);
     layer.set_line_join_style(printpdf::LineJoinStyle::Round);
 

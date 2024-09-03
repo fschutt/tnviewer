@@ -1992,7 +1992,6 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     let s = s.round_to_3dec();
 
-    log_status("cleanup poly...");
     let outer_rings = s.outer_rings.iter()
     .filter_map(|l| if SvgPolygon::from_line(l).is_zero_area() { None } else { Some(l) })
     .filter_map(|r| {
@@ -2013,8 +2012,6 @@ pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
     .flat_map(|r| clean_ring_2(&r))
     .map(|l| l.reverse())
     .collect();
-
-    log_status("cleanup poly done...");
 
     SvgPolygon {
         outer_rings,
@@ -2088,7 +2085,6 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
             l.points.push(line.points[r.end]);
         }
         let poly = SvgPolygon::from_line(&line);
-        log_status(&format!("bridge: {}", serde_json::to_string(&poly).unwrap_or_default()));
         if !poly.is_zero_area() {
             clean_ring_selfintersection(&l, v);
         }

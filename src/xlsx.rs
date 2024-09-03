@@ -1,6 +1,9 @@
 
 use std::collections::BTreeMap;
 
+use serde_derive::Deserialize;
+use serde_derive::Serialize;
+
 use crate::csv::CsvDataType;
 use crate::csv::Status;
 
@@ -187,7 +190,7 @@ pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> (usize, Vec<u8>) {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
 pub struct FlstIdParsed {
     pub land: String, 
     pub gemarkung: String,
@@ -197,7 +200,7 @@ pub struct FlstIdParsed {
     pub padding: String,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
 pub struct FlstIdParsedNumber {
     pub land: usize, 
     pub gemarkung: usize,

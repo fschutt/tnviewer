@@ -4,9 +4,11 @@ use dxf::{Header, Vector, XData, XDataItem};
 use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
 use quadtree_f32::Rect;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::CsvDataType, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status};
-use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, RissMap, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
+use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
+use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
+use serde_derive::{Serialize, Deserialize};
 
 /// Returns the dxf bytes
 pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
@@ -112,8 +114,6 @@ pub fn export_aenderungen_geograf(
     konfiguration: &Konfiguration,
     aenderungen: &Aenderungen, 
     risse: &Risse,
-    risse_extente: &RissMap,
-    risse_extente_nopadding: &RissMap,
     csv_data: &CsvDataType,
 ) -> Vec<u8> {
 
@@ -126,7 +126,7 @@ pub fn export_aenderungen_geograf(
 
     // RISSE -> risse.shp
     if !risse.is_empty() {
-        append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse_extente, &split_nas.crs));
+        append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse, &split_nas.crs));
     }
 
     // Anschlussrisse PDFs
@@ -161,11 +161,10 @@ pub fn export_aenderungen_geograf(
     let lq = nas_xml.get_linien_quadtree();
 
     if risse.is_empty() {
-        let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, None);
         export_splitflaechen(
             &mut files, 
             projekt_info, 
-            &calc,
+            &csv_data,
             konfiguration,
             None, 
             &splitflaechen.0, 
@@ -177,60 +176,23 @@ pub fn export_aenderungen_geograf(
             &lq,
         );
     } else {
-        for (i, (id, r)) in risse.iter().enumerate() {
-            let ex = risse_extente.get(id);
-            let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
-            let extent = match ex {
-                Some(s) => s,
-                None => continue,
-            };
-            let ex = risse_extente.get(id);
-            let ex = ex.and_then(|r| r.reproject(&split_nas.crs, &mut Vec::new()));
-            let extent = match ex {
-                Some(s) => s,
-                None => continue,
-            };
-            let extent_rect = extent.get_rect();
-            let mut splitflaechen_for_riss = splitflaechen.0
-                .iter()
-                .filter(|s| s.poly_cut.get_rect().overlaps_rect(&extent_rect)).cloned()
-                .collect::<Vec<_>>();
-
-            if let Some(rissgebiet) = r.rissgebiet.as_ref().and_then(|rg| {
-                let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
-                let target = proj4rs::Proj::from_proj_string(&split_nas.crs).ok()?;
-                Some(reproject_poly(rg, &source, &target, UseRadians::ForSourceAndTarget))
-            }) {
-                let rissgebiet_geo = translate_to_geo_poly(&rissgebiet);
-                let splitflaechen_overlapped = splitflaechen_for_riss.iter()
-                .filter_map(|s| if translate_to_geo_poly(&s.poly_cut).relate(&rissgebiet_geo).is_overlaps() {
-                    Some(s.flst_id.clone())
-                } else {
-                    None
-                }).collect::<BTreeSet<_>>();
-                splitflaechen_for_riss.retain(|r| splitflaechen_overlapped.contains(&r.flst_id));
-            }
-
-            let calc = HeaderCalcConfig::from_csv(&split_nas, &csv_data, Some(extent_rect.clone()));
-
+        for (i, (_, r)) in risse.iter().enumerate() {
             export_splitflaechen(
                 &mut files, 
                 projekt_info, 
-                &calc,
+                &csv_data,
                 konfiguration,
                 Some(format!("Riss{}", i + 1)), 
-                &splitflaechen_for_riss, 
+                &splitflaechen.0, 
                 &split_nas, 
                 &nas_xml,
-                Some((r.clone(), extent.clone())),
+                Some(r.clone()),
                 i + 1,
                 risse.len(),
                 &lq,
             );
         }
     }
-
-    let files_names = files.iter().map(|(d, p, c)| format!("{d:?} - {p:?}: {} bytes", c.len())).collect::<Vec<_>>();
 
     write_files_to_zip(&files)
 }
@@ -329,10 +291,11 @@ pub fn calc_splitflaechen(
 }
 
 pub fn generate_risse_shp(
-    riss_map: &RissMap,
+    riss_map: &Risse,
     target_crs: &str,
 ) -> ShpReturn {
     lines_to_shp(&riss_map.iter().filter_map(|(id, re)| {
+        let re = re.get_extent(target_crs, 0.0)?;
         let reproject = re.reproject(target_crs, &mut Vec::new())?;
         let rect = reproject.get_rect();
         Some(SvgLine {
@@ -365,27 +328,82 @@ pub fn generate_risse_shp(
 pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
-    calc: &HeaderCalcConfig,
+    csv: &CsvDataType,
     konfiguration: &Konfiguration,
     parent_dir: Option<String>,
     splitflaechen: &[AenderungenIntersection],
     split_nas: &SplitNasXml,
     nas_xml: &NasXMLFile,
-    riss: Option<(RissConfig, RissExtentReprojected)>,
+    riss: Option<RissConfig>,
     num_riss: usize,
     total_risse: usize,
     lq: &LinienQuadTree,
 ) {
 
+    let mut default_riss_extent_rect = match splitflaechen.first() {
+        Some(s) => s.poly_cut.get_rect(),
+        None => return,
+    };
+    for sf in splitflaechen.iter().skip(1) {
+        default_riss_extent_rect = default_riss_extent_rect.union(&sf.poly_cut.get_rect());
+    }
+    let utm_center = default_riss_extent_rect.get_center();
+    let latlon_center = crate::pdf::reproject_point_back_into_latlon(&SvgPoint {
+        x: utm_center.x,
+        y: utm_center.y,
+    }, &split_nas.crs).unwrap_or_default();
+
+    let scale = 3500.0;
+    let padding = 16.5 * 2.0;
+    let default_riss_config = RissConfig {
+        lat: latlon_center.y,
+        lon: latlon_center.x,
+        crs: "latlon".to_string(),
+        width_mm: (default_riss_extent_rect.get_width() / scale * 1000.0).round() as f32 + padding + 10.0,
+        height_mm: (default_riss_extent_rect.get_height() / scale * 1000.0).round() as f32 + padding + 10.0,
+        scale: scale as f32,
+        rissgebiet: None,
+    };
+
+    let riss = riss.clone().unwrap_or(default_riss_config);
+
+    let riss_extent = match riss.get_extent(&split_nas.crs, 0.0) {
+        Some(s) => s,
+        None => return,
+    };
+
+    let riss_extent_with_border = match riss.get_extent(&split_nas.crs, padding.into()) {
+        Some(s) => s,
+        None => return,
+    };
+
+    let riss_extent_reprojected = match riss_extent.reproject(&split_nas.crs, &mut Vec::new()) {
+        Some(s) => s,
+        None => return,
+    };
+
+    let riss_extent_with_border_reprojected = match riss_extent_with_border.reproject(&split_nas.crs, &mut Vec::new()) {
+        Some(s) => s,
+        None => return,
+    };
+
+    let riss_extent_cutpoly_noborder = riss_extent_reprojected.get_poly();
+
+    let riss_extent_cutpoly_withborder = riss_extent_with_border_reprojected.get_poly();
+
+    let calc_pdf_preview = HeaderCalcConfig::from_csv(&split_nas, csv, &Some(riss_extent_cutpoly_withborder.clone()));
+
+    let calc_pdf_final = HeaderCalcConfig::from_csv(&split_nas, csv, &Some(riss_extent_cutpoly_noborder.clone()));
+
     log_status(&format!("[{num_riss} / {total_risse}] Export {} Teilflächen", splitflaechen.len()));
 
-    let header = generate_header_pdf(info, calc, split_nas, riss.as_ref().map(|(_, s)| s.get_rect()), num_riss, total_risse);
+    let header = generate_header_pdf(info, &calc_pdf_final, split_nas, num_riss, total_risse);
     files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
 
     let legende = generate_legende_xlsx(splitflaechen);
     files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
 
-    let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, riss.as_ref().map(|s| s.1.get_rect()));
+    let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
@@ -420,32 +438,29 @@ pub fn export_splitflaechen(
     log_status(&format!("{} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
     log_status(&format!("Generiere PDF-Vorschau..."));
-    let pdf_vorschau = riss.as_ref().map(|(rc, riss_extent)| {
-        // export_splitflaechen
+    let mini_split_nas = get_mini_nas_xml(split_nas, &riss_extent_reprojected);
+    let flst = get_flurstuecke(nas_xml, &riss_extent_reprojected);
+    let fluren = get_fluren(nas_xml, &Some(riss_extent_reprojected.get_rect()));
+    let gebaeude = get_gebaeude(nas_xml, &riss_extent_reprojected);
 
-        let mini_split_nas = get_mini_nas_xml(split_nas, riss_extent);
-        let flst = get_flurstuecke(nas_xml, riss_extent);
-        let fluren = get_fluren(nas_xml, &Some(riss_extent.get_rect()));
-        let gebaeude = get_gebaeude(nas_xml, riss_extent);
-
-        crate::pdf::generate_pdf_internal(
-            (num_riss, total_risse),
-            info,
-            calc,
-            konfiguration,
-            split_nas,
-            rc,
-            riss_extent,
-            splitflaechen,
-            &aenderungen_rote_linien,
-            &aenderungen_nutzungsarten_linien,
-            &aenderungen_texte,
-            &fluren,
-            &flst,
-            &mini_split_nas,
-            &gebaeude,
-        )
-    }).unwrap_or_default();
+    let pdf_vorschau = crate::pdf::generate_pdf_internal(
+        (num_riss, total_risse),
+        info,
+        &calc_pdf_preview,
+        konfiguration,
+        split_nas,
+        &riss,
+        &riss_extent_reprojected,
+        // TODO: riss_extent_reprojected_noborder
+        splitflaechen,
+        &aenderungen_rote_linien,
+        &aenderungen_nutzungsarten_linien,
+        &aenderungen_texte,
+        &fluren,
+        &flst,
+        &mini_split_nas,
+        &gebaeude,
+    );
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
     log_status(&format!("PDF-Vorschau generiert."));
@@ -738,7 +753,6 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
         let shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
-        log_status(&format!("pushing {} NA untergehend lines", shared_lines.len()));
         let mut shared_lines_2 = shared_lines.into_iter()
         .filter_map(|s| {
             let first = s.points.first()?;
@@ -749,7 +763,6 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
                 Some(s)
             }
         }).collect::<Vec<_>>();
-        log_status(&format!("--> pushing {} NA untergehend lines", shared_lines_2.len()));
         v.append(&mut shared_lines_2);
     }
 
@@ -893,7 +906,6 @@ pub fn generate_header_pdf(
     info: &ProjektInfo,
     calc: &HeaderCalcConfig,
     split_nas: &SplitNasXml,
-    extent_rect: Option<Rect>,
     num_riss: usize,
     total_risse: usize,
 ) -> Vec<u8> {
@@ -937,54 +949,92 @@ pub fn generate_header_pdf(
     doc.save_to_bytes().unwrap_or_default()
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HeaderCalcConfig {
     pub gemarkungs_nr: usize,
-    pub fluren: BTreeSet<usize>,
-    pub flst: BTreeSet<String>,
+    pub gemarkungen: BTreeMap<usize, BTreeMap<usize, Vec<FlstIdParsedNumber>>>,
 }
 
 impl HeaderCalcConfig {
-    pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_rect: Option<Rect>) -> Self {
+    pub fn get_flst_string(&self) -> String {
+
+        let default = BTreeMap::new();
+        let f = self.gemarkungen.get(&self.gemarkungs_nr).unwrap_or(&default);
+        if f.len() != 1 {
+            "diverse".to_string()
+        } else {
+            let flst = f.iter().next().unwrap().1;
+            let mut cl = flst.clone();
+            cl.sort();
+            cl.dedup();
+            if cl.len() > 3 {
+                "diverse".to_string()
+            } else {
+                cl.iter().map(|s| s.format_str()).collect::<Vec<_>>().join(", ").trim().to_string()
+            }
+        }
+    }
+
+    fn get_fluren_string_internal(&self) -> Vec<String> {
+        let default = BTreeMap::new();
+        let f = self.gemarkungen.get(&self.gemarkungs_nr).unwrap_or(&default);
+        f.keys().map(|s| s.to_string()).collect::<Vec<_>>()
+    }
+
+    pub fn get_fluren_string(&self) -> String {
+        self.get_fluren_string_internal().join(", ").trim().to_string()
+    }
+
+    pub fn get_fluren_len(&self) -> usize {
+        self.get_fluren_string_internal().len()
+    }
+
+    pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_poly: &Option<SvgPolygon>) -> Self {
 
         let target_gemarkung_nr = crate::get_main_gemarkung(csv);
+        let extent_poly = extent_poly.as_ref().map(|s| {
+            let mut s = s.clone();
+            s.correct_winding_order();
+            s
+        });
 
-        log_status(&format!("target gemarkung nr. {target_gemarkung_nr}"));
-        log_status(&format!("target rect = {extent_rect:?}"));
-
-        let mut flst_overlaps = BTreeSet::new();
-
-        let fluren_overlaps = split_nas.flurstuecke_nutzungen
+        let mut flst_overlaps = split_nas.flurstuecke_nutzungen
         .values()
         .flat_map(|flst| flst.iter())
-        .filter(|tp| match extent_rect {
-            None => true,
-            Some(s) => tp.get_rect().overlaps_rect(&s),
+        .filter_map(|tp| match extent_poly.as_ref() {
+            None => Some(tp),
+            Some(s) => {
+                let mut poly = tp.poly.clone();
+                poly.correct_winding_order();
+                if poly.is_inside_of(&s) {
+                    Some(tp)
+                } else {
+                    None
+                }
+            },
         })
         .filter_map(|s| {
             let flst = s.attributes.get("AX_Flurstueck")?;
-            let flst_id = FlstIdParsed::from_str(&flst);
-            let gemarkung = flst_id.gemarkung.parse::<usize>().ok()?;
-            if gemarkung == target_gemarkung_nr {
-                let flur = flst_id.flur.parse::<usize>().ok()?;
-                let flst_string = flst_id.parse_num()?.format_str();
-                flst_overlaps.insert(flst_string);
-                Some(flur)
-            } else {
-                None
-            }
+            let flst_id = FlstIdParsed::from_str(&flst).parse_num()?;
+            Some(flst_id)
         })
-        .collect::<BTreeSet<_>>();
+        .collect::<Vec<_>>();
 
-        if fluren_overlaps.len() > 1 {
-            flst_overlaps = BTreeSet::new();
-        } else if flst_overlaps.len() > 2 {
-            flst_overlaps = BTreeSet::new();
+        flst_overlaps.sort();
+        flst_overlaps.dedup();
+        
+        let mut gemarkungen = BTreeMap::new();
+        for f in flst_overlaps {
+            gemarkungen.entry(f.gemarkung)
+            .or_insert_with(|| BTreeMap::new())
+            .entry(f.flur)
+            .or_insert_with(|| Vec::new())
+            .push(f);
         }
 
         Self {
             gemarkungs_nr: target_gemarkung_nr,
-            fluren: fluren_overlaps,
-            flst: flst_overlaps,
+            gemarkungen,
         }
     }
 }
@@ -1079,11 +1129,7 @@ pub fn write_header(
     let text = format!("{} ({})", info.gemarkung.trim(), calc.gemarkungs_nr);
     layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 14.0), &times_roman);    
 
-    let text = if calc.flst.is_empty() {
-        "diverse".to_string()
-    } else {
-        calc.flst.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ").trim().to_string()
-    };
+    let text = calc.get_flst_string();
     layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 7.0), &times_roman);    
 
     let text = info.bearbeitung_beendet_am.trim();
@@ -1092,8 +1138,16 @@ pub fn write_header(
     let text = info.vermessungsstelle.trim();
     layer1.use_text(text, medium_font_size, Mm(offset_right + 68.0), Mm(offset_top + 2.0), &times_roman);    
 
-    let text = calc.fluren.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ").trim().to_string();
-    layer1.use_text(&text, medium_font_size, Mm(offset_right + 8.0), Mm(offset_top + 7.0), &times_roman);    
+    let text = calc.get_fluren_string();
+    let fluren_len = calc.get_fluren_len();
+    let offset_right_fluren = match fluren_len {
+        0 => offset_right + 8.0,
+        1 => offset_right + 8.0,
+        2 => offset_right + 6.0,
+        3 => offset_right + 4.0,
+        _ => offset_right + 8.0,
+    };
+    layer1.use_text(&text, medium_font_size, Mm(offset_right_fluren), Mm(offset_top + 7.0), &times_roman);    
     
     let lines = &[
         ((offset_right + 0.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 28.0)),

@@ -253,6 +253,7 @@ export function add_nadgrid(key, view) {
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -432,12 +433,10 @@ function getArrayU8FromWasm0(ptr, len) {
 * @param {string} konfiguration
 * @param {string} aenderungen
 * @param {string} risse
-* @param {string} risse_extente
-* @param {string} risse_extente_nopadding
 * @param {string} csv_data
 * @returns {Uint8Array}
 */
-export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, risse_extente, risse_extente_nopadding, csv_data) {
+export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, konfiguration, aenderungen, risse, csv_data) {
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(split_nas_xml, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
@@ -452,18 +451,14 @@ export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, kon
         const len4 = WASM_VECTOR_LEN;
         const ptr5 = passStringToWasm0(risse, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len5 = WASM_VECTOR_LEN;
-        const ptr6 = passStringToWasm0(risse_extente, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        const ptr6 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
         const len6 = WASM_VECTOR_LEN;
-        const ptr7 = passStringToWasm0(risse_extente_nopadding, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len7 = WASM_VECTOR_LEN;
-        const ptr8 = passStringToWasm0(csv_data, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
-        const len8 = WASM_VECTOR_LEN;
-        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6, ptr7, len7, ptr8, len8);
+        wasm.aenderungen_zu_geograf(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, ptr6, len6);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        var v10 = getArrayU8FromWasm0(r0, r1).slice();
+        var v8 = getArrayU8FromWasm0(r0, r1).slice();
         wasm.__wbindgen_export_3(r0, r1 * 1, 1);
-        return v10;
+        return v8;
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
     }
@@ -1192,8 +1187,6 @@ export function export_flst_id_nach_eigentuemer(s) {
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
-
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0, 1));
@@ -1608,10 +1601,6 @@ function __wbg_get_imports() {
         const ret = parseInt(getStringFromWasm0(arg0, arg1), arg2);
         return ret;
     };
-    imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
-        console.log(getObject(arg0));
-    };
-    imports.wbg.__wbg_exportstatusclear_696b2edfbc03c672 = typeof export_status_clear == 'function' ? export_status_clear : notDefined('export_status_clear');
     imports.wbg.__wbg_updateexportstatus_dff9b10d495f2e73 = function(arg0, arg1) {
         let deferred0_0;
         let deferred0_1;
@@ -1624,6 +1613,10 @@ function __wbg_get_imports() {
         }
     };
     imports.wbg.__wbg_random_4bc01a1f182e92dc = typeof Math.random == 'function' ? Math.random : notDefined('Math.random');
+    imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
+        console.log(getObject(arg0));
+    };
+    imports.wbg.__wbg_exportstatusclear_696b2edfbc03c672 = typeof export_status_clear == 'function' ? export_status_clear : notDefined('export_status_clear');
     imports.wbg.__wbindgen_memory = function() {
         const ret = wasm.memory;
         return addHeapObject(ret);

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, RissMap, Risse, StyleConfig};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
@@ -98,34 +98,34 @@ pub fn get_rissgebiet_geojson(poly: String) -> String {
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
     
-    let poly_string1 = "";
-    let poly_string2 = "";
+    let poly_string1 = "{\"outer_rings\":[{\"points\":[{\"x\":429491.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890535.068},{\"x\":429491.18,\"y\":5890535.068},{\"x\":429491.18,\"y\":5889303.068}]}],\"inner_rings\":[]}";
+    let poly_string2 = "{\"outer_rings\":[{\"points\":[{\"x\":430328.22,\"y\":5890303.658},{\"x\":430244.425,\"y\":5890222.958},{\"x\":429528.201,\"y\":5889670.36},{\"x\":429502.62,\"y\":5889670.776},{\"x\":430002.015,\"y\":5889593.062},{\"x\":430044.428,\"y\":5889573.752},{\"x\":430404.975,\"y\":5890378.925},{\"x\":430328.22,\"y\":5890303.658}]}],\"inner_rings\":[]}";
     
     let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<Vec<SvgPolygon>>(&poly_string2.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
 
-    for p in s2.iter() {
-        let v = p.is_inside_of(&s1);
-        web_sys::console::log_1(&format!("poly inside of large poly: {v:?}").into());
-    }
+    let v = s1.is_inside_of(&s2);
+    web_sys::console::log_1(&format!("1 poly inside of large poly: {v:?}").into());
+    let v = s2.is_inside_of(&s1);
+    web_sys::console::log_1(&format!("2 poly inside of large poly: {v:?}").into());
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
-    let s2 = s2.iter().map(|s| crate::pdf::reproject_poly_back_into_latlon(&s, proj).unwrap_or_default()).collect::<Vec<_>>();
+    let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
 
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),
         attributes: BTreeMap::new(),
     }];
 
-    let v2 = s2.iter().map(|t| TaggedPolygon {
-        poly: t.clone(),
+    let v2 = vec![TaggedPolygon {
+        poly: s2.clone(),
         attributes: BTreeMap::new(),
-    }).collect::<Vec<_>>();
+    }];
 
     serde_json::to_string(&GeoJSONResult {
         geojson1: crate::nas::tagged_polys_to_featurecollection(&v1),
         geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
-        bounds: s2.get(0).unwrap().get_fit_bounds(),
+        bounds: s2.get_fit_bounds(),
     }).unwrap_or_default()
 }
 
@@ -269,58 +269,20 @@ pub fn aenderungen_zu_geograf(
     konfiguration: String,
     aenderungen: String,
     risse: String,
-    risse_extente: String,
-    risse_extente_nopadding: String,
     csv_data: String,
 ) -> Vec<u8> {
 
     log_status_clear();
     log_status("Starte Export nach GEOgraf...");
-    let split_nas_xml = match serde_json::from_str::<SplitNasXml>(split_nas_xml.as_str()) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
 
-    let nas_xml = match serde_json::from_str::<NasXMLFile>(nas_xml.as_str()) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let projekt_info = match serde_json::from_str::<ProjektInfo>(projekt_info.as_str()) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let konfiguration = match serde_json::from_str::<Konfiguration>(konfiguration.as_str()) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let risse = match serde_json::from_str::<Risse>(&risse) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let risse_extente = match serde_json::from_str::<RissMap>(&risse_extente) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let risse_extente_nopadding = match serde_json::from_str::<RissMap>(&risse_extente_nopadding) {
-        Ok(o) => o,
-        Err(e) => return e.to_string().as_bytes().to_vec(),
-    };
-
-    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
-        Ok(o) => o,
-        Err(_) => BTreeMap::default(),
-    };
-
+    let split_nas_xml = serde_json::from_str::<SplitNasXml>(split_nas_xml.as_str()).unwrap_or_default();
+    let nas_xml = serde_json::from_str::<NasXMLFile>(nas_xml.as_str()).unwrap_or_default();
+    let projekt_info = serde_json::from_str::<ProjektInfo>(projekt_info.as_str()).unwrap_or_default();
+    let konfiguration = serde_json::from_str::<Konfiguration>(konfiguration.as_str()).unwrap_or_default();
+    let aenderungen = serde_json::from_str::<Aenderungen>(aenderungen.as_str()).unwrap_or_default();
+    let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
+    let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or_default();
+    
     let result = std::panic::catch_unwind(|| {
         crate::geograf::export_aenderungen_geograf(
             &split_nas_xml,
@@ -329,8 +291,6 @@ pub fn aenderungen_zu_geograf(
             &konfiguration,
             &aenderungen,
             &risse,
-            &risse_extente,
-            &risse_extente_nopadding,
             &csv_data,
         )
     });
