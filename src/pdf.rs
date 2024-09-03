@@ -1419,7 +1419,8 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
             .iter()
             .filter_map(|(flur_nr, s)| {
                 let polys = s.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-                let joined = join_polys(&polys, false, true)?;
+                let mut joined = join_polys(&polys, false, true)?;
+                joined.inner_rings = Vec::new();
                 Some(TaggedPolygon {
                     attributes: vec![
                         ("berechneteGemarkung".to_string(), gemarkung_nr.to_string()),
