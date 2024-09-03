@@ -174,9 +174,20 @@ pub fn optimize_labels(
                     (s.dist(newpostotry) * 1000.0) as usize
                 }).unwrap_or(&tp.pos);
 
+                let line_will_overlap = test_line_will_intersect(
+                    newpostotry,
+                    nearest_point,
+                    &overlap_boolmap,
+                    &config,
+                );
+
                 let distance = newpostotry.dist(nearest_point);
                 let label_will_overlap_flst_line = 0; // TODO
-                let label_line_will_intersect_other_line = 0; // TODO
+                let label_line_will_intersect_other_line = if line_will_overlap {
+                    1
+                } else {
+                    0
+                };
 
                 let penalty = if label_overlaps_feature {
                     u64::MAX
@@ -249,6 +260,27 @@ fn gen_new_points(p: &SvgPoint, iteration: usize, maxpoints: usize, cache: &[(f6
         let yshift = r * t.sin() * maxdst; 
         p.translate(xshift, yshift)
     }).collect()
+}
+
+fn test_line_will_intersect(
+    start: &SvgPoint,
+    end: &SvgPoint,
+    map: &ndarray::Array2<bool>,
+    config: &OptimizeConfig,
+) -> bool {
+    use bresenham::Bresenham;
+    
+    let start = config.point_to_pixel(start);
+    let end = config.point_to_pixel(end);
+
+    for (x, y) in Bresenham::new((start.x as isize, start.y as isize), (end.x as isize, end.y as isize)) {
+        match map.get((x.max(0) as usize, y.max(0) as usize)) {
+            Some(s) => { if *s { return true; } },
+            _ => { },
+        }
+    }
+
+    false
 }
 
 fn paint_line_onto_map(
