@@ -816,7 +816,7 @@ impl SvgPolygon {
     pub fn get_triangle_points(&self) -> Vec<SvgPoint> {
         translate_to_geo_poly(&self).0
         .iter().flat_map(|f| f.earcut_triangles()).filter_map(|f| {
-            if f.unsigned_area() > 2.0 {
+            if f.unsigned_area() > 10.0 {
                 Some(f.centroid())
             } else {
                 None
