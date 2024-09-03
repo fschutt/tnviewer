@@ -141,7 +141,7 @@ pub fn optimize_labels(
         }).collect(),
     };
 
-    let maxiterations = 10;
+    let maxiterations = 20;
     let maxpoints_per_iter = 50;
     let random_number_cache = (0..(maxiterations * maxpoints_per_iter))
     .map(|_| (js_random(), js_random(), js_random()))
