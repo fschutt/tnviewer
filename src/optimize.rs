@@ -186,9 +186,11 @@ pub fn optimize_labels(
                 break 'outer;
             }
 
+            log_status("generating next iteration text positions...");
             let mut np = gen_new_points(&tp.pos, i);
             np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
             np.dedup_by(|a, b| a.equals(&b));
+            log_status(&format!("generated {} new positions", np.len()));
             textpos_totry = np;
         }
 
@@ -233,11 +235,12 @@ fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
         lpos_half,
         lpos,
     ];
-    xpos.iter().flat_map(|xshift| ypos.iter().flat_map(|yshift| {
+    xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
         if *xshift == 0.0 && *yshift == 0.0 {
-            Vec::new()
+            None
         } else {
-            gen_points_around_point(&p.translate(*xshift, *yshift), 4.0)
+            Some(p.translate(*xshift, *yshift))
+            // gen_points_around_point(&p.translate(*xshift, *yshift), 4.0)
         }
     })).collect()
 }
