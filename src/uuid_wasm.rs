@@ -11,6 +11,10 @@ extern "C" {
     fn export_status_clear();
 }
 
+pub fn js_random() -> f64 {
+    random().max(0.0).min(1.0)
+}
+
 pub fn log_status_clear() {
     export_status_clear();
 }

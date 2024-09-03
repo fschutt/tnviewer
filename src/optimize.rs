@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, f64::consts::PI};
 
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{log_status, uuid}};
+use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
 
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
@@ -16,7 +16,7 @@ impl OptimizedTextPlacement {
             return None; 
         }
 
-        let (a, b) = (self.optimized.pos, self.original.pos);
+        let (a, b) = (self.optimized.pos, self.optimized.ref_pos);
         Some((a, b))
     }
 }
@@ -142,6 +142,11 @@ pub fn optimize_labels(
     };
 
     let maxiterations = 10;
+    let maxpoints_per_iter = 50;
+    let random_number_cache = (0..(maxiterations * maxpoints_per_iter))
+    .map(|_| (js_random(), js_random(), js_random()))
+    .collect::<Vec<_>>();
+
     let mut initial_text_pos_clone = initial_text_pos.to_vec();
     initial_text_pos_clone.sort_by(|a, b| a.area.cmp(&b.area)); // label small areas first
     let mut modifications = BTreeMap::new();
@@ -152,6 +157,8 @@ pub fn optimize_labels(
         let mut textpos_found = Vec::new();
         let tp_width = tp.kuerzel.chars().count() as f64 * LABEL_WIDTH_PER_CHAR_M + 2.5;
         
+        let tp_triangles = tp.poly.get_triangle_points();
+
         for i in 0..maxiterations {
 
             for newpostotry in textpos_totry.iter() {
@@ -163,7 +170,11 @@ pub fn optimize_labels(
                     tp_width,
                 );
                 
-                let distance = newpostotry.dist(&tp.pos);
+                let nearest_point = tp_triangles.iter().min_by_key(|s| {
+                    (s.dist(newpostotry) * 1000.0) as usize
+                }).unwrap_or(&tp.pos);
+
+                let distance = newpostotry.dist(nearest_point);
                 let label_will_overlap_flst_line = 0; // TODO
                 let label_line_will_intersect_other_line = 0; // TODO
 
@@ -175,14 +186,12 @@ pub fn optimize_labels(
                     (label_line_will_intersect_other_line * 1000)
                 };
 
-                textpos_found.push((penalty, *newpostotry));
+                textpos_found.push((penalty, *newpostotry, *nearest_point));
             }
 
-            if !textpos_found.iter().any(|(penalty, pos)| *penalty < 5) {
+            if !textpos_found.iter().any(|(penalty, pos, _)| *penalty < 5) {
                 log_status("generating next iteration text positions...");
-                let mut np = gen_new_points(&tp.pos, i);
-                np.sort_by(|a, b| a.dist(&tp.pos).total_cmp(&b.dist(&tp.pos)));
-                np.dedup_by(|a, b| a.equals(&b));
+                let np = gen_new_points(&tp.pos, i, maxpoints_per_iter, &random_number_cache);
                 log_status(&format!("generated {} new positions", np.len()));
                 textpos_totry = np;
             } else {
@@ -190,29 +199,37 @@ pub fn optimize_labels(
             }
         }
 
-        let least_penalty = textpos_found.iter()
+        let (least_penalty, newpos, newtargetpos) = textpos_found.iter()
         .min_by_key(|s| (**s).0).cloned()
-        .unwrap_or((u64::MAX, tp.pos));
+        .unwrap_or((u64::MAX, tp.pos, tp.pos));
 
-        log_status(&format!("placing text {} (penalty = {})", tp.kuerzel, least_penalty.0));
+        log_status(&format!("placing text {} (penalty = {})", tp.kuerzel, least_penalty));
 
         paint_label_onto_map(
-            &least_penalty.1,
+            &newpos,
             &mut overlap_boolmap,
             &config,
             tp_width,
         );
 
-        modifications.insert(i, least_penalty.1);
+        paint_line_onto_map(
+            &newpos,
+            &newtargetpos,
+            &mut overlap_boolmap,
+            &config,
+        );
+
+        modifications.insert(i, (newpos, newtargetpos));
     }
 
     initial_text_pos_clone.iter().enumerate().map(|(i, tp)| {
-        let optimized_pos = modifications.get(&i).cloned().unwrap_or(tp.pos);
+        let optimized_pos = modifications.get(&i).cloned().unwrap_or((tp.pos, tp.pos));
         OptimizedTextPlacement {
             optimized: TextPlacement { 
                 kuerzel: tp.kuerzel.clone(), 
                 status: tp.status.clone(), 
-                pos: optimized_pos,
+                pos: optimized_pos.0, // TODO
+                ref_pos: optimized_pos.1,
                 area: tp.area.clone(),
                 poly: tp.poly.clone()
             },
@@ -221,78 +238,35 @@ pub fn optimize_labels(
     }).collect()
 }
 
-fn gen_new_points(p: &SvgPoint, iteration: usize) -> Vec<SvgPoint> {
-    let lpos = 7.0 * (iteration + 2) as f64;
-    let lpos_half = lpos / 2.0;
-    let xpos = vec![
-        -lpos,
-        -lpos_half,
-        0.0,
-        lpos_half,
-        lpos,
-    ];
-    let ypos = vec![
-        -lpos,
-        -lpos_half,
-        0.0,
-        lpos_half,
-        lpos,
-    ];
-    xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
-        if *xshift == 0.0 && *yshift == 0.0 {
-            None
-        } else {
-            Some(p.translate(*xshift, *yshift))
-            // gen_points_around_point(&p.translate(*xshift, *yshift), 4.0)
-        }
-    })).collect()
+fn gen_new_points(p: &SvgPoint, iteration: usize, maxpoints: usize, cache: &[(f64, f64, f64)]) -> Vec<SvgPoint> {
+    (0..maxpoints).map(|i| {
+        let random1 = cache[(iteration * maxpoints) + i];
+        let t = 2.0 * PI * random1.0;
+        let u = random1.1 + random1.2;
+        let r = if u > 1.0 { 2.0 - u } else { u };
+        let maxdst = (iteration + 1) as f64 * 4.0;
+        let xshift = r * t.cos() * maxdst; 
+        let yshift = r * t.sin() * maxdst; 
+        p.translate(xshift, yshift)
+    }).collect()
 }
 
-fn gen_points_around_point(q: &SvgPoint, dst: f64) -> Vec<SvgPoint> {
-    let mut p = vec![*q];
-    let dst_half = dst / 2.0;
-    let xpos = vec![
-        -dst,
-        -dst_half,
-        0.0,
-        dst_half,
-        dst,
-    ];
-    let ypos = vec![
-        -dst,
-        -dst_half,
-        0.0,
-        dst_half,
-        dst,
-    ];
-    p.extend(xpos.iter().flat_map(|xshift| ypos.iter().filter_map(|yshift| {
-        if *xshift == 0.0 && *yshift == 0.0 {
-            None
-        } else {
-            Some(q.translate(*xshift, *yshift))
-        }
-    })));
-    p
-}
+fn paint_line_onto_map(
+    start: &SvgPoint,
+    end: &SvgPoint,
+    map: &mut ndarray::Array2<bool>,
+    config: &OptimizeConfig,
+) {
+    use bresenham::Bresenham;
+    
+    let start = config.point_to_pixel(start);
+    let end = config.point_to_pixel(end);
 
-fn svg_label_pos_to_line(p: &SvgPoint) -> SvgLine {
-    SvgLine {
-        points: vec![
-            *p,
-            SvgPoint {
-                x: p.x + LABEL_WIDTH_M,
-                y: p.y,
-            },
-            SvgPoint {
-                x: p.x + LABEL_WIDTH_M,
-                y: p.y + LABEL_HEIGHT_M,
-            },
-            SvgPoint {
-                x: p.x,
-                y: p.y + LABEL_HEIGHT_M,
-            },
-            *p,
-        ]
+    for (x, y) in Bresenham::new((start.x as isize, start.y as isize), (end.x as isize, end.y as isize)) {
+        match map.get_mut((x.max(0) as usize, y.max(0) as usize)) {
+            Some(s) => { *s = true; },
+            _ => { },
+        }
     }
 }
 

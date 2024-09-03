@@ -1314,6 +1314,7 @@ impl AenderungenIntersections {
                         kuerzel: q.alt.clone(),
                         status: TextStatus::StaysAsIs,
                         pos: lp.clone(),
+                        ref_pos: lp.clone(),
                         area: p.area_m2().round() as usize,
                         poly: p.clone(),
                     }]
@@ -1336,6 +1337,7 @@ impl AenderungenIntersections {
                             kuerzel: q.alt.clone(),
                             status: TextStatus::Old,
                             pos: lp.clone(),
+                            ref_pos: lp.clone(),
                             area: p.area_m2().round() as usize,
                             poly: p.clone(),
                         },
@@ -1343,6 +1345,7 @@ impl AenderungenIntersections {
                             kuerzel: q.neu.clone(),
                             status: TextStatus::New,
                             pos: sp.clone(),
+                            ref_pos: sp.clone(),
                             area: p.area_m2().round() as usize,
                             poly: p.clone(),
                         }
@@ -1845,6 +1848,7 @@ pub struct TextPlacement {
     pub kuerzel: String,
     pub status: TextStatus,
     pub pos: SvgPoint,
+    pub ref_pos: SvgPoint,
     pub area: usize,
     pub poly: SvgPolygon,
 }

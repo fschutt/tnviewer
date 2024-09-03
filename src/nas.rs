@@ -813,6 +813,13 @@ impl SvgPolygon {
         triangle_points.iter().any(|p| point_is_in_polygon(p, other))
     }
 
+    pub fn get_triangle_points(&self) -> Vec<SvgPoint> {
+        translate_to_geo_poly(&self).0
+        .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
+        .map(|p| SvgPoint { x: p.x(), y: p.y() })
+        .collect::<Vec<_>>()
+    }
+
     pub fn is_completely_inside_of(&self, other: &Self) -> bool {
 
         let triangle_points = translate_to_geo_poly(&self).0

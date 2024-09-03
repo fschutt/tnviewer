@@ -974,6 +974,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            ref_pos: point_into_pdf_space(&p.optimized.ref_pos, riss_extent, riss),
             area: p.optimized.area,
             poly: p.optimized.poly.clone(),
         }
@@ -988,6 +989,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            ref_pos: point_into_pdf_space(&p.optimized.ref_pos, riss_extent, riss),
             area: p.optimized.area,
             poly: p.optimized.poly.clone(),
         }
@@ -1001,6 +1003,7 @@ fn write_splitflaechen_beschriftungen(
             kuerzel: p.optimized.kuerzel.clone(),
             status: p.optimized.status.clone(),
             pos: point_into_pdf_space(&p.optimized.pos, riss_extent, riss),
+            ref_pos: point_into_pdf_space(&p.optimized.ref_pos, riss_extent, riss),
             area: p.optimized.area,
             poly: p.optimized.poly.clone(),
         }
