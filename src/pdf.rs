@@ -514,10 +514,9 @@ pub async fn generate_pdf_internal(
     splitflaechen: &[AenderungenIntersection],
     rote_linien: &Vec<SvgLine>, // in ETRS space
     na_untergehend_linien: &Vec<SvgLine>, // in ETRS space
-    beschriftungen: &[TextPlacement], // in ETRS space
+    beschriftungen: &[OptimizedTextPlacement], // in ETRS space
     fluren: &Fluren, // in ETRS space,
     flst: &Flurstuecke, // in ETRS space
-    split_nas_mini: &SplitNasXml,
     gebaeude: &Gebaeude, // in ETRS space
 ) -> Vec<u8> {
 
@@ -555,6 +554,7 @@ pub async fn generate_pdf_internal(
     let mut layer = page.get_layer(layer);
 
     let mut has_background = false;
+
     if target_use == PdfTargetUse::HintergrundCheck {
         let rect = riss_extent.get_rect();
 
@@ -624,23 +624,13 @@ pub async fn generate_pdf_internal(
     let na_untergehend_linien = na_untergehend_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_na_untergehend_linien(&mut layer, &na_untergehend_linien);
 
-    log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
-    let aenderungen_texte = crate::optimize::optimize_labels(
-        &split_nas_mini,
-        splitflaechen,
-        &gebaeude,
-        &[],
-        &beschriftungen,
-        &OptimizeConfig::new(rc, riss_extent, 0.5 /* mm */) ,
-    );
-
     log_status(&format!("Rendere Beschriftungen..."));
     let _ = write_splitflaechen_beschriftungen(
         &mut layer, 
         &helvetica,
         riss_extent, 
         rc,
-        &aenderungen_texte,
+        &beschriftungen,
     );
 
     let _ = write_border(

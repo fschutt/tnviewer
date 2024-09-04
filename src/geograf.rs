@@ -453,15 +453,26 @@ pub async fn export_splitflaechen(
     files.push((parent_dir.clone(), format!("Texte_Neu_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
     log_status(&format!("{} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
-    log_status(&format!("Generiere PDF-Vorschau..."));
     let mini_split_nas = get_mini_nas_xml(split_nas, &riss_extent_reprojected);
     let flst = get_flurstuecke(nas_xml, &riss_extent_reprojected);
     let fluren = get_fluren(nas_xml, &Some(riss_extent_reprojected.get_rect()));
     let gebaeude = get_gebaeude(nas_xml, &riss_extent_reprojected);
+    let riss_von = (num_riss, total_risse);
 
+    log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
+    let aenderungen_texte_optimized = crate::optimize::optimize_labels(
+        &mini_split_nas,
+        &splitflaechen,
+        &gebaeude,
+        &[],
+        &aenderungen_texte,
+        &OptimizeConfig::new(&riss, &riss_extent_reprojected, 0.5 /* mm */) ,
+    );
+
+    log_status(&format!("Generiere PDF-Vorschau..."));
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
         crate::pdf::PdfTargetUse::PreviewRiss,
-        (num_riss, total_risse),
+        riss_von,
         info,
         &calc_pdf_preview,
         konfiguration,
@@ -472,41 +483,54 @@ pub async fn export_splitflaechen(
         &splitflaechen,
         &aenderungen_rote_linien,
         &aenderungen_nutzungsarten_linien,
-        &aenderungen_texte,
+        &aenderungen_texte_optimized,
         &fluren,
         &flst,
-        &mini_split_nas,
         &gebaeude,
     ).await;
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
+    log_status(&format!("OK: PDF Vorschau generiert."));
 
-    if render_hintergrund_vorschau {
-        let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
-            crate::pdf::PdfTargetUse::HintergrundCheck,
-            (num_riss, total_risse),
-            info,
-            &calc_pdf_preview,
-            konfiguration,
-            split_nas,
-            &riss,
-            &riss_extent_reprojected,
-            // TODO: riss_extent_reprojected_noborder
-            &splitflaechen,
-            &aenderungen_rote_linien,
-            &aenderungen_nutzungsarten_linien,
-            &aenderungen_texte,
-            &fluren,
-            &flst,
-            &mini_split_nas,
-            &gebaeude,
-        ).await;
-    
-        files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));      
-    }
-    
-    log_status(&format!("PDF-Vorschau generiert."));
-  
+    let splitflaechen = AenderungenIntersections(splitflaechen.to_vec()).get_future_flaechen();
+    let split_nas = split_nas.migrate_future(&splitflaechen.0);
+    let aenderungen_texte = AenderungenIntersections::get_texte(&splitflaechen.0);
+    let mini_split_nas = get_mini_nas_xml(&split_nas, &riss_extent_reprojected);
+    let aenderungen_texte_optimized = crate::optimize::optimize_labels(
+        &mini_split_nas,
+        &splitflaechen.0,
+        &gebaeude,
+        &[],
+        &aenderungen_texte,
+        &OptimizeConfig::new(&riss, &riss_extent_reprojected, 0.5 /* mm */) ,
+    );
+
+    log_status(&format!("Generiere Hintergrund-Vorschau..."));
+    let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
+        if render_hintergrund_vorschau {
+            crate::pdf::PdfTargetUse::HintergrundCheck
+        } else {
+            crate::pdf::PdfTargetUse::PreviewRiss
+        },
+        (num_riss, total_risse),
+        info,
+        &calc_pdf_preview,
+        konfiguration,
+        &split_nas,
+        &riss,
+        &riss_extent_reprojected,
+        // TODO: riss_extent_reprojected_noborder
+        &splitflaechen.0,
+        &Vec::new(),
+        &Vec::new(),
+        &aenderungen_texte_optimized,
+        &fluren,
+        &flst,
+        &gebaeude,
+    ).await;
+
+    files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));      
+    log_status(&format!("OK: PDF Vorschau mit Hintergrund generiert."));  
 }
 
 pub struct LinienQuadTree {

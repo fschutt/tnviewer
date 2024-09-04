@@ -1197,6 +1197,20 @@ pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
 
 impl AenderungenIntersections {
 
+    pub fn get_future_flaechen(&self) -> Self {
+        let mut vi = Vec::new();
+        for s in self.0.iter() {
+            vi.push(AenderungenIntersection {
+                poly_cut: s.poly_cut.clone(),
+                flst_id: s.flst_id.clone(),
+                flst_id_part: s.flst_id_part.clone(),
+                alt: s.neu.clone(),
+                neu: s.neu.clone(),
+            });
+        }
+        Self(vi).merge_to_nearest()
+    }
+
     pub fn deduplicate(&self) -> Self {
         let mut aenderungen_2 = BTreeMap::new();
 
@@ -1221,8 +1235,6 @@ impl AenderungenIntersections {
     
     pub fn merge_to_nearest(&self) -> Self {
 
-        return self.clone();
-        /* 
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
         for s in self.0.iter() {
@@ -1270,7 +1282,6 @@ impl AenderungenIntersections {
         }).collect();
 
         Self(new_sf)
-        */
     }
 
     pub fn clean_zero_size_areas(&self) -> Self {

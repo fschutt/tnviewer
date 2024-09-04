@@ -25,6 +25,7 @@ use crate::geograf::points_to_rect;
 use crate::search::NutzungsArt;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
+use crate::ui::AenderungenIntersection;
 use crate::uuid_wasm::log_status;
 use crate::uuid_wasm::log_status_clear;
 use crate::xlsx::FlstIdParsed;
@@ -1724,6 +1725,31 @@ fn default_etrs33() -> String {
 
 impl SplitNasXml {
 
+    pub fn migrate_future(&self, spliflaechen: &[AenderungenIntersection]) -> Self {
+        Self {
+            crs: self.crs.clone(),
+            flurstuecke_nutzungen: self.flurstuecke_nutzungen.iter().map(|(k, v)| {
+
+                let flst_parts_neu = spliflaechen.iter()
+                .filter_map(|ai| if ai.flst_id == *k {
+                    Some(TaggedPolygon {
+                        attributes: BTreeMap::new(),
+                        poly: ai.poly_cut.clone(),
+                    })
+                } else {
+                    None
+                })
+                .collect::<Vec<_>>();
+
+                if flst_parts_neu.is_empty() {
+                    (k.clone(), v.clone())
+                } else {
+                    (k.clone(), flst_parts_neu)
+                }
+            }).collect()
+        }
+    }
+    
     /*
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
 
