@@ -115,6 +115,7 @@ pub async fn export_aenderungen_geograf(
     aenderungen: &Aenderungen, 
     risse: &Risse,
     csv_data: &CsvDataType,
+    render_hintergrund_vorschau: bool,
 ) -> Vec<u8> {
 
     let mut files = Vec::new();
@@ -174,6 +175,7 @@ pub async fn export_aenderungen_geograf(
             1,
             1,
             &lq,
+            render_hintergrund_vorschau,
         ).await;
     } else {
         for (i, (_, r)) in risse.iter().enumerate() {
@@ -190,6 +192,7 @@ pub async fn export_aenderungen_geograf(
                 i + 1,
                 risse.len(),
                 &lq,
+                render_hintergrund_vorschau,
             ).await;
         }
     }
@@ -338,6 +341,7 @@ pub async fn export_splitflaechen(
     num_riss: usize,
     total_risse: usize,
     lq: &LinienQuadTree,
+    render_hintergrund_vorschau: bool,
 ) {
 
     let mut default_riss_extent_rect = match splitflaechen.first() {
@@ -477,28 +481,29 @@ pub async fn export_splitflaechen(
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
 
-    let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
-        crate::pdf::PdfTargetUse::HintergrundCheck,
-        (num_riss, total_risse),
-        info,
-        &calc_pdf_preview,
-        konfiguration,
-        split_nas,
-        &riss,
-        &riss_extent_reprojected,
-        // TODO: riss_extent_reprojected_noborder
-        &splitflaechen,
-        &aenderungen_rote_linien,
-        &aenderungen_nutzungsarten_linien,
-        &aenderungen_texte,
-        &fluren,
-        &flst,
-        &mini_split_nas,
-        &gebaeude,
-    ).await;
-
-    files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));  
-
+    if render_hintergrund_vorschau {
+        let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
+            crate::pdf::PdfTargetUse::HintergrundCheck,
+            (num_riss, total_risse),
+            info,
+            &calc_pdf_preview,
+            konfiguration,
+            split_nas,
+            &riss,
+            &riss_extent_reprojected,
+            // TODO: riss_extent_reprojected_noborder
+            &splitflaechen,
+            &aenderungen_rote_linien,
+            &aenderungen_nutzungsarten_linien,
+            &aenderungen_texte,
+            &fluren,
+            &flst,
+            &mini_split_nas,
+            &gebaeude,
+        ).await;
+    
+        files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));      
+    }
     
     log_status(&format!("PDF-Vorschau generiert."));
   

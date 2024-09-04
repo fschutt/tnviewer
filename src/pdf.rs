@@ -554,17 +554,20 @@ pub async fn generate_pdf_internal(
     let page = doc.get_page(page);
     let mut layer = page.get_layer(layer);
 
+    let mut has_background = false;
     if target_use == PdfTargetUse::HintergrundCheck {
         let rect = riss_extent.get_rect();
 
+        let ideal_px = rc.width_mm as f64 / 25.4 * 300.0;
         let width_px = if rc.width_mm < 800.0 {
-            rc.width_mm.round() as usize // * 10
+            rc.width_mm.round() as usize * 10
         } else {
             rc.width_mm.round() as usize
         };
+        let target_dpi = 300.0 * width_px as f64 / ideal_px;
 
         let height_px = if rc.height_mm < 800.0 {
-            rc.height_mm.round() as usize // * 10
+            rc.height_mm.round() as usize * 10
         } else {
             rc.height_mm.round() as usize
         };
@@ -581,7 +584,11 @@ pub async fn generate_pdf_internal(
         log_status(&format!("Fetche WMS Hintergrund..."));
         if let Some(i) = background_image {
             log_status(&format!("OK: schreibe Hintergrundbild"));
-            i.add_to_layer(layer.clone(), ImageTransform::default());
+            i.add_to_layer(layer.clone(), ImageTransform {
+                dpi: Some(target_dpi as f32),
+                ..Default::default()
+            });
+            has_background = true;
         }
     }
 
@@ -598,10 +605,13 @@ pub async fn generate_pdf_internal(
     let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), &mut Vec::new());
 
     log_status(&format!("Rendere Flurstücke..."));
-    let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
+    let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(riss_extent, rc), has_background);
 
     log_status(&format!("Rendere Fluren..."));
     let _ = write_fluren(&mut layer, &fluren.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
+
+    log_status(&format!("Rendere Flurstücke Texte..."));
+    let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, rc, riss_extent, has_background);
 
     log_status(&format!("Rendere Fluren Texte..."));
     let _ = write_flur_texte(&mut layer, &fluren, &helvetica, rc, &riss_extent, calc);
@@ -1473,21 +1483,60 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
     }
 }
 
+fn write_flurstuecke_label(
+    layer: &mut PdfLayerReference,
+    font: &IndirectFontRef,
+    flst: &Flurstuecke,
+    riss_config: &RissConfig,
+    riss: &RissExtentReprojected,
+    has_background: bool,
+) -> Option<()> {
+    
+    layer.save_graphics_state();
+
+    let outline_color = csscolorparser::parse(if has_background { "#ffffff" } else { "#00000" }).ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let fontsize = 8.0;
+    layer.set_fill_color(outline_color.clone());
+
+    for tp in flst.flst.iter() {
+        let flst = match tp.attributes.get("flurstueckskennzeichen").and_then(|s| FlstIdParsed::from_str(s).parse_num()) {
+            Some(s) => s,
+            None => continue,
+        };
+        let pos = match tp.poly.get_label_pos().or(tp.poly.get_secondary_label_pos()) {
+            Some(s) => point_into_pdf_space(&s, riss, riss_config),
+            None => continue,
+        };
+        layer.begin_text_section();
+        layer.set_font(&font, fontsize);
+        layer.set_line_height(fontsize);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(pos.x as f32), Mm(pos.y as f32));
+        layer.write_text(flst.format_str(), &font);
+        layer.end_text_section();
+    }
+
+    layer.restore_graphics_state();
+
+    Some(())
+}
+
 fn write_flurstuecke(
     layer: &mut PdfLayerReference,
     flst: &FlurstueckeInPdfSpace,
-    style: &Konfiguration,
-    log: &mut Vec<String>,
+    has_background: bool,
 ) -> Option<()> {
 
     layer.save_graphics_state();
 
-    layer.set_outline_color(printpdf::Color::Rgb(Rgb {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        icc_profile: None,
-    }));
+    let outline_color = csscolorparser::parse(if has_background { "#ffffff" } else { "#00000" }).ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    layer.set_outline_color(outline_color);
 
     layer.set_outline_thickness(0.1);
 
