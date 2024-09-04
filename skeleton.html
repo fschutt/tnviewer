@@ -1770,9 +1770,9 @@
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
 
-    function exportGeoGraf() {
+    async function exportGeoGraf() {
       
-      var zip = aenderungen_zu_geograf(
+      var zip = await aenderungen_zu_geograf(
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
         JSON.stringify(window.info),
@@ -1894,7 +1894,7 @@
         export_excel: function(event) { exportExcel(); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
-        export_geograf: function(event) { exportGeoGraf(); },
+        export_geograf: async function(event) { await exportGeoGraf(); },
         export_david: function(event) { exportDavid(); },
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },

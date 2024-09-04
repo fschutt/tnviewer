@@ -257,7 +257,7 @@ pub fn lib_get_aenderungen_clean(
 }
 
 #[wasm_bindgen]
-pub fn aenderungen_zu_geograf(
+pub async fn aenderungen_zu_geograf(
     split_nas_xml: String,
     nas_xml: String,
     projekt_info: String,
@@ -278,26 +278,15 @@ pub fn aenderungen_zu_geograf(
     let risse = serde_json::from_str::<Risse>(&risse).unwrap_or_default();
     let csv_data = serde_json::from_str::<CsvDataType>(&csv_data).unwrap_or_default();
     
-    let result = std::panic::catch_unwind(|| {
-        crate::geograf::export_aenderungen_geograf(
-            &split_nas_xml,
-            &nas_xml,
-            &projekt_info,
-            &konfiguration,
-            &aenderungen,
-            &risse,
-            &csv_data,
-        )
-    });
-
-    match result {
-        Ok(o) => o,
-        Err(e) => {
-            let s = format!("FEHLER: {:?}", e);
-            log_status(&s);
-            s.as_bytes().to_vec()
-        },
-    }
+    crate::geograf::export_aenderungen_geograf(
+        &split_nas_xml,
+        &nas_xml,
+        &projekt_info,
+        &konfiguration,
+        &aenderungen,
+        &risse,
+        &csv_data,
+    ).await
 }
 
 

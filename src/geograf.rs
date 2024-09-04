@@ -107,7 +107,7 @@ pub fn lines_to_shp(lines: &[SvgLine]) -> ShpReturn {
     }
 }
 
-pub fn export_aenderungen_geograf(
+pub async fn export_aenderungen_geograf(
     split_nas: &SplitNasXml, // original projection
     nas_xml: &NasXMLFile, // original projection
     projekt_info: &ProjektInfo,
@@ -174,7 +174,7 @@ pub fn export_aenderungen_geograf(
             1,
             1,
             &lq,
-        );
+        ).await;
     } else {
         for (i, (_, r)) in risse.iter().enumerate() {
             export_splitflaechen(
@@ -190,7 +190,7 @@ pub fn export_aenderungen_geograf(
                 i + 1,
                 risse.len(),
                 &lq,
-            );
+            ).await;
         }
     }
 
@@ -325,7 +325,7 @@ pub fn generate_risse_shp(
     }).collect::<Vec<_>>())
 }
 
-pub fn export_splitflaechen(
+pub async fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
     csv: &CsvDataType,
@@ -456,6 +456,7 @@ pub fn export_splitflaechen(
     let gebaeude = get_gebaeude(nas_xml, &riss_extent_reprojected);
 
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
+        crate::pdf::PdfTargetUse::PreviewRiss,
         (num_riss, total_risse),
         info,
         &calc_pdf_preview,
@@ -472,9 +473,33 @@ pub fn export_splitflaechen(
         &flst,
         &mini_split_nas,
         &gebaeude,
-    );
+    ).await;
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
+
+    let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
+        crate::pdf::PdfTargetUse::HintergrundCheck,
+        (num_riss, total_risse),
+        info,
+        &calc_pdf_preview,
+        konfiguration,
+        split_nas,
+        &riss,
+        &riss_extent_reprojected,
+        // TODO: riss_extent_reprojected_noborder
+        &splitflaechen,
+        &aenderungen_rote_linien,
+        &aenderungen_nutzungsarten_linien,
+        &aenderungen_texte,
+        &fluren,
+        &flst,
+        &mini_split_nas,
+        &gebaeude,
+    ).await;
+
+    files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));  
+
+    
     log_status(&format!("PDF-Vorschau generiert."));
   
 }

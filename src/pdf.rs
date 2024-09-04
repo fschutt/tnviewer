@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
+use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
@@ -496,7 +496,14 @@ impl Gebaeude {
     }
 }
 
-pub fn generate_pdf_internal(
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum PdfTargetUse {
+    PreviewRiss,
+    HintergrundCheck,
+}
+
+pub async fn generate_pdf_internal(
+    target_use: PdfTargetUse,
     riss_von: (usize, usize), // Riss X von Y
     projekt_info: &ProjektInfo,
     calc: &HeaderCalcConfig,
@@ -504,7 +511,6 @@ pub fn generate_pdf_internal(
     nutzungsarten: &SplitNasXml,
     rc: &RissConfig,
     riss_extent: &RissExtentReprojected,
-
     splitflaechen: &[AenderungenIntersection],
     rote_linien: &Vec<SvgLine>, // in ETRS space
     na_untergehend_linien: &Vec<SvgLine>, // in ETRS space
@@ -547,6 +553,37 @@ pub fn generate_pdf_internal(
 
     let page = doc.get_page(page);
     let mut layer = page.get_layer(layer);
+
+    if target_use == PdfTargetUse::HintergrundCheck {
+        let rect = riss_extent.get_rect();
+
+        let width_px = if rc.width_mm < 800.0 {
+            rc.width_mm.round() as usize // * 10
+        } else {
+            rc.width_mm.round() as usize
+        };
+
+        let height_px = if rc.height_mm < 800.0 {
+            rc.height_mm.round() as usize // * 10
+        } else {
+            rc.height_mm.round() as usize
+        };
+
+        let background_image = crate::uuid_wasm::get_wms_image(konfiguration, crate::uuid_wasm::FetchWmsImageRequest {
+            width_px,
+            height_px,
+            max_x: rect.max_x,
+            min_x: rect.min_x,
+            max_y: rect.max_y,
+            min_y: rect.min_y,
+        }).await;
+
+        log_status(&format!("Fetche WMS Hintergrund..."));
+        if let Some(i) = background_image {
+            log_status(&format!("OK: schreibe Hintergrundbild"));
+            i.add_to_layer(layer.clone(), ImageTransform::default());
+        }
+    }
 
     let nutzungsarten = reproject_splitnas_into_pdf_space(
         &nutzungsarten,

@@ -1,7 +1,11 @@
 use rand::{Rng, SeedableRng};
+use serde_derive::Serialize;
+use serde_derive::Deserialize;
 use wasm_bindgen::prelude::*;
 use std::char;
 use rand_xorshift::XorShiftRng;
+
+use crate::pdf::Konfiguration;
 
 #[wasm_bindgen]
 extern "C" {
@@ -21,6 +25,57 @@ pub fn log_status_clear() {
 
 pub fn log_status(s: &str) {
     update_export_status(s.trim().to_string())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FetchWmsImageRequest {
+    pub max_x: f64,
+    pub max_y: f64,
+    pub min_x: f64,
+    pub min_y: f64,
+    pub width_px: usize,
+    pub height_px: usize,
+}
+
+pub async fn get_wms_image(config: &Konfiguration, obj: FetchWmsImageRequest) -> Option<printpdf::Image> {
+
+    let mut url = config.map.dop_source.clone()?;
+    url += "&SERVICE=WMS";
+    url += "&REQUEST=GetMap";
+    url += "&VERSION=1.1.1";
+    url += format!("&LAYERS={}", config.map.dop_layers.clone().unwrap_or_default()).as_str();
+    url += "&STYLES=";
+    url += "&FORMAT=image%2Fpng";
+    url += "&TRANSPARENT=false";
+    url += format!("&HEIGHT={}", obj.height_px).as_str();
+    url += format!("&WIDTH={}", obj.width_px).as_str();
+    url += "&MAXNATIVEZOOM=25";
+    url += "&SRS=EPSG%3A25833";
+    url += format!("&BBOX={},{},{},{}", obj.min_x, obj.min_y, obj.max_x, obj.max_y).as_str();
+
+    web_sys::console::log_1(&format!("reqwest fetching url {url}").into());
+
+    let bytes = reqwest::get(&url).await.ok()?.bytes().await.ok()?.as_ref().to_vec();
+
+    web_sys::console::log_1(&format!("ok received image {} bytes", bytes.len()).into());
+    let format = match image::guess_format(&bytes){
+        Ok(o) => o,
+        Err(e) => {
+            web_sys::console::log_1(&format!("failed image format: {} {:?}", e.to_string(), bytes.iter().take(10).collect::<Vec<_>>()).into());
+            return None; 
+        }
+    };
+    let decoded = match image::load_from_memory_with_format(&bytes , format) {
+        Ok(o) => o,
+        Err(e) => {
+            web_sys::console::log_1(&format!("error 1: {}", e.to_string()).into());
+            return None;
+        }
+    };
+    web_sys::console::log_1(&format!("png decoder ok").into());
+    let i = printpdf::Image::from_dynamic_image(&decoded);
+    web_sys::console::log_1(&format!("image ok").into());
+    Some(i)
 }
 
 pub fn uuid() -> String {
