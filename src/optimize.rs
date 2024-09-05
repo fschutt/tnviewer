@@ -243,8 +243,6 @@ pub fn optimize_labels(
                     (line_will_overlap_background * 1_000)
                 };
 
-                // log_status(&format!("{}: testing pos {newpostotry:?}: label_overlaps_background_feature = {label_overlaps_background_feature:?}, line_will_overlap_other_label = {line_will_overlap_other_label:?}, line_will_overlap_other_line = {line_will_overlap_other_line:?}, line_will_overlap_background = {line_will_overlap_background:?}, distance = {distance:?}", tp.kuerzel));
-
                 textpos_found.push((penalty, *newpostotry, nearest_point));
                 taken_nearest_points.push(nearest_point);
             }
@@ -404,7 +402,6 @@ fn initialize_empty_boolmap(
     config: &OptimizeConfig
 ) -> Option<ndarray::Array2<bool>> {
 
-    log_status(&format!("initializing empty boolmap {} x {}", config.width_pixels, config.height_pixels));
     let r = geo_rasterize::BinaryBuilder::new()
     .width(config.width_pixels)
     .height(config.height_pixels)

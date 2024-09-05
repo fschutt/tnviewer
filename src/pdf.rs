@@ -150,12 +150,12 @@ pub struct PdfEbenenStyle {
 }
 
 impl PdfEbenenStyle {
-    pub fn default_grau(kuerzel: &str) -> Self {
+    pub fn default_grau(kuerzel: &str, has_background: bool) -> Self {
         PdfEbenenStyle {
             kuerzel: kuerzel.to_string(),
             fill_color: None,
             fill: false,
-            outline_color: Some("#6082B6".to_string()),
+            outline_color: Some(if has_background { "#22ffff" } else { "#6082B6" }.to_string()),
             outline_thickness: Some(0.1),
             outline_overprint: false,
             outline_dash: None,
@@ -353,7 +353,17 @@ pub struct RissConfig {
     pub rissgebiet: Option<SvgPolygon>,
 }
 
+#[derive(Debug, Default, Copy, Clone, Ord, Eq, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct RissConfigId(u64);
+
 impl RissConfig {
+    pub fn get_id(&self) -> RissConfigId {
+        use highway::{HighwayHasher, HighwayHash};
+        let mut bytes = self.lat.to_le_bytes().to_vec();
+        bytes.extend(self.lat.to_le_bytes().iter());
+        RissConfigId(HighwayHasher::default().hash64(&bytes))
+    }
+
     pub fn get_extent(&self, utm_crs: &str, padding_mm: f64) -> Option<RissExtent> {
 
         let height = self.height_mm as f64 - padding_mm;
@@ -503,7 +513,7 @@ pub enum PdfTargetUse {
 }
 
 pub struct HintergrundCache {
-    pub images: BTreeMap<usize, Vec<PdfImage>>
+    pub images: BTreeMap<RissConfigId, Vec<PdfImage>>
 }
 
 impl HintergrundCache {
@@ -513,8 +523,9 @@ impl HintergrundCache {
         let tile_size_px = 1024.0;
 
         let mut tiles = Vec::new();
-        for (i, rc) in risse.iter().enumerate() {
+        for rc in risse.iter() {
             
+            let id = rc.get_id();
             let ex = rc.get_extent(&target_crs, 0.0).and_then(|q| q.reproject(target_crs, &mut Vec::new()));
             let riss_extent = match ex {
                 Some(s) => s,
@@ -531,7 +542,7 @@ impl HintergrundCache {
     
             for xi in 0..num_tiles_x {
                 for yi in 0..num_tiles_y {
-                    let t = (i, xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
+                    let t = (id, xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
                         width_px: tile_size_px.round() as usize,
                         height_px: tile_size_px.round() as usize,
                         max_x: SvgPoint::round_f64(rect.min_x + ((xi + 1) as f64 * tile_wh_m)),
@@ -594,6 +605,8 @@ pub fn generate_pdf_internal(
     gebaeude: &Gebaeude, // in ETRS space
 ) -> Vec<u8> {
 
+    let (num_riss, total_risse) = riss_von;
+    
     let (mut doc, page1, layer1) = PdfDocument::new(
         "Riss",
         Mm(rc.width_mm),
@@ -648,30 +661,30 @@ pub fn generate_pdf_internal(
 
     let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
 
-    log_status(&format!("Rendere Gebäude..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Gebäude..."));
     let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), &mut Vec::new());
 
-    log_status(&format!("Rendere Flurstücke..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Flurstücke..."));
     let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(riss_extent, rc), has_background);
 
-    log_status(&format!("Rendere Fluren..."));
-    let _ = write_fluren(&mut layer, &fluren.to_pdf_space(riss_extent, rc), &konfiguration, &mut Vec::new());
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Fluren..."));
+    let _ = write_fluren(&mut layer, &fluren.to_pdf_space(riss_extent, rc), &konfiguration, has_background);
 
-    log_status(&format!("Rendere Flurstücke Texte..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Flurstücke Texte..."));
     let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, rc, riss_extent, has_background);
 
-    log_status(&format!("Rendere Fluren Texte..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Fluren Texte..."));
     let _ = write_flur_texte(&mut layer, &fluren, &helvetica, rc, &riss_extent, calc, has_background);
 
-    log_status(&format!("Rendere rote Linien..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere rote Linien..."));
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_rote_linien(&mut layer, &rote_linien);
 
-    log_status(&format!("Rendere NA untergehend Linien... {} Linien", na_untergehend_linien.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere NA untergehend Linien... {} Linien", na_untergehend_linien.len()));
     let na_untergehend_linien = na_untergehend_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
     let _ = write_na_untergehend_linien(&mut layer, &na_untergehend_linien);
 
-    log_status(&format!("Rendere Beschriftungen..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Rendere Beschriftungen..."));
     let _ = write_splitflaechen_beschriftungen(
         &mut layer, 
         &helvetica,
@@ -693,7 +706,7 @@ pub fn generate_pdf_internal(
         16.5
     );
 
-    log_status(&format!("PDF fertig."));
+    log_status(&format!("[{num_riss} / {total_risse}] PDF fertig."));
 
     doc.save_to_bytes().unwrap_or_default()
 }
@@ -966,7 +979,7 @@ fn write_flur_texte(
     has_background: bool,
 ) -> Option<()> {
 
-    let flurcolor = csscolorparser::parse("#ee22ff").ok()
+    let flurcolor = csscolorparser::parse(if has_background { "#ff99ff" } else { "#ee22ff" }).ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -1105,7 +1118,7 @@ fn write_splitflaechen_beschriftungen(
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let bleibt_color = csscolorparser::parse("#6082B6").ok()
+    let bleibt_color = csscolorparser::parse(if has_background { "#22ffff" } else { "#6082B6" }).ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -1262,7 +1275,7 @@ fn write_nutzungsarten(
 
     if style.pdf.nutzungsarten.is_empty() {
         flurstueck_nutzungen_grouped_by_ebene = split_flurstuecke.flurstuecke_nutzungen.iter().map(|(f, v)| {
-            (PdfEbenenStyle::default_grau(f), v.iter().collect::<Vec<_>>())
+            (PdfEbenenStyle::default_grau(f, has_background), v.iter().collect::<Vec<_>>())
         }).collect();
     } else {
 
@@ -1627,7 +1640,7 @@ fn write_fluren(
     layer: &mut PdfLayerReference,
     fluren: &FlurenInPdfSpace,
     style: &Konfiguration,
-    log: &mut Vec<String>,
+    has_background: bool,
 ) -> Option<()> {
 
     layer.save_graphics_state();

@@ -167,7 +167,11 @@ pub async fn export_aenderungen_geograf(
         Vec::new()
     };
 
-    let mut hintergrund_cache = HintergrundCache::build(&konfiguration.map, &risse2, &split_nas.crs).await;
+    let mut hintergrund_cache = HintergrundCache::build(
+        &konfiguration.map, 
+        &risse2, 
+        &split_nas.crs
+    ).await;
 
     if risse.is_empty() {
         export_splitflaechen(
@@ -432,34 +436,34 @@ pub fn export_splitflaechen(
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
-    log_status(&format!("{} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
 
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq);
     if !aenderungen_rote_linien.is_empty() {
         append_shp(files, &format!("Linien_Rot_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }
-    log_status(&format!("{} rote Linien generiert.", aenderungen_rote_linien.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} rote Linien generiert.", aenderungen_rote_linien.len()));
 
     let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(&splitflaechen);
-    log_status(&format!("{} Texte generiert", aenderungen_texte.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte generiert", aenderungen_texte.len()));
 
     let aenderungen_texte_bleibt = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::StaysAsIs)
         .cloned().collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Texte_Bleibt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
-    log_status(&format!("{} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
 
     let aenderungen_texte_alt = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::Old)
         .cloned().collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Texte_Alt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
-    log_status(&format!("{} Texte: alte Kürzel", aenderungen_texte_alt.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: alte Kürzel", aenderungen_texte_alt.len()));
 
     let aenderungen_texte_neu = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::New)
         .cloned().collect::<Vec<_>>();
     files.push((parent_dir.clone(), format!("Texte_Neu_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
-    log_status(&format!("{} Texte: neue Kürzel", aenderungen_texte_neu.len()));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
     let mini_split_nas = get_mini_nas_xml(split_nas, &riss_extent_reprojected);
     let flst = get_flurstuecke(nas_xml, &riss_extent_reprojected);
@@ -467,7 +471,7 @@ pub fn export_splitflaechen(
     let gebaeude = get_gebaeude(nas_xml, &riss_extent_reprojected);
     let riss_von = (num_riss, total_risse);
 
-    log_status(&format!("Optimiere Beschriftungen... {:?}", riss_von));
+    log_status(&format!("[{num_riss} / {total_risse}] Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte_optimized = crate::optimize::optimize_labels(
         &mini_split_nas,
         &splitflaechen,
@@ -477,7 +481,7 @@ pub fn export_splitflaechen(
         &OptimizeConfig::new(&riss, &riss_extent_reprojected, 0.5 /* mm */) ,
     );
 
-    log_status(&format!("Generiere PDF-Vorschau..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Generiere PDF-Vorschau..."));
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
         Vec::new(),
         riss_von,
@@ -497,7 +501,7 @@ pub fn export_splitflaechen(
     );
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
-    log_status(&format!("OK: PDF Vorschau generiert."));
+    log_status(&format!("[{num_riss} / {total_risse}] OK: PDF Vorschau generiert."));
 
     let splitflaechen = AenderungenIntersections(splitflaechen.to_vec()).get_future_flaechen();
     let split_nas = split_nas.migrate_future(&splitflaechen.0);
@@ -512,9 +516,9 @@ pub fn export_splitflaechen(
         &OptimizeConfig::new(&riss, &riss_extent_reprojected, 0.5 /* mm */) ,
     );
 
-    log_status(&format!("Generiere Hintergrund-Vorschau..."));
+    log_status(&format!("[{num_riss} / {total_risse}] Generiere Hintergrund-Vorschau..."));
     let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
-        hintergrund_cache.images.remove(&num_riss).unwrap_or_default(),
+        hintergrund_cache.images.remove(&riss.get_id()).unwrap_or_default(),
         (num_riss, total_risse),
         info,
         &calc_pdf_preview,
@@ -532,7 +536,7 @@ pub fn export_splitflaechen(
     );
 
     files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));      
-    log_status(&format!("OK: PDF Vorschau mit Hintergrund generiert."));  
+    log_status(&format!("[{num_riss} / {total_risse}] OK: PDF Vorschau mit Hintergrund generiert."));  
 }
 
 pub struct LinienQuadTree {

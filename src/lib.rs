@@ -76,7 +76,6 @@ struct GeoJSONResult {
 pub fn get_main_gemarkung(csv: &CsvDataType) -> usize {
     for flst_id in csv.keys() {
         if let Some(f) = FlstIdParsed::from_str(&flst_id).parse_num().map(|f| f.gemarkung) {
-            log_status(&format!("Gemarkungsnr.: {f}"));
             return f;
         }   
     }
