@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use crate::log_status;
 
 use zip::write::SimpleFileOptions;
 
@@ -8,6 +9,8 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
     use zip::write::{FileOptions, ZipWriter};
 
     let mut cursor = Cursor::new(Vec::new());
+
+    let mut total = 0;
 
     {
         let mut zip = ZipWriter::new(&mut cursor);
@@ -23,6 +26,8 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
             }
         }
 
+        log_status("1");
+
         for (option_dir, path_buf, file_contents) in files.iter() {
             let path = path_buf.as_path();
             let name = path;
@@ -35,6 +40,9 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
 
             let path = path_buf.as_path();
             let name = path;
+
+            total += file_contents.len();
+            log_status(&format!("encoding {} {} bytes (total = {total})", name.display(), file_contents.len()));
 
             #[allow(deprecated)]
             let e = zip.start_file_from_path(name, options);
