@@ -57,3 +57,4 @@ bresenham = "0.1.1"
 image = { version = "0.24.9", default-features = false, features = ["jpeg", "png", "gif"] }
 reqwest = { version = "0.12.7", default-features = false, features = ["default-tls", "blocking"] }
 wasm-bindgen-futures = "0.4.43"
+futures = "0.3.30"

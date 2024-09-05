@@ -3,9 +3,13 @@ use serde_derive::Serialize;
 use serde_derive::Deserialize;
 use wasm_bindgen::prelude::*;
 use std::char;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use rand_xorshift::XorShiftRng;
+use std::sync::Mutex;
 
 use crate::pdf::Konfiguration;
+use crate::pdf::MapKonfiguration;
 
 #[wasm_bindgen]
 extern "C" {
@@ -37,35 +41,77 @@ pub struct FetchWmsImageRequest {
     pub height_px: usize,
 }
 
-pub async fn get_wms_image(config: &Konfiguration, obj: FetchWmsImageRequest) -> Option<printpdf::Image> {
+pub async fn get_wms_images(config: &Konfiguration, obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf::Image>> {
+    let obj_len = obj.len();
+    let target = Arc::new(Mutex::new(BTreeMap::new()));
+    let mut futures = Vec::new();
+    for (i, o) in obj.iter().enumerate() {
+        let future = wms_future(target.clone(), config.map.clone(), o.clone(), i);
+        futures.push(future);
+    }
 
-    let mut url = config.map.dop_source.clone()?;
+    web_sys::console::log_1(&format!("starting futures...").into());
+
+    // wasm_bindgen_futures::spawn_local(async {
+        let combined_futures = futures::future::join_all(futures.into_iter());
+        combined_futures.await;
+    // }).await;
+
+    web_sys::console::log_1(&format!("futures finished").into());
+
+    let mut target_lock = target.lock().unwrap();
+    
+    (0..obj_len).map(|id| {
+        target_lock.remove(&id).and_then(|s| s)
+    }).collect::<Vec<_>>()
+}
+
+async fn wms_future(target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>, map: MapKonfiguration, o: FetchWmsImageRequest, i: usize) {
+    
+    let mut url = map.dop_source.clone().unwrap_or_default();
     url += "&SERVICE=WMS";
     url += "&REQUEST=GetMap";
     url += "&VERSION=1.1.1";
-    url += format!("&LAYERS={}", config.map.dop_layers.clone().unwrap_or_default()).as_str();
+    url += format!("&LAYERS={}", map.dop_layers.clone().unwrap_or_default()).as_str();
     url += "&STYLES=";
     url += "&FORMAT=image%2Fpng";
     url += "&TRANSPARENT=false";
-    url += format!("&HEIGHT={}", obj.height_px).as_str();
-    url += format!("&WIDTH={}", obj.width_px).as_str();
+    url += format!("&HEIGHT={}", o.height_px).as_str();
+    url += format!("&WIDTH={}", o.width_px).as_str();
     url += "&MAXNATIVEZOOM=25";
     url += "&SRS=EPSG%3A25833";
-    url += format!("&BBOX={},{},{},{}", obj.min_x, obj.min_y, obj.max_x, obj.max_y).as_str();
+    url += format!("&BBOX={},{},{},{}", o.min_x, o.min_y, o.max_x, o.max_y).as_str();
 
     web_sys::console::log_1(&format!("reqwest fetching url {url}").into());
 
-    let bytes = reqwest::get(&url).await.ok()?.bytes().await.ok()?.as_ref().to_vec();
+    let s = match reqwest::get(&url).await.ok() {
+        Some(s) => {
+            match s.bytes().await.ok() {
+                Some(s) => decode_image(s.as_ref()),
+                None => None,
+            }
+        },
+        None => None,
+    };
 
-    web_sys::console::log_1(&format!("ok received image {} bytes", bytes.len()).into());
-    let format = match image::guess_format(&bytes){
+    if let Ok(mut q) = target.lock() {
+        q.insert(i, s);
+    }
+}
+
+
+pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
+
+    web_sys::console::log_1(&format!("ok decoding image {} bytes", bytes.len()).into());
+    let format = match image::guess_format(bytes){
         Ok(o) => o,
         Err(e) => {
             web_sys::console::log_1(&format!("failed image format: {} {:?}", e.to_string(), bytes.iter().take(10).collect::<Vec<_>>()).into());
             return None; 
         }
     };
-    let decoded = match image::load_from_memory_with_format(&bytes , format) {
+
+    let decoded = match image::load_from_memory_with_format(bytes , format) {
         Ok(o) => o,
         Err(e) => {
             web_sys::console::log_1(&format!("error 1: {}", e.to_string()).into());
@@ -73,8 +119,10 @@ pub async fn get_wms_image(config: &Konfiguration, obj: FetchWmsImageRequest) ->
         }
     };
     web_sys::console::log_1(&format!("png decoder ok").into());
+    
     let i = printpdf::Image::from_dynamic_image(&decoded);
     web_sys::console::log_1(&format!("image ok").into());
+    
     Some(i)
 }
 

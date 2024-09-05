@@ -558,34 +558,60 @@ pub async fn generate_pdf_internal(
     if target_use == PdfTargetUse::HintergrundCheck {
         let rect = riss_extent.get_rect();
 
-        let ideal_px = rc.width_mm as f64 / 25.4 * 300.0;
-        let width_px = if rc.width_mm < 800.0 {
-            rc.width_mm.round() as usize * 10
-        } else {
-            rc.width_mm.round() as usize
-        };
-        let target_dpi = 300.0 * width_px as f64 / ideal_px;
+        let target_dpi = 96.0;
+        let tile_size_px = 1024.0;
+        let target_px_width = rc.width_mm as f64 / 25.4 * 300.0;
+        let target_px_height = rc.height_mm as f64 / 25.4 * 300.0;
+        let num_tiles_x = (target_px_width / tile_size_px).ceil() as usize;
+        let num_tiles_y = (target_px_height / tile_size_px).ceil() as usize;
 
-        let height_px = if rc.height_mm < 800.0 {
-            rc.height_mm.round() as usize * 10
-        } else {
-            rc.height_mm.round() as usize
-        };
+        let tile_wh_m = (riss_extent.width_m() / num_tiles_x as f64);
+        let tile_wh_mm = (tile_wh_m / rc.scale as f64 * 1000.0);
 
-        let background_image = crate::uuid_wasm::get_wms_image(konfiguration, crate::uuid_wasm::FetchWmsImageRequest {
-            width_px,
-            height_px,
-            max_x: rect.max_x,
-            min_x: rect.min_x,
-            max_y: rect.max_y,
-            min_y: rect.min_y,
-        }).await;
+        web_sys::console::log_1(&format!("target_px_width {target_px_width}").into());
+        web_sys::console::log_1(&format!("target_px_height {target_px_height}").into());
+        web_sys::console::log_1(&format!("target_m_width {}", riss_extent.width_m()).into());
+        web_sys::console::log_1(&format!("target_m_height {}", riss_extent.height_m()).into());
+        web_sys::console::log_1(&format!("tile_wh_m {tile_wh_m}").into());
+        web_sys::console::log_1(&format!("tile_wh_mm {tile_wh_mm}").into());
+        web_sys::console::log_1(&format!("num tiles x {num_tiles_x}").into());
+        web_sys::console::log_1(&format!("num_tiles_y {num_tiles_y}").into());
 
-        log_status(&format!("Fetche WMS Hintergrund..."));
-        if let Some(i) = background_image {
-            log_status(&format!("OK: schreibe Hintergrundbild"));
-            i.add_to_layer(layer.clone(), ImageTransform {
-                dpi: Some(target_dpi as f32),
+        let mut tiles = Vec::new();
+        for xi in 0..num_tiles_x {
+            for yi in 0..num_tiles_y {
+                tiles.push((xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
+                    width_px: tile_wh_mm.round() as usize,
+                    height_px: tile_wh_mm.round() as usize,
+                    max_x: rect.max_x + ((xi + 1) as f64 * tile_wh_m),
+                    min_x: rect.min_x + (xi as f64 * tile_wh_m),
+                    max_y: rect.max_y + ((yi + 1) as f64 * tile_wh_m),
+                    min_y: rect.min_y + (yi as f64 * tile_wh_m),
+                }));
+            }
+        }
+
+        web_sys::console::log_1(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()).into());
+
+        log_status(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()));
+        let tiles_2 = tiles.iter().map(|s| s.2.clone()).collect::<Vec<_>>();
+        let resolved_tiles = crate::uuid_wasm::get_wms_images(konfiguration, &tiles_2).await;
+
+        let mut resolved = Vec::new();
+        for (resolved_data, (x, y, _)) in resolved_tiles.into_iter().zip(tiles.into_iter()) {
+            if let Some(w) = resolved_data {
+                resolved.push((x, y, w));
+            }
+        }
+
+        log_status(&format!("OK: schreibe Hintergrundbild"));
+        for (x_mm, y_mm, image) in resolved {
+            image.add_to_layer(layer.clone(), ImageTransform {
+                translate_x: Mm(x_mm as f32).into(),
+                translate_y: Mm(y_mm as f32).into(),
+                scale_x: Some(300.0 / target_dpi as f32),
+                scale_y: Some(300.0 / target_dpi as f32),
+                dpi: Some(96.0),
                 ..Default::default()
             });
             has_background = true;
@@ -599,7 +625,7 @@ pub async fn generate_pdf_internal(
         &mut Vec::new(),
     );
 
-    let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, &mut Vec::new());
+    let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
 
     log_status(&format!("Rendere Gebäude..."));
     let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), &mut Vec::new());
@@ -614,7 +640,7 @@ pub async fn generate_pdf_internal(
     let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, rc, riss_extent, has_background);
 
     log_status(&format!("Rendere Fluren Texte..."));
-    let _ = write_flur_texte(&mut layer, &fluren, &helvetica, rc, &riss_extent, calc);
+    let _ = write_flur_texte(&mut layer, &fluren, &helvetica, rc, &riss_extent, calc, has_background);
 
     log_status(&format!("Rendere rote Linien..."));
     let rote_linien = rote_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
@@ -631,6 +657,7 @@ pub async fn generate_pdf_internal(
         riss_extent, 
         rc,
         &beschriftungen,
+        has_background,
     );
 
     let _ = write_border(
@@ -915,6 +942,7 @@ fn write_flur_texte(
     riss: &RissConfig,
     riss_extent: &RissExtentReprojected,
     calc: &HeaderCalcConfig,
+    has_background: bool,
 ) -> Option<()> {
 
     let flurcolor = csscolorparser::parse("#ee22ff").ok()
@@ -988,6 +1016,7 @@ fn write_splitflaechen_beschriftungen(
     riss_extent: &RissExtentReprojected,
     riss: &RissConfig,
     beschriftungen: &[OptimizedTextPlacement],
+    has_background: bool,
 ) -> Option<()> {
 
     let linien = beschriftungen.iter().filter_map(|l| {
@@ -1205,7 +1234,7 @@ fn write_nutzungsarten(
     layer: &mut PdfLayerReference,
     split_flurstuecke: &SplitNasXml,
     style: &Konfiguration,
-    log: &mut Vec<String>,
+    has_background: bool,
 ) -> Option<()> {
     
     let mut flurstueck_nutzungen_grouped_by_ebene = Vec::new();
