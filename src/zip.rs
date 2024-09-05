@@ -45,9 +45,16 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
             log_status(&format!("encoding {} {} bytes (total = {total})", name.display(), file_contents.len()));
 
             #[allow(deprecated)]
-            let e = zip.start_file_from_path(name, options);
+            if let Err(e) = zip.start_file_from_path(name, options) {
+                log_status(&format!("{}", e.to_string()));
+            }
+            
+            log_status("2");
 
-            let e = zip.write_all(&file_contents);
+            if let Err(e) = zip.write_all(&file_contents) {
+                log_status(&format!("{}", e.to_string()));
+            }
+            log_status("3");
         }
 
         let _ = zip.finish();
