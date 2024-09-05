@@ -52,10 +52,8 @@ pub async fn get_wms_images(config: &Konfiguration, obj: &[FetchWmsImageRequest]
 
     web_sys::console::log_1(&format!("starting futures...").into());
 
-    // wasm_bindgen_futures::spawn_local(async {
-        let combined_futures = futures::future::join_all(futures.into_iter());
-        combined_futures.await;
-    // }).await;
+    let combined_futures = futures::future::join_all(futures.into_iter());
+    combined_futures.await;
 
     web_sys::console::log_1(&format!("futures finished").into());
 
@@ -74,7 +72,7 @@ async fn wms_future(target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>
     url += "&VERSION=1.1.1";
     url += format!("&LAYERS={}", map.dop_layers.clone().unwrap_or_default()).as_str();
     url += "&STYLES=";
-    url += "&FORMAT=image%2Fpng";
+    url += "&FORMAT=image%2Fjpeg";
     url += "&TRANSPARENT=false";
     url += format!("&HEIGHT={}", o.height_px).as_str();
     url += format!("&WIDTH={}", o.width_px).as_str();
@@ -102,7 +100,6 @@ async fn wms_future(target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>
 
 pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
 
-    web_sys::console::log_1(&format!("ok decoding image {} bytes", bytes.len()).into());
     let format = match image::guess_format(bytes){
         Ok(o) => o,
         Err(e) => {
@@ -118,11 +115,9 @@ pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
             return None;
         }
     };
-    web_sys::console::log_1(&format!("png decoder ok").into());
-    
+
     let i = printpdf::Image::from_dynamic_image(&decoded);
-    web_sys::console::log_1(&format!("image ok").into());
-    
+        
     Some(i)
 }
 

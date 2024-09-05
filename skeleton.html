@@ -1772,7 +1772,7 @@
 
     async function exportGeoGraf(event) {
       
-      var render_hintergrund_vorschau = event.ctrlKey;
+      var render_hintergrund_vorschau = event.shiftKey;
       var zip = await aenderungen_zu_geograf(
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),

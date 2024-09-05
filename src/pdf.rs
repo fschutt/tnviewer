@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Rgb, TextRenderingMode};
+use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Px, Rgb, TextRenderingMode};
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
@@ -558,36 +558,27 @@ pub async fn generate_pdf_internal(
     if target_use == PdfTargetUse::HintergrundCheck {
         let rect = riss_extent.get_rect();
 
-        let target_dpi = 96.0;
-        let tile_size_px = 1024.0;
-        let target_px_width = rc.width_mm as f64 / 25.4 * 300.0;
-        let target_px_height = rc.height_mm as f64 / 25.4 * 300.0;
+        let target_dpi = 150.0;
+        let tile_size_px = 512.0;
+        let target_px_width = rc.width_mm as f64 / 25.4 * target_dpi;
+        let target_px_height = rc.height_mm as f64 / 25.4 * target_dpi;
         let num_tiles_x = (target_px_width / tile_size_px).ceil() as usize;
         let num_tiles_y = (target_px_height / tile_size_px).ceil() as usize;
-
-        let tile_wh_m = (riss_extent.width_m() / num_tiles_x as f64);
-        let tile_wh_mm = (tile_wh_m / rc.scale as f64 * 1000.0);
-
-        web_sys::console::log_1(&format!("target_px_width {target_px_width}").into());
-        web_sys::console::log_1(&format!("target_px_height {target_px_height}").into());
-        web_sys::console::log_1(&format!("target_m_width {}", riss_extent.width_m()).into());
-        web_sys::console::log_1(&format!("target_m_height {}", riss_extent.height_m()).into());
-        web_sys::console::log_1(&format!("tile_wh_m {tile_wh_m}").into());
-        web_sys::console::log_1(&format!("tile_wh_mm {tile_wh_mm}").into());
-        web_sys::console::log_1(&format!("num tiles x {num_tiles_x}").into());
-        web_sys::console::log_1(&format!("num_tiles_y {num_tiles_y}").into());
+        let tile_wh_mm = tile_size_px * 25.4 / target_dpi;
+        let tile_wh_m = tile_wh_mm * rc.scale as f64 / 1000.0;
 
         let mut tiles = Vec::new();
         for xi in 0..num_tiles_x {
             for yi in 0..num_tiles_y {
-                tiles.push((xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
-                    width_px: tile_wh_mm.round() as usize,
-                    height_px: tile_wh_mm.round() as usize,
-                    max_x: rect.max_x + ((xi + 1) as f64 * tile_wh_m),
-                    min_x: rect.min_x + (xi as f64 * tile_wh_m),
-                    max_y: rect.max_y + ((yi + 1) as f64 * tile_wh_m),
-                    min_y: rect.min_y + (yi as f64 * tile_wh_m),
-                }));
+                let t = (xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
+                    width_px: tile_size_px.round() as usize,
+                    height_px: tile_size_px.round() as usize,
+                    max_x: SvgPoint::round_f64(rect.min_x + ((xi + 1) as f64 * tile_wh_m)),
+                    min_x: SvgPoint::round_f64(rect.min_x + (xi as f64 * tile_wh_m)),
+                    max_y: SvgPoint::round_f64(rect.min_y + ((yi + 1) as f64 * tile_wh_m)),
+                    min_y: SvgPoint::round_f64(rect.min_y + (yi as f64 * tile_wh_m)),
+                });
+                tiles.push(t);
             }
         }
 
@@ -611,7 +602,6 @@ pub async fn generate_pdf_internal(
                 translate_y: Mm(y_mm as f32).into(),
                 scale_x: Some(300.0 / target_dpi as f32),
                 scale_y: Some(300.0 / target_dpi as f32),
-                dpi: Some(96.0),
                 ..Default::default()
             });
             has_background = true;
