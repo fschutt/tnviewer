@@ -502,8 +502,83 @@ pub enum PdfTargetUse {
     HintergrundCheck,
 }
 
-pub async fn generate_pdf_internal(
-    target_use: PdfTargetUse,
+pub struct HintergrundCache {
+    pub images: BTreeMap<usize, Vec<PdfImage>>
+}
+
+impl HintergrundCache {
+    pub async fn build(konfiguration: &MapKonfiguration, risse: &[RissConfig], target_crs: &str) -> Self {
+
+        let target_dpi = 96.0;
+        let tile_size_px = 1024.0;
+
+        let mut tiles = Vec::new();
+        for (i, rc) in risse.iter().enumerate() {
+            
+            let ex = rc.get_extent(&target_crs, 0.0).and_then(|q| q.reproject(target_crs, &mut Vec::new()));
+            let riss_extent = match ex {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let rect = riss_extent.get_rect();
+            let target_px_width = rc.width_mm as f64 / 25.4 * target_dpi;
+            let target_px_height = rc.height_mm as f64 / 25.4 * target_dpi;
+            let num_tiles_x = (target_px_width / tile_size_px).ceil() as usize;
+            let num_tiles_y = (target_px_height / tile_size_px).ceil() as usize;
+            let tile_wh_mm = tile_size_px * 25.4 / target_dpi;
+            let tile_wh_m = tile_wh_mm * rc.scale as f64 / 1000.0;
+    
+            for xi in 0..num_tiles_x {
+                for yi in 0..num_tiles_y {
+                    let t = (i, xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
+                        width_px: tile_size_px.round() as usize,
+                        height_px: tile_size_px.round() as usize,
+                        max_x: SvgPoint::round_f64(rect.min_x + ((xi + 1) as f64 * tile_wh_m)),
+                        min_x: SvgPoint::round_f64(rect.min_x + (xi as f64 * tile_wh_m)),
+                        max_y: SvgPoint::round_f64(rect.min_y + ((yi + 1) as f64 * tile_wh_m)),
+                        min_y: SvgPoint::round_f64(rect.min_y + (yi as f64 * tile_wh_m)),
+                    });
+                    tiles.push(t);
+                }
+            }
+
+        }
+
+        web_sys::console::log_1(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()).into());
+
+        let tiles_2 = tiles.iter().map(|s| s.3.clone()).collect::<Vec<_>>();
+        let resolved_tiles = crate::uuid_wasm::get_wms_images(konfiguration, &tiles_2).await;
+
+        let mut resolved = BTreeMap::new();
+        for (resolved_data, (i, x, y, _)) in resolved_tiles.into_iter().zip(tiles.into_iter()) {
+            if let Some(w) = resolved_data {
+                resolved.entry(i).or_insert_with(|| Vec::new()).push(PdfImage {
+                    x: Mm(x as f32),
+                    y: Mm(y as f32),
+                    dpi: target_dpi as f32,
+                    image: w,
+                });
+            }
+        }
+
+        log_status(&format!("OK: Hintergrund Cache fertig"));
+
+        Self {
+            images: resolved,
+        }
+    }
+}
+
+pub struct PdfImage {
+    pub x: Mm,
+    pub y: Mm,
+    pub dpi: f32,
+    pub image: printpdf::Image,
+}
+
+pub fn generate_pdf_internal(
+    hintergrundbilder: Vec<PdfImage>,
     riss_von: (usize, usize), // Riss X von Y
     projekt_info: &ProjektInfo,
     calc: &HeaderCalcConfig,
@@ -553,58 +628,15 @@ pub async fn generate_pdf_internal(
     let mut layer = page.get_layer(layer);
 
     let mut has_background = false;
-
-    if target_use == PdfTargetUse::HintergrundCheck {
-        let rect = riss_extent.get_rect();
-
-        let target_dpi = 150.0;
-        let tile_size_px = 512.0;
-        let target_px_width = rc.width_mm as f64 / 25.4 * target_dpi;
-        let target_px_height = rc.height_mm as f64 / 25.4 * target_dpi;
-        let num_tiles_x = (target_px_width / tile_size_px).ceil() as usize;
-        let num_tiles_y = (target_px_height / tile_size_px).ceil() as usize;
-        let tile_wh_mm = tile_size_px * 25.4 / target_dpi;
-        let tile_wh_m = tile_wh_mm * rc.scale as f64 / 1000.0;
-
-        let mut tiles = Vec::new();
-        for xi in 0..num_tiles_x {
-            for yi in 0..num_tiles_y {
-                let t = (xi as f64 * tile_wh_mm, yi as f64 * tile_wh_mm, crate::uuid_wasm::FetchWmsImageRequest {
-                    width_px: tile_size_px.round() as usize,
-                    height_px: tile_size_px.round() as usize,
-                    max_x: SvgPoint::round_f64(rect.min_x + ((xi + 1) as f64 * tile_wh_m)),
-                    min_x: SvgPoint::round_f64(rect.min_x + (xi as f64 * tile_wh_m)),
-                    max_y: SvgPoint::round_f64(rect.min_y + ((yi + 1) as f64 * tile_wh_m)),
-                    min_y: SvgPoint::round_f64(rect.min_y + (yi as f64 * tile_wh_m)),
-                });
-                tiles.push(t);
-            }
-        }
-
-        web_sys::console::log_1(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()).into());
-
-        log_status(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()));
-        let tiles_2 = tiles.iter().map(|s| s.2.clone()).collect::<Vec<_>>();
-        let resolved_tiles = crate::uuid_wasm::get_wms_images(konfiguration, &tiles_2).await;
-
-        let mut resolved = Vec::new();
-        for (resolved_data, (x, y, _)) in resolved_tiles.into_iter().zip(tiles.into_iter()) {
-            if let Some(w) = resolved_data {
-                resolved.push((x, y, w));
-            }
-        }
-
-        log_status(&format!("OK: schreibe Hintergrundbild"));
-        for (x_mm, y_mm, image) in resolved {
-            image.add_to_layer(layer.clone(), ImageTransform {
-                translate_x: Mm(x_mm as f32).into(),
-                translate_y: Mm(y_mm as f32).into(),
-                scale_x: Some(300.0 / target_dpi as f32),
-                scale_y: Some(300.0 / target_dpi as f32),
-                ..Default::default()
-            });
-            has_background = true;
-        }
+    for i in hintergrundbilder {
+        i.image.add_to_layer(layer.clone(), ImageTransform {
+            translate_x: i.x.into(),
+            translate_y: i.y.into(),
+            scale_x: Some(300.0 / i.dpi),
+            scale_y: Some(300.0 / i.dpi),
+            ..Default::default()
+        });
+        has_background = true;
     }
 
     let nutzungsarten = reproject_splitnas_into_pdf_space(

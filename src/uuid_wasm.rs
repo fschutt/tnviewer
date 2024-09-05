@@ -2,6 +2,7 @@ use rand::{Rng, SeedableRng};
 use serde_derive::Serialize;
 use serde_derive::Deserialize;
 use wasm_bindgen::prelude::*;
+use web_sys::js_sys::Map;
 use std::char;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -28,6 +29,7 @@ pub fn log_status_clear() {
 }
 
 pub fn log_status(s: &str) {
+    web_sys::console::log_1(&s.into());
     update_export_status(s.trim().to_string())
 }
 
@@ -41,12 +43,12 @@ pub struct FetchWmsImageRequest {
     pub height_px: usize,
 }
 
-pub async fn get_wms_images(config: &Konfiguration, obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf::Image>> {
+pub async fn get_wms_images(config: &MapKonfiguration, obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf::Image>> {
     let obj_len = obj.len();
     let target = Arc::new(Mutex::new(BTreeMap::new()));
     let mut futures = Vec::new();
     for (i, o) in obj.iter().enumerate() {
-        let future = wms_future(target.clone(), config.map.clone(), o.clone(), i);
+        let future = wms_future(target.clone(), config.clone(), o.clone(), i);
         futures.push(future);
     }
 

@@ -6,7 +6,7 @@ use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConfor
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
+use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -161,6 +161,14 @@ pub async fn export_aenderungen_geograf(
 
     let lq = nas_xml.get_linien_quadtree();
 
+    let risse2 = if render_hintergrund_vorschau {
+        risse.iter().map(|s| s.1.clone()).collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    let mut hintergrund_cache = HintergrundCache::build(&konfiguration.map, &risse2, &split_nas.crs).await;
+
     if risse.is_empty() {
         export_splitflaechen(
             &mut files, 
@@ -175,8 +183,8 @@ pub async fn export_aenderungen_geograf(
             1,
             1,
             &lq,
-            render_hintergrund_vorschau,
-        ).await;
+            &mut hintergrund_cache,
+        );
     } else {
         for (i, (_, r)) in risse.iter().enumerate() {
             export_splitflaechen(
@@ -192,8 +200,8 @@ pub async fn export_aenderungen_geograf(
                 i + 1,
                 risse.len(),
                 &lq,
-                render_hintergrund_vorschau,
-            ).await;
+                &mut hintergrund_cache,
+            );
         }
     }
 
@@ -328,7 +336,7 @@ pub fn generate_risse_shp(
     }).collect::<Vec<_>>())
 }
 
-pub async fn export_splitflaechen(
+pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
     csv: &CsvDataType,
@@ -341,7 +349,7 @@ pub async fn export_splitflaechen(
     num_riss: usize,
     total_risse: usize,
     lq: &LinienQuadTree,
-    render_hintergrund_vorschau: bool,
+    hintergrund_cache: &mut HintergrundCache,
 ) {
 
     let mut default_riss_extent_rect = match splitflaechen.first() {
@@ -471,7 +479,7 @@ pub async fn export_splitflaechen(
 
     log_status(&format!("Generiere PDF-Vorschau..."));
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
-        crate::pdf::PdfTargetUse::PreviewRiss,
+        Vec::new(),
         riss_von,
         info,
         &calc_pdf_preview,
@@ -486,7 +494,7 @@ pub async fn export_splitflaechen(
         &fluren,
         &flst,
         &gebaeude,
-    ).await;
+    );
 
     files.push((parent_dir.clone(), format!("Vorschau_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), pdf_vorschau));  
     log_status(&format!("OK: PDF Vorschau generiert."));
@@ -506,11 +514,7 @@ pub async fn export_splitflaechen(
 
     log_status(&format!("Generiere Hintergrund-Vorschau..."));
     let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
-        if render_hintergrund_vorschau {
-            crate::pdf::PdfTargetUse::HintergrundCheck
-        } else {
-            crate::pdf::PdfTargetUse::PreviewRiss
-        },
+        hintergrund_cache.images.remove(&num_riss).unwrap_or_default(),
         (num_riss, total_risse),
         info,
         &calc_pdf_preview,
@@ -525,7 +529,7 @@ pub async fn export_splitflaechen(
         &fluren,
         &flst,
         &gebaeude,
-    ).await;
+    );
 
     files.push((parent_dir.clone(), format!("Vorschau_mit_Hintergrund_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), hintergrund_vorschau));      
     log_status(&format!("OK: PDF Vorschau mit Hintergrund generiert."));  
