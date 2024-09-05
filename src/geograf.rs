@@ -480,7 +480,6 @@ pub async fn export_splitflaechen(
         &riss,
         &riss_extent_reprojected,
         // TODO: riss_extent_reprojected_noborder
-        &splitflaechen,
         &aenderungen_rote_linien,
         &aenderungen_nutzungsarten_linien,
         &aenderungen_texte_optimized,
@@ -520,7 +519,6 @@ pub async fn export_splitflaechen(
         &riss,
         &riss_extent_reprojected,
         // TODO: riss_extent_reprojected_noborder
-        &splitflaechen.0,
         &Vec::new(),
         &Vec::new(),
         &aenderungen_texte_optimized,

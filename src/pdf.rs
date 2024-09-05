@@ -511,7 +511,6 @@ pub async fn generate_pdf_internal(
     nutzungsarten: &SplitNasXml,
     rc: &RissConfig,
     riss_extent: &RissExtentReprojected,
-    splitflaechen: &[AenderungenIntersection],
     rote_linien: &Vec<SvgLine>, // in ETRS space
     na_untergehend_linien: &Vec<SvgLine>, // in ETRS space
     beschriftungen: &[OptimizedTextPlacement], // in ETRS space
