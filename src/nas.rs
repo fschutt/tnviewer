@@ -862,6 +862,17 @@ impl SvgPolygon {
         true
     }
     
+    pub fn get_hash(&self) -> u64 {
+        use highway::{HighwayHasher, HighwayHash};
+        let rounded = self.round_to_3dec().get_all_pointcoords_sorted();
+        let bytes = rounded.iter().flat_map(|[a,b]| {
+            let mut a = a.to_le_bytes().to_vec();
+            a.extend(b.to_le_bytes().into_iter());
+            a
+        }).collect::<Vec<_>>();
+        HighwayHasher::default().hash64(&bytes)
+    }
+
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {
         let mut v = BTreeSet::new();
         for l in self.outer_rings.iter() {

@@ -1270,6 +1270,9 @@ impl AenderungenIntersections {
 
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
             for (k1, k) in v.iter_mut() {
+                
+                let k2 = k.iter().map(|p| (p.get_hash(), p)).collect::<BTreeMap<_, _>>();
+                *k = k2.values().map(|s| (*s).clone()).collect::<Vec<_>>();
                 if k.len() < 2 {
                     continue;
                 }
