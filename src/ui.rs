@@ -1471,8 +1471,7 @@ impl AenderungenClean {
 
         let mut is = AenderungenIntersections(is)
         .clean_zero_size_areas()
-        .deduplicate()
-        .merge_to_nearest().0;
+        .deduplicate().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
@@ -1719,7 +1718,6 @@ impl AenderungenClean {
         }).collect::<BTreeSet<_>>();
 
         AenderungenIntersections(is)
-        .merge_to_nearest()
     }
 }
 
