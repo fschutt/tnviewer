@@ -1215,26 +1215,18 @@ impl AenderungenIntersections {
         let mut aenderungen_2 = BTreeMap::new();
 
         for a in self.0.iter() {
-            let poly_s = match serde_json::to_string(&a.poly_cut.get_all_pointcoords_sorted()) {
-                Ok(o) => o,
-                Err(_) => continue,
-            };
-            aenderungen_2.insert(poly_s, (a.poly_cut.clone(), a.alt.clone(), a.neu.clone(), a.flst_id.clone(), a.flst_id_part.clone()));
+            aenderungen_2.insert(a.poly_cut.get_hash(), a.clone());
         }
 
-        Self(aenderungen_2.into_iter().filter_map(|(k, (poly, alt, neu, flst_id, flst_id_part))| {
-            Some(AenderungenIntersection {
-                poly_cut: poly,
-                alt,
-                neu,
-                flst_id_part,
-                flst_id,
-            })
-        }).collect())
+        Self(aenderungen_2.values().cloned().collect())
     }
     
     pub fn merge_to_nearest(&self, special: bool) -> Self {
 
+        if !special {
+            return self.clone();
+        }
+        
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
         let aenderungen_uuid = self.0
