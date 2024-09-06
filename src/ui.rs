@@ -1237,6 +1237,7 @@ impl AenderungenIntersections {
 
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
+        /* 
         let aenderungen_uuid = self.0
         .iter()
         .map(|sf| (uuid(), sf))
@@ -1254,9 +1255,12 @@ impl AenderungenIntersections {
         }.clean_stage0(1.0)
         .clean_stage1(&mut Vec::new(), 1.0, 1.0)
         .clean_stage25();
+        */
 
-        for (id, s) in aenderungen_uuid.iter() {
-            let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
+        //for (id, s) in aenderungen_uuid.iter() {
+        for s in self.0.iter() {
+            // let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
+            let s_poly = &s.poly_cut;
             splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
             .or_insert_with(|| BTreeMap::new())
             .entry((s.alt.clone(), s.neu.clone()))
@@ -1471,7 +1475,8 @@ impl AenderungenClean {
 
         let mut is = AenderungenIntersections(is)
         .clean_zero_size_areas()
-        .deduplicate().0;
+        .deduplicate()
+        .merge_to_nearest().0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
@@ -1718,6 +1723,7 @@ impl AenderungenClean {
         }).collect::<BTreeSet<_>>();
 
         AenderungenIntersections(is)
+        .merge_to_nearest()
     }
 }
 
