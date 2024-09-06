@@ -1254,7 +1254,7 @@ impl AenderungenIntersections {
                 }).collect()
             }.clean_stage0(1.0)
             .clean_stage1(&mut Vec::new(), 1.0, 1.0)
-            .clean_stage25()
+            .clean_stage25_internal()
         } else {
             Aenderungen::default()
         };
@@ -2414,7 +2414,7 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
-    fn clean_stage25_internal(&self) -> Aenderungen {
+    pub fn clean_stage25_internal(&self) -> Aenderungen {
 
         let aenderungen_by_kuerzel = self.na_polygone_neu.iter().filter_map(|(id, k)| {
             let nutzung = k.nutzung.clone()?;
