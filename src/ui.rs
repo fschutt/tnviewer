@@ -1254,6 +1254,7 @@ impl AenderungenIntersections {
                 }).collect()
             }.clean_stage0(1.0)
             .clean_stage1(&mut Vec::new(), 1.0, 1.0)
+            .clean_stage25()
         } else {
             Aenderungen::default()
         };
@@ -1289,7 +1290,7 @@ impl AenderungenIntersections {
 
                 let joined_len = joined.len();
 
-                if joined_len != polys_to_join_len {
+                if joined_len < polys_to_join_len {
                     log_status(&format!("{}: verbinde {polys_to_join_len} Flächen {:?} zu {joined_len} Flächen", FlstIdParsed::from_str(&k0.0).to_nice_string(), k1));
                 }
                 *k = joined;
