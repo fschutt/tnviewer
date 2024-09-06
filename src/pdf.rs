@@ -155,7 +155,7 @@ impl PdfEbenenStyle {
             kuerzel: kuerzel.to_string(),
             fill_color: None,
             fill: false,
-            outline_color: Some(if has_background { "#22ffff" } else { "#6082B6" }.to_string()),
+            outline_color: Some("#6082B6".to_string()),
             outline_thickness: Some(0.1),
             outline_overprint: false,
             outline_dash: None,
@@ -439,7 +439,7 @@ impl Fluren {
                 Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
                 None => flst.poly.clone(),
             };
-            let pos = poly.get_secondary_label_pos()?;
+            let pos = poly.get_tertiary_label_pos()?;
             let gemarkung = flst.attributes.get("berechneteGemarkung")?.parse::<usize>().ok()?;
             let flur = flst.attributes.get("AX_Flur")?.parse::<usize>().ok()?;
             Some(FlurLabel {
@@ -519,7 +519,7 @@ pub struct HintergrundCache {
 impl HintergrundCache {
     pub async fn build(konfiguration: &MapKonfiguration, risse: &[RissConfig], target_crs: &str) -> Self {
 
-        let target_dpi = 96.0;
+        let target_dpi = 150.0;
         let tile_size_px = 1024.0;
 
         let mut tiles = Vec::new();
@@ -662,7 +662,7 @@ pub fn generate_pdf_internal(
     let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
 
     log_status(&format!("[{num_riss} / {total_risse}] Rendere Gebäude..."));
-    let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), &mut Vec::new());
+    let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(riss_extent, rc), has_background);
 
     log_status(&format!("[{num_riss} / {total_risse}] Rendere Flurstücke..."));
     let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(riss_extent, rc), has_background);
@@ -979,7 +979,11 @@ fn write_flur_texte(
     has_background: bool,
 ) -> Option<()> {
 
-    let flurcolor = csscolorparser::parse(if has_background { "#ff99ff" } else { "#ee22ff" }).ok()
+    let flurcolor = csscolorparser::parse("#ee22ff").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let outline_color = csscolorparser::parse("#ffffff").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -992,7 +996,22 @@ fn write_flur_texte(
     
     let fontsize = 20.0;
     layer.set_fill_color(flurcolor.clone());
+    layer.set_outline_color(outline_color.clone());
+    layer.set_outline_thickness(1.2);
+
     for (pos, t) in texte {
+
+        layer.begin_text_section();
+        layer.set_font(&font, fontsize);
+        layer.set_line_height(fontsize);
+        layer.set_text_rendering_mode(TextRenderingMode::FillStroke);
+        layer.set_text_cursor(Mm(pos.x as f32), Mm(pos.y as f32));
+        for v in t.iter() {
+            layer.write_text(v, &font);
+            layer.add_line_break();
+        }
+        layer.end_text_section();
+
         layer.begin_text_section();
         layer.set_font(&font, fontsize);
         layer.set_line_height(fontsize);
@@ -1003,6 +1022,7 @@ fn write_flur_texte(
             layer.add_line_break();
         }
         layer.end_text_section();
+
     }
 
     layer.restore_graphics_state();
@@ -1110,6 +1130,10 @@ fn write_splitflaechen_beschriftungen(
     })
     .collect::<Vec<_>>();
 
+    let white = csscolorparser::parse("#ffffff").ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
     let alt_color = csscolorparser::parse("#cc0000").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
@@ -1118,47 +1142,48 @@ fn write_splitflaechen_beschriftungen(
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let bleibt_color = csscolorparser::parse(if has_background { "#22ffff" } else { "#6082B6" }).ok()
+    let bleibt_color = csscolorparser::parse("#6082B6").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
     layer.save_graphics_state();
-    
-    layer.set_fill_color(bleibt_color.clone());
+
+    let write_text = |t: &str, x: f64, y: f64, color: printpdf::Color| {
+
+        layer.begin_text_section();
+        layer.set_outline_color(white.clone());
+        layer.set_outline_thickness(0.75);
+        layer.set_fill_color(color.clone());
+        layer.set_font(&font, 6.0);
+        layer.set_text_rendering_mode(TextRenderingMode::FillStroke);
+        layer.set_text_cursor(Mm(x as f32), Mm(y as f32));
+        layer.write_text(t, &font);
+        layer.end_text_section();
+
+        layer.begin_text_section();
+        layer.set_fill_color(color.clone());
+        layer.set_font(&font, 6.0);
+        layer.set_text_rendering_mode(TextRenderingMode::Fill);
+        layer.set_text_cursor(Mm(x as f32), Mm(y as f32));
+        layer.write_text(t, &font);
+        layer.end_text_section();
+    };
+
     for t in texte_bleibt {
-        layer.begin_text_section();
-        layer.set_font(&font, 6.0);
-        layer.set_text_rendering_mode(TextRenderingMode::Fill);
-        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
-        layer.write_text(t.kuerzel, &font);
-        layer.end_text_section();
+        write_text(&t.kuerzel, t.pos.x, t.pos.y, bleibt_color.clone());
     }
 
-    layer.set_fill_color(alt_color.clone());
     for t in texte_alt {
-        layer.begin_text_section();
-        layer.set_font(&font, 6.0);
-        layer.set_text_rendering_mode(TextRenderingMode::Fill);
-        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
-        layer.write_text(t.kuerzel, &font);
-        layer.end_text_section();
+        write_text(&t.kuerzel, t.pos.x, t.pos.y, alt_color.clone());
     }
 
-    layer.set_fill_color(neu_color.clone());
     for t in texte_neu {
-        layer.begin_text_section();
-        layer.set_font(&font, 6.0);
-        layer.set_text_rendering_mode(TextRenderingMode::Fill);
-        layer.set_text_cursor(Mm(t.pos.x as f32), Mm(t.pos.y as f32));
-        layer.write_text(t.kuerzel, &font);
-        layer.end_text_section();
+        write_text(&t.kuerzel, t.pos.x, t.pos.y, neu_color.clone());
     }
 
     layer.restore_graphics_state();
 
     layer.save_graphics_state();
-
-    layer.set_outline_thickness(1.0);
 
     for (ts, li) in linien.iter() {
         let col = match ts {
@@ -1166,7 +1191,12 @@ fn write_splitflaechen_beschriftungen(
             TextStatus::StaysAsIs => bleibt_color.clone(),
             TextStatus::Old => alt_color.clone(),
         };
-        layer.set_outline_color(col);
+        layer.set_outline_color(white.clone());
+        layer.set_outline_thickness(1.2);
+        layer.add_line(li.clone());
+
+        layer.set_outline_color(col.clone());
+        layer.set_outline_thickness(0.7);
         layer.add_line(li.clone());
     }
 
@@ -1320,6 +1350,11 @@ fn write_nutzungsarten(
 
     // log.push(serde_json::to_string(&flurstueck_nutzungen_grouped_by_ebene).unwrap_or_default());
 
+    let white = Some("#ffffff")
+    .and_then(|s| csscolorparser::parse(&s).ok())
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or_else(|| printpdf::Color::Rgb(printpdf::Rgb { r: 0.0, g: 0.0, b: 0.0, icc_profile: None }));
+
     for (style, polys) in flurstueck_nutzungen_grouped_by_ebene.iter() {
 
         layer.save_graphics_state();
@@ -1333,14 +1368,25 @@ fn write_nutzungsarten(
         .and_then(|s| csscolorparser::parse(&s).ok())
         .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }));
 
-        let outline_thickness = style.outline_thickness.unwrap_or(1.0);
+        // paint white outline 
+
+        layer.save_graphics_state();
+        layer.set_outline_color(white.clone());
+        layer.set_outline_thickness(1.0);
+        for poly in polys.iter() {
+            layer.add_polygon(translate_poly(&poly.poly, PaintMode::Stroke));
+        }
+        layer.restore_graphics_state();
+
+        // let outline_thickness = style.outline_thickness.unwrap_or(1.0);
+        layer.set_outline_thickness(0.7);
 
         if let Some(fc) = fill_color.as_ref() {
             layer.set_fill_color(fc.clone());
         }
+
         if let Some(oc) = outline_color.as_ref() {
             layer.set_outline_color(oc.clone());
-            layer.set_outline_thickness(outline_thickness);
             paintmode = if fill_color.is_some() {
                 PaintMode::FillStroke
             } else {
@@ -1551,7 +1597,7 @@ fn write_flurstuecke_label(
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let fontsize = 8.0;
+    let fontsize = 5.0;
     layer.set_fill_color(outline_color.clone());
 
     for tp in flst.flst.iter() {
@@ -1559,7 +1605,7 @@ fn write_flurstuecke_label(
             Some(s) => s,
             None => continue,
         };
-        let pos = match tp.poly.get_label_pos().or(tp.poly.get_secondary_label_pos()) {
+        let pos = match tp.poly.get_secondary_label_pos().or(tp.poly.get_label_pos()) {
             Some(s) => point_into_pdf_space(&s, riss, riss_config),
             None => continue,
         };
@@ -1591,7 +1637,7 @@ fn write_flurstuecke(
 
     layer.set_outline_color(outline_color);
 
-    layer.set_outline_thickness(0.1);
+    layer.set_outline_thickness(1.0);
 
     for tp in flst.flst.iter() {
         let poly = translate_poly(&tp.poly, PaintMode::Stroke);
@@ -1607,14 +1653,14 @@ fn write_flurstuecke(
 fn write_gebaeude(
     layer: &mut PdfLayerReference,
     gebaeude: &GebaeudeInPdfSpace,
-    log: &mut Vec<String>,
+    has_background: bool
 ) -> Option<()> {
 
     let fill_color = csscolorparser::parse("#808080").ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let outline_color = csscolorparser::parse("#000000").ok()
+    let outline_color = csscolorparser::parse(if has_background { "#ffffff" } else { "#000000" }).ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -1624,10 +1670,10 @@ fn write_gebaeude(
 
     layer.set_outline_color(outline_color);
 
-    layer.set_outline_thickness(0.1);
+    layer.set_outline_thickness(0.5);
 
     for tp in gebaeude.gebaeude.iter() {
-        let poly = translate_poly(&tp.poly, PaintMode::FillStroke);
+        let poly = translate_poly(&tp.poly, if has_background { PaintMode::Stroke } else { PaintMode::FillStroke });
         layer.add_polygon(poly);
     }
 

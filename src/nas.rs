@@ -1220,7 +1220,34 @@ impl SvgPolygon {
         });
 
         triangles.pop();
-        let center = triangles.pop().map(|second_largest| second_largest.centroid())?;
+        let center = triangles.iter().next().map(|second_largest| second_largest.centroid())?;
+        Some(SvgPoint { x: center.x(), y: center.y() })
+    }
+
+
+    pub fn get_tertiary_label_pos(&self) -> Option<SvgPoint> {
+        
+        if self.is_empty() || self.is_zero_area() {
+            return None;
+        }
+
+        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = first_poly.first()?;
+
+        let mut triangles = first_poly.earcut_triangles();
+        
+        if triangles.len() < 3 {
+            let center = self.get_rect().get_center();
+            return Some(SvgPoint { x: center.x, y: center.y });
+        }
+        
+        triangles.sort_by(|a, b| {
+            a.unsigned_area().total_cmp(&b.unsigned_area())
+        });
+
+        triangles.pop();
+        triangles.pop();
+        let center = triangles.iter().next().map(|second_largest| second_largest.centroid())?;
         Some(SvgPoint { x: center.x(), y: center.y() })
     }
 

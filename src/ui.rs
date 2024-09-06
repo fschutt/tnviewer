@@ -1237,12 +1237,31 @@ impl AenderungenIntersections {
 
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
-        for s in self.0.iter() {
+        let aenderungen_uuid = self.0
+        .iter()
+        .map(|sf| (uuid(), sf))
+        .collect::<Vec<_>>();
+
+        let aenderungen = Aenderungen {
+            gebaeude_loeschen: BTreeMap::new(),
+            na_definiert: BTreeMap::new(),
+            na_polygone_neu: aenderungen_uuid.iter().map(|(id, sf)| {
+                (id.clone(), PolyNeu {
+                    nutzung: Some(sf.neu.clone()),
+                    poly: sf.poly_cut.clone(),
+                })
+            }).collect()
+        }.clean_stage0(1.0)
+        .clean_stage1(&mut Vec::new(), 1.0, 1.0)
+        .clean_stage25();
+
+        for (id, s) in aenderungen_uuid.iter() {
+            let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
             splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
             .or_insert_with(|| BTreeMap::new())
             .entry((s.alt.clone(), s.neu.clone()))
             .or_insert_with(|| Vec::new())
-            .push(s.poly_cut.clone());
+            .push(s_poly.clone());
         }
 
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
@@ -1255,10 +1274,15 @@ impl AenderungenIntersections {
 
                 let polys_to_join_len = polys_to_join.len();
 
+                let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
+                log_status(&format!("{flst_id} ({k1:?}): joining"));
+                log_status(&serde_json::to_string(&polys_to_join).unwrap_or_default());
                 let joined = match join_polys(&polys_to_join, false, false) {
                     Some(s) => s.recombine_polys(),
                     None => continue,
                 };
+                log_status(&serde_json::to_string(&joined).unwrap_or_default());
+                log_status(&format!("{flst_id}: joined -----"));
 
                 let joined_len = joined.len();
 
