@@ -1219,6 +1219,8 @@ impl SvgPolygon {
             a.unsigned_area().total_cmp(&b.unsigned_area())
         });
 
+        triangles.reverse();
+
         triangles.pop();
         let center = triangles.iter().next().map(|second_largest| second_largest.centroid())?;
         Some(SvgPoint { x: center.x(), y: center.y() })
@@ -1244,6 +1246,8 @@ impl SvgPolygon {
         triangles.sort_by(|a, b| {
             a.unsigned_area().total_cmp(&b.unsigned_area())
         });
+        
+        triangles.reverse();
 
         triangles.pop();
         triangles.pop();

@@ -1611,7 +1611,7 @@ fn write_flurstuecke_label(
             Some(s) => s,
             None => continue,
         };
-        let pos = match tp.poly.get_label_pos().or(tp.poly.get_secondary_label_pos()) {
+        let pos = match tp.poly.get_secondary_label_pos().or(tp.poly.get_label_pos()) {
             Some(s) => point_into_pdf_space(&s, riss, riss_config),
             None => continue,
         };
@@ -1710,6 +1710,7 @@ fn write_fluren(
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
     layer.set_overprint_stroke(true);
+    layer.set_blend_mode(printpdf::BlendMode::Seperable(printpdf::SeperableBlendMode::Normal));
 
     layer.set_outline_color(outline_color);
 
