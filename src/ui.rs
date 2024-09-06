@@ -1208,7 +1208,7 @@ impl AenderungenIntersections {
                 neu: s.neu.clone(),
             });
         }
-        Self(vi).merge_to_nearest()
+        Self(vi).merge_to_nearest(true)
     }
 
     pub fn deduplicate(&self) -> Self {
@@ -1233,34 +1233,33 @@ impl AenderungenIntersections {
         }).collect())
     }
     
-    pub fn merge_to_nearest(&self) -> Self {
+    pub fn merge_to_nearest(&self, special: bool) -> Self {
 
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
-        /* 
         let aenderungen_uuid = self.0
         .iter()
         .map(|sf| (uuid(), sf))
         .collect::<Vec<_>>();
 
-        let aenderungen = Aenderungen {
-            gebaeude_loeschen: BTreeMap::new(),
-            na_definiert: BTreeMap::new(),
-            na_polygone_neu: aenderungen_uuid.iter().map(|(id, sf)| {
-                (id.clone(), PolyNeu {
-                    nutzung: Some(sf.neu.clone()),
-                    poly: sf.poly_cut.clone(),
-                })
-            }).collect()
-        }.clean_stage0(1.0)
-        .clean_stage1(&mut Vec::new(), 1.0, 1.0)
-        .clean_stage25();
-        */
+        let aenderungen = if special {
+            Aenderungen {
+                gebaeude_loeschen: BTreeMap::new(),
+                na_definiert: BTreeMap::new(),
+                na_polygone_neu: aenderungen_uuid.iter().map(|(id, sf)| {
+                    (id.clone(), PolyNeu {
+                        nutzung: Some(sf.neu.clone()),
+                        poly: sf.poly_cut.clone(),
+                    })
+                }).collect()
+            }.clean_stage0(1.0)
+            .clean_stage1(&mut Vec::new(), 1.0, 1.0)
+        } else {
+            Aenderungen::default()
+        };
 
-        //for (id, s) in aenderungen_uuid.iter() {
-        for s in self.0.iter() {
-            // let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
-            let s_poly = &s.poly_cut;
+        for (id, s) in aenderungen_uuid.iter() {
+            let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
             splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
             .or_insert_with(|| BTreeMap::new())
             .entry((s.alt.clone(), s.neu.clone()))
@@ -1476,7 +1475,7 @@ impl AenderungenClean {
         let mut is = AenderungenIntersections(is)
         .clean_zero_size_areas()
         .deduplicate()
-        .merge_to_nearest().0;
+        .merge_to_nearest(false).0;
 
         log_status(&format!("OK: {} Flurstückteile verändert", flst_parts_changed.len()));
 
@@ -1723,7 +1722,7 @@ impl AenderungenClean {
         }).collect::<BTreeSet<_>>();
 
         AenderungenIntersections(is)
-        .merge_to_nearest()
+        .merge_to_nearest(false)
     }
 }
 

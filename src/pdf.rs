@@ -519,7 +519,7 @@ pub struct HintergrundCache {
 impl HintergrundCache {
     pub async fn build(konfiguration: &MapKonfiguration, risse: &[RissConfig], target_crs: &str) -> Self {
 
-        let target_dpi = 150.0;
+        let target_dpi = 96.0;
         let tile_size_px = 1024.0;
 
         let mut tiles = Vec::new();
@@ -1593,22 +1593,36 @@ fn write_flurstuecke_label(
     
     layer.save_graphics_state();
 
-    let outline_color = csscolorparser::parse(if has_background { "#ffffff" } else { "#00000" }).ok()
+    let fill_color = csscolorparser::parse(if has_background { "#ffffff" } else { "#000000" }).ok()
+    .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
+    .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let outline_color = csscolorparser::parse(if has_background { "#000000" } else { "#ffffff" }).ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
     let fontsize = 5.0;
-    layer.set_fill_color(outline_color.clone());
+    layer.set_fill_color(fill_color.clone());
+    layer.set_outline_color(outline_color.clone());
+    layer.set_outline_thickness(1.0);
 
     for tp in flst.flst.iter() {
         let flst = match tp.attributes.get("flurstueckskennzeichen").and_then(|s| FlstIdParsed::from_str(s).parse_num()) {
             Some(s) => s,
             None => continue,
         };
-        let pos = match tp.poly.get_secondary_label_pos().or(tp.poly.get_label_pos()) {
+        let pos = match tp.poly.get_label_pos().or(tp.poly.get_secondary_label_pos()) {
             Some(s) => point_into_pdf_space(&s, riss, riss_config),
             None => continue,
         };
+        layer.begin_text_section();
+        layer.set_font(&font, fontsize);
+        layer.set_line_height(fontsize);
+        layer.set_text_rendering_mode(TextRenderingMode::FillStroke);
+        layer.set_text_cursor(Mm(pos.x as f32), Mm(pos.y as f32));
+        layer.write_text(flst.format_str(), &font);
+        layer.end_text_section();
+
         layer.begin_text_section();
         layer.set_font(&font, fontsize);
         layer.set_line_height(fontsize);
