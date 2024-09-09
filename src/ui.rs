@@ -1252,7 +1252,8 @@ impl AenderungenIntersections {
 
         for (id, s) in aenderungen_uuid.iter() {
             let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
-            splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
+            splitflaechen_by_flst_kuerzel
+            .entry((s.flst_id.clone(), if !special { s.flst_id_part.clone() } else { String::new() }))
             .or_insert_with(|| BTreeMap::new())
             .entry((s.alt.clone(), s.neu.clone()))
             .or_insert_with(|| Vec::new())
