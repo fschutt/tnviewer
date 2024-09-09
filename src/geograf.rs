@@ -504,9 +504,13 @@ pub fn export_splitflaechen(
     log_status(&format!("[{num_riss} / {total_risse}] OK: PDF Vorschau generiert."));
 
     let splitflaechen = AenderungenIntersections(splitflaechen.to_vec()).get_future_flaechen();
+    log_status(&format!("[{num_riss} / {total_risse}] 1"));
     let split_nas = split_nas.migrate_future(&splitflaechen.0);
+    log_status(&format!("[{num_riss} / {total_risse}] 2"));
     let aenderungen_texte = AenderungenIntersections::get_texte(&splitflaechen.0);
+    log_status(&format!("[{num_riss} / {total_risse}] 3"));
     let mini_split_nas = get_mini_nas_xml(&split_nas, &riss_extent_reprojected);
+    log_status(&format!("[{num_riss} / {total_risse}] 4"));
     let aenderungen_texte_optimized = crate::optimize::optimize_labels(
         &mini_split_nas,
         &splitflaechen.0,

@@ -52,12 +52,8 @@ pub async fn get_wms_images(config: &MapKonfiguration, obj: &[FetchWmsImageReque
         futures.push(future);
     }
 
-    web_sys::console::log_1(&format!("starting futures...").into());
-
     let combined_futures = futures::future::join_all(futures.into_iter());
     combined_futures.await;
-
-    web_sys::console::log_1(&format!("futures finished").into());
 
     let mut target_lock = target.lock().unwrap();
     

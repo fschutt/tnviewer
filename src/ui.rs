@@ -1222,7 +1222,9 @@ impl AenderungenIntersections {
     }
     
     pub fn merge_to_nearest(&self, special: bool) -> Self {
-        
+
+        log_status(&format!("merge_to_nearest {special:?}"));
+
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
         let aenderungen_uuid = self.0
@@ -1248,6 +1250,8 @@ impl AenderungenIntersections {
             Aenderungen::default()
         };
 
+        log_status(&format!("merge_to_nearest 2"));
+
         for (id, s) in aenderungen_uuid.iter() {
             let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
             splitflaechen_by_flst_kuerzel.entry((s.flst_id.clone(), s.flst_id_part.clone()))
@@ -1257,9 +1261,12 @@ impl AenderungenIntersections {
             .push(s_poly.clone());
         }
 
+        log_status(&format!("merge_to_nearest 3"));
+
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
+            let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
+            log_status(&format!("{flst_id}: {}", serde_json::to_string(&v).unwrap_or_default()));
             for (k1, k) in v.iter_mut() {
-                
                 let k2 = k.iter().map(|p| (p.get_hash(), p)).collect::<BTreeMap<_, _>>();
                 *k = k2.values().map(|s| (*s).clone()).collect::<Vec<_>>();
                 if k.len() < 2 {
@@ -1270,7 +1277,6 @@ impl AenderungenIntersections {
 
                 let polys_to_join_len = polys_to_join.len();
 
-                let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
                 log_status(&format!("{flst_id} ({k1:?}): joining"));
                 log_status(&serde_json::to_string(&polys_to_join).unwrap_or_default());
                 let joined = match join_polys(&polys_to_join, false, false) {
@@ -1289,6 +1295,8 @@ impl AenderungenIntersections {
             }
         }
 
+        log_status(&format!("merge_to_nearest 4"));
+
         let new_sf = splitflaechen_by_flst_kuerzel.iter().flat_map(|((flst_id, flst_id_part), v)| {
             v.iter().flat_map(|((alt, neu), polys)| {
                 polys.iter().map(|p| AenderungenIntersection {
@@ -1300,6 +1308,8 @@ impl AenderungenIntersections {
                 })
             })
         }).collect();
+
+        log_status(&format!("merge_to_nearest 5"));
 
         Self(new_sf)
     }
