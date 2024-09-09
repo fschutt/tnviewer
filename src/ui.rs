@@ -1243,9 +1243,7 @@ impl AenderungenIntersections {
                     })
                 }).collect()
             }
-            .clean_stage0(1.0)
             .clean_stage1(&mut Vec::new(), 1.0, 1.0)
-            .clean_stage25_internal()
         } else {
             Aenderungen::default()
         };
@@ -2056,6 +2054,8 @@ impl Aenderungen {
     pub fn clean_stage0(&self, maxdst_point: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         
+        log_status(&format!("clean_stage0"));
+
         // deduplicate aenderungen
         let mut na_polygone_neu = BTreeMap::new();
         for (id, polyneu) in changed_mut.na_polygone_neu.iter() {
@@ -2069,6 +2069,8 @@ impl Aenderungen {
 
         // join sequential points if 
 
+        log_status(&format!("clean_stage0 1"));
+
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             for ol in polyneu.poly.outer_rings.iter_mut() {
                 *ol = clean_line(ol, maxdst_point);
@@ -2077,6 +2079,8 @@ impl Aenderungen {
                 *il = clean_line(il, maxdst_point);
             }
         }
+
+        log_status(&format!("clean_stage0 2"));
 
         fn clean_line(l: &SvgLine, dst: f64) -> SvgLine {
             let mut first_point = match l.points.get(0) {
@@ -2115,7 +2119,7 @@ impl Aenderungen {
 
         let mut modified_tree = changed_mut.na_polygone_neu.clone();
 
-        log.push(format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
+        log_status(&format!("cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"));
 
         let mut moved_points = Vec::new();
 
@@ -2154,7 +2158,7 @@ impl Aenderungen {
             }
         }
 
-        log.push(format!("moved {} points", moved_points.len()));
+        log_status(&format!("moved {} points", moved_points.len()));
         changed_mut.round_to_3decimal()
     }
 
@@ -2418,6 +2422,8 @@ impl Aenderungen {
 
     pub fn clean_stage25_internal(&self) -> Aenderungen {
 
+        log_status("clean_stage25_internal");
+
         let aenderungen_by_kuerzel = self.na_polygone_neu.iter().filter_map(|(id, k)| {
             let nutzung = k.nutzung.clone()?;
             Some((nutzung, k.poly.clone()))
@@ -2427,6 +2433,8 @@ impl Aenderungen {
         for (k, v) in aenderungen_by_kuerzel.into_iter() {
             aenderungen_by_kuerzel_map.entry(k.clone()).or_insert_with(|| Vec::new()).push(v);
         }
+
+        log_status("clean_stage25_internal 1");
 
         let joined = aenderungen_by_kuerzel_map.iter().flat_map(|(kuerzel, v)| {
             let joined = match join_polys(&v, false, false) {
@@ -2440,6 +2448,8 @@ impl Aenderungen {
             })).collect()
         }).collect::<BTreeMap<_, _>>();
 
+        log_status("clean_stage25_internal 2");
+
         let mut aenderungen_alt = self.na_polygone_neu.iter().filter_map(|(id, v)| {
             if v.nutzung.is_none() {
                 Some((id.clone(), v.clone()))
@@ -2449,6 +2459,8 @@ impl Aenderungen {
         }).collect::<BTreeMap<_, _>>();
 
         aenderungen_alt.extend(joined.into_iter());
+
+        log_status("clean_stage25_internal 3");
 
         Aenderungen {
             na_definiert: self.na_definiert.clone(),
