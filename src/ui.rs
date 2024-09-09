@@ -1263,7 +1263,7 @@ impl AenderungenIntersections {
 
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
             let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
-            log_status(&format!("{flst_id}: {}", serde_json::to_string(&v).unwrap_or_default()));
+            log_status(&format!("{flst_id}: {}", serde_json::to_string(&v.iter().map(|(k, w)| (&k.0, &k.1, w.len())).collect::<Vec<_>>()).unwrap_or_default()));
             for (k1, k) in v.iter_mut() {
 
                 let k2 = k.iter().flat_map(|p| p.outer_rings.iter().map(|l| {
