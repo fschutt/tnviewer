@@ -8,7 +8,7 @@ use serde_derive::{Serialize, Deserialize};
 use web_sys::{console::log_1, js_sys::Atomics::xor};
 
 use crate::{
-    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, point_is_in_polygon, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{CsvDataType, Status}, geograf::points_to_rect, nas::{self, intersect_polys, line_contained_in_line, point_is_in_polygon, translate_to_geo_poly, xor_polys, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::{log_status, uuid}, xlsx::FlstIdParsed, xml::XmlNode
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -1248,8 +1248,6 @@ impl AenderungenIntersections {
             Aenderungen::default()
         };
 
-        log_status(&format!("merge_to_nearest 2"));
-
         for (id, s) in aenderungen_uuid.iter() {
             let s_poly = aenderungen.na_polygone_neu.get(id).map(|pn| &pn.poly).unwrap_or(&s.poly_cut);
             splitflaechen_by_flst_kuerzel
@@ -1260,17 +1258,16 @@ impl AenderungenIntersections {
             .push(s_poly.clone());
         }
 
-        log_status(&format!("merge_to_nearest 3"));
-
         for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
             let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
-            log_status(&format!("{flst_id}: {}", serde_json::to_string(&v.iter().map(|(k, w)| (&k.0, &k.1, w.len())).collect::<Vec<_>>()).unwrap_or_default()));
             for (k1, k) in v.iter_mut() {
 
                 let k2 = k.iter().flat_map(|p| p.outer_rings.iter().map(|l| {
                     let mut q = SvgPolygon::from_line(l); // TODO
-                    if !p.inner_rings.is_empty() {
-                        log_status("WARN!!!");
+                    for i in p.inner_rings.iter() {
+                        if line_contained_in_line(i, l) || line_contained_in_line(l, i) {
+                            q.inner_rings.push(i.clone());
+                        }
                     }
                     (q.get_hash(), q)
                 })).collect::<BTreeMap<_, _>>();

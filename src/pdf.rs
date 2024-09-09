@@ -155,7 +155,7 @@ impl PdfEbenenStyle {
             kuerzel: kuerzel.to_string(),
             fill_color: None,
             fill: false,
-            outline_color: Some("#6082B6".to_string()),
+            outline_color: Some(if has_background { "#ff0000" } else { "#6082B6" }.to_string()),
             outline_thickness: Some(0.1),
             outline_overprint: false,
             outline_dash: None,
@@ -1142,7 +1142,7 @@ fn write_splitflaechen_beschriftungen(
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
-    let bleibt_color = csscolorparser::parse("#6082B6").ok()
+    let bleibt_color = csscolorparser::parse(if has_background { "#ff0000" } else { "#6082B6" }).ok()
     .map(|c| printpdf::Color::Rgb(printpdf::Rgb { r: c.r as f32, g: c.g as f32, b: c.b as f32, icc_profile: None }))
     .unwrap_or(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
 
@@ -1152,7 +1152,7 @@ fn write_splitflaechen_beschriftungen(
 
         layer.begin_text_section();
         layer.set_outline_color(white.clone());
-        layer.set_outline_thickness(0.75);
+        layer.set_outline_thickness(1.2);
         layer.set_fill_color(color.clone());
         layer.set_font(&font, 6.0);
         layer.set_text_rendering_mode(TextRenderingMode::FillStroke);
@@ -1192,11 +1192,11 @@ fn write_splitflaechen_beschriftungen(
             TextStatus::Old => alt_color.clone(),
         };
         layer.set_outline_color(white.clone());
-        layer.set_outline_thickness(1.2);
+        layer.set_outline_thickness(1.5);
         layer.add_line(li.clone());
 
         layer.set_outline_color(col.clone());
-        layer.set_outline_thickness(0.7);
+        layer.set_outline_thickness(1.0);
         layer.add_line(li.clone());
     }
 
@@ -1372,14 +1372,14 @@ fn write_nutzungsarten(
 
         layer.save_graphics_state();
         layer.set_outline_color(white.clone());
-        layer.set_outline_thickness(1.0);
+        layer.set_outline_thickness(1.5);
         for poly in polys.iter() {
             layer.add_polygon(translate_poly(&poly.poly, PaintMode::Stroke));
         }
         layer.restore_graphics_state();
 
         // let outline_thickness = style.outline_thickness.unwrap_or(1.0);
-        layer.set_outline_thickness(0.7);
+        layer.set_outline_thickness(1.0);
 
         if let Some(fc) = fill_color.as_ref() {
             layer.set_fill_color(fc.clone());
