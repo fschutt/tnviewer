@@ -1265,8 +1265,17 @@ impl AenderungenIntersections {
             let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
             log_status(&format!("{flst_id}: {}", serde_json::to_string(&v).unwrap_or_default()));
             for (k1, k) in v.iter_mut() {
-                let k2 = k.iter().map(|p| (p.get_hash(), p)).collect::<BTreeMap<_, _>>();
+
+                let k2 = k.iter().flat_map(|p| p.outer_rings.iter().map(|l| {
+                    let mut q = SvgPolygon::from_line(l); // TODO
+                    if !p.inner_rings.is_empty() {
+                        log_status("WARN!!!");
+                    }
+                    (q.get_hash(), q)
+                })).collect::<BTreeMap<_, _>>();
+
                 *k = k2.values().map(|s| (*s).clone()).collect::<Vec<_>>();
+
                 if k.len() < 2 {
                     continue;
                 }
@@ -1286,9 +1295,8 @@ impl AenderungenIntersections {
 
                 let joined_len = joined.len();
 
-                if joined_len < polys_to_join_len {
-                    log_status(&format!("{}: verbinde {polys_to_join_len} Flächen {:?} zu {joined_len} Flächen", FlstIdParsed::from_str(&k0.0).to_nice_string(), k1));
-                }
+                log_status(&format!("{flst_id}: verbinde {polys_to_join_len} Flächen {k1:?} zu {joined_len} Flächen"));
+
                 *k = joined;
             }
         }
