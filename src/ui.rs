@@ -1222,10 +1222,6 @@ impl AenderungenIntersections {
     }
     
     pub fn merge_to_nearest(&self, special: bool) -> Self {
-
-        if !special {
-            return self.clone();
-        }
         
         let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
 
@@ -1244,7 +1240,8 @@ impl AenderungenIntersections {
                         poly: sf.poly_cut.clone(),
                     })
                 }).collect()
-            }.clean_stage0(1.0)
+            }
+            .clean_stage0(1.0)
             .clean_stage1(&mut Vec::new(), 1.0, 1.0)
             .clean_stage25_internal()
         } else {
