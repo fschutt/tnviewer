@@ -45,6 +45,7 @@
     var geojson_repaint_layers = [];
     var leaflet_risse = {};
     var layers = null;
+    var basemaps = null;
     var highlight_layer = null;
     var nutzung_einzeichnen_layer = null;
     var gebaeude_loeschen_layer = null;
@@ -1212,28 +1213,51 @@
           });
           map.doubleClickZoom.disable(); 
           map.setView([53.2467, 13.6045], 10);
-          var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
-              maxNativeZoom: 25,
-              maxZoom: 25,
-          });
-          var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
-              layers: window.configuration.map.dop_layers,
-              maxNativeZoom: 25,
-              maxZoom: 25,
-          });
-          var basemaps = {
-            OSM: basemap,
-            DOP: wms,
-          };
-          layers = L.control.layers(basemaps);
-          layers.addTo(map);
+          reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          basemaps.OSM.addTo(map);
           // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
+
+    function reinitDOPLayers() {
+      var basemap = L.tileLayer(window.configuration.map.basemap, {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
+      var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
+          layers: window.configuration.map.dop_layers,
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
+      if (basemaps) {
+        if (basemaps.OSM) {
+          map.removeLayer(basemaps.OSM);
+        }
+        if (basemaps.DOP) {
+          map.removeLayer(basemaps.DOP);
+        }
+      }
+      basemaps = {
+        OSM: basemap,
+        DOP: wms,
+      };
+      if (layers) {
+        layers.removeFrom(map);
+      }
+      layers = L.control.layers(basemaps);
+      layers.addTo(map);
+      if (basemaps.OSM) {
+        try {
+          basemaps.OSM.addTo(map);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
+
+    window.reinitDOPLayers = reinitDOPLayers;
 
     function exportLog() {
       if (!window.export_log) {
@@ -1724,6 +1748,7 @@
       window.uidata.popover_state = null;
       replacePopOver("config");
       closePopOverSearch();
+      reinitDOPLayers();
     }
 
     function openHelp() {
