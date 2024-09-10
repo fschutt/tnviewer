@@ -265,6 +265,7 @@ pub async fn aenderungen_zu_geograf(
     risse: String,
     csv_data: String,
     render_hintergrund_vorschau: bool,
+    use_dgm: bool,
 ) -> Vec<u8> {
 
     log_status_clear();
@@ -287,6 +288,7 @@ pub async fn aenderungen_zu_geograf(
         &risse,
         &csv_data,
         render_hintergrund_vorschau,
+        use_dgm,
     ).await
 }
 

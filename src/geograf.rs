@@ -116,6 +116,7 @@ pub async fn export_aenderungen_geograf(
     risse: &Risse,
     csv_data: &CsvDataType,
     render_hintergrund_vorschau: bool,
+    use_dgm: bool,
 ) -> Vec<u8> {
 
     let mut files = Vec::new();
@@ -168,7 +169,8 @@ pub async fn export_aenderungen_geograf(
     };
 
     let mut hintergrund_cache = HintergrundCache::build(
-        &konfiguration.map, 
+        if use_dgm { konfiguration.map.dgm_source.clone() } else { konfiguration.map.dop_source.clone() },
+        if use_dgm { konfiguration.map.dgm_layers.clone() } else { konfiguration.map.dop_layers.clone() },
         &risse2, 
         &split_nas.crs
     ).await;

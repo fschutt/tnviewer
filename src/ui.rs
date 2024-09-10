@@ -338,12 +338,24 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 <label style='font-size:20px;font-style:italic;'>DOP Ebene</label>
                                 <input type='text' class='konfiguration-editfield1' value='{dop_layer}' data-konfiguration-textfield='map-dop-layer' onchange='editKonfigurationTextField(event)'></input>
                             </div>
+
+                            <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                <label style='font-size:20px;font-style:italic;'>DGM Quelle</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dgm_source}' data-konfiguration-textfield='map-dgm-source' onchange='editKonfigurationTextField(event)'></input>
+                            </div>
+
+                            <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                <label style='font-size:20px;font-style:italic;'>DGM Ebene</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dgm_layer}' data-konfiguration-textfield='map-dgm-layer' onchange='editKonfigurationTextField(event)'></input>
+                            </div>
                         </div>
                     </div>
                 ",
                     basiskarte = konfiguration.map.basemap.clone().unwrap_or_default().trim(),
                     dop_source = konfiguration.map.dop_source.clone().unwrap_or_default().trim(),
                     dop_layer = konfiguration.map.dop_layers.clone().unwrap_or_default().trim(),
+                    dgm_source = konfiguration.map.dgm_source.clone().unwrap_or_default().trim(),
+                    dgm_layer = konfiguration.map.dgm_layers.clone().unwrap_or_default().trim(),
                 ),
                 DarstellungBearbeitung => {
                     format!("

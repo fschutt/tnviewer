@@ -73,6 +73,10 @@ pub struct MapKonfiguration {
     pub dop_source: Option<String>,
     #[serde(default)]
     pub dop_layers: Option<String>,
+    #[serde(default)]
+    pub dgm_source: Option<String>,
+    #[serde(default)]
+    pub dgm_layers: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -517,7 +521,7 @@ pub struct HintergrundCache {
 }
 
 impl HintergrundCache {
-    pub async fn build(konfiguration: &MapKonfiguration, risse: &[RissConfig], target_crs: &str) -> Self {
+    pub async fn build(dop_source: Option<String>, dop_layers: Option<String>, risse: &[RissConfig], target_crs: &str) -> Self {
 
         let target_dpi = 96.0;
         let tile_size_px = 1024.0;
@@ -549,6 +553,8 @@ impl HintergrundCache {
                         min_x: SvgPoint::round_f64(rect.min_x + (xi as f64 * tile_wh_m)),
                         max_y: SvgPoint::round_f64(rect.min_y + ((yi + 1) as f64 * tile_wh_m)),
                         min_y: SvgPoint::round_f64(rect.min_y + (yi as f64 * tile_wh_m)),
+                        dop_layers: dop_layers.clone(),
+                        dop_source: dop_source.clone(),
                     });
                     tiles.push(t);
                 }
@@ -559,7 +565,7 @@ impl HintergrundCache {
         web_sys::console::log_1(&format!("Fetche {} WMS Hintergrund Kacheln...", tiles.len()).into());
 
         let tiles_2 = tiles.iter().map(|s| s.3.clone()).collect::<Vec<_>>();
-        let resolved_tiles = crate::uuid_wasm::get_wms_images(konfiguration, &tiles_2).await;
+        let resolved_tiles = crate::uuid_wasm::get_wms_images( &tiles_2).await;
 
         let mut resolved = BTreeMap::new();
         for (resolved_data, (i, x, y, _)) in resolved_tiles.into_iter().zip(tiles.into_iter()) {

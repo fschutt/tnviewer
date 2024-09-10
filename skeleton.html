@@ -90,7 +90,9 @@
       map: {
         basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
-        dop_layers: "bebb_dop20c"
+        dop_layers: "bebb_dop20c",
+        dgm_source: "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms?",
+        dgm_layers: "dgm"
       },
       merge: {
         stage1_maxdst_point: 1.0,
@@ -440,6 +442,12 @@
         break;      
       case "map-dop-layer":
         window.configuration.map.dop_layers = value;
+        break;
+      case "map-dgm-source":
+        window.configuration.map.dgm_source = value;
+        break;      
+      case "map-dgm-layer":
+        window.configuration.map.dgm_layers = value;
         break;
       case "map-style-name":
         window.configuration.style.ebenen[style_id].name = value;
@@ -1231,6 +1239,11 @@
           maxNativeZoom: 25,
           maxZoom: 25,
       });
+      var dgm = L.tileLayer.wms(window.configuration.map.dgm_source, {
+          layers: window.configuration.map.dgm_layers,
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
       if (basemaps) {
         if (basemaps.OSM) {
           map.removeLayer(basemaps.OSM);
@@ -1242,6 +1255,7 @@
       basemaps = {
         OSM: basemap,
         DOP: wms,
+        DGM: dgm,
       };
       if (layers) {
         layers.removeFrom(map);
@@ -1797,7 +1811,9 @@
 
     async function exportGeoGraf(event) {
       
-      var render_hintergrund_vorschau = event.shiftKey;
+      var render_dgm = event.altKey;
+      var render_hintergrund_vorschau = render_dgm || event.shiftKey;
+
       var zip = await aenderungen_zu_geograf(
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
@@ -1807,6 +1823,7 @@
         JSON.stringify(window.risse),
         JSON.stringify(window.csv_data),
         render_hintergrund_vorschau,
+        render_dgm,
       );
       
       downloadBlob(zip, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');

@@ -41,14 +41,16 @@ pub struct FetchWmsImageRequest {
     pub min_y: f64,
     pub width_px: usize,
     pub height_px: usize,
+    pub dop_source: Option<String>,
+    pub dop_layers: Option<String>,
 }
 
-pub async fn get_wms_images(config: &MapKonfiguration, obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf::Image>> {
+pub async fn get_wms_images(obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf::Image>> {
     let obj_len = obj.len();
     let target = Arc::new(Mutex::new(BTreeMap::new()));
     let mut futures = Vec::new();
     for (i, o) in obj.iter().enumerate() {
-        let future = wms_future(target.clone(), config.clone(), o.clone(), i);
+        let future = wms_future(target.clone(), o.clone(), i);
         futures.push(future);
     }
 
@@ -62,13 +64,17 @@ pub async fn get_wms_images(config: &MapKonfiguration, obj: &[FetchWmsImageReque
     }).collect::<Vec<_>>()
 }
 
-async fn wms_future(target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>, map: MapKonfiguration, o: FetchWmsImageRequest, i: usize) {
+async fn wms_future(
+    target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>, 
+    o: FetchWmsImageRequest, 
+    i: usize
+) {
     
-    let mut url = map.dop_source.clone().unwrap_or_default();
+    let mut url = o.dop_source.clone().unwrap_or_default();
     url += "&SERVICE=WMS";
     url += "&REQUEST=GetMap";
     url += "&VERSION=1.1.1";
-    url += format!("&LAYERS={}", map.dop_layers.clone().unwrap_or_default()).as_str();
+    url += format!("&LAYERS={}", o.dop_layers.clone().unwrap_or_default()).as_str();
     url += "&STYLES=";
     url += "&FORMAT=image%2Fjpeg";
     url += "&TRANSPARENT=false";
