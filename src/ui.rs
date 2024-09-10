@@ -2638,7 +2638,7 @@ impl Aenderungen {
                 Some((nutzung, id.clone(), &v.poly))
             })
             .filter_map(|(k, id, s)| {
-                if TaggedPolygon::get_nutzungsartenkennung(&k)? > nak { 
+                if TaggedPolygon::get_nutzungsartenkennung(&k)? >= nak { 
                     Some((k, id, s)) 
                 } else { 
                     None 
