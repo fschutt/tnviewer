@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, f64::consts::PI};
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
+use crate::{nas::{intersect_polys, translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
 
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
@@ -26,8 +26,6 @@ pub const LABEL_WIDTH_M: f64 = 20.0;
 pub const LABEL_WIDTH_PER_CHAR_M: f64 = 5.0;
 
 pub struct OptimizeConfig {
-    tolerance: f64,
-    riss_config: RissConfig,
     riss_extent: RissExtentReprojected,
     width_pixels: usize,
     height_pixels: usize,
@@ -52,9 +50,7 @@ impl OptimizeConfig {
         let how_many_pixels_y = (riss_config.height_mm  as f64 / tolerance).round() as usize;
         let one_px_x_in_m = riss_extent.width_m() / how_many_pixels_x as f64;
         let one_px_y_in_m = riss_extent.height_m() / how_many_pixels_y as f64;
-        Self { 
-            tolerance, 
-            riss_config: riss_config.clone(), 
+        Self {
             riss_extent: riss_extent.clone(), 
             one_px_x_in_m: one_px_x_in_m, 
             one_px_y_in_m: one_px_y_in_m,
@@ -135,7 +131,7 @@ pub fn optimize_labels(
 
     let background_boolmap = match render_stage1_overlap_boolmap(
         flurstuecke,
-        splitflaechen,
+        &splitflaechen,
         gebaeude,
         avoid_areas_in_pdf_space, 
         config,

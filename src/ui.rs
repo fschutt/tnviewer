@@ -1358,8 +1358,37 @@ impl AenderungenIntersections {
         )
     }
     
-    pub fn get_texte(s: &[AenderungenIntersection]) -> Vec<TextPlacement> {
-        s.iter().flat_map(|q| {
+    pub fn get_texte(s: &[AenderungenIntersection], riss_visible_area: &SvgPolygon) -> Vec<TextPlacement> {
+        s
+        .iter()
+        .filter_map(|s| {
+            if s.poly_cut.overlaps(&riss_visible_area) || riss_visible_area.overlaps(&s.poly_cut) {
+                Some(s)
+            } else {
+                None
+            }
+        })
+        .flat_map(|s| {
+            intersect_polys(&riss_visible_area, &s.poly_cut)
+            .into_iter()
+            .filter_map(|s| {
+                if s.is_zero_area() {
+                    None
+                } else {
+                    Some(s)
+                }
+            })
+            .map(|ip| {
+                AenderungenIntersection {
+                    alt: s.alt.clone(),
+                    neu: s.neu.clone(),
+                    flst_id: s.flst_id.clone(),
+                    flst_id_part: s.flst_id_part.clone(),
+                    poly_cut: ip.clone(),
+                }
+            })
+        })
+        .flat_map(|q| {
             if q.alt == q.neu {
                 q.poly_cut.outer_rings.iter().flat_map(|or| {
                     let p = SvgPolygon { outer_rings: vec![or.clone()], inner_rings: q.poly_cut.inner_rings.clone() };
