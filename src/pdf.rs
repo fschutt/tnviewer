@@ -12,7 +12,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    intersect_polys, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    intersect_polys, reproject_line, reproject_poly, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -216,6 +216,7 @@ pub struct RissExtent {
     pub coords: Vec<LatLng>,
     pub scale: f64,
     pub projection: String,
+    pub rissgebiet: Option<SvgPolygon>,
 }
 
 impl RissExtent {
@@ -231,6 +232,8 @@ impl RissExtent {
 
         let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
         let target = proj4rs::Proj::from_proj_string(&target_crs).ok()?;
+        let rissgebiet = self.rissgebiet.as_ref().map(|s| reproject_poly(s, &source, &target, UseRadians::ForSourceAndTarget));
+
         proj4rs::transform::transform(&source, &target, coords.as_mut_slice()).ok()?;
         let points = coords.iter().map(|p| {
             SvgPoint {
@@ -258,6 +261,7 @@ impl RissExtent {
             min_x,
             max_y,
             min_y,
+            rissgebiet,
         })
 
     }
@@ -271,6 +275,7 @@ pub struct RissExtentReprojected {
     pub max_x: f64,
     pub min_y: f64,
     pub max_y: f64,
+    pub rissgebiet: Option<SvgPolygon>,
 }
 
 impl RissExtentReprojected {
@@ -402,6 +407,7 @@ impl RissConfig {
             ],
             scale: self.scale as f64,
             projection: utm_crs.to_string(),
+            rissgebiet: self.rissgebiet.clone(),
         })
     }
 }

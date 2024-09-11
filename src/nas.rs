@@ -804,7 +804,21 @@ impl SvgPolygon {
         }).collect()
     }
 
-    pub fn is_inside_of(&self, other: &Self) -> bool {
+    pub fn overlaps(&self, other: &Self) -> bool {
+
+        let self_rect = self.get_rect();
+        let other_rect = other.get_rect();
+        if !(self_rect.overlaps_rect(&other_rect) || other_rect.overlaps_rect(&self_rect)) {
+            return false;
+        }
+
+        for l in self.outer_rings.iter() {
+            for p in l.points.iter() {
+                if point_is_in_polygon(p, other) {
+                    return true;
+                }
+            }
+        }
 
         let triangle_points = translate_to_geo_poly(&self).0
         .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())

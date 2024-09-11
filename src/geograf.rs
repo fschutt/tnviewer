@@ -6,7 +6,7 @@ use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConfor
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
+use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -358,6 +358,7 @@ pub fn export_splitflaechen(
     hintergrund_cache: &mut HintergrundCache,
 ) {
 
+    let pdir_name = parent_dir.as_deref().unwrap_or("Aenderungen");
     let mut default_riss_extent_rect = match splitflaechen.first() {
         Some(s) => s.poly_cut.get_rect(),
         None => return,
@@ -422,27 +423,38 @@ pub fn export_splitflaechen(
             None
         }
     })
+    .filter_map(|s| {
+        if let Some(rg) = riss_extent_reprojected.rissgebiet.as_ref() {
+            if s.poly_cut.overlaps(rg) || rg.overlaps(&s.poly_cut)  {
+                Some(s)
+            } else {
+                None
+            }
+        } else {
+            Some(s)
+        }
+    })
     .cloned()
     .collect::<Vec<_>>();
 
     log_status(&format!("[{num_riss} / {total_risse}] Export {} Teilflächen", splitflaechen.len()));
 
     let header = generate_header_pdf(info, &calc_pdf_final, split_nas, num_riss, total_risse);
-    files.push((parent_dir.clone(), format!("Blattkopf_{}.pdf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), header));
+    files.push((parent_dir.clone(), format!("Blattkopf_{pdir_name}.pdf").into(), header));
 
     let legende = generate_legende_xlsx(&splitflaechen);
-    files.push((parent_dir.clone(), format!("Legende_{}.xlsx", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), legende));
+    files.push((parent_dir.clone(), format!("Legende_{pdir_name}.xlsx").into(), legende));
 
     let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq);
     if !aenderungen_nutzungsarten_linien.is_empty() {
-        append_shp(files, &format!("Linien_NAGrenze_Untergehend_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
+        append_shp(files, &format!("Linien_NAGrenze_Untergehend_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
 
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq);
     if !aenderungen_rote_linien.is_empty() {
-        append_shp(files, &format!("Linien_Rot_{}", parent_dir.as_deref().unwrap_or("Aenderungen")), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
+        append_shp(files, &format!("Linien_Rot_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} rote Linien generiert.", aenderungen_rote_linien.len()));
 
@@ -452,19 +464,19 @@ pub fn export_splitflaechen(
     let aenderungen_texte_bleibt = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::StaysAsIs)
         .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Bleibt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
+    files.push((parent_dir.clone(), format!("Texte_Bleibt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
     log_status(&format!("[{num_riss} / {total_risse}] {} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
 
     let aenderungen_texte_alt = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::Old)
         .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Alt_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
+    files.push((parent_dir.clone(), format!("Texte_Alt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
     log_status(&format!("[{num_riss} / {total_risse}] {} Texte: alte Kürzel", aenderungen_texte_alt.len()));
 
     let aenderungen_texte_neu = aenderungen_texte
         .iter().filter(|sf| sf.status == TextStatus::New)
         .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Neu_{}.dxf", parent_dir.as_deref().unwrap_or("Aenderungen")).into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
+    files.push((parent_dir.clone(), format!("Texte_Neu_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
     log_status(&format!("[{num_riss} / {total_risse}] {} Texte: neue Kürzel", aenderungen_texte_neu.len()));
     
     let mini_split_nas = get_mini_nas_xml(split_nas, &riss_extent_reprojected);
@@ -482,6 +494,16 @@ pub fn export_splitflaechen(
         &aenderungen_texte,
         &OptimizeConfig::new(&riss, &riss_extent_reprojected, 0.5 /* mm */) ,
     );
+
+    let beschriftungen_optimized_linien = aenderungen_texte_optimized.iter()
+    .filter_map(|s| s.get_line())
+    .map(|(start, end)| SvgLine { points: vec![start, end] })
+    .collect::<Vec<_>>();
+    if !beschriftungen_optimized_linien.is_empty() {
+        append_shp(files, &format!("Beschriftung_Linien_{pdir_name}"), parent_dir.clone(), lines_to_shp(&beschriftungen_optimized_linien));
+    }
+    log_status(&format!("[{num_riss} / {total_risse}] {} Beschriftungs-Linien generiert.", beschriftungen_optimized_linien.len()));
+
 
     log_status(&format!("[{num_riss} / {total_risse}] Generiere PDF-Vorschau..."));
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
