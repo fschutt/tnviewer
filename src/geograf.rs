@@ -461,24 +461,6 @@ pub fn export_splitflaechen(
     let aenderungen_texte: Vec<TextPlacement> = AenderungenIntersections::get_texte(&splitflaechen, &riss_extent_cutpoly_noborder);
     log_status(&format!("[{num_riss} / {total_risse}] {} Texte generiert", aenderungen_texte.len()));
 
-    let aenderungen_texte_bleibt = aenderungen_texte
-        .iter().filter(|sf| sf.status == TextStatus::StaysAsIs)
-        .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Bleibt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
-    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
-
-    let aenderungen_texte_alt = aenderungen_texte
-        .iter().filter(|sf| sf.status == TextStatus::Old)
-        .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Alt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
-    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: alte Kürzel", aenderungen_texte_alt.len()));
-
-    let aenderungen_texte_neu = aenderungen_texte
-        .iter().filter(|sf| sf.status == TextStatus::New)
-        .cloned().collect::<Vec<_>>();
-    files.push((parent_dir.clone(), format!("Texte_Neu_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
-    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: neue Kürzel", aenderungen_texte_neu.len()));
-    
     let mini_split_nas = get_mini_nas_xml(split_nas, &riss_extent_reprojected);
     let flst = get_flurstuecke(nas_xml, &riss_extent_reprojected);
     let fluren = get_fluren(nas_xml, &Some(riss_extent_reprojected.get_rect()));
@@ -500,7 +482,6 @@ pub fn export_splitflaechen(
         files.push((parent_dir.clone(), format!("Flur_Texte_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&flur_texte)));        
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Flur-Texte", flur_texte.len()));
-
 
     let flurstueck_texte = flst.get_labels(&Some(riss_extent_reprojected.get_poly()));
     if !flurstueck_texte.is_empty() {
@@ -527,7 +508,30 @@ pub fn export_splitflaechen(
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Beschriftungs-Linien generiert.", beschriftungen_optimized_linien.len()));
 
+    let aenderungen_texte_bleibt = aenderungen_texte_optimized
+        .iter()
+        .map(|s| &s.optimized)
+        .filter(|sf| sf.status == TextStatus::StaysAsIs)
+        .cloned().collect::<Vec<_>>();
+    files.push((parent_dir.clone(), format!("Texte_Bleibt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_bleibt)));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: bleibende Kürzel", aenderungen_texte_bleibt.len()));
 
+    let aenderungen_texte_alt = aenderungen_texte_optimized
+        .iter()
+        .map(|s| &s.optimized)
+        .filter(|sf| sf.status == TextStatus::Old)
+        .cloned().collect::<Vec<_>>();
+    files.push((parent_dir.clone(), format!("Texte_Alt_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_alt)));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: alte Kürzel", aenderungen_texte_alt.len()));
+
+    let aenderungen_texte_neu = aenderungen_texte_optimized
+        .iter()
+        .map(|s| &s.optimized)
+        .filter(|sf| sf.status == TextStatus::New)
+        .cloned().collect::<Vec<_>>();
+    files.push((parent_dir.clone(), format!("Texte_Neu_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&aenderungen_texte_neu)));
+    log_status(&format!("[{num_riss} / {total_risse}] {} Texte: neue Kürzel", aenderungen_texte_neu.len()));
+    
     log_status(&format!("[{num_riss} / {total_risse}] Generiere PDF-Vorschau..."));
     let pdf_vorschau = crate::pdf::generate_pdf_internal(
         Vec::new(),
