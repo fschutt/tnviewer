@@ -641,30 +641,39 @@
         map_extent.addTo(map);
         map_handle_center.addTo(map);
       }
-      if (riss_id == active_rissgebiet && riss_config.rissgebiet) {
+      var myLayer = L.layerGroup([]);
+      if (riss_config.rissgebiet) {
         var f = get_rissgebiet_geojson(
           JSON.stringify(riss_config.rissgebiet),
         );
         var rissgebiet = JSON.parse(f);
-        var myLayer = null;
-        var style = {
+        var style_active = {
           "color": "#ffcc00",
           "fillColor": "#ffcc00",
           "weight": 0.0,
           "opacity": 0.5,
           "fillOpacity": 0.5
         };
+        var style_inactive = {
+          "color": "#fc03b6",
+          "fillColor": "#000000",
+          "weight": 4.0,
+          "opacity": 0.5,
+          "fillOpacity": 0.0
+        };
         if (L.geoJSON) {
-          myLayer = L.geoJSON(rissgebiet, {
-            "style": style,
-          });
+          myLayer.addLayer(L.geoJSON(rissgebiet, {
+            "style": riss_id == active_rissgebiet ? style_active : style_inactive,
+          }));
         } else if (L.geoJson) {
-          myLayer = L.geoJson(rissgebiet, {
-            "style": style,
-          });
+          myLayer.addLayer(L.geoJson(rissgebiet, {
+            "style": riss_id == active_rissgebiet ? style_active : style_inactive,
+          }));
         }
-        rissgebiet_layer = myLayer;
-        map.addLayer(rissgebiet_layer);
+      }
+      rissgebiet_layer = myLayer;
+      if (rissgebiet_layer) {
+        rissgebiet_layer.addTo(map);
       }
     }
   }
