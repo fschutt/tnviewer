@@ -3,10 +3,275 @@
   <head>
     <meta charset="utf-8">
     <title>Tatsächliche Nutzung Viewer / Editor</title>
+    <script type="module">
+        window.configuration = {
+          "map":{
+              "basemap":"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              "dop_source":"https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
+              "dop_layers":"bebb_dop20c",
+              "dgm_source":"https://isk.geobasis-bb.de/mapproxy/dgm/service/wms?",
+              "dgm_layers":"dgm"
+          },
+          "merge":{
+              "stage1_maxdst_point":1.0,
+              "stage1_maxdst_line":1.0,
+              "stage2_maxdst_point":1.0,
+              "stage2_maxdst_line":1.0,
+              "stage3_maxdst_line":0.2,
+              "stage3_maxdst_line2":2.0,
+              "stage3_maxdeviation_followline":5.0
+          },
+          "pdf":{
+              "grenzpunkt_svg":null,
+              "pfeil_svg":null,
+              "nordpfeil_svg":null,
+              "gebauede_loeschen_svg":null,
+              "ax_flur_stil":{
+                "fill_color":"#000",
+                "fill":false,
+                "outline_color":"#ccc",
+                "outline_thickness":3.0,
+                "outline_dash":"5-5-5-5-5-5",
+                "outline_overprint":true,
+                "pattern_svg":null,
+                "pattern_placement":null
+              },
+              "ax_bauraum_stil":{
+                "fill_color":"#000",
+                "fill":false,
+                "outline_color":"#ff0000",
+                "outline_thickness":3.0,
+                "outline_dash":"5-5-5-5-5-5",
+                "outline_overprint":true,
+                "pattern_svg":null,
+                "pattern_placement":null
+              },
+              "lagebez_mit_hsnr":{
+                
+              }
+          },
+          "style":{
+              "ebenen_ordnung":[
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i",
+                "j",
+                "l",
+                "m",
+                "n",
+                "o",
+                "p",
+                "q",
+                "r",
+                "s",
+                "t",
+                "u",
+                "v",
+                "w",
+                "x",
+                "y",
+                "z",
+                "za",
+                "zb",
+                "zc",
+                "zd"
+              ],
+              "ebenen":{
+                "b":{
+                    "name":"AX_Flurstueck",
+                    "fill_color":"#ccc",
+                    "outline_color":"#000000",
+                    "outline_thickness":2
+                },
+                "c":{
+                    "name":"AX_Meer",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "d":{
+                    "name":"AX_StehendesGewaesser",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "e":{
+                    "name":"AX_Fliessgewaesser",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "f":{
+                    "name":"AX_BauwerkImVerkehrsbereich",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "g":{
+                    "name":"AX_SonstigesBauwerkOderSonstigeEinrichtung",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "h":{
+                    "name":"AX_BauwerkOderAnlageFuerIndustrieUndGewerbe",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "i":{
+                    "name":"AX_Turm",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "j":{
+                    "name":"AX_Bauteil",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "k":{
+                    "name":"AX_Gebaeude",
+                    "fill_color":"#bdbdbd",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "l":{
+                    "name":"AX_Gebaeude",
+                    "fill_color":"#bdbdbd",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "m":{
+                    "name":"AX_Bahnverkehr",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "n":{
+                    "name":"AX_Platz",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "o":{
+                    "name":"AX_Weg",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "p":{
+                    "name":"AX_Strassenverkehr",
+                    "fill_color":"#cccccc",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "q":{
+                    "name":"AX_Friedhof",
+                    "fill_color":"#638062",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "r":{
+                    "name":"AX_SportFreizeitUndErholungsflaeche",
+                    "fill_color":"#61a360",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "s":{
+                    "name":"AX_FlaecheBesondererFunktionalerPraegung",
+                    "fill_color":"#e364e1",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "t":{
+                    "name":"AX_FlaecheGemischterNutzung",
+                    "fill_color":"#648ae3",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "u":{
+                    "name":"AX_TagebauGrubeSteinbruch",
+                    "fill_color":"#9c9c9c",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "v":{
+                    "name":"AX_Halde",
+                    "fill_color":"#7a7463",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "w":{
+                    "name":"AX_IndustrieUndGewerbeflaeche",
+                    "fill_color":"#fcba03",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "x":{
+                    "name":"AX_Wohnbauflaeche",
+                    "fill_color":"#ffadbe",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "y":{
+                    "name":"AX_UnlandVegetationsloseFlaeche",
+                    "fill_color":"#d9d9d9",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "z":{
+                    "name":"AX_Sumpf",
+                    "fill_color":"#00a367",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "za":{
+                    "name":"AX_Heide",
+                    "fill_color":"#b8005c",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zb":{
+                    "name":"AX_Gehoelz",
+                    "fill_color":"#03b800",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zc":{
+                    "name":"AX_Wald",
+                    "fill_color":"#51ed4e",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zd":{
+                    "name":"AX_Landwirtschaft",
+                    "fill_color":"#fff596",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "ze":{
+                    "name":"AX_BauRaumOderBodenordnungsrecht",
+                    "fill_color":"#ff0000",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                }
+              }
+          }
+        };
+    </script>
+
     <!--LEAFLET_CSS_LINK-->
     <!--LEAFLET_JS-->
     <!--LEAFLET_DRAW_JS-->
     <!--MAIN_CSS-->
+
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
     function base64ToArrayBuffer(base64) {
@@ -86,238 +351,6 @@
       gis_feldbloecke_datum: "11.02.2022",
     };
     window.risse = {};
-    window.configuration = {
-      map: {
-        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
-        dop_layers: "bebb_dop20c",
-        dgm_source: "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms?",
-        dgm_layers: "dgm"
-      },
-      merge: {
-        stage1_maxdst_point: 1.0,
-        stage1_maxdst_line: 1.0,
-        stage2_maxdst_point: 1.0,
-        stage2_maxdst_line: 1.0,
-        stage3_maxdst_line: 0.2,
-        stage3_maxdst_line2: 2.0,
-        stage3_maxdeviation_followline: 5.0,
-      },
-      style: {
-        ebenen_ordnung: ["b","c","d","e","f","g","h","i","j","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","za","zb","zc","zd"],
-          ebenen: {
-        "b": {
-          name: "AX_Flurstueck",
-          fill_color: "#ccc",
-          outline_color: "#000000",
-          outline_thickness: 2
-        },
-        "c": {
-          name: "AX_Meer",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "d": {
-          name: "AX_StehendesGewaesser",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "e": {
-          name: "AX_Fliessgewaesser",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "f": {
-          name: "AX_BauwerkImVerkehrsbereich",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "g": {
-          name: "AX_SonstigesBauwerkOderSonstigeEinrichtung",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "h": {
-          name: "AX_BauwerkOderAnlageFuerIndustrieUndGewerbe",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "i": {
-          name: "AX_Turm",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "j": {
-          name: "AX_Bauteil",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "k": {
-          name: "AX_Gebaeude",
-          fill_color: "#bdbdbd",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "l": {
-          name: "AX_Gebaeude",
-          fill_color: "#bdbdbd",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "m": {
-          name: "AX_Bahnverkehr",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "n": {
-          name: "AX_Platz",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "o": {
-          name: "AX_Weg",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "p": {
-          name: "AX_Strassenverkehr",
-          fill_color: "#cccccc",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "q": {
-          name: "AX_Friedhof",
-          fill_color: "#638062",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "r": {
-          name: "AX_SportFreizeitUndErholungsflaeche",
-          fill_color: "#61a360",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "s": {
-          name: "AX_FlaecheBesondererFunktionalerPraegung",
-          fill_color: "#e364e1",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "t": {
-          name: "AX_FlaecheGemischterNutzung",
-          fill_color: "#648ae3",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "u": {
-          name: "AX_TagebauGrubeSteinbruch",
-          fill_color: "#9c9c9c",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "v": {
-          name: "AX_Halde",
-          fill_color: "#7a7463",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "w": {
-          name: "AX_IndustrieUndGewerbeflaeche",
-          fill_color: "#fcba03",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "x": {
-          name: "AX_Wohnbauflaeche",
-          fill_color: "#ffadbe",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "y": {
-          name: "AX_UnlandVegetationsloseFlaeche",
-          fill_color: "#d9d9d9",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "z": {
-          name: "AX_Sumpf",
-          fill_color: "#00a367",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "za": {
-          name: "AX_Heide",
-          fill_color: "#b8005c",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zb": {
-          name: "AX_Gehoelz",
-          fill_color: "#03b800",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zc": {
-          name: "AX_Wald",
-          fill_color: "#51ed4e",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zd": {
-          name: "AX_Landwirtschaft",
-          fill_color: "#fff596",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "ze": {
-          name: "AX_BauRaumOderBodenordnungsrecht",
-          fill_color: "#ff0000",
-          outline_color: "#000000",
-          outline_thickness: 1
-        }
-      }
-    },
-    pdf: {
-      grenzpunkt_svg: null,
-      pfeil_svg: null,
-      nordpfeil_svg: null,
-      gebauede_loeschen_svg: null,
-      ax_flur_stil: {
-        fill_color: "#000",
-        fill: false,
-        outline_color: "#ccc",
-        outline_thickness: 3.0,
-        outline_dash: "5-5-5-5-5-5",
-        outline_overprint: true,
-        pattern_svg: null,
-        pattern_placement: null,
-      },
-      ax_bauraum_stil: {
-        fill_color: "#000",
-        fill: false,
-        outline_color: "#ff0000",
-        outline_thickness: 3.0,
-        outline_dash: "5-5-5-5-5-5",
-        outline_overprint: true,
-        pattern_svg: null,
-        pattern_placement: null,
-      },
-      lagebez_mit_hsnr: {
-
-      },
-    }
-  }; // default config object
 
     // INJECT_SELECT_MAP_JS
 
