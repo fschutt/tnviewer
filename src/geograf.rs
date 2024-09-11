@@ -6,7 +6,7 @@ use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConfor
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType}, nas::{only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
+use crate::{csv::{self, CsvDataType}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -485,6 +485,29 @@ pub fn export_splitflaechen(
     let gebaeude = get_gebaeude(nas_xml, &riss_extent_reprojected);
     let riss_von = (num_riss, total_risse);
 
+    let flur_texte = fluren.get_labels(&Some(riss_extent_reprojected.get_poly()))
+    .into_iter()
+    .map(|fl| TextPlacement {
+        kuerzel: fl.text(&calc_pdf_final),
+        status: TextStatus::StaysAsIs,
+        area: 1000,
+        pos: fl.pos,
+        ref_pos: fl.pos,
+        poly: SvgPolygon::default(),
+    })
+    .collect::<Vec<_>>();
+    if !flur_texte.is_empty() {
+        files.push((parent_dir.clone(), format!("Flur_Texte_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&flur_texte)));        
+    }
+    log_status(&format!("[{num_riss} / {total_risse}] {} Flur-Texte", flur_texte.len()));
+
+
+    let flurstueck_texte = flst.get_labels(&Some(riss_extent_reprojected.get_poly()));
+    if !flurstueck_texte.is_empty() {
+        files.push((parent_dir.clone(), format!("Flurstueck_Texte_{pdir_name}.dxf").into(), texte_zu_dxf_datei(&flurstueck_texte)));        
+    }
+    log_status(&format!("[{num_riss} / {total_risse}] {} Flurstueck-Texte", flurstueck_texte.len()));
+
     log_status(&format!("[{num_riss} / {total_risse}] Optimiere Beschriftungen... {:?}", riss_von));
     let aenderungen_texte_optimized = crate::optimize::optimize_labels(
         &mini_split_nas,
@@ -641,8 +664,9 @@ pub fn get_aenderungen_rote_linien(
     // -> deduplicate + join ends
 
     let mut alle_linien_zu_checken = splitflaechen.iter().flat_map(|s| {
-        let mut lines = s.poly_cut.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
-        lines.extend(s.poly_cut.inner_rings.iter().flat_map(l_to_points));
+        let poly_cut = nas::cleanup_poly(&s.poly_cut);
+        let mut lines = poly_cut.outer_rings.iter().flat_map(l_to_points).collect::<Vec<_>>();
+        lines.extend(poly_cut.inner_rings.iter().flat_map(l_to_points));
         lines
     }).collect::<Vec<_>>();
     alle_linien_zu_checken.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
@@ -658,12 +682,14 @@ pub fn get_aenderungen_rote_linien(
     lines_end.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
     lines_end.dedup();
 
-    lines_end.iter().map(|s| SvgLine {
-        points: vec![s.0, s.1]
-    }).collect()
+    merge_lines_again(lines_end)
 
+    /*
+    let lines_end = lines_end.iter().map(|s| SvgLine {
+        points: vec![s.0, s.1]
+    }).collect::<Vec<_>>();
+    */
     // TODO: buggy!
-    // merge_lines_again(lines_end)
 }
 
 fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
@@ -848,7 +874,12 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        let shared_lines = get_shared_lines(&a.poly_cut, &b.poly_cut);
+        let mut apoly = nas::cleanup_poly(&a.poly_cut);
+        let mut bpoly = nas::cleanup_poly(&b.poly_cut);
+        apoly.correct_almost_touching_points(&bpoly, 0.1, true);
+        apoly.insert_points_from(&bpoly, 0.1);
+        bpoly.insert_points_from(&apoly, 0.1);
+        let shared_lines = get_shared_lines(&apoly, &bpoly);
         let mut shared_lines_2 = shared_lines.into_iter()
         .filter_map(|s| {
             let first = s.points.first()?;

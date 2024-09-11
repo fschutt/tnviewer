@@ -487,6 +487,26 @@ pub struct FlurstueckeInPdfSpace {
 }
 
 impl Flurstuecke {
+
+    pub fn get_labels(&self, rect: &Option<SvgPolygon>) -> Vec<TextPlacement> {
+        self.flst.iter().filter_map(|flst| {
+            let poly = match rect {
+                Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
+                None => flst.poly.clone(),
+            };
+            let pos = poly.get_tertiary_label_pos()?;
+            let flst_id = FlstIdParsed::from_str(flst.attributes.get("flurstueckskennzeichen")?).parse_num()?.format_str();
+            Some(TextPlacement {
+                kuerzel: flst_id,
+                pos: pos,
+                ref_pos: pos,
+                poly,
+                status: TextStatus::StaysAsIs,
+                area: 1000,
+            })
+        }).collect()
+    }
+
     pub fn to_pdf_space(&self, riss: &RissExtentReprojected, rc: &RissConfig) -> FlurstueckeInPdfSpace {
         FlurstueckeInPdfSpace {
             flst: self.flst.iter().map(|tp| TaggedPolygon {

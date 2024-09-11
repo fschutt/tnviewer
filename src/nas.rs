@@ -2097,7 +2097,6 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 }
 
 pub fn cleanup_poly(s: &SvgPolygon) -> SvgPolygon {
-    let s = s.round_to_3dec();
 
     let outer_rings = s.outer_rings.iter()
     .filter_map(|l| if SvgPolygon::from_line(l).is_zero_area() { None } else { Some(l) })
