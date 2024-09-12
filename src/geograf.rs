@@ -1,5 +1,6 @@
 use std::{collections::{BTreeMap, BTreeSet}, io::BufWriter, path::PathBuf};
 
+use csscolorparser::Color;
 use dxf::{Header, Vector, XData, XDataItem};
 use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
@@ -10,27 +11,21 @@ use crate::{csv::{self, CsvDataType}, nas::{self, only_touches_internal, point_i
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
+fn update_dxf_x(zone: usize, pos: f64) -> f64 {
+    format!("{zone}{pos}").parse().unwrap_or_default()
+}
+
 /// Returns the dxf bytes
 pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
     use dxf::Drawing;
     use dxf::entities::*;
 
     let mut drawing = Drawing::new();
-
-    fn update_x(zone: usize, pos: f64) -> f64 {
-        format!("{zone}{pos}").parse().unwrap_or_default()
-    }
+    let zone = 33;
 
     for text in texte {
-        let newx = update_x(33, text.pos.x);
+        let newx = update_dxf_x(zone, text.pos.x);
         let location = dxf::Point { x: newx, y: text.pos.y, z: 0.0 };
-        let reference_pos = if text.ref_pos.equals(&text.pos) {
-            dxf::Point::origin()
-        } else {
-            let refloc_newx = update_x(33, text.ref_pos.x);
-            dxf::Point { x: refloc_newx, y: text.ref_pos.y, z: 0.0 }    
-        };
-
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 0.0,
             location,
@@ -45,10 +40,43 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
             text_generation_flags: 0,
-            second_alignment_point: reference_pos,
+            second_alignment_point: dxf::Point::origin(),
             normal: Vector::z_axis(),
             horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
             vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
+        }));
+        let _entity_ref = drawing.add_entity(entity);
+    }
+
+    let v = Vec::new();
+    let mut buf = BufWriter::new(v);
+    let _ = drawing.save(&mut buf);
+    buf.into_inner().unwrap_or_default()
+}
+
+pub fn lines_to_dxf(lines: &[SvgLine]) -> Vec<u8> {
+    use dxf::Drawing;
+    use dxf::entities::*;
+
+    let mut drawing = Drawing::new();
+    let zone = 33;
+
+    for l in lines.iter() {
+        let entity = Entity::new(EntityType::LwPolyline(LwPolyline { 
+            flags: 0,
+            constant_width: 0.0,
+            thickness: 0.0,
+            vertices: l.points.iter().map(|p| {
+                dxf::LwPolylineVertex {
+                    x: update_dxf_x(zone, p.x),
+                    y: p.y,
+                    id: 0,
+                    starting_width: 0.0,
+                    ending_width: 0.0,
+                    bulge: 0.0,
+                }
+            }).collect(),
+            extrusion_direction: Vector::z_axis(),
         }));
         let _entity_ref = drawing.add_entity(entity);
     }
@@ -134,9 +162,14 @@ pub async fn export_aenderungen_geograf(
         Err(e) => return Vec::new(),
     };
 
+    let mut antragsnr = projekt_info.antragsnr.trim().to_string();
+    if antragsnr.is_empty() {
+        antragsnr = "Aenderungen".to_string();
+    }
+    
     // RISSE -> risse.shp
     if !risse.is_empty() {
-        append_shp(&mut files, "RISSE", None, generate_risse_shp(&risse, &split_nas.crs));
+        files.push((None, format!("{antragsnr}.RISSE.dxf").into(), generate_risse_shp(&risse, &split_nas.crs)));
     }
 
     // Anschlussrisse PDFs
@@ -155,10 +188,6 @@ pub async fn export_aenderungen_geograf(
     log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
 
     let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
-    let mut antragsnr = projekt_info.antragsnr.trim().to_string();
-    if antragsnr.is_empty() {
-        antragsnr = "Aenderungen".to_string();
-    }
     files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
 
     log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.0.len()));
@@ -321,8 +350,8 @@ pub fn calc_splitflaechen(
 pub fn generate_risse_shp(
     riss_map: &Risse,
     target_crs: &str,
-) -> ShpReturn {
-    lines_to_shp(&riss_map.iter().filter_map(|(id, re)| {
+) -> Vec<u8> {
+    lines_to_dxf(&riss_map.iter().filter_map(|(id, re)| {
         let re = re.get_extent(target_crs, 0.0)?;
         let reproject = re.reproject(target_crs, &mut Vec::new())?;
         let rect = reproject.get_rect();
@@ -460,7 +489,7 @@ pub fn export_splitflaechen(
     let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq_flurstuecke);
     if !aenderungen_nutzungsarten_linien.is_empty() {
-        append_shp(files, &format!("Linien_NAGrenze_Untergehend_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
+        files.push((parent_dir.clone(), format!("Linien_NAGrenze_Untergehend_{pdir_name}.dxf").into(), lines_to_dxf(&aenderungen_nutzungsarten_linien)));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
 
@@ -516,7 +545,7 @@ pub fn export_splitflaechen(
     .map(|(start, end)| SvgLine { points: vec![start, end] })
     .collect::<Vec<_>>();
     if !beschriftungen_optimized_linien.is_empty() {
-        append_shp(files, &format!("Beschriftung_Linien_{pdir_name}"), parent_dir.clone(), lines_to_shp(&beschriftungen_optimized_linien));
+        files.push((parent_dir.clone(), format!("Beschriftung_Linien_{pdir_name}.dxf").into(), lines_to_dxf(&beschriftungen_optimized_linien)));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Beschriftungs-Linien generiert.", beschriftungen_optimized_linien.len()));
 
