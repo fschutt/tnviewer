@@ -37,7 +37,7 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
             text_generation_flags: 0,
-            second_alignment_point: dxf::Point::origin(),
+            second_alignment_point: dxf::Point { x: 5.0, y: 5.0, z: 0.0 },
             normal: Vector::z_axis(),
             horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
             vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
