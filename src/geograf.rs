@@ -160,7 +160,8 @@ pub async fn export_aenderungen_geograf(
 
     log_status(&format!("OK: {num_eigentuemer} Eigentümer exportiert in XLSX"));
 
-    let lq = nas_xml.get_linien_quadtree();
+    let lq_flurstuecke = nas_xml.get_linien_quadtree();
+    let lq_flurstuecke_und_nutzungsarten = split_nas.get_linien_quadtree();
 
     let risse2 = if render_hintergrund_vorschau {
         risse.iter().map(|s| s.1.clone()).collect::<Vec<_>>()
@@ -188,7 +189,8 @@ pub async fn export_aenderungen_geograf(
             None,
             1,
             1,
-            &lq,
+            &lq_flurstuecke,
+            &lq_flurstuecke_und_nutzungsarten,
             &mut hintergrund_cache,
         );
     } else {
@@ -205,7 +207,8 @@ pub async fn export_aenderungen_geograf(
                 Some(r.clone()),
                 i + 1,
                 risse.len(),
-                &lq,
+                &lq_flurstuecke,
+                &lq_flurstuecke_und_nutzungsarten,
                 &mut hintergrund_cache,
             );
         }
@@ -354,7 +357,8 @@ pub fn export_splitflaechen(
     riss: Option<RissConfig>,
     num_riss: usize,
     total_risse: usize,
-    lq: &LinienQuadTree,
+    lq_flurstuecke: &LinienQuadTree,
+    lq_flurstuecke_und_nutzungsarten: &LinienQuadTree,
     hintergrund_cache: &mut HintergrundCache,
 ) {
 
@@ -446,13 +450,13 @@ pub fn export_splitflaechen(
     files.push((parent_dir.clone(), format!("Legende_{pdir_name}.xlsx").into(), legende));
 
     let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
-    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq);
+    let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq_flurstuecke);
     if !aenderungen_nutzungsarten_linien.is_empty() {
         append_shp(files, &format!("Linien_NAGrenze_Untergehend_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_nutzungsarten_linien));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
 
-    let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq);
+    let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq_flurstuecke_und_nutzungsarten);
     if !aenderungen_rote_linien.is_empty() {
         append_shp(files, &format!("Linien_Rot_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
     }

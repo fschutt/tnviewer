@@ -1806,7 +1806,6 @@ impl SplitNasXml {
         }
     }
     
-    /*
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
 
         let mut alle_linie_split_flurstuecke = self.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
@@ -1822,7 +1821,6 @@ impl SplitNasXml {
 
         LinienQuadTree::new(alle_linie_split_flurstuecke)
     }
-    */
 
     pub fn get_flst_part_by_id(&self, flstpartid: &str) -> Option<&TaggedPolygon> {
         let split = flstpartid.split(":").collect::<Vec<_>>();
