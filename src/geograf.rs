@@ -690,14 +690,11 @@ pub fn get_aenderungen_rote_linien(
     lines_end.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
     lines_end.dedup();
 
-    merge_lines_again(lines_end)
-
-    /*
-    let lines_end = lines_end.iter().map(|s| SvgLine {
+    lines_end.iter().map(|s| SvgLine {
         points: vec![s.0, s.1]
-    }).collect::<Vec<_>>();
-    */
-    // TODO: buggy!
+    }).collect::<Vec<_>>()
+
+    // merge_lines_again(lines_end) // TODO: buggy!
 }
 
 fn merge_lines_again(l: Vec<(SvgPoint, SvgPoint)>) -> Vec<SvgLine> {
