@@ -62,21 +62,14 @@ pub fn lines_to_dxf(lines: &[SvgLine]) -> Vec<u8> {
     let zone = 33;
 
     for l in lines.iter() {
-        let entity = Entity::new(EntityType::LwPolyline(LwPolyline { 
-            flags: 0,
-            constant_width: 0.0,
-            thickness: 0.0,
-            vertices: l.points.iter().map(|p| {
-                dxf::LwPolylineVertex {
-                    x: p.x,
-                    y: p.y,
-                    id: 0,
-                    starting_width: 0.0,
-                    ending_width: 0.0,
-                    bulge: 0.0,
-                }
-            }).collect(),
-            extrusion_direction: Vector::z_axis(),
+        let entity = Entity::new(EntityType::Polyline({
+            let mut m = Polyline::default();
+            for pos in l.points.iter() {
+                let newx = update_dxf_x(zone, pos.x);
+                let location = dxf::Point { x: newx, y: pos.y, z: 0.0 };
+                m.add_vertex(&mut drawing, Vertex::new(location));
+            }
+            m
         }));
         let _entity_ref = drawing.add_entity(entity);
     }
