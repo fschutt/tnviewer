@@ -23,9 +23,17 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
 
     for text in texte {
         let newx = update_x(33, text.pos.x);
+        let location = dxf::Point { x: newx, y: text.pos.y, z: 0.0 };
+        let reference_pos = if text.ref_pos.equals(&text.pos) {
+            dxf::Point::origin()
+        } else {
+            let refloc_newx = update_x(33, text.ref_pos.x);
+            dxf::Point { x: refloc_newx, y: text.ref_pos.y, z: 0.0 }    
+        };
+
         let entity = Entity::new(EntityType::Text(dxf::entities::Text {
             thickness: 0.0,
-            location: dxf::Point { x: newx, y: text.pos.y, z: 0.0 },
+            location,
             text_height: 5.0,
             value: text.kuerzel.clone(),
             rotation: 0.0,
@@ -37,7 +45,7 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
                 crate::ui::TextStatus::StaysAsIs => "stayasis",
             }.to_string(),
             text_generation_flags: 0,
-            second_alignment_point: dxf::Point { x: 5.0, y: 5.0, z: 0.0 },
+            second_alignment_point: reference_pos,
             normal: Vector::z_axis(),
             horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
             vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
