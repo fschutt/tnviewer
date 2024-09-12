@@ -235,6 +235,13 @@ impl FlstIdParsedNumber {
         Some(s) => format!("{}/{}", self.flst_zaehler, s),
        }
     }
+
+    pub fn format_dxf(&self) -> String {
+        match self.flst_nenner {
+         Some(0) | None => self.flst_zaehler.to_string(),
+         Some(s) => format!("{}_{}", self.flst_zaehler, s),
+        }
+     }
     pub fn format_str_zero(&self) -> String {
         let nenner = self.flst_nenner.unwrap_or(0);
         format!("{}/{}", self.flst_zaehler, nenner)

@@ -522,7 +522,7 @@ impl Flurstuecke {
                 None => flst.poly.clone(),
             };
             let pos = poly.get_tertiary_label_pos()?;
-            let flst_id = FlstIdParsed::from_str(flst.attributes.get("flurstueckskennzeichen")?).parse_num()?.format_str();
+            let flst_id = FlstIdParsed::from_str(flst.attributes.get("flurstueckskennzeichen")?).parse_num()?.format_dxf();
             Some(TextPlacement {
                 kuerzel: flst_id,
                 pos: pos,
