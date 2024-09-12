@@ -293,6 +293,33 @@ impl RissExtentReprojected {
             max_y: self.max_y,
         }
     }
+    pub fn get_rect_line(&self) -> SvgLine {
+        let rect = self.get_rect();
+        SvgLine {
+            points: vec![
+                SvgPoint {
+                    x: rect.min_x,
+                    y: rect.min_y,
+                },
+                SvgPoint {
+                    x: rect.min_x,
+                    y: rect.max_y,
+                },
+                SvgPoint {
+                    x: rect.max_x,
+                    y: rect.max_y,
+                },
+                SvgPoint {
+                    x: rect.max_x,
+                    y: rect.min_y,
+                },
+                SvgPoint {
+                    x: rect.min_x,
+                    y: rect.min_y,
+                },
+            ]
+        }
+    }
     pub fn get_poly(&self) -> SvgPolygon {
 
         let header_width_mm = 175.0;
