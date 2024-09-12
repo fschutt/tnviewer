@@ -68,7 +68,7 @@ pub fn lines_to_dxf(lines: &[SvgLine]) -> Vec<u8> {
             thickness: 0.0,
             vertices: l.points.iter().map(|p| {
                 dxf::LwPolylineVertex {
-                    x: update_dxf_x(zone, p.x),
+                    x: p.x,
                     y: p.y,
                     id: 0,
                     starting_width: 0.0,
@@ -166,7 +166,7 @@ pub async fn export_aenderungen_geograf(
     if antragsnr.is_empty() {
         antragsnr = "Aenderungen".to_string();
     }
-    
+
     // RISSE -> risse.shp
     if !risse.is_empty() {
         files.push((None, format!("{antragsnr}.RISSE.dxf").into(), generate_risse_shp(&risse, &split_nas.crs)));
@@ -495,7 +495,7 @@ pub fn export_splitflaechen(
 
     let aenderungen_rote_linien = get_aenderungen_rote_linien(&splitflaechen, lq_flurstuecke_und_nutzungsarten);
     if !aenderungen_rote_linien.is_empty() {
-        append_shp(files, &format!("Linien_Rot_{pdir_name}"), parent_dir.clone(), lines_to_shp(&aenderungen_rote_linien));
+        files.push((parent_dir.clone(), format!("Linien_Rot_{pdir_name}.dxf").into(), lines_to_dxf(&aenderungen_rote_linien)));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} rote Linien generiert.", aenderungen_rote_linien.len()));
 
