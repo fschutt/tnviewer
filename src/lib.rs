@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPolygon, TaggedPolygon, LATLON_STRING};
-use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, Risse, StyleConfig};
+use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPoint, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, reproject_point_back_into_latlon, reproject_point_into_latlon, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
 use uuid_wasm::{log_status, log_status_clear};
@@ -121,6 +121,71 @@ pub fn get_problem_geojson() -> String {
         geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
         bounds: s2.get_fit_bounds(),
     }).unwrap_or_default()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GetCoordsReturn {
+    coords: [LatLng;2],
+    projection: String,
+}
+
+#[wasm_bindgen]
+pub fn get_header_coords(rc: String, utm_crs: Option<String>) -> String {
+
+    let utm_crs = utm_crs.unwrap_or_else(|| {
+        "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33".to_string()
+    });
+
+    let rc = match serde_json::from_str::<RissConfig>(rc.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let header_width_mm = 175.0;
+    let header_height_mm = 35.0;
+    let header_width_m = header_width_mm * rc.scale as f64 / 1000.0;
+    let header_height_m = header_height_mm * rc.scale as f64 / 1000.0;
+
+    let extent = match rc.get_extent_special(&utm_crs) {
+        Some(o) => o,
+        None => return "error1".to_string(),
+    };
+    
+    let extent = match extent.reproject(&utm_crs) {
+        Some(o) => o,
+        None => return "error2".to_string(),
+    };
+
+    let a = match reproject_point_back_into_latlon(&SvgPoint {
+        x: extent.min_x, 
+        y: extent.max_y,
+    }, &utm_crs) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+
+    let b = match reproject_point_back_into_latlon(&SvgPoint { 
+        x: extent.min_x + header_width_m, 
+        y: extent.max_y - header_height_m 
+    }, &utm_crs) {
+        Ok(o) => o,
+        Err(e) => return e,
+    };
+
+    serde_json::to_string(&GetCoordsReturn {
+        coords: [
+            LatLng {
+                lat: a.y,
+                lng: a.x,
+            },
+            LatLng {
+                lat: b.y,
+                lng: b.x,
+            }
+        ],
+        projection: "utm".to_string(),
+    }).unwrap_or_default()
+
 }
 
 #[wasm_bindgen]

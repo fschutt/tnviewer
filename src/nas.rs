@@ -1662,18 +1662,22 @@ impl UseRadians {
 pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: UseRadians) -> SvgLine {
     SvgLine {
         points: line.points.iter().filter_map(|p| {
-            let mut point3d = if use_radians.for_source()  {
-                (p.x.to_radians(), p.y.to_radians(), 0.0_f64) 
-            } else {
-                (p.x, p.y, 0.0_f64) 
-            };
-            proj4rs::transform::transform(source, target, &mut point3d).ok()?;
-            Some(SvgPoint {
-                x: if use_radians.for_target() { point3d.0 } else { point3d.0.to_degrees() }, 
-                y: if use_radians.for_target() { point3d.1 } else { point3d.1.to_degrees() },
-            })
+            reproject_point(p, source, target, use_radians)
         }).collect()
     }
+}
+
+pub fn reproject_point(p: &SvgPoint, source: &Proj, target: &Proj, use_radians: UseRadians) -> Option<SvgPoint> {
+    let mut point3d = if use_radians.for_source()  {
+        (p.x.to_radians(), p.y.to_radians(), 0.0_f64) 
+    } else {
+        (p.x, p.y, 0.0_f64) 
+    };
+    proj4rs::transform::transform(source, target, &mut point3d).ok()?;
+    Some(SvgPoint {
+        x: if use_radians.for_target() { point3d.0 } else { point3d.0.to_degrees() }, 
+        y: if use_radians.for_target() { point3d.1 } else { point3d.1.to_degrees() },
+    })
 }
 
 pub fn reproject_poly(

@@ -170,7 +170,7 @@ pub async fn export_aenderungen_geograf(
         files.push((Some("Anschlussrisse".to_string()), format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
 
         let ex = rc.get_extent_special(&split_nas.crs)
-        .and_then(|s| s.reproject(&split_nas.crs, &mut Vec::new()));
+        .and_then(|s| s.reproject(&split_nas.crs));
 
         let line = match ex {
             Some(s) => s.get_rect_line(),
@@ -400,12 +400,12 @@ pub fn export_splitflaechen(
         None => return,
     };
 
-    let riss_extent_reprojected = match riss_extent.reproject(&split_nas.crs, &mut Vec::new()) {
+    let riss_extent_reprojected = match riss_extent.reproject(&split_nas.crs) {
         Some(s) => s,
         None => return,
     };
 
-    let riss_extent_with_border_reprojected = match riss_extent_with_border.reproject(&split_nas.crs, &mut Vec::new()) {
+    let riss_extent_with_border_reprojected = match riss_extent_with_border.reproject(&split_nas.crs) {
         Some(s) => s,
         None => return,
     };

@@ -291,6 +291,7 @@
     var MARKER_NORMAL_WEBP = "";
     var MARKER_MIDDLE_WEBP = "";
     var RISS_COLOR = "blue";
+    var AVOID_COLOR = "red";
 
     var drag_icon_normal_src = 'data:image/png;charset=utf-8;base64,' + MARKER_NORMAL_WEBP;
     var drag_icon_normal = L.icon({
@@ -610,6 +611,7 @@
       removeRissGebietEinzeichnenLayer();
       for (var [riss_id, riss_objekte] of Object.entries(leaflet_risse)) {
         map.removeLayer(riss_objekte.leaflet_rect);
+        map.removeLayer(riss_objekte.leaflet_rect_avoid);
         map.removeLayer(riss_objekte.leaflet_center_handle);
       }
       leaflet_risse = {};
@@ -628,19 +630,27 @@
         riss_config.lon, 
         riss_config.lat
       );
-
+      var crs = null;
+      if (window.split_flurstuecke_original) {
+        crs = window.split_flurstuecke_original.crs;
+      }
+      var avoid_rect = JSON.parse(get_header_coords(JSON.stringify(riss_config), null));
       if (leaflet_risse[riss_id]) {
         leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+        leaflet_risse[riss_id].leaflet_rect_avoid.setBounds(avoid_rect.coords);
         leaflet_risse[riss_id].leaflet_center_handle.setLatLng({ lat:riss_config.lat,lng:riss_config.lon });
       } else {
         var map_extent = L.rectangle(rect.coords, {color: RISS_COLOR, weight: 2});
+        var avoid_extent = L.rectangle(avoid_rect.coords, {color: AVOID_COLOR, weight: 1});
         var map_handle_center = L.marker({ lat:riss_config.lat,lng:riss_config.lon }, { draggable: true, icon: drag_icon_middle, riss_id: riss_id });
         map_handle_center.on('drag', function(event){ drag_handle(event) });
         leaflet_risse[riss_id] = {
           leaflet_rect: map_extent,
+          leaflet_rect_avoid: avoid_extent,
           leaflet_center_handle: map_handle_center,
         };
         map_extent.addTo(map);
+        avoid_extent.addTo(map);
         map_handle_center.addTo(map);
       }
       var myLayer = L.layerGroup([]);
@@ -705,6 +715,12 @@
     window.risse[riss_id].lon = center_lat_lng.lng;
     var rect = calculate_coords(width - (PADDING * 2.0), height - (PADDING * 2.0), scale, center_lat_lng.lng, center_lat_lng.lat);
     leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+    var crs = null;
+    if (window.split_flurstuecke_original) {
+      crs = window.split_flurstuecke_original.crs;
+    }
+    var avoid_rect = JSON.parse(get_header_coords(JSON.stringify(window.risse[riss_id]), null));
+    leaflet_risse[riss_id].leaflet_rect_avoid.setBounds(avoid_rect.coords);
   }
 
   function projectInfoEdit(event) {

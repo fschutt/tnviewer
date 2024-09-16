@@ -221,7 +221,7 @@ pub struct RissExtent {
 
 impl RissExtent {
     // latlon -> 
-    pub fn reproject(&self, target_crs: &str, log: &mut Vec<String>) -> Option<RissExtentReprojected> {
+    pub fn reproject(&self, target_crs: &str) -> Option<RissExtentReprojected> {
         
         let mut coords = self.coords.iter().map(|l| {
             (l.lng.to_radians(), l.lat.to_radians(), 0.0)
@@ -590,7 +590,7 @@ impl HintergrundCache {
             let id = rc.get_id();
             log_status(&format!("[{i} / {len}] BUILD id = {:?}", rc.get_id()));
 
-            let ex = rc.get_extent(&target_crs, 0.0).and_then(|q| q.reproject(target_crs, &mut Vec::new()));
+            let ex = rc.get_extent(&target_crs, 0.0).and_then(|q| q.reproject(target_crs));
             let riss_extent = match ex {
                 Some(s) => s,
                 None => continue,
