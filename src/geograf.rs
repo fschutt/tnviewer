@@ -169,7 +169,7 @@ pub async fn export_aenderungen_geograf(
         files.push((Some("Anschlussrisse".to_string()), format!("HORZ_{i}_von_{len}.pdf").into(), pdf_horz));
         files.push((Some("Anschlussrisse".to_string()), format!("VERT_{i}_von_{len}.pdf").into(), pdf_vert));
 
-        let ex = rc.get_extent(&split_nas.crs, 0.0)
+        let ex = rc.get_extent_special(&split_nas.crs)
         .and_then(|s| s.reproject(&split_nas.crs, &mut Vec::new()));
 
         let line = match ex {

@@ -400,6 +400,10 @@ impl RissConfig {
         RissConfigId(HighwayHasher::default().hash256(&bytes))
     }
 
+    pub fn get_extent_special(&self, utm_crs: &str) -> Option<RissExtent> {
+        self.get_extent(utm_crs, 16.5 * 2.0)
+    }
+
     pub fn get_extent(&self, utm_crs: &str, padding_mm: f64) -> Option<RissExtent> {
 
         let height = self.height_mm as f64 - padding_mm;

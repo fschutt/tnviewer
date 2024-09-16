@@ -615,13 +615,15 @@
       leaflet_risse = {};
     }
 
+  window.PADDING = 16.5; // mm
+  
   function rerenderRisse() {
     removeRisseLayer();
     removeRissGebietLayer();
     for (var [riss_id, riss_config] of Object.entries(window.risse)) {
       var rect = calculate_coords(
-        riss_config.width_mm, 
-        riss_config.height_mm, 
+        riss_config.width_mm - (PADDING * 2.0), 
+        riss_config.height_mm - (PADDING * 2.0), 
         riss_config.scale, 
         riss_config.lon, 
         riss_config.lat
@@ -701,7 +703,7 @@
     var scale = window.risse[riss_id].scale;
     window.risse[riss_id].lat = center_lat_lng.lat;
     window.risse[riss_id].lon = center_lat_lng.lng;
-    var rect = calculate_coords(width, height, scale, center_lat_lng.lng, center_lat_lng.lat);
+    var rect = calculate_coords(width - (PADDING * 2.0), height - (PADDING * 2.0), scale, center_lat_lng.lng, center_lat_lng.lat);
     leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
   }
 
