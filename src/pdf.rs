@@ -390,14 +390,14 @@ pub struct RissConfig {
 }
 
 #[derive(Debug, Default, Copy, Clone, Ord, Eq, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct RissConfigId(u64);
+pub struct RissConfigId([u64;4]);
 
 impl RissConfig {
     pub fn get_id(&self) -> RissConfigId {
         use highway::{HighwayHasher, HighwayHash};
         let mut bytes = self.lat.to_le_bytes().to_vec();
-        bytes.extend(self.lat.to_le_bytes().iter());
-        RissConfigId(HighwayHasher::default().hash64(&bytes))
+        bytes.extend(self.lon.to_le_bytes().iter());
+        RissConfigId(HighwayHasher::default().hash256(&bytes))
     }
 
     pub fn get_extent(&self, utm_crs: &str, padding_mm: f64) -> Option<RissExtent> {
@@ -580,9 +580,12 @@ impl HintergrundCache {
         let tile_size_px = 1024.0;
 
         let mut tiles = Vec::new();
-        for rc in risse.iter() {
+        let len = risse.len();
+        for (i, rc) in risse.iter().enumerate() {
             
             let id = rc.get_id();
+            log_status(&format!("[{i} / {len}] BUILD id = {:?}", rc.get_id()));
+
             let ex = rc.get_extent(&target_crs, 0.0).and_then(|q| q.reproject(target_crs, &mut Vec::new()));
             let riss_extent = match ex {
                 Some(s) => s,

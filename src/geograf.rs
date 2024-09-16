@@ -572,6 +572,7 @@ pub fn export_splitflaechen(
     );
 
     log_status(&format!("[{num_riss} / {total_risse}] Generiere Hintergrund-Vorschau..."));
+    log_status(&format!("[{num_riss} / {total_risse}] id = {:?}", riss.get_id()));
     let hintergrund_vorschau = crate::pdf::generate_pdf_internal(
         hintergrund_cache.images.remove(&riss.get_id()).unwrap_or_default(),
         (num_riss, total_risse),
