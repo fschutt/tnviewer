@@ -3116,7 +3116,8 @@ fn render_csv_editable(
                             let ax_ebene = tp.attributes.get("AX_Ebene")?;
                             let ax_flurstueck = flstidparsed.format_start_str();
                             let cut_obj_id = tp.attributes.get("id")?;
-                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
+                            let intersect_id = tp.attributes.get("AX_IntersectionId").map(|w| format!(":{w}")).unwrap_or_default();
+                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}{intersect_id}");                            
                             let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
                             if quadratmeter == "0" {
                                 return None;
