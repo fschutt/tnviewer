@@ -183,7 +183,6 @@ pub fn ui_render_search_popover_content(term: &str) -> String {
 }
 
 pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) -> String {
-    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
 
     if rpc_data.popover_state.is_none() {
         return String::new();
@@ -195,6 +194,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
         "transparent"
     };
 
+    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
     let icon_close_base64 = base64_encode(ICON_CLOSE);
 
     let close_button = format!("f
@@ -1182,8 +1182,13 @@ pub type NewRingId = String; // oudbvW0wu...
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct PolyNeu {
     pub poly: SvgPolygon,
+    #[serde(default)]
     pub nutzung: Option<Kuerzel>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub locked: bool,
 }
+
+fn is_false(b: &bool) -> bool { !b }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct GebaeudeLoeschen {
@@ -1252,6 +1257,7 @@ impl AenderungenIntersections {
                     (id.clone(), PolyNeu {
                         nutzung: Some(sf.neu.clone()),
                         poly: sf.poly_cut.clone(),
+                        locked: false,
                     })
                 }).collect()
             }
@@ -2086,15 +2092,18 @@ impl Aenderungen {
     }
 
     pub fn round_to_3decimal(&self) -> Aenderungen {
+        let na_polygone_neu = self.na_polygone_neu.iter().map(|(k, v)| {
+            (k.clone(), PolyNeu {
+                nutzung: v.nutzung.clone(),
+                poly: if !v.locked { v.poly.round_to_3dec() } else { v.poly.clone() },
+                locked: v.locked,
+            })
+        }).collect();
+
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: self.na_polygone_neu.iter().map(|(k, v)| {
-                (k.clone(), PolyNeu {
-                    nutzung: v.nutzung.clone(),
-                    poly: v.poly.round_to_3dec(),
-                })
-            }).collect()
+            na_polygone_neu: na_polygone_neu
         }
     }
 
@@ -2103,9 +2112,11 @@ impl Aenderungen {
         
         log_status(&format!("clean_stage0"));
 
+        let (locked, unlocked) = changed_mut.split_locked_unlocked();
+
         // deduplicate aenderungen
         let mut na_polygone_neu = BTreeMap::new();
-        for (id, polyneu) in changed_mut.na_polygone_neu.iter() {
+        for (id, polyneu) in unlocked.iter() {
             let json = match serde_json::to_string(&polyneu) {
                 Ok(o) => o,
                 Err(_) => continue,
@@ -2158,7 +2169,9 @@ impl Aenderungen {
             }
         }
 
-        changed_mut.round_to_3decimal()
+        let mut rounded = changed_mut.round_to_3decimal();
+        rounded.na_polygone_neu.extend(locked.into_iter());
+        rounded
     }
 
     pub fn clean_stage1(&self, log: &mut Vec<String>, maxdst_point: f64, maxdst_line: f64) -> Aenderungen {
@@ -2173,6 +2186,10 @@ impl Aenderungen {
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
+
+            if polyneu.locked {
+                continue;
+            }
 
             let changes_list = modified_tree.iter().filter_map(|(k, s)| {
                 if k == id { None } else { Some(s.poly.clone()) }
@@ -2234,35 +2251,37 @@ impl Aenderungen {
                     continue;
                 }
 
-                for line in polyneu.poly.outer_rings.iter_mut() {
+                if !polyneu.locked {
+                    for line in polyneu.poly.outer_rings.iter_mut() {
                     
-                    let orig_points_len = line.points.len();
-                    let mut nextpoint;
-                    let mut newpoints = match line.points.get(0) {
-                        Some(s) => {
-                            nextpoint = s.clone();
-                            vec![s.clone()]
-                        },
-                        None => continue,
-                    };
+                        let orig_points_len = line.points.len();
+                        let mut nextpoint;
+                        let mut newpoints = match line.points.get(0) {
+                            Some(s) => {
+                                nextpoint = s.clone();
+                                vec![s.clone()]
+                            },
+                            None => continue,
+                        };
+        
+                        for p in line.points.iter().skip(1) {
+                            let start = nextpoint.clone();
+                            let end = p;
+                            newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
+                            newpoints.push(*end);
+                            nextpoint = *end;
+                        }
+        
+                        newpoints.dedup_by(|a, b| a.equals(b));
+        
+                        let newpoints_len = newpoints.len();
+                        if newpoints_len != orig_points_len {
+                            local_modified += newpoints_len.saturating_sub(orig_points_len);
+                            log.push(format!("{id}: insert {} points", newpoints_len.saturating_sub(orig_points_len)));
+                        }
     
-                    for p in line.points.iter().skip(1) {
-                        let start = nextpoint.clone();
-                        let end = p;
-                        newpoints.extend(aenderungen_quadtree.get_line_between_points(&start, end, log, maxdst_line, maxdst_line2, maxdev_followline, Some(id.clone())).into_iter());
-                        newpoints.push(*end);
-                        nextpoint = *end;
-                    }
-    
-                    newpoints.dedup_by(|a, b| a.equals(b));
-    
-                    let newpoints_len = newpoints.len();
-                    if newpoints_len != orig_points_len {
-                        local_modified += newpoints_len.saturating_sub(orig_points_len);
-                        log.push(format!("{id}: insert {} points", newpoints_len.saturating_sub(orig_points_len)));
-                    }
-
-                    line.points = newpoints;
+                        line.points = newpoints;
+                    }    
                 }
 
                 total_modified += local_modified;
@@ -2404,10 +2423,15 @@ impl Aenderungen {
                 Some(s) => s,
                 None => continue,
             };
+            if poly_a.locked {
+                continue;
+            }
+
             let poly_b = match self.na_polygone_neu.get(b) {
                 Some(s) => s,
                 None => continue,
             };
+            
             let triangle_points_b = translate_to_geo_poly(&poly_b.poly).0
             .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
             .map(|p| SvgPoint { x: p.x(), y: p.y() })
@@ -2467,11 +2491,33 @@ impl Aenderungen {
         }.round_to_3decimal()
     }
 
+    pub fn split_locked_unlocked(&self) -> (BTreeMap<String, PolyNeu>, BTreeMap<String, PolyNeu>) {
+        let locked = self.na_polygone_neu.iter().filter_map(|(id, s)| {
+            if s.locked {
+                Some((id.clone(), s.clone()))
+            } else {
+                None
+            }
+        }).collect();
+
+        let unlocked = self.na_polygone_neu.iter().filter_map(|(id, s)| {
+            if s.locked {
+                None
+            } else {
+                Some((id.clone(), s.clone()))
+            }
+        }).collect();
+
+        (locked, unlocked)
+    }
+
     pub fn clean_stage25_internal(&self) -> Aenderungen {
 
         log_status("clean_stage25_internal");
 
-        let aenderungen_by_kuerzel = self.na_polygone_neu.iter().filter_map(|(id, k)| {
+        let (locked, unlocked) = self.split_locked_unlocked();
+
+        let aenderungen_by_kuerzel = unlocked.iter().filter_map(|(id, k)| {
             let nutzung = k.nutzung.clone()?;
             Some((nutzung, k.poly.clone()))
         }).collect::<Vec<(_, _)>>();
@@ -2492,12 +2538,13 @@ impl Aenderungen {
             joined.outer_rings.iter().map(|l| (uuid(), PolyNeu {
                 poly: SvgPolygon::from_line(l),
                 nutzung: Some(kuerzel.clone()),
+                locked: false,
             })).collect()
         }).collect::<BTreeMap<_, _>>();
 
         log_status("clean_stage25_internal 2");
 
-        let mut aenderungen_alt = self.na_polygone_neu.iter().filter_map(|(id, v)| {
+        let mut unlocked_alt = unlocked.iter().filter_map(|(id, v)| {
             if v.nutzung.is_none() {
                 Some((id.clone(), v.clone()))
             } else {
@@ -2505,14 +2552,16 @@ impl Aenderungen {
             }
         }).collect::<BTreeMap<_, _>>();
 
-        aenderungen_alt.extend(joined.into_iter());
+        unlocked_alt.extend(joined.into_iter());
+
+        unlocked_alt.extend(locked.into_iter());
 
         log_status("clean_stage25_internal 3");
 
         Aenderungen {
             na_definiert: self.na_definiert.clone(),
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
-            na_polygone_neu: aenderungen_alt,
+            na_polygone_neu: unlocked_alt,
         }.round_to_3decimal()
     }
     
@@ -2523,6 +2572,9 @@ impl Aenderungen {
         let mut moved_points = Vec::new();
         let mut changed_mut = self.clone();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            if polyneu.locked {
+                continue;
+            }
             for line in polyneu.poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
                     let p_orig = p.clone();
@@ -2553,6 +2605,9 @@ impl Aenderungen {
         let nas_quadtree = original_xml.create_quadtree();
 
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            if polyneu.locked {
+                continue;
+            }
             for line in polyneu.poly.outer_rings.iter_mut() {
                 
                 let mut nextpoint;
@@ -2583,23 +2638,30 @@ impl Aenderungen {
     }
 
     pub fn clean_nas(&self) -> Aenderungen {
+        let (locked, unlocked) = self.split_locked_unlocked();
+        let mut unlocked_neu = unlocked.iter().map(|(k, v)| {
+            (k.clone(), PolyNeu {
+                nutzung: v.nutzung.clone(),
+                poly: crate::nas::cleanup_poly(&v.poly),
+                locked: false,
+            })
+        }).collect::<BTreeMap<_, _>>();
+        unlocked_neu.extend(locked.into_iter());
+
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: self.na_polygone_neu.iter().map(|(k, v)| {
-                (k.clone(), PolyNeu {
-                    nutzung: v.nutzung.clone(),
-                    poly: crate::nas::cleanup_poly(&v.poly),
-                })
-            }).collect()
+            na_polygone_neu: unlocked_neu,
         }
     }
 
     pub fn remerge_lines(&self) -> Aenderungen {
 
+        let (locked, unlocked) = self.split_locked_unlocked();
+
         // deduplicate and un-merge all lines
         let mut all_rings = BTreeMap::new();
-        for s in self.na_polygone_neu.iter() {
+        for s in unlocked.iter() {
             for or in s.1.poly.outer_rings.iter() {
                 all_rings.insert(or.get_hash(), or);
             }
@@ -2644,15 +2706,20 @@ impl Aenderungen {
 
         // TODO: add nutzungen again based on triangle test with original changes
 
+        let mut unlocked_neu = polygons_recombined.into_iter().map(|p| {
+            (uuid(), PolyNeu {
+                nutzung: None,
+                poly: p,
+                locked: false,
+            })
+        }).collect::<BTreeMap<_, _>>();
+
+        unlocked_neu.extend(locked.into_iter());
+
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: polygons_recombined.into_iter().map(|p| {
-                (uuid(), PolyNeu {
-                    nutzung: None,
-                    poly: p,
-                })
-            }).collect(),
+            na_polygone_neu: unlocked_neu,
         }
     }
 
@@ -2664,6 +2731,9 @@ impl Aenderungen {
 
         for (pid, pn) in changed_mut.na_polygone_neu.iter() {
             let pn_rect = pn.poly.get_rect();
+            if pn.locked {
+                continue;
+            }
             let p_nutzung = match pn.nutzung.clone() {
                 Some(s) => s,
                 None => continue,
@@ -2695,6 +2765,7 @@ impl Aenderungen {
                 geaendert.insert(pid.clone(), PolyNeu {
                     nutzung: pn.nutzung.clone(),
                     poly: subtracted,
+                    locked: false,
                 });
             }
         }
@@ -2707,29 +2778,15 @@ impl Aenderungen {
 
     }
 
-    fn clean_internal(&self) -> Aenderungen {
-        Aenderungen {
-            na_definiert: self.na_definiert.clone(),
-            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
-            na_polygone_neu: self.na_polygone_neu
-            .iter()
-            .map(|(k, v)| {
-                (k.clone(), PolyNeu {
-                    nutzung: v.nutzung.clone(),
-                    poly: v.poly.round_to_3dec(),
-                })
-            })
-            .filter(|s| !s.1.poly.is_zero_area())
-            .collect()
-        }
-    }
-
     pub fn deduplicate(&self) -> Self {
 
         let s = self.round_to_3decimal();
 
         let mut aenderung_2 = BTreeMap::new();
-        for (k, v) in s.na_polygone_neu.iter() {
+        
+        let (locked, unlocked) = self.split_locked_unlocked();
+
+        for (k, v) in unlocked.iter() {
 
             let a = match serde_json::to_string(&v.poly) {
                 Ok(o) => o,
@@ -2739,14 +2796,19 @@ impl Aenderungen {
             aenderung_2.insert(a, (k.clone(), v.nutzung.clone()));
         }
 
+        let mut unlocked_neu = aenderung_2.into_iter()
+        .filter_map(|(k, (v0, v1))| Some((v0, PolyNeu { 
+            nutzung: v1,
+            poly: serde_json::from_str(&k).ok()?,
+            locked: false,
+        }))).collect::<BTreeMap<_, _>>();
+
+        unlocked_neu.extend(locked.into_iter());
+
         Self {
             gebaeude_loeschen: s.gebaeude_loeschen.clone(),
             na_definiert: s.na_definiert.clone(),
-            na_polygone_neu: aenderung_2.into_iter()
-            .filter_map(|(k, (v0, v1))| Some((v0, PolyNeu { 
-                nutzung: v1,
-                poly: serde_json::from_str(&k).ok()?
-            }))).collect(),
+            na_polygone_neu: unlocked_neu,
         }
     }
 
@@ -2770,12 +2832,12 @@ impl Aenderungen {
                 let id = format!("{i}: {k} :: {n}", k = is.alt, n = is.neu);
                 (id, PolyNeu {
                     nutzung: Some(is.neu.clone()),
-                    poly: is.poly_cut.clone()
+                    poly: is.poly_cut.clone(),
+                    locked: false,
                 })
             }).collect()
         }.round_to_3decimal()
     }
-
 }
 
 pub fn render_main(
@@ -2828,6 +2890,9 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 
     let mut html = "<div id='aenderungen-container'>".to_string();
     
+    const ICON_LOCK: &[u8] = include_bytes!("./img/icons8-lock-48.png");
+    const ICON_UNLOCK: &[u8] = include_bytes!("./img/icons8-unlock-private-48.png");
+
     html += "<h2>Gebäude löschen</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
     for (k, gebaeude_id) in aenderungen.gebaeude_loeschen.iter().rev() {
@@ -2835,8 +2900,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
         html.push_str(&format!(
             "<div class='__application-aenderung-container' id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
                 <div style='display:flex;'>
-                    <p class='__application-zoom-to' onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>[Karte]</p>
-                    <p style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}'>{gebaeude_id}</p>
+                    <p class='__application-zoom-to' style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}' onclick='zoomToGebaeudeLoeschen(event);'>{gebaeude_id}</p>
                 </div>
                 <p class='__application-secondary-undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{k}'>X</p>
             </div>"
@@ -2850,12 +2914,13 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
         let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
         let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
         let new_poly_id_first_chars = new_poly_id_first_chars.chars().take(10).collect::<String>();
+        let lo_ul = base64_encode(if polyneu.locked { ICON_LOCK } else { ICON_UNLOCK });
         html.push_str(&format!(
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <div style='display:flex;'>
-                    <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' data-poly-neu-id='{new_poly_id}'>[Karte]</p>
+                    <img src='data:image/png;base64,{lo_ul}' width='16px' height='16px' class='__application-zoom-to' onclick='lockUnlockPoly(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'></img>
                     <p class='__application-zoom-to' onclick='nutzungenSaeubern(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'>[ber.]</p>
-                    <p style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
+                    <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
                 </div>
                 <div style='display:flex;'>
                     {select_nutzung}

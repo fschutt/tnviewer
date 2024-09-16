@@ -794,6 +794,7 @@ pub fn reproject_aenderungen_into_target_space(
             (k.clone(), PolyNeu {
                 poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj, UseRadians::ForSourceAndTarget),
                 nutzung: v.nutzung.clone(),
+                locked: v.locked,
             })
         })
         .collect()
@@ -880,6 +881,7 @@ pub fn reproject_aenderungen_back_into_latlon(
             (k.clone(), PolyNeu {
                 poly: crate::nas::reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
                 nutzung: v.nutzung.clone(),
+                locked: v.locked,
             })
         })
         .collect()

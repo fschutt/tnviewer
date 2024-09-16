@@ -1887,11 +1887,43 @@
         downloadBlob(txt, window.info.antragsnr + "Flurstuecke.txt", 'text/plain');
     }
 
+
+    function lockUnlockPoly(event) {
+      var id = '';
+      if (event.target.dataset.polyNeuId) {
+        id = event.target.dataset.polyNeuId;
+      }
+
+      console.log("lockunlock");
+      var f = lock_unlock_poly(
+        id, 
+        JSON.stringify(window.aenderungen),
+      );
+      console.log("lockunlock done");
+      console.log(f);
+
+      var n = null;
+      try {
+        n = JSON.parse(f);
+      } catch (error) {
+        console.error(error);
+        console.log(n);
+        return;
+      }
+
+      if (n != null) {
+        window.aenderungen = n.aenderungen;
+        console.log(n.log);
+        replaceProjectContent();
+      }
+    }
+
+    window.lockUnlockPoly = lockUnlockPoly;
+    
     function nutzungenSaeubern(event) {
       var id = '';
       if (event.target.dataset.nutzungId) {
         id = event.target.dataset.nutzungId;
-        return;
       }
       if (!window.split_flurstuecke_original) {
         return;

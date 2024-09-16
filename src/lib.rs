@@ -124,6 +124,37 @@ pub fn get_problem_geojson() -> String {
 }
 
 #[wasm_bindgen]
+pub fn lock_unlock_poly(
+    id: Option<String>, 
+    aenderungen: String, 
+)-> String { 
+    let id = id.and_then(|s| if s.is_empty() { None } else { Some(s.trim().to_string())});
+
+    let mut aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let ids_to_lock = match id {
+        Some(s) => vec![s],
+        None => aenderungen.na_polygone_neu.keys().cloned().collect::<Vec<_>>(),
+    };
+
+    let mut l = Vec::new();
+    for i in ids_to_lock {
+        if let Some(sm) = aenderungen.na_polygone_neu.get_mut(&i) {
+            sm.locked = !sm.locked;
+            l.push(format!("ok locking aenderung {i}"));
+        }
+    }
+
+    serde_json::to_string(&CleanStageResult {
+        aenderungen: aenderungen,
+        log: l
+    }).unwrap_or_default()
+}
+
+#[wasm_bindgen]
 pub fn lib_nutzungen_saeubern(
     id: Option<String>, 
     aenderungen: String, 
@@ -440,6 +471,7 @@ pub fn fixup_polyline(
     serde_json::to_string(&crate::ui::PolyNeu {
         poly: poly,
         nutzung: None,
+        locked: false,
     }).unwrap_or_default()
 }
 
