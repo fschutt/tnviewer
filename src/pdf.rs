@@ -741,9 +741,9 @@ pub async fn export_overview(
                 lon: latlon_center.x,
             };
             riss_extente_reprojected.push((rc, extent));
-            min_x += width_m * 0.9;
+            min_x += width_m * 0.8;
         }
-        max_y -= height_m * 0.9;
+        max_y -= height_m * 0.8;
     }
 
     let (mut doc, page1, layer1) = PdfDocument::new(
@@ -869,7 +869,7 @@ pub async fn export_overview(
             &times_roman, 
             &times_roman_bold, 
             None, 
-            PADDING / 4.0,
+            PADDING / 6.0,
         );
         log_status("ok done page");
     }
