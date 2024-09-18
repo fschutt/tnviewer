@@ -704,8 +704,8 @@ pub async fn export_overview(
 
     log_status(&format!("reprojected: {reprojected:?}"));
 
-    let width_mm = 210.0;
-    let height_mm = 297.0;
+    let width_mm = 297.0;
+    let height_mm = 420.0;
 
     let width_m = width_mm * SCALE_OVERVIEW / 1000.0;
     let height_m = height_mm * SCALE_OVERVIEW / 1000.0;
