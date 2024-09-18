@@ -673,6 +673,11 @@ pub async fn export_overview(
     use_dgm: bool,
 ) -> Vec<u8> {
 
+
+    let calc = HeaderCalcConfig::from_csv(&split_nas, csv, &None);
+
+    let split_nas = split_nas.only_retain_gemarkung(calc.gemarkungs_nr);
+    
     let sf = split_nas.as_splitflaechen();
     
     log_status(&format!("{} splitflaechen total", sf.len()));
@@ -783,8 +788,6 @@ pub async fn export_overview(
         &nas_xml.crs
     ).await;
 
-    let calc = HeaderCalcConfig::from_csv(&split_nas, csv, &None);
-
     let (mut page_idx, mut layer_idx) = (page1, layer1);
 
     for (i, (rc, extent)) in riss_extente_reprojected.into_iter().enumerate() {
@@ -800,7 +803,7 @@ pub async fn export_overview(
         let mut layer = page.get_layer(layer_idx);
         let mut has_background = false;
 
-        let mini_split_nas = get_mini_nas_xml(split_nas, &extent);
+        let mini_split_nas = get_mini_nas_xml(&split_nas, &extent);
         let flst = get_flurstuecke(nas_xml, &extent);
         let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
         let gebaeude = get_gebaeude(nas_xml, &extent);
@@ -851,7 +854,6 @@ pub async fn export_overview(
             &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
         );
 
-        log_status(&format!("writing {} beschriftungen: {beschriftungen:?}", beschriftungen.len()));
         let _ = write_splitflaechen_beschriftungen(
             &mut layer, 
             &helvetica,

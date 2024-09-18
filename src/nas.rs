@@ -1809,6 +1809,20 @@ fn default_etrs33() -> String {
 
 impl SplitNasXml {
 
+    pub fn only_retain_gemarkung(&self, target_gemarkung: usize) -> Self {
+        Self {
+            crs: self.crs.clone(),
+            flurstuecke_nutzungen: self.flurstuecke_nutzungen.iter().filter_map(|(id, polys)| {
+                let oid = FlstIdParsed::from_str(&id).parse_num()?;
+                if oid.gemarkung == target_gemarkung {
+                    Some((id.clone(), polys.clone()))
+                } else {
+                    None
+                }
+            }).collect()
+        }
+    }
+
     pub fn as_splitflaechen(&self) -> Vec<AenderungenIntersection> {
         self.flurstuecke_nutzungen.iter()
         .flat_map(|(flst_id, nutzungen)| {
