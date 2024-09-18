@@ -664,7 +664,7 @@ pub struct PdfImage {
     pub image: printpdf::Image,
 }
 
-const SCALE_OVERVIEW: f64 = 2000.0;
+const SCALE_OVERVIEW: f64 = 2400.0;
 
 pub async fn export_overview(
     konfiguration: &Konfiguration,
@@ -741,9 +741,9 @@ pub async fn export_overview(
                 lon: latlon_center.x,
             };
             riss_extente_reprojected.push((rc, extent));
-            min_x += width_m * 0.75;
+            min_x += width_m * 0.9;
         }
-        max_y -= height_m * 0.75;
+        max_y -= height_m * 0.9;
     }
 
     let (mut doc, page1, layer1) = PdfDocument::new(
