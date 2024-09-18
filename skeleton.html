@@ -338,6 +338,12 @@
       na_definiert: {},
       na_polygone_neu: {},
     };
+    var datenow = new Date().toLocaleDateString("de-DE", { // you can use undefined as first argument
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
     window.info = {
       antragsnr: defaultdate,
       katasteramt: "Uckermark",
@@ -346,8 +352,8 @@
       beruf_kuerzel: "GM",
       gemeinde: "Carmzow-Wallmow",
       gemarkung: "Cremzow",
-      bearbeitung_beendet_am: new Date().toLocaleDateString(),
-      alkis_aktualitaet: new Date().toLocaleDateString(),
+      bearbeitung_beendet_am: datenow,
+      alkis_aktualitaet: datenow,
       orthofoto_datum: "18.04.2020",
       gis_feldbloecke_datum: "11.02.2022",
     };
@@ -1857,6 +1863,22 @@
         downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
     }
 
+    function exportUebersicht() {
+      if (!window.csv_data) {
+        return;
+      }
+      if (!window.split_flurstuecke) {
+        return;
+      }
+      var pdf = export_pdf_overview(
+        JSON.stringify(window.konfiguration),
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.csv_data),
+      );
+      downloadBlob(pdf, window.info.antragsnr + ".pdf", 'application/octet-stream');
+    }
+
     function exportDavid() {
       if (!window.split_flurstuecke_original) {
         alert("Keine Projektdaten geladen!");
@@ -2028,6 +2050,7 @@
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
         export_excel: function(event) { exportExcel(); },
+        export_uebersicht: function(event) { exportUebersicht(); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
         export_geograf: async function(event) { await exportGeoGraf(event); },

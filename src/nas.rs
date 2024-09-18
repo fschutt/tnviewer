@@ -293,6 +293,30 @@ pub struct TaggedPolygon {
 
 impl TaggedPolygon {
 
+    pub fn get_ebene(&self) -> Option<String> {
+        self.attributes.get("AX_Ebene").cloned()
+    }
+
+    pub fn get_de_id(&self) -> Option<String> {
+        self.attributes.get("id").cloned()
+    }
+
+    pub fn get_intersection_id(&self) -> Option<String> {
+        self.attributes.get("AX_IntersectionId").cloned()
+    }
+
+    pub fn get_flurstueck_id(&self) -> Option<String> {
+        self.attributes.get("AX_Flurstueck").cloned()
+    }
+
+    pub fn get_flst_part_id(&self) -> Option<String> {
+        let ebene = self.get_ebene()?;
+        let id = self.get_de_id()?;
+        let intersection = self.get_intersection_id().unwrap_or_else(|| "0".to_string());
+        let flurstueck = self.get_flurstueck_id()?;
+        Some(format!("{flurstueck}:{ebene}:{id}:{intersection}"))
+    }
+
     fn check_line_for_points(
         l: &SvgLine, 
         start: &SvgPoint, 
@@ -1785,6 +1809,23 @@ fn default_etrs33() -> String {
 
 impl SplitNasXml {
 
+    pub fn as_splitflaechen(&self) -> Vec<AenderungenIntersection> {
+        self.flurstuecke_nutzungen.iter()
+        .flat_map(|(flst_id, nutzungen)| {
+            nutzungen.iter().filter_map(|tp| {
+                let ebene = tp.get_ebene()?;
+                let kuerzel = tp.get_auto_kuerzel(&ebene)?;
+                Some(AenderungenIntersection {
+                    alt: kuerzel.clone(),
+                    neu: kuerzel,
+                    flst_id: tp.get_flurstueck_id()?,
+                    poly_cut: tp.poly.clone(),
+                    flst_id_part: tp.get_flst_part_id()?,
+                } )
+            })
+        }).collect::<Vec<_>>()
+    }
+
     pub fn migrate_future(&self, spliflaechen: &[AenderungenIntersection]) -> Self {
         Self {
             crs: self.crs.clone(),
@@ -1839,7 +1880,7 @@ impl SplitNasXml {
                 self.flurstuecke_nutzungen.get(ax_flurstueck)?
                 .iter()
                 .find(|p| {
-                    p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
+                    p.get_ebene().as_deref() == Some(ax_ebene) &&
                     p.attributes.get("AX_IntersectionId").map(|s| s.as_str()) == Some(s) &&
                     p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
                 })
@@ -1848,7 +1889,7 @@ impl SplitNasXml {
                 self.flurstuecke_nutzungen.get(ax_flurstueck)?
                 .iter()
                 .find(|p| {
-                    p.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some(ax_ebene) &&
+                    p.get_ebene().as_deref() == Some(ax_ebene) &&
                     p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
                 })
             }
@@ -2067,7 +2108,7 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
                     },
                     poly: svg_poly,
                 };
-                let ebene = p.attributes.get("AX_Ebene")?;
+                let ebene = p.get_ebene()?;
                 let kuerzel = tp.get_auto_kuerzel(&ebene)?;
                 let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?;
                 Some((tp, nak))

@@ -1,3 +1,4 @@
+use core::num;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
 
@@ -6,7 +7,7 @@ use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPa
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
-use crate::geograf::{get_aenderungen_rote_linien, HeaderCalcConfig, LinienQuadTree};
+use crate::geograf::{get_aenderungen_rote_linien, get_default_riss_extent, HeaderCalcConfig, LinienQuadTree, PADDING, SCALE};
 use crate::optimize::{OptimizeConfig, OptimizedTextPlacement};
 use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
@@ -293,6 +294,13 @@ impl RissExtentReprojected {
             max_y: self.max_y,
         }
     }
+    pub fn get_rect_line_poly(&self) -> SvgPolygon {
+        SvgPolygon {
+            outer_rings: vec![self.get_rect_line()],
+            inner_rings: Vec::new(),
+        }
+    }
+
     pub fn get_rect_line(&self) -> SvgLine {
         let rect = self.get_rect();
         SvgLine {
@@ -654,6 +662,193 @@ pub struct PdfImage {
     pub image: printpdf::Image,
 }
 
+
+pub fn export_overview(
+    konfiguration: &Konfiguration,
+    nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
+    csv: &CsvDataType,
+) -> Vec<u8> {
+
+    let sf = split_nas.as_splitflaechen();
+    
+    let default_extent = match get_default_riss_extent(&sf, &nas_xml.crs) {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+
+    let default_extent = match default_extent.get_extent(&nas_xml.crs, PADDING.into()) {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+
+    let reprojected = match default_extent.reproject(&nas_xml.crs) {
+        Some(s) => s,
+        None => return Vec::new(),
+    };
+
+    let width_mm = 420.0;
+    let height_mm = 297.0;
+
+    let width_m = width_mm * SCALE / 1000.0;
+    let height_m = height_mm * SCALE / 1000.0;
+
+    let mut riss_extente_reprojected = Vec::new();
+    let mut max_y = reprojected.max_y;
+    while max_y > reprojected.min_y {
+        let mut min_x = reprojected.min_x;
+        while min_x > reprojected.max_x {
+            let extent = RissExtentReprojected {
+                crs: nas_xml.crs.clone(),
+                scale: SCALE,
+                rissgebiet: None,
+                min_x: min_x,
+                max_x: min_x + width_m,
+                min_y: max_y,
+                max_y: max_y - height_m,
+            };
+            let utm_center = extent.get_rect().get_center();
+            let latlon_center = crate::pdf::reproject_point_back_into_latlon(&SvgPoint {
+                x: utm_center.x,
+                y: utm_center.y,
+            }, &nas_xml.crs).unwrap_or_default();
+            let rc = RissConfig {
+                rissgebiet: None,
+                crs: LATLON_STRING.to_string(),
+                width_mm: width_mm as f32,
+                height_mm: height_mm as f32,
+                scale: SCALE as f32,
+                lat: latlon_center.y,
+                lon: latlon_center.x,
+            };
+            riss_extente_reprojected.push((rc, extent));
+            min_x += width_m / 0.75;
+        }
+        max_y -= height_m / 0.75;
+    }
+
+    let (mut doc, page1, layer1) = PdfDocument::new(
+        "Riss",
+        Mm(width_mm as f32),
+        Mm(height_mm as f32),
+        &format!("Uebersicht"),
+    );
+
+    doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
+        requires_icc_profile: false,
+        requires_xmp_metadata: false,
+        .. Default::default()
+    }));
+
+    let helvetica = match doc.add_builtin_font(printpdf::BuiltinFont::HelveticaBold) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let times_roman = match doc.add_builtin_font(printpdf::BuiltinFont::TimesRoman) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let times_roman_bold = match doc.add_builtin_font(printpdf::BuiltinFont::TimesBold) {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut has_background = false;
+    
+    /*
+    for i in hintergrundbilder {
+        i.image.add_to_layer(layer.clone(), ImageTransform {
+            translate_x: i.x.into(),
+            translate_y: i.y.into(),
+            scale_x: Some(300.0 / i.dpi),
+            scale_y: Some(300.0 / i.dpi),
+            ..Default::default()
+        });
+        has_background = true;
+    }
+    */
+
+    let calc = HeaderCalcConfig::from_csv(&split_nas, csv, &None);
+
+    let (mut page_idx, mut layer_idx) = (page1, layer1);
+
+    for (i, (rc, extent)) in riss_extente_reprojected.into_iter().enumerate() {
+
+        if i != 0 {
+            let (pi, li) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
+            page_idx = pi;
+            layer_idx = li;
+        }
+
+        let page = doc.get_page(page_idx);
+        let mut layer = page.get_layer(layer_idx);
+        
+        let mini_split_nas = get_mini_nas_xml(split_nas, &extent);
+        let flst = get_flurstuecke(nas_xml, &extent);
+        let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
+        let gebaeude = get_gebaeude(nas_xml, &extent);
+        let riss_rect = extent.get_rect();
+        let sf = sf.iter()
+        .filter_map(|s| {
+            if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
+                Some(s.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+        let nutzungsarten = reproject_splitnas_into_pdf_space(
+            &mini_split_nas,
+            &extent,
+            &rc,
+            &mut Vec::new(),
+        );
+
+        let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
+        let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(&extent, &rc), has_background);
+        let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(&extent, &rc), has_background);
+        let _ = write_fluren(&mut layer, &fluren.to_pdf_space(&extent, &rc), &konfiguration, has_background);
+        let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, &rc, &extent, has_background);
+        let _ = write_flur_texte(&mut layer, &fluren, &helvetica, &rc, &extent, &calc, has_background);
+
+        let aenderungen_texte = crate::ui::AenderungenIntersections::get_texte(&sf, &extent.get_rect_line_poly());
+
+        let beschriftungen = crate::optimize::optimize_labels(
+            &mini_split_nas,
+            &sf,
+            &gebaeude,
+            &[],
+            &aenderungen_texte,
+            &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
+        );
+
+        let _ = write_splitflaechen_beschriftungen(
+            &mut layer, 
+            &helvetica,
+            &extent, 
+            &rc,
+            &beschriftungen,
+            has_background,
+        );
+
+        let _ = write_border(
+            &mut layer, 
+            &rc, 
+            &ProjektInfo::default(), 
+            &calc, 
+            &times_roman, 
+            &times_roman_bold, 
+            None, 
+            PADDING / 2.0,
+        );
+    }
+
+    doc.save_to_bytes().unwrap_or_default()
+}
+
 pub fn generate_pdf_internal(
     hintergrundbilder: Vec<PdfImage>,
     riss_von: (usize, usize), // Riss X von Y
@@ -767,8 +962,7 @@ pub fn generate_pdf_internal(
         calc,
         &times_roman,
         &times_roman_bold,
-        riss_von.0,
-        riss_von.1,
+        Some(riss_von),
         16.5
     );
 
@@ -1281,8 +1475,7 @@ fn write_border(
     calc: &HeaderCalcConfig,
     times_roman: &IndirectFontRef,
     times_roman_bold: &IndirectFontRef,
-    num_riss: usize,
-    total_risse: usize,
+    num_riss_total_riss: Option<(usize, usize)>,
     border_width_mm: f32,
 ) -> Option<()> {
 
@@ -1338,27 +1531,176 @@ fn write_border(
         PaintMode::Stroke
     );
 
-    add_rect(
-        border_width_mm,
-        riss.height_mm - border_width_mm - 35.0,
-        175.0,
-        35.0,
-        PaintMode::Fill
-    );
+    if let Some((num_riss, total_riss)) = num_riss_total_riss {
 
-    let _ = crate::geograf::write_header(
-        layer,
-        info,
-        calc,
-        times_roman,
-        times_roman_bold,
-        num_riss,
-        total_risse,
-        riss.height_mm - border_width_mm - 35.0,
-        border_width_mm,
-    );
+        add_rect(
+            border_width_mm,
+            riss.height_mm - border_width_mm - 35.0,
+            175.0,
+            35.0,
+            PaintMode::Fill
+        );
+
+        let _ = write_header(
+            layer,
+            info,
+            calc,
+            times_roman,
+            times_roman_bold,
+            num_riss, 
+            total_riss,
+            riss.height_mm - border_width_mm - 35.0,
+            border_width_mm,
+        );
+    }
 
     layer.restore_graphics_state();
+    Some(())
+}
+
+pub fn write_header(
+    layer1: &mut PdfLayerReference,
+    info: &ProjektInfo,
+    calc: &HeaderCalcConfig,
+    times_roman: &IndirectFontRef,
+    times_roman_bold: &IndirectFontRef,
+    num_riss: usize,
+    total_risse: usize,
+    offset_top: f32,
+    offset_right: f32,
+) -> Option<()> {
+
+    layer1.save_graphics_state();
+
+    let header_font_size = 14.0; // pt
+    let medium_font_size = 10.0; // pt
+    let small_font_size = 8.0; // pt
+
+    layer1.set_fill_color(printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None)));
+
+    let text = format!("Ergänzungsriss: Tatsächliche Nutzung ( {num_riss} / {total_risse} )");
+    layer1.use_text(&text, header_font_size, Mm(offset_right + 2.0), Mm(offset_top + 30.0), &times_roman_bold);    
+
+    let text = "Gemeinde:";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 25.0), &times_roman);    
+
+    let text = "Gemarkung:";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 17.0), &times_roman);    
+
+    let text = "Flur";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 10.0), &times_roman);    
+
+    let text = "Instrument/Nr.";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 3.0), &times_roman);    
+
+    let text = "-";
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 2.0), &times_roman);    
+
+    let text = "Flurstücke";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 20.0), Mm(offset_top + 10.0), &times_roman);    
+
+    let text = "Bearbeitung beendet am:";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 25.0), &times_roman);    
+
+    let text = format!("Erstellt durch: {} ({})", info.erstellt_durch, info.beruf_kuerzel);
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 17.0), &times_roman);    
+
+    let text = "Vermessungsstelle";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 10.0), &times_roman);    
+
+    let text = "Grenztermin vom";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 25.0), &times_roman);    
+
+    let text = "-";
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 120.0), Mm(offset_top + 21.0), &times_roman);    
+
+    let text = "Verwendete Vermessungsun-";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 17.0), &times_roman);    
+    let text = "terlagen";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 14.0), &times_roman);    
+
+    let text = format!("ALKIS ({})", info.alkis_aktualitaet);
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 10.0), &times_roman);    
+    let text = format!("Orthophoto ({})", info.orthofoto_datum);
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 6.5), &times_roman);    
+    let text = format!("GIS-Feldblöcke ({})", info.gis_feldbloecke_datum);
+    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 3.0), &times_roman);    
+
+    let text = "Archivblatt: *";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 21.0), &times_roman);    
+
+    let text = "Antrags-Nr.: *";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 17.0), &times_roman);    
+
+    let text = info.antragsnr.trim().to_string();
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 14.0), &times_roman);    
+
+    let text = "Katasteramt:";
+    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 10.0), &times_roman);    
+
+    let text = info.katasteramt.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 150.0), Mm(offset_top + 2.0), &times_roman);    
+
+    let text = info.gemeinde.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 21.0), &times_roman);    
+
+    let text = format!("{} ({})", info.gemarkung.trim(), calc.gemarkungs_nr);
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 14.0), &times_roman);    
+
+    let text = calc.get_flst_string();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 7.0), &times_roman);    
+
+    let text = info.bearbeitung_beendet_am.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 73.0), Mm(offset_top + 21.0), &times_roman);    
+
+    let text = info.vermessungsstelle.trim();
+    layer1.use_text(text, medium_font_size, Mm(offset_right + 68.0), Mm(offset_top + 2.0), &times_roman);    
+
+    let text = calc.get_fluren_string();
+    let fluren_len = calc.get_fluren_len();
+    let offset_right_fluren = match fluren_len {
+        0 => offset_right + 8.0,
+        1 => offset_right + 8.0,
+        2 => offset_right + 6.0,
+        3 => offset_right + 4.0,
+        3 => offset_right + 2.0,
+        _ => offset_right + 4.0,
+    };
+    layer1.use_text(&text, medium_font_size, Mm(offset_right_fluren), Mm(offset_top + 7.0), &times_roman);    
+    
+    let lines = &[
+        ((offset_right + 0.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 28.0)),
+        ((offset_right + 0.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
+        ((offset_right + 0.0, offset_top + 13.0), (offset_right + 102.0, offset_top + 13.0)),
+        ((offset_right + 139.0, offset_top + 13.0), (offset_right + 175.0, offset_top + 13.0)),
+        ((offset_right + 0.0, offset_top + 6.0), (offset_right + 60.0, offset_top + 6.0)),
+
+        ((offset_right + 17.0, offset_top + 13.0), (offset_right + 17.0, offset_top + 6.0)),
+        ((offset_right + 60.0, offset_top + 28.0), (offset_right + 60.0, offset_top + 0.0)),
+        ((offset_right + 102.0, offset_top + 28.0), (offset_right + 102.0, offset_top + 0.0)),
+        ((offset_right + 139.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 0.0)),
+    ];
+
+    layer1.set_outline_thickness(0.5);
+    layer1.set_outline_color(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
+    for ((x0, y0), (x1, y1)) in lines.iter() {
+        layer1.add_line(printpdf::Line {
+            points: vec![
+                (printpdf::Point {
+                    x: Mm(*x0).into(),
+                    y: Mm(*y0).into(),
+                }, false),
+                (printpdf::Point {
+                    x: Mm(*x1).into(),
+                    y: Mm(*y1).into(),
+                }, false),
+            ],
+            is_closed: false,
+        })
+    }
+
+    layer1.restore_graphics_state();
+
     Some(())
 }
 
@@ -1380,7 +1722,7 @@ fn write_nutzungsarten(
         let mut fl_btree = BTreeMap::new();
         for (flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
             for f in flst_parts.iter() {
-                let flst_ebene = match f.attributes.get("AX_Ebene") {
+                let flst_ebene = match f.get_ebene() {
                     Some(s) => s,
                     None => continue,
                 };

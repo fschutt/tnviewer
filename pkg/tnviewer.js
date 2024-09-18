@@ -393,6 +393,35 @@ export function get_problem_geojson() {
 }
 
 /**
+* @param {string | undefined} [konfiguration]
+* @param {string | undefined} [nas_original]
+* @param {string | undefined} [split_nas_xml]
+* @param {string | undefined} [csv]
+* @returns {Uint8Array}
+*/
+export function export_pdf_overview(konfiguration, nas_original, split_nas_xml, csv) {
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        var ptr0 = isLikeNone(konfiguration) ? 0 : passStringToWasm0(konfiguration, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(nas_original) ? 0 : passStringToWasm0(nas_original, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len1 = WASM_VECTOR_LEN;
+        var ptr2 = isLikeNone(split_nas_xml) ? 0 : passStringToWasm0(split_nas_xml, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len2 = WASM_VECTOR_LEN;
+        var ptr3 = isLikeNone(csv) ? 0 : passStringToWasm0(csv, wasm.__wbindgen_export_0, wasm.__wbindgen_export_1);
+        var len3 = WASM_VECTOR_LEN;
+        wasm.export_pdf_overview(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        var v5 = getArrayU8FromWasm0(r0, r1).slice();
+        wasm.__wbindgen_export_2(r0, r1 * 1, 1);
+        return v5;
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+    }
+}
+
+/**
 * @param {string} rc
 * @param {string | undefined} [utm_crs]
 * @returns {string}
@@ -1902,7 +1931,7 @@ function __wbg_get_imports() {
         const ret = Promise.resolve(getObject(arg0));
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper7135 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper7157 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 249, __wbg_adapter_32);
         return addHeapObject(ret);
     };

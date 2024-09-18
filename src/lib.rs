@@ -130,6 +130,20 @@ struct GetCoordsReturn {
 }
 
 #[wasm_bindgen]
+pub fn export_pdf_overview(
+    konfiguration: Option<String>,
+    nas_original: Option<String>,
+    split_nas_xml: Option<String>,
+    csv: Option<String>,
+) -> Vec<u8> {
+    let split_nas_xml = serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()).unwrap_or_default();
+    let nas_original = serde_json::from_str::<NasXMLFile>(&nas_original.unwrap_or_default()).unwrap_or_default();
+    let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration.unwrap_or_default()).unwrap_or_default();
+    let csv_data = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
+    crate::pdf::export_overview(&konfiguration, &nas_original, &split_nas_xml, &csv_data)
+}
+
+#[wasm_bindgen]
 pub fn get_header_coords(rc: String, utm_crs: Option<String>) -> String {
 
     let utm_crs = utm_crs.unwrap_or_else(|| {

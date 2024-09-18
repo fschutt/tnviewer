@@ -194,10 +194,10 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
         "transparent"
     };
 
-    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
+    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-94.png");
     let icon_close_base64 = base64_encode(ICON_CLOSE);
 
-    let close_button = format!("f
+    let close_button = format!("
     <div style='position:absolute;top:50px;z-index:9999;right:-25px;background:white;border-radius:10px;box-shadow: 0px 0px 10px #cccccc88;cursor:pointer;' onmouseup='closePopOver()'>
         <img src='data:image/png;base64,{icon_close_base64}' style='width:50px;height:50px;cursor:pointer;' />
     </div>");
@@ -259,20 +259,11 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
             use ConfigurationView::*;
 
             static IMG_SETTINGS: &[u8] =
-                include_bytes!("./img/icons8-settings-system-daydream-96.png");
+                include_bytes!("./img/icons8-grey-gear-94.png");
             let img_settings = base64_encode(IMG_SETTINGS);
 
-            static IMG_REGEX: &[u8] = include_bytes!("./img/icons8-select-96.png");
-            let img_regex = base64_encode(IMG_REGEX);
-
-            static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-96.png");
+            static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-94.png");
             let img_clean = base64_encode(IMG_CLEAN);
-
-            static IMG_ABK: &[u8] = include_bytes!("./img/icons8-shortcut-96.png");
-            let img_abk = base64_encode(IMG_ABK);
-
-            static IMG_FX: &[u8] = include_bytes!("./img/icons8-formula-fx-96.png");
-            let img_fx = base64_encode(IMG_FX);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
             let active_darstellung_pdf = if *cw == DarstellungPdf { " active" } else { "" };
@@ -617,25 +608,28 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
 
 pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
     
-    static ICON_ZURUECK: &[u8] = include_bytes!("./img/icons8-back-48.png");
+    static ICON_ZURUECK: &[u8] = include_bytes!("./img/icons8-back-94.png");
     let icon_back_base64 = base64_encode(ICON_ZURUECK);
 
-    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-48.png");
+    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-94.png");
     let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
 
-    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-settings-48.png");
+    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-grey-gear-94.png");
     let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
 
-    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-help-96.png");
+    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-question-94.png");
     let icon_help_base64 = base64_encode(ICON_HELP);
 
-    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-48.png");
+    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-94.png");
     let icon_info_base64 = base64_encode(ICON_INFO);
 
-    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-book-96.png");
+    static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-94.png");
+    let icon_pdf_base64 = base64_encode(ICON_PDF);
+
+    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-opened-folder-94.png");
     let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
 
-    static ICON_SPEICHERN: &[u8] = include_bytes!("./img/icons8-save-96.png");
+    static ICON_SPEICHERN: &[u8] = include_bytes!("./img/icons8-save-94.png");
     let icon_save_base64 = base64_encode(ICON_SPEICHERN);
 
     static ICON_TRANSFER: &[u8] = include_bytes!("./img/icons8-transfer-96.png");
@@ -644,7 +638,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
     static ICON_XML: &[u8] = include_bytes!("./img/icons8-xml-96.png");
     let icon_xml_base64 = base64_encode(ICON_XML);
 
-    static ICON_HOUSE: &[u8] = include_bytes!("./img/icons8-house-96.png");
+    static ICON_HOUSE: &[u8] = include_bytes!("./img/icons8-house-94.png");
     let icon_house_base64 = base64_encode(ICON_HOUSE);
 
     static ICON_DAVID: &[u8] = include_bytes!("./img/icons8-david-96.png");
@@ -656,16 +650,16 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
     static ICON_GEORG: &[u8] = include_bytes!("./img/georg-96.png");
     let icon_georg_base64 = base64_encode(ICON_GEORG);
 
-    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-96.png");
+    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-94.png");
     let icon_neu_base64 = base64_encode(ICON_NEU);
 
     static ICON_EXCEL: &[u8] = include_bytes!("./img/icons8-microsoft-excel-2019-96.png");
     let icon_export_csv = base64_encode(ICON_EXCEL);
 
-    static ICON_BROOM: &[u8] = include_bytes!("./img/icons8-broom-96.png");
+    static ICON_BROOM: &[u8] = include_bytes!("./img/icons8-broom-94.png");
     let icon_export_lefis = base64_encode(ICON_BROOM);
 
-    static ICON_LOG: &[u8] = include_bytes!("./img/icons8-log-96.png");
+    static ICON_LOG: &[u8] = include_bytes!("./img/icons8-log-94.png");
     let icon_log_base64 = base64_encode(ICON_LOG);
 
     // TAB 1
@@ -883,7 +877,24 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     </div>
                     <div>
                         <p>Export Flst.</p>
-                        <p>n. Eigentümer</p>
+                        <p>Eigentümer</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+
+    let export_uebersicht = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_uebersicht(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_pdf_base64}'>
+                    </div>
+                    <div>
+                        <p>Export</p>
+                        <p>Übersicht</p>
                     </div>
                 </label>
             </div>
@@ -1125,6 +1136,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                     <div style='display:flex;flex-direction:row;'>
                         {export_excel}
                         {export_eigentuemer}
+                        {export_uebersicht}
                     </div>
                 </div>
 
@@ -1479,7 +1491,7 @@ impl AenderungenClean {
                 .map(|w| format!(":{w}"))
                 .unwrap_or_default();
 
-                let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
+                let ebene = match potentially_intersecting.get_ebene() {
                     Some(s) => s.clone(),
                     None => continue,
                 };
@@ -1535,7 +1547,7 @@ impl AenderungenClean {
 
         for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
             
-            let ebene = match flst_part.attributes.get("AX_Ebene") {
+            let ebene = match flst_part.get_ebene() {
                 Some(s) => s.clone(),
                 None => continue,
             };
@@ -1603,7 +1615,7 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            let kuerzel = match flst_part.attributes.get("AX_Ebene").and_then(|k| flst_part.get_auto_kuerzel(k)) {
+            let kuerzel = match flst_part.get_ebene().and_then(|k| flst_part.get_auto_kuerzel(&k)) {
                 Some(s) => s,
                 None => continue,
             };
@@ -1637,7 +1649,7 @@ impl AenderungenClean {
                         Some(s) => s.clone(),
                         None => continue,
                     };
-                    let ebene = match part.attributes.get("AX_Ebene") {
+                    let ebene = match part.get_ebene() {
                         Some(s) => s.clone(),
                         None => continue,
                     };
@@ -1704,7 +1716,7 @@ impl AenderungenClean {
                     Some(s) => s.clone(),
                     None => continue,
                 };
-                let ebene = match part.attributes.get("AX_Ebene") {
+                let ebene = match part.get_ebene() {
                     Some(s) => s.clone(),
                     None => continue,
                 };
@@ -3113,7 +3125,7 @@ fn render_csv_editable(
                     format!(
                         "<div class='nutzung-veraendern'>{}</div>", 
                         s.iter().filter_map(|tp| {
-                            let ax_ebene = tp.attributes.get("AX_Ebene")?;
+                            let ax_ebene = tp.get_ebene()?;
                             let ax_flurstueck = flstidparsed.format_start_str();
                             let cut_obj_id = tp.attributes.get("id")?;
                             let intersect_id = tp.attributes.get("AX_IntersectionId").map(|w| format!(":{w}")).unwrap_or_default();
@@ -3122,8 +3134,8 @@ fn render_csv_editable(
                             if quadratmeter == "0" {
                                 return None;
                             }
-                            let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
-                            let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
+                            let auto_kuerzel = tp.get_auto_kuerzel(&ax_ebene);
+                            let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(&ax_ebene);
                             Some(format!(
                                 "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
                                 render_select(&

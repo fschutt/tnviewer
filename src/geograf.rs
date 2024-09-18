@@ -345,6 +345,30 @@ pub fn calc_splitflaechen(
     aenderungen.get_aenderungen_intersections(original_xml, crate::get_main_gemarkung(csv))
 }
 
+pub const PADDING: f32 = 16.5 * 2.0;
+pub const SCALE: f64 = 3500.0;
+
+pub fn get_default_riss_extent(splitflaechen: &[AenderungenIntersection], crs: &str) -> Option<RissConfig> {
+    let mut default_riss_extent_rect = splitflaechen.first()?.poly_cut.get_rect();
+    for sf in splitflaechen.iter().skip(1) {
+        default_riss_extent_rect = default_riss_extent_rect.union(&sf.poly_cut.get_rect());
+    }
+    let utm_center = default_riss_extent_rect.get_center();
+    let latlon_center = crate::pdf::reproject_point_back_into_latlon(&SvgPoint {
+        x: utm_center.x,
+        y: utm_center.y,
+    }, &crs).unwrap_or_default();
+    Some(RissConfig {
+        lat: latlon_center.y,
+        lon: latlon_center.x,
+        crs: "latlon".to_string(),
+        width_mm: (default_riss_extent_rect.get_width() / SCALE * 1000.0).round() as f32 + PADDING + 10.0,
+        height_mm: (default_riss_extent_rect.get_height() / SCALE * 1000.0).round() as f32 + PADDING + 10.0,
+        scale: SCALE as f32,
+        rissgebiet: None,
+    })
+}
+
 pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
@@ -363,29 +387,10 @@ pub fn export_splitflaechen(
 ) {
 
     let pdir_name = parent_dir.as_deref().unwrap_or("Aenderungen");
-    let mut default_riss_extent_rect = match splitflaechen.first() {
-        Some(s) => s.poly_cut.get_rect(),
-        None => return,
-    };
-    for sf in splitflaechen.iter().skip(1) {
-        default_riss_extent_rect = default_riss_extent_rect.union(&sf.poly_cut.get_rect());
-    }
-    let utm_center = default_riss_extent_rect.get_center();
-    let latlon_center = crate::pdf::reproject_point_back_into_latlon(&SvgPoint {
-        x: utm_center.x,
-        y: utm_center.y,
-    }, &split_nas.crs).unwrap_or_default();
 
-    let scale = 3500.0;
-    let padding = 16.5 * 2.0;
-    let default_riss_config = RissConfig {
-        lat: latlon_center.y,
-        lon: latlon_center.x,
-        crs: "latlon".to_string(),
-        width_mm: (default_riss_extent_rect.get_width() / scale * 1000.0).round() as f32 + padding + 10.0,
-        height_mm: (default_riss_extent_rect.get_height() / scale * 1000.0).round() as f32 + padding + 10.0,
-        scale: scale as f32,
-        rissgebiet: None,
+    let default_riss_config = match get_default_riss_extent(splitflaechen, &split_nas.crs) {
+        Some(s) => s,
+        None => return,
     };
 
     let riss = riss.clone().unwrap_or(default_riss_config);
@@ -395,7 +400,7 @@ pub fn export_splitflaechen(
         None => return,
     };
 
-    let riss_extent_with_border = match riss.get_extent(&split_nas.crs, padding.into()) {
+    let riss_extent_with_border = match riss.get_extent(&split_nas.crs, PADDING.into()) {
         Some(s) => s,
         None => return,
     };
@@ -827,7 +832,7 @@ pub fn get_na_splitflaechen(splitflaechen: &[AenderungenIntersection], split_nas
                 return None;
             }
 
-            let ebene = q.attributes.get("AX_Ebene")?;
+            let ebene = q.get_ebene()?;
             let obj_id = q.attributes.get("id")?;
             let alt_kuerzel = q.get_auto_kuerzel(&ebene)?;
             let intersect_id = q.attributes
@@ -1067,7 +1072,7 @@ pub fn generate_header_pdf(
     let page1 = doc.get_page(page1);
     let mut layer1 = page1.get_layer(layer1);
 
-    let _ = write_header(
+    let _ = crate::pdf::write_header(
         &mut layer1,
         info,
         calc,
@@ -1183,153 +1188,6 @@ impl HeaderCalcConfig {
             gemarkungen,
         }
     }
-}
-
-
-pub fn write_header(
-    layer1: &mut PdfLayerReference,
-    info: &ProjektInfo,
-    calc: &HeaderCalcConfig,
-    times_roman: &IndirectFontRef,
-    times_roman_bold: &IndirectFontRef,
-    num_riss: usize,
-    total_risse: usize,
-    offset_top: f32,
-    offset_right: f32,
-) -> Option<()> {
-
-    layer1.save_graphics_state();
-
-    let header_font_size = 14.0; // pt
-    let medium_font_size = 10.0; // pt
-    let small_font_size = 8.0; // pt
-
-    layer1.set_fill_color(printpdf::Color::Rgb(printpdf::Rgb::new(0.0, 0.0, 0.0, None)));
-
-    let text = format!("Ergänzungsriss: Tatsächliche Nutzung ( {num_riss} / {total_risse} )");
-    layer1.use_text(&text, header_font_size, Mm(offset_right + 2.0), Mm(offset_top + 30.0), &times_roman_bold);    
-
-    let text = "Gemeinde:";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 25.0), &times_roman);    
-
-    let text = "Gemarkung:";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 17.0), &times_roman);    
-
-    let text = "Flur";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 10.0), &times_roman);    
-
-    let text = "Instrument/Nr.";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 2.0), Mm(offset_top + 3.0), &times_roman);    
-
-    let text = "-";
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 2.0), &times_roman);    
-
-    let text = "Flurstücke";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 20.0), Mm(offset_top + 10.0), &times_roman);    
-
-    let text = "Bearbeitung beendet am:";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 25.0), &times_roman);    
-
-    let text = format!("Erstellt durch: {} ({})", info.erstellt_durch, info.beruf_kuerzel);
-    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 17.0), &times_roman);    
-
-    let text = "Vermessungsstelle";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 62.0), Mm(offset_top + 10.0), &times_roman);    
-
-    let text = "Grenztermin vom";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 25.0), &times_roman);    
-
-    let text = "-";
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 120.0), Mm(offset_top + 21.0), &times_roman);    
-
-    let text = "Verwendete Vermessungsun-";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 17.0), &times_roman);    
-    let text = "terlagen";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 14.0), &times_roman);    
-
-    let text = format!("ALKIS ({})", info.alkis_aktualitaet);
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 10.0), &times_roman);    
-    let text = format!("Orthophoto ({})", info.orthofoto_datum);
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 6.5), &times_roman);    
-    let text = format!("GIS-Feldblöcke ({})", info.gis_feldbloecke_datum);
-    layer1.use_text(text, small_font_size, Mm(offset_right + 104.0), Mm(offset_top + 3.0), &times_roman);    
-
-    let text = "Archivblatt: *";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 21.0), &times_roman);    
-
-    let text = "Antrags-Nr.: *";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 17.0), &times_roman);    
-
-    let text = info.antragsnr.trim().to_string();
-    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 14.0), &times_roman);    
-
-    let text = "Katasteramt:";
-    layer1.use_text(text, small_font_size, Mm(offset_right + 140.0), Mm(offset_top + 10.0), &times_roman);    
-
-    let text = info.katasteramt.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 150.0), Mm(offset_top + 2.0), &times_roman);    
-
-    let text = info.gemeinde.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 21.0), &times_roman);    
-
-    let text = format!("{} ({})", info.gemarkung.trim(), calc.gemarkungs_nr);
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 20.0), Mm(offset_top + 14.0), &times_roman);    
-
-    let text = calc.get_flst_string();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 32.0), Mm(offset_top + 7.0), &times_roman);    
-
-    let text = info.bearbeitung_beendet_am.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 73.0), Mm(offset_top + 21.0), &times_roman);    
-
-    let text = info.vermessungsstelle.trim();
-    layer1.use_text(text, medium_font_size, Mm(offset_right + 68.0), Mm(offset_top + 2.0), &times_roman);    
-
-    let text = calc.get_fluren_string();
-    let fluren_len = calc.get_fluren_len();
-    let offset_right_fluren = match fluren_len {
-        0 => offset_right + 8.0,
-        1 => offset_right + 8.0,
-        2 => offset_right + 6.0,
-        3 => offset_right + 4.0,
-        3 => offset_right + 2.0,
-        _ => offset_right + 4.0,
-    };
-    layer1.use_text(&text, medium_font_size, Mm(offset_right_fluren), Mm(offset_top + 7.0), &times_roman);    
-    
-    let lines = &[
-        ((offset_right + 0.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 28.0)),
-        ((offset_right + 0.0, offset_top + 20.0), (offset_right + 175.0, offset_top + 20.0)),
-        ((offset_right + 0.0, offset_top + 13.0), (offset_right + 102.0, offset_top + 13.0)),
-        ((offset_right + 139.0, offset_top + 13.0), (offset_right + 175.0, offset_top + 13.0)),
-        ((offset_right + 0.0, offset_top + 6.0), (offset_right + 60.0, offset_top + 6.0)),
-
-        ((offset_right + 17.0, offset_top + 13.0), (offset_right + 17.0, offset_top + 6.0)),
-        ((offset_right + 60.0, offset_top + 28.0), (offset_right + 60.0, offset_top + 0.0)),
-        ((offset_right + 102.0, offset_top + 28.0), (offset_right + 102.0, offset_top + 0.0)),
-        ((offset_right + 139.0, offset_top + 28.0), (offset_right + 139.0, offset_top + 0.0)),
-    ];
-
-    layer1.set_outline_thickness(0.5);
-    layer1.set_outline_color(printpdf::Color::Rgb(Rgb::new(0.0, 0.0, 0.0, None)));
-    for ((x0, y0), (x1, y1)) in lines.iter() {
-        layer1.add_line(printpdf::Line {
-            points: vec![
-                (printpdf::Point {
-                    x: Mm(*x0).into(),
-                    y: Mm(*y0).into(),
-                }, false),
-                (printpdf::Point {
-                    x: Mm(*x1).into(),
-                    y: Mm(*y1).into(),
-                }, false),
-            ],
-            is_closed: false,
-        })
-    }
-
-    layer1.restore_graphics_state();
-
-    Some(())
 }
 
 pub fn generate_legende_xlsx(
