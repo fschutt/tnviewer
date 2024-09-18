@@ -664,7 +664,7 @@ pub struct PdfImage {
     pub image: printpdf::Image,
 }
 
-const SCALE_OVERVIEW: f64 = 2500.0;
+const SCALE_OVERVIEW: f64 = 2000.0;
 
 pub async fn export_overview(
     konfiguration: &Konfiguration,
@@ -704,7 +704,7 @@ pub async fn export_overview(
 
     log_status(&format!("reprojected: {reprojected:?}"));
 
-    let width_mm = 420.0;
+    let width_mm = 210.0;
     let height_mm = 297.0;
 
     let width_m = width_mm * SCALE_OVERVIEW / 1000.0;
@@ -715,10 +715,8 @@ pub async fn export_overview(
     let mut riss_extente_reprojected = Vec::new();
     let mut max_y = reprojected.max_y;
     while max_y > reprojected.min_y {
-        log_status("ok 1");
         let mut min_x = reprojected.min_x;
         while min_x < reprojected.max_x {
-            log_status("ok 2");
             let extent = RissExtentReprojected {
                 crs: nas_xml.crs.clone(),
                 scale: SCALE_OVERVIEW,
@@ -733,7 +731,6 @@ pub async fn export_overview(
                 x: utm_center.x,
                 y: utm_center.y,
             }, &nas_xml.crs).unwrap_or_default();
-            log_status("adding riss extent!");
             let rc = RissConfig {
                 rissgebiet: None,
                 crs: LATLON_STRING.to_string(),
@@ -747,10 +744,6 @@ pub async fn export_overview(
             min_x += width_m * 0.75;
         }
         max_y -= height_m * 0.75;
-    }
-
-    for f in riss_extente_reprojected.iter() {
-        log_status(&format!("riss_extente_reprojected: {f:?}"));
     }
 
     let (mut doc, page1, layer1) = PdfDocument::new(
@@ -793,17 +786,6 @@ pub async fn export_overview(
 
     for (i, (rc, extent)) in riss_extente_reprojected.into_iter().enumerate() {
 
-        if i != 0 {
-            let (pi, li) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
-            page_idx = pi;
-            layer_idx = li;
-            log_status("adding page");
-        }
-
-        let page = doc.get_page(page_idx);
-        let mut layer = page.get_layer(layer_idx);
-        let mut has_background = false;
-
         let mini_split_nas = get_mini_nas_xml(&split_nas, &extent);
         let flst = get_flurstuecke(nas_xml, &extent);
         let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
@@ -818,6 +800,32 @@ pub async fn export_overview(
             }
         })
         .collect::<Vec<_>>();
+
+        let aenderungen_texte = crate::ui::AenderungenIntersections::get_texte(&sf, &extent.get_rect_line_poly());
+
+        let beschriftungen = crate::optimize::optimize_labels(
+            &mini_split_nas,
+            &sf,
+            &gebaeude,
+            &[],
+            &aenderungen_texte,
+            &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
+        );
+
+        if sf.is_empty() || beschriftungen.is_empty() {
+            continue;
+        }
+
+        if i != 0 {
+            let (pi, li) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
+            page_idx = pi;
+            layer_idx = li;
+            log_status("adding page");
+        }
+
+        let page = doc.get_page(page_idx);
+        let mut layer = page.get_layer(layer_idx);
+        let mut has_background = false;
 
         let nutzungsarten = reproject_splitnas_into_pdf_space(
             &mini_split_nas,
@@ -843,17 +851,6 @@ pub async fn export_overview(
         let _ = write_fluren(&mut layer, &fluren.to_pdf_space(&extent, &rc), &konfiguration, has_background);
         let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, &rc, &extent, has_background);
         let _ = write_flur_texte(&mut layer, &fluren, &helvetica, &rc, &extent, &calc, has_background);
-
-        let aenderungen_texte = crate::ui::AenderungenIntersections::get_texte(&sf, &extent.get_rect_line_poly());
-
-        let beschriftungen = crate::optimize::optimize_labels(
-            &mini_split_nas,
-            &sf,
-            &gebaeude,
-            &[],
-            &aenderungen_texte,
-            &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
-        );
 
         let _ = write_splitflaechen_beschriftungen(
             &mut layer, 
