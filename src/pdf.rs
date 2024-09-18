@@ -743,9 +743,9 @@ pub async fn export_overview(
                 lon: latlon_center.x,
             };
             riss_extente_reprojected.push((rc, extent));
-            min_x += width_m / 0.75;
+            min_x += width_m * 0.75;
         }
-        max_y -= height_m / 0.75;
+        max_y -= height_m * 0.75;
     }
 
     for f in riss_extente_reprojected.iter() {
