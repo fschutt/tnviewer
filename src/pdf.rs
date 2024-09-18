@@ -7,7 +7,7 @@ use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPa
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
-use crate::geograf::{get_aenderungen_rote_linien, get_default_riss_extent, HeaderCalcConfig, LinienQuadTree, PADDING, SCALE};
+use crate::geograf::{get_aenderungen_rote_linien, get_default_riss_extent, HeaderCalcConfig, LinienQuadTree, PADDING};
 use crate::optimize::{OptimizeConfig, OptimizedTextPlacement};
 use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
@@ -664,6 +664,7 @@ pub struct PdfImage {
     pub image: printpdf::Image,
 }
 
+const SCALE_OVERVIEW: f64 = 2500.0;
 
 pub async fn export_overview(
     konfiguration: &Konfiguration,
@@ -706,8 +707,8 @@ pub async fn export_overview(
     let width_mm = 420.0;
     let height_mm = 297.0;
 
-    let width_m = width_mm * SCALE / 1000.0;
-    let height_m = height_mm * SCALE / 1000.0;
+    let width_m = width_mm * SCALE_OVERVIEW / 1000.0;
+    let height_m = height_mm * SCALE_OVERVIEW / 1000.0;
 
     log_status(&format!("width_m / height_m: {width_m:?} {height_m:?}"));
 
@@ -720,7 +721,7 @@ pub async fn export_overview(
             log_status("ok 2");
             let extent = RissExtentReprojected {
                 crs: nas_xml.crs.clone(),
-                scale: SCALE,
+                scale: SCALE_OVERVIEW,
                 rissgebiet: None,
                 min_x: min_x,
                 max_x: min_x + width_m,
@@ -738,7 +739,7 @@ pub async fn export_overview(
                 crs: LATLON_STRING.to_string(),
                 width_mm: width_mm as f32,
                 height_mm: height_mm as f32,
-                scale: SCALE as f32,
+                scale: SCALE_OVERVIEW as f32,
                 lat: latlon_center.y,
                 lon: latlon_center.x,
             };
