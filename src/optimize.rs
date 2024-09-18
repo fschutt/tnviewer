@@ -5,6 +5,7 @@ use web_sys::console::log_1;
 
 use crate::{nas::{intersect_polys, translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
 
+#[derive(Debug)]
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
     pub optimized: TextPlacement,

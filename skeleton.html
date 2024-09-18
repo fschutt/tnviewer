@@ -1863,18 +1863,20 @@
         downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
     }
 
-    function exportUebersicht() {
+    async function exportUebersicht(event) {
       if (!window.csv_data) {
         return;
       }
       if (!window.split_flurstuecke) {
         return;
       }
-      var pdf = export_pdf_overview(
-        JSON.stringify(window.konfiguration),
+      var use_dgm = event.altKey;
+      var pdf = await export_pdf_overview(
+        JSON.stringify(window.configuration),
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.csv_data),
+        use_dgm,
       );
       downloadBlob(pdf, window.info.antragsnr + ".pdf", 'application/octet-stream');
     }
@@ -2050,7 +2052,7 @@
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
         export_excel: function(event) { exportExcel(); },
-        export_uebersicht: function(event) { exportUebersicht(); },
+        export_uebersicht: async function(event) { await exportUebersicht(event); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
         export_geograf: async function(event) { await exportGeoGraf(event); },

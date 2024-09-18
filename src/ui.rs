@@ -852,39 +852,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
     // TAB 3
 
-    let export_excel = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_excel(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
-                    </div>
-                    <div>
-                        <p>Export</p>
-                        <p>Excel</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
-    let export_eigentuemer = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_flst_nach_eigentuemer(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
-                    </div>
-                    <div>
-                        <p>Export Flst.</p>
-                        <p>Eigentümer</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
-
     let export_uebersicht = {
         format!("
             <div class='__application-ribbon-section-content'>
@@ -1134,8 +1101,6 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_excel}
-                        {export_eigentuemer}
                         {export_uebersicht}
                     </div>
                 </div>

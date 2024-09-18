@@ -130,17 +130,53 @@ struct GetCoordsReturn {
 }
 
 #[wasm_bindgen]
-pub fn export_pdf_overview(
+pub async fn export_pdf_overview(
     konfiguration: Option<String>,
     nas_original: Option<String>,
     split_nas_xml: Option<String>,
     csv: Option<String>,
+    use_dgm: bool,
 ) -> Vec<u8> {
-    let split_nas_xml = serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()).unwrap_or_default();
-    let nas_original = serde_json::from_str::<NasXMLFile>(&nas_original.unwrap_or_default()).unwrap_or_default();
-    let konfiguration = serde_json::from_str::<Konfiguration>(&konfiguration.unwrap_or_default()).unwrap_or_default();
-    let csv_data = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
-    crate::pdf::export_overview(&konfiguration, &nas_original, &split_nas_xml, &csv_data)
+    let split_nas_xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()) {
+        Ok(s) => s,
+        Err(e) => {
+            log_status("Error PDF overview parse split_nas_xml");
+            log_status(&e.to_string());
+            SplitNasXml::default()
+        }
+    };
+    let nas_original = match serde_json::from_str::<NasXMLFile>(&nas_original.unwrap_or_default()) {
+        Ok(s) => s,
+        Err(e) => {
+            log_status("Error PDF overview parse nas_original");
+            log_status(&e.to_string());
+            NasXMLFile::default()
+        }
+    };
+    let konfiguration = match serde_json::from_str::<Konfiguration>(&konfiguration.unwrap_or_default()) {
+        Ok(s) => s,
+        Err(e) => {
+            log_status("Error PDF overview parse konfiguration");
+            log_status(&e.to_string());
+            Konfiguration::default()
+        }
+    };
+    let csv_data = match serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()) {
+        Ok(s) => s,
+        Err(e) => {
+            log_status("Error PDF overview parse csv_data");
+            log_status(&e.to_string());
+            CsvDataType::default()
+        }
+    };
+    log_status("ok overview exporting...");
+    crate::pdf::export_overview(
+        &konfiguration, 
+        &nas_original, 
+        &split_nas_xml, 
+        &csv_data,
+        use_dgm,
+    ).await
 }
 
 #[wasm_bindgen]

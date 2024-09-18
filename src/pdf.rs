@@ -295,10 +295,12 @@ impl RissExtentReprojected {
         }
     }
     pub fn get_rect_line_poly(&self) -> SvgPolygon {
-        SvgPolygon {
+        let mut s = SvgPolygon {
             outer_rings: vec![self.get_rect_line()],
             inner_rings: Vec::new(),
-        }
+        };
+        s.correct_winding_order();
+        s
     }
 
     pub fn get_rect_line(&self) -> SvgLine {
@@ -663,29 +665,38 @@ pub struct PdfImage {
 }
 
 
-pub fn export_overview(
+pub async fn export_overview(
     konfiguration: &Konfiguration,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
     csv: &CsvDataType,
+    use_dgm: bool,
 ) -> Vec<u8> {
 
     let sf = split_nas.as_splitflaechen();
     
+    log_status(&format!("{} splitflaechen total", sf.len()));
+
     let default_extent = match get_default_riss_extent(&sf, &nas_xml.crs) {
         Some(s) => s,
         None => return Vec::new(),
     };
 
-    let default_extent = match default_extent.get_extent(&nas_xml.crs, PADDING.into()) {
+    log_status(&format!("default_extent: {default_extent:?}"));
+
+    let default_extent = match default_extent.get_extent(&nas_xml.crs, 0.0) {
         Some(s) => s,
         None => return Vec::new(),
     };
+
+    log_status(&format!("default_extent: {default_extent:?}"));
 
     let reprojected = match default_extent.reproject(&nas_xml.crs) {
         Some(s) => s,
         None => return Vec::new(),
     };
+
+    log_status(&format!("reprojected: {reprojected:?}"));
 
     let width_mm = 420.0;
     let height_mm = 297.0;
@@ -693,25 +704,30 @@ pub fn export_overview(
     let width_m = width_mm * SCALE / 1000.0;
     let height_m = height_mm * SCALE / 1000.0;
 
+    log_status(&format!("width_m / height_m: {width_m:?} {height_m:?}"));
+
     let mut riss_extente_reprojected = Vec::new();
     let mut max_y = reprojected.max_y;
     while max_y > reprojected.min_y {
+        log_status("ok 1");
         let mut min_x = reprojected.min_x;
-        while min_x > reprojected.max_x {
+        while min_x < reprojected.max_x {
+            log_status("ok 2");
             let extent = RissExtentReprojected {
                 crs: nas_xml.crs.clone(),
                 scale: SCALE,
                 rissgebiet: None,
                 min_x: min_x,
                 max_x: min_x + width_m,
-                min_y: max_y,
-                max_y: max_y - height_m,
+                min_y: max_y - height_m,
+                max_y: max_y,
             };
             let utm_center = extent.get_rect().get_center();
             let latlon_center = crate::pdf::reproject_point_back_into_latlon(&SvgPoint {
                 x: utm_center.x,
                 y: utm_center.y,
             }, &nas_xml.crs).unwrap_or_default();
+            log_status("adding riss extent!");
             let rc = RissConfig {
                 rissgebiet: None,
                 crs: LATLON_STRING.to_string(),
@@ -725,6 +741,10 @@ pub fn export_overview(
             min_x += width_m / 0.75;
         }
         max_y -= height_m / 0.75;
+    }
+
+    for f in riss_extente_reprojected.iter() {
+        log_status(&format!("riss_extente_reprojected: {f:?}"));
     }
 
     let (mut doc, page1, layer1) = PdfDocument::new(
@@ -754,21 +774,14 @@ pub fn export_overview(
         Ok(o) => o,
         Err(_) => return Vec::new(),
     };
-
-    let mut has_background = false;
     
-    /*
-    for i in hintergrundbilder {
-        i.image.add_to_layer(layer.clone(), ImageTransform {
-            translate_x: i.x.into(),
-            translate_y: i.y.into(),
-            scale_x: Some(300.0 / i.dpi),
-            scale_y: Some(300.0 / i.dpi),
-            ..Default::default()
-        });
-        has_background = true;
-    }
-    */
+    let risse = riss_extente_reprojected.iter().map(|s| s.0.clone()).collect::<Vec<_>>();
+    let mut cache = HintergrundCache::build(
+        if use_dgm { konfiguration.map.dgm_source.clone() } else { konfiguration.map.dop_source.clone() },
+        if use_dgm { konfiguration.map.dgm_layers.clone() } else { konfiguration.map.dop_layers.clone() },
+        &risse, 
+        &nas_xml.crs
+    ).await;
 
     let calc = HeaderCalcConfig::from_csv(&split_nas, csv, &None);
 
@@ -780,11 +793,13 @@ pub fn export_overview(
             let (pi, li) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
             page_idx = pi;
             layer_idx = li;
+            log_status("adding page");
         }
 
         let page = doc.get_page(page_idx);
         let mut layer = page.get_layer(layer_idx);
-        
+        let mut has_background = false;
+
         let mini_split_nas = get_mini_nas_xml(split_nas, &extent);
         let flst = get_flurstuecke(nas_xml, &extent);
         let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
@@ -807,6 +822,17 @@ pub fn export_overview(
             &mut Vec::new(),
         );
 
+        for i in cache.images.remove(&rc.get_id()).unwrap_or_default() {
+            i.image.add_to_layer(layer.clone(), ImageTransform {
+                translate_x: i.x.into(),
+                translate_y: i.y.into(),
+                scale_x: Some(300.0 / i.dpi),
+                scale_y: Some(300.0 / i.dpi),
+                ..Default::default()
+            });
+            has_background = true;
+        }
+
         let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
         let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(&extent, &rc), has_background);
         let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(&extent, &rc), has_background);
@@ -825,6 +851,7 @@ pub fn export_overview(
             &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
         );
 
+        log_status(&format!("writing {} beschriftungen: {beschriftungen:?}", beschriftungen.len()));
         let _ = write_splitflaechen_beschriftungen(
             &mut layer, 
             &helvetica,
@@ -842,9 +869,12 @@ pub fn export_overview(
             &times_roman, 
             &times_roman_bold, 
             None, 
-            PADDING / 2.0,
+            PADDING / 4.0,
         );
+        log_status("ok done page");
     }
+
+    log_status("ok done PDF");
 
     doc.save_to_bytes().unwrap_or_default()
 }
