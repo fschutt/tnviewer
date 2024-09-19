@@ -202,10 +202,7 @@ pub async fn export_aenderungen_geograf(
             ("Anita Mustermann".into(), vec!["Fl. 1: Flst. 54".into(), "Fl. 3: Flst 55".into()]),
         ],
     });
-    for f in antragsbegleitblatt {
-        files.push((f.0, f.1, f.2));
-    }
-    // files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
+    files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
 
     let (num_eigentuemer, eigentuemer_xlsx) = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));

@@ -18,7 +18,7 @@ pub struct AntragsbegleitblattInfo {
     pub eigentuemer: Vec<(String, Vec<String>)>, // <!-- %%ROWS%% --> // "Herr Soundso" -> { Fl. 1: Flst. 44, Fl. 2: Flst 55 }
 }
 
-pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<(Option<String>, PathBuf, Vec<u8>)> {
+pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<u8> {
 
     let document_xml = ANTRAGSBEGLEITBLATT_DOCX_XML
     .replace("<w:t>%%REPLACEME_DATUM%%</w:t>", &format!("<w:t>{}</w:t>", info.datum))
@@ -29,13 +29,12 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
     .replace("<!-- %%FLURSTUECKE%% -->", &info.flurstuecke_bearbeitet.iter().map(antragsbegleitblatt_gen_bearbeitete_flst).collect::<Vec<_>>().join(""))
     .replace("<!-- %%ROWS%% -->", &info.eigentuemer.iter().map(antragsbegleitblatt_gen_row).collect::<Vec<_>>().join(""));
 
-    let mut zip = crate::zip::read_files_from_zip(ANTRAGSBEGLEITBLATT_ZIP, true);
+    let mut zip = crate::zip::read_files_from_zip(ANTRAGSBEGLEITBLATT_ZIP, true, &[".rels"]);
     for f in zip.iter() {
         crate::uuid_wasm::log_status(&format!("reading zip: got file {} (parent = {:?}): {} bytes", f.1.display(), f.0, f.2.len()));
     }
     zip.push((Some("word".to_string()), "document.xml".into(), document_xml.as_bytes().to_vec()));
-    zip
-    // crate::zip::write_files_to_zip(&zip)
+    crate::zip::write_files_to_zip(&zip)
 }
 
 fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(String, Vec<String>)) -> String {

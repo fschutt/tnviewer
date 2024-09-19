@@ -11,7 +11,7 @@ fn strip_prefix(p: &str, top_folder_name: &str) -> Option<String> {
     }
 }
 
-pub fn read_files_from_zip(zip: &[u8], remove_top_folder: bool) -> Vec<(Option<String>, PathBuf, Vec<u8>)> {
+pub fn read_files_from_zip(zip: &[u8], remove_top_folder: bool, dotfiles: &[&str]) -> Vec<(Option<String>, PathBuf, Vec<u8>)> {
 
     let cursor = Cursor::new(zip);
     let mut zip = match zip::ZipArchive::new(cursor) {
@@ -31,7 +31,7 @@ pub fn read_files_from_zip(zip: &[u8], remove_top_folder: bool) -> Vec<(Option<S
         let file_n = PathBuf::from(f_name);
         let filename = file_n.file_name()
         .map(|s| s.to_string_lossy().to_string())
-        .and_then(|s| if s.starts_with(".") { None } else { Some(s) });
+        .and_then(|s| if s.starts_with(".") && !dotfiles.iter().any(|q| *q == s) { None } else { Some(s) });
         let filename = match filename {
             Some(s) => PathBuf::from(s),
             None => continue,
