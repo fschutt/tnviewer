@@ -7,7 +7,7 @@ use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConfor
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber};
+use crate::{csv::{self, CsvDataType}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::AntragsbegleitblattInfo};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -189,6 +189,23 @@ pub async fn export_aenderungen_geograf(
     files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
 
     log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.0.len()));
+
+    let antragsbegleitblatt = crate::xml_templates::generate_antragsbegleitblatt_docx(&AntragsbegleitblattInfo {
+        datum: "19.05.2016".to_string(),
+        antragsnr: "1783".to_string(),
+        gemarkung: "Bandelow".to_string(),
+        gemarkungsnummer: "8943".to_string(),
+        fluren_bearbeitet: "1, 3, 4".to_string(),
+        flurstuecke_bearbeitet: vec![("Fl. 1".into(), "1 - 37, 10, 54".into())],
+        eigentuemer: vec![
+            ("Max Mustermann".into(), vec!["Fl. 1: Flst. 54".into(), "Fl. 3: Flst 55".into()]),
+            ("Anita Mustermann".into(), vec!["Fl. 1: Flst. 54".into(), "Fl. 3: Flst 55".into()]),
+        ],
+    });
+    for f in antragsbegleitblatt {
+        files.push((f.0, f.1, f.2));
+    }
+    // files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
 
     let (num_eigentuemer, eigentuemer_xlsx) = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
     files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
