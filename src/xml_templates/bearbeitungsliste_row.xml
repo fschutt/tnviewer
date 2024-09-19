@@ -1,4 +1,4 @@
-<row r="%%ROWID%%" spans="1:7" s="16" customFormat="1">
+<row r="%%ROWID%%" spans="1:7" %%HASCUSTOMFORMAT%%>
     <c r="A%%ROWID%%" %%CELLSTYLE%% >
         <v>%%COL0%%</v>
     </c>

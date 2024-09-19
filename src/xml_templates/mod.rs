@@ -118,6 +118,12 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             crate::csv::Status::AenderungMitBenachrichtigung => "s=\"14\" t=\"s\"",
         };
 
+        let has_custom_format = if row_style_id.is_empty() {
+            ""
+        } else {
+            "s=\"16\" customFormat=\"1\""
+        };
+
         let row_strings = vec![
             flst_id.format_nice(),
             v.nutzung.to_string(),
@@ -132,7 +138,8 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
         let mut row_xml = BEARBEITUNGSLISTE_ROW_XML
         .replace("%%ROWID%%", &(i + 5).to_string())
-        .replace("%%CELLSTYLE%%", &row_style_id);
+        .replace("%%CELLSTYLE%%", &row_style_id)
+        .replace("%%HASCUSTOMFORMAT%%", has_custom_format);
 
         for (i, r) in row_strings.into_iter().enumerate() {
             let replaceid = format!("%%COL{i}%%");
