@@ -438,26 +438,30 @@ pub fn join_modified_fluren(
 
 fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
     let mut v = v.clone();
-    v.sort_by(|a, b| a.format_dxf().cmp(&b.format_dxf()));
+    v.sort_by(|a, b| a.get_comma_f32().total_cmp(&b.get_comma_f32()));
+
     let (mut i, first) = match v.get(0) {
-        Some(s) => (s.flst_zaehler, s.format_str()),
+        Some(s) => (s.get_comma_f32(), s.clone()),
         None => return None,
     };
 
     if v.len() == 1 {
-        return Some(first);
+        return Some(first.format_str());
     }
 
-    let mut target = vec![first];
+    let mut target = vec![first.format_str()];
+    let mut last = first;
     for q in v.iter().skip(1).take(v.len() - 1) {
-        if q.flst_zaehler == i || q.flst_zaehler != i + 1 {
+        if (i.floor() + 1.0) as usize != (q.get_comma_f32().floor()) as usize {
+            target.push(last.format_str());
             target.push(q.format_str());
         }
-        i = q.flst_zaehler;
+        last = q.clone();
+        i = q.get_comma_f32();
     }
 
-    if let Some(last) = v.last() {
-        target.push(last.format_str());
+    if let Some(l) = v.last() {
+        target.push(l.format_str());
     }
 
     Some(target.chunks(2).filter_map(|w| {

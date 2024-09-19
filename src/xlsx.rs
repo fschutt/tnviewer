@@ -149,6 +149,11 @@ pub struct FlstIdParsedNumber {
 
 impl FlstIdParsedNumber {
 
+    pub fn get_comma_f32(&self) -> f32 {
+        let nenner = self.flst_nenner.clone().unwrap_or(0);
+        format!("{}.{}", self.flst_zaehler, nenner).parse::<f32>().unwrap_or_default()
+    }
+
     pub fn format_start_str(&self) -> String {
         let FlstIdParsedNumber { land, gemarkung, flur, flst_zaehler, flst_nenner } = self;
         // 12118000300001 0000 00
