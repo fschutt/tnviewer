@@ -190,7 +190,7 @@ pub async fn export_aenderungen_geograf(
     let splitflaechen_xlsx = crate::xml_templates::generate_bearbeitungsliste_xlsx(&BearbeitungslisteInfo {
         eigentuemer: eigentuemer_map.clone(),
         auftragsnr: projekt_info.antragsnr.trim().to_string(),
-        gemarkungsnr: main_gemarkung.to_string(),
+        gemarkung_name: projekt_info.gemarkung.clone(),
         fluren: splitflaechen.get_fluren(main_gemarkung).into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
     });
     files.push((None, format!("{antragsnr}.Bearbeitungsliste.xlsx").into(), splitflaechen_xlsx));

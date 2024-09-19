@@ -55,32 +55,33 @@ fn antragsbegleitblatt_gen_bearbeitete_flst((flur, flst): &(String, String)) -> 
 
 pub struct BearbeitungslisteInfo {
     pub auftragsnr: String,
-    pub gemarkungsnr: String,
+    pub gemarkung_name: String,
     pub fluren: String,
     pub eigentuemer: BTreeMap<FlstIdParsedNumber, FlstEigentuemer>
 }
 
 fn clean_ascii(s: &str) -> String {
     html_escape::encode_text(s).to_string()
-    // s.chars().filter_map(|c| if c.is_ascii() { Some(c) } else { None }).collect()
 }
 
 pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> {
 
     let mut sharedstrings = BTreeSet::new();
 
-    sharedstrings.extend(vec![
-        format!("TN Bestand: Flurkarte    "),
-        format!("TN Veränderung: GIS"),
-        format!("Riss"),
-        format!("David-Bearbeitung"),
-        format!("Lage &amp; Bemerkung zur Bearbeitung"),
-        format!("Flurstückseigentümer"),
-        format!("To do Liste"),
-        format!("Der Vergleich der Flurkarte mit der Örtlichkeit über GIS (Luftbild v. 2021-2023 + Landwirtschaftsfeldblöcke v. 11.02.2024)"),
-        format!("Flurstückskennz."),
-        format!("Auftragsnummer: {}, {}, Flur {}", info.auftragsnr, info.gemarkungsnr, info.fluren),
-    ].into_iter());
+    let default_strings = vec![
+        ("%%TNBESTAND%%", format!("TN Bestand: Flurkarte    ")),
+        ("%%TNVERAENDERUNG%%", format!("TN Veränderung: GIS")),
+        ("%%RISS%%", format!("Riss")),
+        ("%%DAVID%%", format!("David-Bearbeitung")),
+        ("%%LAGE%%", format!("Lage & Bemerkung zur Bearbeitung")),
+        ("%%FLSTEIG%%", format!("Flurstückseigentümer")),
+        ("%%TODOLISTE%%", format!("To do Liste")),
+        ("%%VERGLEICH%%", format!("Der Vergleich der Flurkarte mit der Örtlichkeit über GIS (Luftbild v. 2021-2023 + Landwirtschaftsfeldblöcke v. 11.02.2024)")),
+        ("%%FLSTKENNZ%%", format!("Flurstückskennz.")),
+        ("%%AUFTRAGSNR%%", format!("Auftragsnummer: {}, {}, Flur {}", info.auftragsnr, info.gemarkung_name, info.fluren)),
+    ];
+
+    sharedstrings.extend(default_strings.iter().map(|s| clean_ascii(&s.1)));
 
     for (flst_id, v) in info.eigentuemer.iter() {
         let eig: String = v.eigentuemer.join("; ");
@@ -89,8 +90,8 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             v.nutzung.to_string(),
             match v.status {
                 crate::csv::Status::Bleibt => "bleibt".to_string(),
-                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone() + " (keine Benachrichtigung)",
-                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone() + " (mit Benachrichtigung)",
+                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone(),
+                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone(),
             },
             eig.to_string(),
             v.notiz.clone()
@@ -112,9 +113,9 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
     for (i, (flst_id, v)) in info.eigentuemer.iter().enumerate() {
         let eig: String = v.eigentuemer.join("; ");
         let row_style_id = match v.status {
-            crate::csv::Status::Bleibt => "0",
-            crate::csv::Status::AenderungKeineBenachrichtigung => "2",
-            crate::csv::Status::AenderungMitBenachrichtigung => "3",
+            crate::csv::Status::Bleibt => "",
+            crate::csv::Status::AenderungKeineBenachrichtigung => "s=\"17\" t=\"s\"",
+            crate::csv::Status::AenderungMitBenachrichtigung => "s=\"14\" t=\"s\"",
         };
 
         let row_strings = vec![
@@ -122,8 +123,8 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             v.nutzung.to_string(),
             match v.status {
                 crate::csv::Status::Bleibt => "bleibt".to_string(),
-                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone() + " (keine Benachrichtigung)",
-                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone() + " (mit Benachrichtigung)",
+                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone(),
+                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone(),
             },
             eig.to_string(),
             v.notiz.clone()
@@ -131,7 +132,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
         let mut row_xml = BEARBEITUNGSLISTE_ROW_XML
         .replace("%%ROWID%%", &(i + 5).to_string())
-        .replace("%%CUSTOMFORMAT%%", &row_style_id);
+        .replace("%%CELLSTYLE%%", &row_style_id);
 
         for (i, r) in row_strings.into_iter().enumerate() {
             let replaceid = format!("%%COL{i}%%");
@@ -144,8 +145,13 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
         bearbeitungsliste_rows.push(row_xml);
     }
 
+    let mut header = BEARBEITUNGSLISTE_HEADER_XML.to_string();
+    for (k, v) in default_strings.iter() {
+        header = header.replace(k, &sharedstrings_lookup_list.get(&clean_ascii(&v)).map(|s| s.to_string()).unwrap_or_default());
+    }
+    
     let sheet1_xml = BEARBEITUNGSLISTE_SHEET1_XML
-    .replace("<!-- %%HEADER%% -->", &BEARBEITUNGSLISTE_HEADER_XML)
+    .replace("<!-- %%HEADER%% -->", &header)
     .replace("<!-- %%ROWS%% -->", &bearbeitungsliste_rows.join("\r\n"));
 
     let mut zip = crate::zip::read_files_from_zip(BEARBEITUNGSLISTE_ZIP, true, &[".rels"]);
