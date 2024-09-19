@@ -191,7 +191,23 @@ pub async fn export_aenderungen_geograf(
         eigentuemer: eigentuemer_map.clone(),
         auftragsnr: projekt_info.antragsnr.trim().to_string(),
         gemarkung_name: projekt_info.gemarkung.clone(),
-        fluren: splitflaechen.get_fluren(main_gemarkung).into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
+        fluren: {
+            let fl = splitflaechen
+                .get_fluren(main_gemarkung)
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
+
+            if fl.is_empty() {
+                String::new()
+            } else if fl.len() == 1 {
+                fl[0].clone()
+            } else {
+                let first = fl.first().unwrap();
+                let last = fl.last().unwrap();
+                format!("{first} - {last}")
+            }
+        },
     });
     files.push((None, format!("{antragsnr}.Bearbeitungsliste.xlsx").into(), splitflaechen_xlsx));
     log_status(&format!("OK: {} Flurstücke exportiert in Bearbeitungsliste", eigentuemer_map.len()));
