@@ -61,7 +61,8 @@ pub struct BearbeitungslisteInfo {
 }
 
 fn clean_ascii(s: &str) -> String {
-    s.chars().filter_map(|c| if c.is_ascii() { Some(c) } else { None }).collect()
+    html_escape::encode_text(s).to_string()
+    // s.chars().filter_map(|c| if c.is_ascii() { Some(c) } else { None }).collect()
 }
 
 pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> {
