@@ -10,7 +10,7 @@ pub const ANTRAGSBEGLEITBLATT_DOCX_ZEILE_XML: &str = include_str!("./antragsbegl
 
 pub struct AntragsbegleitblattInfo {
     pub datum: String, // %%REPLACEME_DATUM%%
-    pub antragsnr: String, // %%ANTRAGSNR_NUR_NUMMER%%
+    pub antragsnr: String, // %%ANTRAGSNR%%
     pub gemarkung: String, // %%GEMARKUNGSNAME%%
     pub gemarkungsnummer: String, // %%GEMARKUNG_NUMMER%%
     pub fluren_bearbeitet: String, // %%FLUREN_NUMMERN%%
@@ -22,7 +22,7 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
 
     let document_xml = ANTRAGSBEGLEITBLATT_DOCX_XML
     .replace("<w:t>%%REPLACEME_DATUM%%</w:t>", &format!("<w:t>{}</w:t>", info.datum))
-    .replace("<w:t>%%ANTRAGSNR_NUR_NUMMER%%</w:t>", &format!("<w:t>{}</w:t>", info.antragsnr))
+    .replace("<w:t>%%ANTRAGSNR%%</w:t>", &format!("<w:t>{}</w:t>", info.antragsnr))
     .replace("<w:t>%%GEMARKUNGSNAME%%</w:t>", &format!("<w:t>{}</w:t>", info.gemarkung))
     .replace("<w:t>%%GEMARKUNG_NUMMER%%</w:t>", &format!("<w:t>{}</w:t>", info.gemarkungsnummer))
     .replace("<w:t>%%FLUREN_NUMMERN%%</w:t>", &format!("<w:t>{}</w:t>", info.fluren_bearbeitet))

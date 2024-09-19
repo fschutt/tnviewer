@@ -322,15 +322,6 @@
             <w:pPr>
                 <w:spacing w:line="276" w:lineRule="auto"/>
             </w:pPr>
-            <w:r>
-                <w:rPr>
-                    <w:rFonts w:cs="Arial"/>
-                    <w:b/>
-                    <w:sz w:val="40"/>
-                    <w:shd w:val="clear" w:color="auto" w:fill="C0C0C0"/>
-                </w:rPr>
-                <w:t>2024-51-</w:t>
-            </w:r>
             <w:r w:rsidR="00CE5ECD">
                 <w:rPr>
                     <w:rFonts w:cs="Arial"/>
@@ -338,16 +329,7 @@
                     <w:sz w:val="40"/>
                     <w:shd w:val="clear" w:color="auto" w:fill="C0C0C0"/>
                 </w:rPr>
-                <w:t>%%ANTRAGSNR_NUR_NUMMER%%</w:t>
-            </w:r>
-            <w:r>
-                <w:rPr>
-                    <w:rFonts w:cs="Arial"/>
-                    <w:b/>
-                    <w:sz w:val="40"/>
-                    <w:shd w:val="clear" w:color="auto" w:fill="C0C0C0"/>
-                </w:rPr>
-                <w:t>-NL</w:t>
+                <w:t>%%ANTRAGSNR%%</w:t>
             </w:r>
         </w:p>
         <w:tbl>

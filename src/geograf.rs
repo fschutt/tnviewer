@@ -4,10 +4,11 @@ use csscolorparser::Color;
 use dxf::{Header, Vector, XData, XDataItem};
 use geo::Relate;
 use printpdf::{BuiltinFont, CustomPdfConformance, IndirectFontRef, Mm, PdfConformance, PdfDocument, PdfLayerReference, Pt, Rgb};
+use proj4rs::proj;
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::AntragsbegleitblattInfo};
+use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::AntragsbegleitblattInfo};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -182,32 +183,26 @@ pub async fn export_aenderungen_geograf(
 
     log_status("Berechne Splitflächen...");
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml, &csv_data);
-
     log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
 
-    let splitflaechen_report = splitflaechen_zu_xlsx(csv_data, &splitflaechen);
-    files.push((None, format!("{antragsnr}.Splitflaechen.xlsx").into(), splitflaechen_report));
+    let eigentuemer_map = splitflaechen_eigentuemer_map(&csv_data, &splitflaechen);
+    let splitflaechen_xlsx = splitflaechen_zu_xlsx(&eigentuemer_map);
+    files.push((None, format!("{antragsnr}.Bearbeitungsliste.xlsx").into(), splitflaechen_xlsx));
+    log_status(&format!("OK: {} Flurstücke exportiert in Bearbeitungsliste", eigentuemer_map.len()));
 
-    log_status(&format!("OK: {} Splitflächen exportiert in XLSX", splitflaechen.0.len()));
-
+    let main_gemarkung = crate::get_main_gemarkung(&csv_data);
+    let modified = get_modified_fluren_flst(&eigentuemer_map, main_gemarkung);
     let antragsbegleitblatt = crate::xml_templates::generate_antragsbegleitblatt_docx(&AntragsbegleitblattInfo {
-        datum: "19.05.2016".to_string(),
-        antragsnr: "1783".to_string(),
-        gemarkung: "Bandelow".to_string(),
-        gemarkungsnummer: "8943".to_string(),
-        fluren_bearbeitet: "1, 3, 4".to_string(),
-        flurstuecke_bearbeitet: vec![("Fl. 1".into(), "1 - 37, 10, 54".into())],
-        eigentuemer: vec![
-            ("Max Mustermann".into(), vec!["Fl. 1: Flst. 54".into(), "Fl. 3: Flst 55".into()]),
-            ("Anita Mustermann".into(), vec!["Fl. 1: Flst. 54".into(), "Fl. 3: Flst 55".into()]),
-        ],
+        datum: projekt_info.bearbeitung_beendet_am.clone(),
+        antragsnr: projekt_info.antragsnr.replace("-30-", "-51-"),
+        gemarkung: projekt_info.gemarkung.trim().to_string(),
+        gemarkungsnummer: main_gemarkung.to_string(),
+        fluren_bearbeitet: modified.keys().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
+        flurstuecke_bearbeitet: join_modified_fluren(&modified).into_iter().collect(),
+        eigentuemer: get_eigentuemer(&eigentuemer_map),
     });
     files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
 
-    let (num_eigentuemer, eigentuemer_xlsx) = eigentuemer_bearbeitete_flst_xlsx(csv_data, &splitflaechen);
-    files.push((None, format!("{antragsnr}.EigentuemerBearbeiteteFlst.xlsx").into(), eigentuemer_xlsx));
-
-    log_status(&format!("OK: {num_eigentuemer} Eigentümer exportiert in XLSX"));
 
     let lq_flurstuecke = nas_xml.get_linien_quadtree();
     let lq_flurstuecke_und_nutzungsarten = split_nas.get_linien_quadtree();
@@ -266,28 +261,126 @@ pub async fn export_aenderungen_geograf(
     write_files_to_zip(&files)
 }
 
-pub fn eigentuemer_bearbeitete_flst_xlsx(
-    datensaetze: &CsvDataType,
-    splitflaechen: &AenderungenIntersections,
-) -> (usize, Vec<u8>) {
-    let data = datensaetze.iter().map(|(flst_id, v)| {
-        (flst_id.clone(), v.iter().map(|cs| {
-            CsvDatensatz {
-                eigentuemer: cs.eigentuemer.trim().to_string(),
-                nutzung: cs.nutzung.trim().to_string(),
-                notiz: String::new(),
-                status: AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id),
-            }
-        }).collect())
-    }).collect();
-
-    crate::xlsx::flst_id_nach_eigentuemer(&data)
+pub struct FlstEigentuemer {
+    pub nutzung: String,
+    pub status: Status,
+    pub eigentuemer: Vec<String>,
+    pub notiz: String,
+    pub auto_notiz: String,
 }
 
-pub fn splitflaechen_zu_xlsx(
+pub fn splitflaechen_eigentuemer_map(
     datensaetze: &CsvDataType,
     splitflaechen: &AenderungenIntersections,
-) -> Vec<u8> {
+) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
+    datensaetze.iter().filter_map(|(flst_id, ds)| {
+
+        let ds_0 = ds.get(0)?;
+        let f = FlstIdParsed::from_str(flst_id).parse_num()?;
+        let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
+        let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
+        let nutzung = ds_0.nutzung.clone();
+
+        let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
+        eigentuemer.sort();
+        eigentuemer.dedup();
+
+        Some((f, FlstEigentuemer {
+            nutzung,
+            status,
+            notiz: ds_0.notiz.clone(),
+            auto_notiz: notiz,
+            eigentuemer,
+        }))
+    }).collect()
+}
+
+pub fn get_modified_fluren_flst(
+    eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>,
+    main_gemarkung: usize,
+) -> BTreeMap<usize, Vec<FlstIdParsedNumber>> {
+    let mut target_map = BTreeMap::new();
+    for (e, v) in eigentuemer_map.iter() {
+        if v.status != Status::AenderungMitBenachrichtigung {
+            continue;
+        }
+        target_map.entry(e.flur).or_insert_with(|| Vec::new()).push(e.clone());
+    }
+    target_map
+}
+
+pub fn get_eigentuemer(
+    eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>,
+) -> Vec<(String, Vec<String>)> {
+    let mut firmen = BTreeMap::new();
+    let mut eigentuemer = BTreeMap::new();
+
+    for (k, v) in eigentuemer_map.iter() {
+        for e in v.eigentuemer.iter() {
+            let is_firma = !(e.contains("Herr") || e.contains("Frau"));
+            let mut_map = if is_firma {
+                &mut firmen
+            } else {
+                &mut eigentuemer
+            };
+
+            mut_map.entry(e.clone())
+            .or_insert_with(|| BTreeMap::new())
+            .entry(k.flur)
+            .or_insert_with(|| Vec::new())
+            .push(k.clone());
+        }
+    }
+
+    let mut target = Vec::new();
+    for (eigentuemer, fluren) in firmen {
+        target.push((eigentuemer.clone(), fluren.iter().filter_map(|(fl, flst)| Some(format!("Fl. {fl}: {}", join_flst(flst)?))).collect()));
+    }
+    for (eigentuemer, fluren) in eigentuemer {
+        target.push((eigentuemer.clone(), fluren.iter().filter_map(|(fl, flst)| Some(format!("Fl. {fl}: {}", join_flst(flst)?))).collect()));
+    }
+    target
+}
+
+pub fn join_modified_fluren(
+    modified: &BTreeMap<usize, Vec<FlstIdParsedNumber>>,
+) -> BTreeMap<String, String> {
+    modified.iter().filter_map(|(k, v)| Some((format!("Fl. {k}: "), join_flst(v)?))).collect()
+}
+
+fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
+    let mut v = v.clone();
+    v.sort_by(|a, b| a.format_dxf().cmp(&b.format_dxf()));
+    let (mut i, first) = match v.get(0) {
+        Some(s) => (s.flst_zaehler, s.format_str()),
+        None => return None,
+    };
+
+    if v.len() == 1 {
+        return Some(first);
+    }
+
+    let mut target = vec![first];
+    for q in v.iter().skip(1).take(v.len() - 1) {
+        if q.flst_zaehler == i || q.flst_zaehler != i + 1 {
+            target.push(q.format_str());
+        }
+        i = q.flst_zaehler;
+    }
+
+    if let Some(last) = v.last() {
+        target.push(last.format_str());
+    }
+
+    Some(target.chunks(2).filter_map(|w| {
+        match &w {
+            &[a, b] => Some(format!("{a} - {b}")),
+            _ => None,
+        }
+    }).collect::<Vec<_>>().join(", "))
+}
+
+pub fn splitflaechen_zu_xlsx(eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>) -> Vec<u8> {
     
     use simple_excel_writer::*;
     
@@ -305,29 +398,21 @@ pub fn splitflaechen_zu_xlsx(
 
     let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
         let sw = sheet_writer;
-        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer"])?;
-        for (flst_id, ds) in datensaetze.iter() {
-            let ds_0 = match ds.get(0) {
-                Some(s) => s,
-                None => continue
-            };
-            let f = FlstIdParsed::from_str(flst_id).parse_num().unwrap_or_default();
-            let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
-            let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
-            let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
-            eigentuemer.sort();
-            eigentuemer.dedup();
-            let eig: String = eigentuemer.join("; ");
-            let nutzung = ds_0.nutzung.clone();
+        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer", "Kommentare"])?;
+
+        for (flst_id, v) in eigentuemer_map.iter() {
+
+            let eig: String = v.eigentuemer.join("; ");
             sw.append_row(row![
-                FlstIdParsed::from_str(&flst_id).to_nice_string(),
-                nutzung.to_string(),
-                match status {
+                flst_id.format_nice(),
+                v.nutzung.to_string(),
+                match v.status {
                     crate::csv::Status::Bleibt => "bleibt".to_string(),
-                    crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
-                    crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (mit Benachrichtigung)",
+                    crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone() + " (keine Benachrichtigung)",
+                    crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone() + " (mit Benachrichtigung)",
                 },
-                eig.to_string()
+                eig.to_string(),
+                v.notiz.clone()
             ])?;
         }
 

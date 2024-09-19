@@ -128,68 +128,6 @@ pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
     }
 }
 
-pub fn flst_id_nach_eigentuemer(datensaetze: &CsvDataType) -> (usize, Vec<u8>) {
-
-    use simple_excel_writer::*;
-    
-    let mut wb = Workbook::create_in_memory();
-    let mut sheet = wb.create_sheet("FlstIdNachEigentuemer");
-
-    // Eigentuemer
-    sheet.add_column(Column { width: 30.0 });
-    // Flurstuecke
-    sheet.add_column(Column { width: 60.0 });
-
-    let mut eigentuemer = BTreeMap::new();
-    for (k, v) in datensaetze.iter() {
-        for d in v.iter() {
-            let flst = match FlstIdParsed::from_str(k).parse_num() {
-                Some(s) => s,
-                None => continue,
-            };
-            if d.status != Status::AenderungMitBenachrichtigung {
-                continue;
-            }
-            eigentuemer
-            .entry(d.eigentuemer.trim().to_string())
-            .or_insert_with(|| BTreeMap::new())
-            .entry(flst.flur)
-            .or_insert_with(|| Vec::new())
-            .push(flst);
-        }
-    }
-
-    let mut eigentuemer_len = eigentuemer.len();
-
-    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
-        let sw = sheet_writer;
-        sw.append_row(row!["Eigentümer", "Flurstücke"])?;
-
-        for (k, v) in eigentuemer.iter() {
-            let mut txt = String::new();
-            for (flur, fl) in v.iter() {
-                let mut v = fl.clone();
-                v.sort_by(|a, b| a.flst_zaehler.cmp(&b.flst_zaehler));
-                v.dedup();
-                let s_flur = v.iter().map(|q| q.format_str()).collect::<Vec<_>>().join(", ");
-                txt.push_str(&format!("Fl. {flur}: Flst. {s_flur}"));
-                txt.push_str("\r\n");
-            }
-            sw.append_row(row![
-                k.to_string(),
-                txt
-            ])?;
-        }
-
-        Ok(())
-    });
-
-    match wb.close() {
-        Ok(Some(o)) => (eigentuemer_len, o),
-        _ => (0, Vec::new()),
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]
 pub struct FlstIdParsed {
     pub land: String, 

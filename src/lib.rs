@@ -1069,16 +1069,6 @@ pub fn edit_konfiguration_move_layer(konfiguration: String, layer_type: String, 
     serde_json::to_string(&config).unwrap_or_default()
 }
 
-#[wasm_bindgen]
-pub fn export_flst_id_nach_eigentuemer(s: String) -> Vec<u8> {
-    let data = match serde_json::from_str::<CsvDataType>(&s) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    crate::xlsx::flst_id_nach_eigentuemer(&data).1
-}
-
 pub fn get_map() -> BTreeMap<String, crate::search::NutzungsArt> {
     crate::search::get_map_internal()
 }

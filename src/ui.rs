@@ -1191,6 +1191,17 @@ pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
 
 impl AenderungenIntersections {
 
+    pub fn get_fluren(&self, main_gemarkung: usize) -> BTreeSet<usize> {
+        self.0.iter()
+        .filter_map(|s| {
+            let flst_id = FlstIdParsed::from_str(&s.flst_id).parse_num()?;
+            if flst_id.gemarkung != main_gemarkung {
+                return None;
+            }
+            Some(flst_id.flur)
+        }).collect()
+    }
+
     pub fn get_future_flaechen(&self) -> Self {
         let mut vi = Vec::new();
         for s in self.0.iter() {
