@@ -8,7 +8,7 @@ use proj4rs::proj;
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::AntragsbegleitblattInfo};
+use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo}};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -185,12 +185,17 @@ pub async fn export_aenderungen_geograf(
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml, &csv_data);
     log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
 
+    let main_gemarkung = crate::get_main_gemarkung(&csv_data);
     let eigentuemer_map = splitflaechen_eigentuemer_map(&csv_data, &splitflaechen);
-    let splitflaechen_xlsx = splitflaechen_zu_xlsx(&eigentuemer_map);
+    let splitflaechen_xlsx = crate::xml_templates::generate_bearbeitungsliste_xlsx(&BearbeitungslisteInfo {
+        eigentuemer: eigentuemer_map.clone(),
+        auftragsnr: projekt_info.antragsnr.trim().to_string(),
+        gemarkungsnr: main_gemarkung.to_string(),
+        fluren: splitflaechen.get_fluren(main_gemarkung).into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
+    });
     files.push((None, format!("{antragsnr}.Bearbeitungsliste.xlsx").into(), splitflaechen_xlsx));
     log_status(&format!("OK: {} Flurstücke exportiert in Bearbeitungsliste", eigentuemer_map.len()));
 
-    let main_gemarkung = crate::get_main_gemarkung(&csv_data);
     let modified = get_modified_fluren_flst(&eigentuemer_map, main_gemarkung);
     let antragsbegleitblatt = crate::xml_templates::generate_antragsbegleitblatt_docx(&AntragsbegleitblattInfo {
         datum: projekt_info.bearbeitung_beendet_am.clone(),
@@ -261,6 +266,7 @@ pub async fn export_aenderungen_geograf(
     write_files_to_zip(&files)
 }
 
+#[derive(Debug, Clone)]
 pub struct FlstEigentuemer {
     pub nutzung: String,
     pub status: Status,
@@ -380,7 +386,9 @@ fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
     }).collect::<Vec<_>>().join(", "))
 }
 
-pub fn splitflaechen_zu_xlsx(eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>) -> Vec<u8> {
+
+/*
+pub fn splitflaechen_zu_bearbeitungsliste(eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>) -> Vec<u8> {
     
     use simple_excel_writer::*;
     
@@ -424,6 +432,8 @@ pub fn splitflaechen_zu_xlsx(eigentuemer_map: &BTreeMap<FlstIdParsedNumber, Flst
         _ => Vec::new(),
     }
 }
+
+*/
 
 pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,

@@ -1,0 +1,19 @@
+<row r="%%ROWID%%" spans="1:7" customFormat="%%CUSTOMFORMAT%%" x14ac:dyDescent="0.25">
+    <c r="A%%ROWID%%" t="s">
+        <v>%%COL0%%</v>
+    </c>
+    <c r="B%%ROWID%%" t="s">
+        <v>%%COL1%%</v>
+    </c>
+    <c r="C%%ROWID%%" t="s">
+        <v>%%COL2%%</v>
+    </c>
+    <c r="D%%ROWID%%" t="s">
+        <v>%%COL3%%</v>
+    </c>
+    <c r="E%%ROWID%%" t="s">
+        <v>%%COL4%%</v>
+    </c>
+    <c r="F%%ROWID%%"/>
+    <c r="G%%ROWID%%"/>
+</row>
