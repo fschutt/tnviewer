@@ -681,36 +681,26 @@ pub async fn export_overview(
     
     let sf = split_nas.as_splitflaechen();
     
-    log_status(&format!("{} splitflaechen total", sf.len()));
-
     let default_extent = match get_default_riss_extent(&sf, &nas_xml.crs) {
         Some(s) => s,
         None => return Vec::new(),
     };
-
-    log_status(&format!("default_extent: {default_extent:?}"));
 
     let default_extent = match default_extent.get_extent(&nas_xml.crs, 0.0) {
         Some(s) => s,
         None => return Vec::new(),
     };
 
-    log_status(&format!("default_extent: {default_extent:?}"));
-
     let reprojected = match default_extent.reproject(&nas_xml.crs) {
         Some(s) => s,
         None => return Vec::new(),
     };
-
-    log_status(&format!("reprojected: {reprojected:?}"));
 
     let width_mm = 297.0;
     let height_mm = 420.0;
 
     let width_m = width_mm * SCALE_OVERVIEW / 1000.0;
     let height_m = height_mm * SCALE_OVERVIEW / 1000.0;
-
-    log_status(&format!("width_m / height_m: {width_m:?} {height_m:?}"));
 
     let mut riss_extente_reprojected = Vec::new();
     let mut max_y = reprojected.max_y;
@@ -782,96 +772,104 @@ pub async fn export_overview(
         &nas_xml.crs
     ).await;
 
-    let (mut page_idx, mut layer_idx) = (page1, layer1);
+    let page_len = riss_extente_reprojected.len();
 
-    for (i, (rc, extent)) in riss_extente_reprojected.into_iter().enumerate() {
+    for (i0, risse_contig) in riss_extente_reprojected.chunks(4).enumerate() {
 
-        let mini_split_nas = get_mini_nas_xml(&split_nas, &extent);
-        let flst = get_flurstuecke(nas_xml, &extent);
-        let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
-        let gebaeude = get_gebaeude(nas_xml, &extent);
-        let riss_rect = extent.get_rect();
-        let sf = sf.iter()
-        .filter_map(|s| {
-            if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
-                Some(s.clone())
-            } else {
-                None
+        let (page0_idx, layer0_idx) = if i0 == 0 { (page1, layer1) } else {
+            doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht")
+        };
+        let (page1_idx, layer1_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
+        let (page2_idx, layer2_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
+        let (page3_idx, layer3_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
+
+        for (i, (rc, extent)) in risse_contig.iter().enumerate() {
+
+            let i_real = i0 * 4 + i;
+            let (page_idx, layer_idx) = match i {
+                0 => (page0_idx, layer0_idx),
+                1 => (page2_idx, layer2_idx),
+                2 => (page1_idx, layer1_idx),
+                3 => (page3_idx, layer3_idx),
+                _ => continue,
+            };
+
+            let mini_split_nas = get_mini_nas_xml(&split_nas, &extent);
+            let flst = get_flurstuecke(nas_xml, &extent);
+            let fluren = get_fluren(nas_xml, &Some(extent.get_rect()));
+            let gebaeude = get_gebaeude(nas_xml, &extent);
+            let riss_rect = extent.get_rect();
+            let sf = sf.iter()
+            .filter_map(|s| {
+                if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+            let aenderungen_texte = crate::ui::AenderungenIntersections::get_texte(&sf, &extent.get_rect_line_poly());
+
+            let beschriftungen = crate::optimize::optimize_labels(
+                &mini_split_nas,
+                &sf,
+                &gebaeude,
+                &[],
+                &aenderungen_texte,
+                &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
+            );
+
+            let page = doc.get_page(page_idx);
+            let mut layer = page.get_layer(layer_idx);
+            let mut has_background = false;
+    
+            let nutzungsarten = reproject_splitnas_into_pdf_space(
+                &mini_split_nas,
+                &extent,
+                &rc,
+                &mut Vec::new(),
+            );
+    
+            for i in cache.images.remove(&rc.get_id()).unwrap_or_default() {
+                i.image.add_to_layer(layer.clone(), ImageTransform {
+                    translate_x: i.x.into(),
+                    translate_y: i.y.into(),
+                    scale_x: Some(300.0 / i.dpi),
+                    scale_y: Some(300.0 / i.dpi),
+                    ..Default::default()
+                });
+                has_background = true;
             }
-        })
-        .collect::<Vec<_>>();
 
-        let aenderungen_texte = crate::ui::AenderungenIntersections::get_texte(&sf, &extent.get_rect_line_poly());
+            let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
+            let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(&extent, &rc), has_background);
+            let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(&extent, &rc), has_background);
+            let _ = write_fluren(&mut layer, &fluren.to_pdf_space(&extent, &rc), &konfiguration, has_background);
+            let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, &rc, &extent, has_background);
+            let _ = write_flur_texte(&mut layer, &fluren, &helvetica, &rc, &extent, &calc, has_background);
+    
+            let _ = write_splitflaechen_beschriftungen(
+                &mut layer, 
+                &helvetica,
+                &extent, 
+                &rc,
+                &beschriftungen,
+                has_background,
+            );
 
-        let beschriftungen = crate::optimize::optimize_labels(
-            &mini_split_nas,
-            &sf,
-            &gebaeude,
-            &[],
-            &aenderungen_texte,
-            &OptimizeConfig::new(&rc, &extent, 0.5 /* mm */) ,
-        );
-
-        if sf.is_empty() || beschriftungen.is_empty() {
-            continue;
+            let _ = write_border(
+                &mut layer, 
+                &rc, 
+                &ProjektInfo::default(), 
+                &calc, 
+                &times_roman, 
+                &times_roman_bold, 
+                None, 
+                PADDING / 6.0,
+            );
+            log_status(&format!("ok done page {i_real} / {page_len}"));
         }
-
-        if i != 0 {
-            let (pi, li) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
-            page_idx = pi;
-            layer_idx = li;
-            log_status("adding page");
-        }
-
-        let page = doc.get_page(page_idx);
-        let mut layer = page.get_layer(layer_idx);
-        let mut has_background = false;
-
-        let nutzungsarten = reproject_splitnas_into_pdf_space(
-            &mini_split_nas,
-            &extent,
-            &rc,
-            &mut Vec::new(),
-        );
-
-        for i in cache.images.remove(&rc.get_id()).unwrap_or_default() {
-            i.image.add_to_layer(layer.clone(), ImageTransform {
-                translate_x: i.x.into(),
-                translate_y: i.y.into(),
-                scale_x: Some(300.0 / i.dpi),
-                scale_y: Some(300.0 / i.dpi),
-                ..Default::default()
-            });
-            has_background = true;
-        }
-
-        let _ = write_nutzungsarten(&mut layer, &nutzungsarten, &konfiguration, has_background);
-        let _ = write_gebaeude(&mut layer, &gebaeude.to_pdf_space(&extent, &rc), has_background);
-        let _ = write_flurstuecke(&mut layer, &flst.to_pdf_space(&extent, &rc), has_background);
-        let _ = write_fluren(&mut layer, &fluren.to_pdf_space(&extent, &rc), &konfiguration, has_background);
-        let _ = write_flurstuecke_label(&mut layer, &helvetica, &flst, &rc, &extent, has_background);
-        let _ = write_flur_texte(&mut layer, &fluren, &helvetica, &rc, &extent, &calc, has_background);
-
-        let _ = write_splitflaechen_beschriftungen(
-            &mut layer, 
-            &helvetica,
-            &extent, 
-            &rc,
-            &beschriftungen,
-            has_background,
-        );
-
-        let _ = write_border(
-            &mut layer, 
-            &rc, 
-            &ProjektInfo::default(), 
-            &calc, 
-            &times_roman, 
-            &times_roman_bold, 
-            None, 
-            PADDING / 6.0,
-        );
-        log_status("ok done page");
     }
 
     log_status("ok done PDF");
