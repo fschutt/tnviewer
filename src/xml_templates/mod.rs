@@ -28,13 +28,13 @@ pub struct AntragsbegleitblattInfo {
 pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<u8> {
 
     let document_xml = ANTRAGSBEGLEITBLATT_DOCX_XML
-    .replace("<w:t>%%REPLACEME_DATUM%%</w:t>", &format!("<w:t>{}</w:t>", info.datum))
-    .replace("<w:t>%%ANTRAGSNR%%</w:t>", &format!("<w:t>{}</w:t>", info.antragsnr))
-    .replace("<w:t>%%GEMARKUNGSNAME%%</w:t>", &format!("<w:t>{}</w:t>", info.gemarkung))
-    .replace("<w:t>%%GEMARKUNG_NUMMER%%</w:t>", &format!("<w:t>{}</w:t>", info.gemarkungsnummer))
-    .replace("<w:t>%%FLUREN_NUMMERN%%</w:t>", &format!("<w:t>{}</w:t>", info.fluren_bearbeitet))
-    .replace("<!-- %%FLURSTUECKE%% -->", &info.flurstuecke_bearbeitet.iter().map(antragsbegleitblatt_gen_bearbeitete_flst).collect::<Vec<_>>().join(""))
-    .replace("<!-- %%ROWS%% -->", &info.eigentuemer.iter().map(antragsbegleitblatt_gen_row).collect::<Vec<_>>().join(""));
+    .replace("<w:t>%%REPLACEME_DATUM%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&info.datum)))
+    .replace("<w:t>%%ANTRAGSNR%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&info.antragsnr)))
+    .replace("<w:t>%%GEMARKUNGSNAME%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&info.gemarkung)))
+    .replace("<w:t>%%GEMARKUNG_NUMMER%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&info.gemarkungsnummer)))
+    .replace("<w:t>%%FLUREN_NUMMERN%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&info.fluren_bearbeitet)))
+    .replace("<!-- %%FLURSTUECKE%% -->", &info.flurstuecke_bearbeitet.iter().map(antragsbegleitblatt_gen_bearbeitete_flst).collect::<Vec<_>>().join("\r\n"))
+    .replace("<!-- %%ROWS%% -->", &info.eigentuemer.iter().map(antragsbegleitblatt_gen_row).collect::<Vec<_>>().join("\r\n"));
 
     let mut zip = crate::zip::read_files_from_zip(ANTRAGSBEGLEITBLATT_ZIP, true, &[".rels"]);
     zip.push((Some("word".to_string()), "document.xml".into(), document_xml.as_bytes().to_vec()));
@@ -43,14 +43,14 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
 
 fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(String, Vec<String>)) -> String {
     ANTRAGSBEGLEITBLATT_DOCX_ZEILE_XML
-    .replace("<w:t>%tn1%</w:t>", &format!("<w:t>{eigentuemer}</w:t>"))
-    .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", flst.join(", ")))
+    .replace("<w:t>%tn1%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(eigentuemer)))
+    .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&flst.join(", "))))
 }
 
 fn antragsbegleitblatt_gen_bearbeitete_flst((flur, flst): &(String, String)) -> String {
     ANTRAGSBEGLEITBLATT_DOCX_FLURSTUECKE_XML
-    .replace("<w:t>%%FLUR%%</w:t>", &format!("<w:t>{flur}</w:t>"))
-    .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{flst}</w:t>"))
+    .replace("<w:t>%%FLUR%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flur)))
+    .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flst)))
 }
 
 pub struct BearbeitungslisteInfo {
@@ -58,6 +58,10 @@ pub struct BearbeitungslisteInfo {
     pub gemarkungsnr: String,
     pub fluren: String,
     pub eigentuemer: BTreeMap<FlstIdParsedNumber, FlstEigentuemer>
+}
+
+fn clean_ascii(s: &str) -> String {
+    s.chars().filter_map(|c| if c.is_ascii() { Some(c) } else { None }).collect()
 }
 
 pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> {
@@ -91,7 +95,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             v.notiz.clone()
         ];
         for r in row_strings.into_iter() {
-            sharedstrings.insert(r);
+            sharedstrings.insert(clean_ascii(&r));
         }
     }
 
@@ -100,7 +104,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
     let sharedstrings_xml = BEARBEITUNGSLISTE_SHAREDSTRINGS_XML
     .replace("%%SHARED_STRINGS_COUNT%%", &sharedstrings.len().to_string())
-    .replace("<!-- %%SHARED_STRINGS%% -->", &sharedstrings_list.iter().map(|s| format!("<si><t xml:space=\"preserve\">{s}</t></si>")).collect::<Vec<_>>().join(""));
+    .replace("<!-- %%SHARED_STRINGS%% -->", &sharedstrings_list.iter().map(|s| format!("<si><t xml:space=\"preserve\">{s}</t></si>")).collect::<Vec<_>>().join("\r\n"));
     
     let mut bearbeitungsliste_rows = Vec::new();
 
@@ -127,10 +131,10 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
         let mut row_xml = BEARBEITUNGSLISTE_ROW_XML
         .replace("%%ROWID%%", &(i + 5).to_string())
         .replace("%%CUSTOMFORMAT%%", &row_style_id);
-    
+
         for (i, r) in row_strings.into_iter().enumerate() {
             let replaceid = format!("%%COL{i}%%");
-            let string_id = match sharedstrings_lookup_list.get(&r) {
+            let string_id = match sharedstrings_lookup_list.get(&clean_ascii(&r)) {
                 Some(s) => s.to_string(),
                 None => String::new(),
             };
@@ -141,7 +145,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
     let sheet1_xml = BEARBEITUNGSLISTE_SHEET1_XML
     .replace("<!-- %%HEADER%% -->", &BEARBEITUNGSLISTE_HEADER_XML)
-    .replace("<!-- %%ROWS%% -->", &bearbeitungsliste_rows.join(""));
+    .replace("<!-- %%ROWS%% -->", &bearbeitungsliste_rows.join("\r\n"));
 
     let mut zip = crate::zip::read_files_from_zip(BEARBEITUNGSLISTE_ZIP, true, &[".rels"]);
     zip.push((Some("xl".to_string()), "sharedStrings.xml".into(), sharedstrings_xml.as_bytes().to_vec()));
