@@ -81,8 +81,8 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
         ("%%AUFTRAGSNR%%", format!("Auftragsnummer: {}, {}, Flur {}", info.auftragsnr, info.gemarkung_name, info.fluren)),
     ];
 
-    sharedstrings.extend(default_strings.iter().map(|s| clean_ascii(&s.1)));
-
+    sharedstrings.extend(default_strings.iter().map(|s| s.1.clone()));
+    
     for (flst_id, v) in info.eigentuemer.iter() {
         let eig: String = v.eigentuemer.join("; ");
         let row_strings = vec![
@@ -97,7 +97,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             v.notiz.clone()
         ];
         for r in row_strings.into_iter() {
-            sharedstrings.insert(clean_ascii(&r));
+            sharedstrings.insert(r);
         }
     }
 
@@ -106,7 +106,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
     let sharedstrings_xml = BEARBEITUNGSLISTE_SHAREDSTRINGS_XML
     .replace("%%SHARED_STRINGS_COUNT%%", &sharedstrings.len().to_string())
-    .replace("<!-- %%SHARED_STRINGS%% -->", &sharedstrings_list.iter().map(|s| format!("<si><t xml:space=\"preserve\">{s}</t></si>")).collect::<Vec<_>>().join("\r\n"));
+    .replace("<!-- %%SHARED_STRINGS%% -->", &sharedstrings_list.iter().map(|s| format!("<si><t xml:space=\"preserve\">{}</t></si>", clean_ascii(s))).collect::<Vec<_>>().join("\r\n"));
     
     let mut bearbeitungsliste_rows = Vec::new();
 
@@ -136,7 +136,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
         for (i, r) in row_strings.into_iter().enumerate() {
             let replaceid = format!("%%COL{i}%%");
-            let string_id = match sharedstrings_lookup_list.get(&clean_ascii(&r)) {
+            let string_id = match sharedstrings_lookup_list.get(&r) {
                 Some(s) => s.to_string(),
                 None => String::new(),
             };
@@ -147,7 +147,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
     let mut header = BEARBEITUNGSLISTE_HEADER_XML.to_string();
     for (k, v) in default_strings.iter() {
-        header = header.replace(k, &sharedstrings_lookup_list.get(&clean_ascii(&v)).map(|s| s.to_string()).unwrap_or_default());
+        header = header.replace(k, &sharedstrings_lookup_list.get(v).map(|s| s.to_string()).unwrap_or_default());
     }
     
     let sheet1_xml = BEARBEITUNGSLISTE_SHEET1_XML
