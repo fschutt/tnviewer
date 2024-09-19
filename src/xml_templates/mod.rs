@@ -1,6 +1,6 @@
 use std::{collections::{BTreeMap, BTreeSet}, path::PathBuf};
 
-use crate::{geograf::FlstEigentuemer, xlsx::FlstIdParsedNumber};
+use crate::{geograf::FlstEigentuemer, geograf::EigentuemerClean, xlsx::FlstIdParsedNumber};
 
 pub const ANTRAGSBEGLEITBLATT_ZIP: &[u8] = include_bytes!("./Antragsbegleitblatt.zip");
 pub const BEARBEITUNGSLISTE_ZIP: &[u8] = include_bytes!("./Bearbeitungsliste.zip");
@@ -22,7 +22,7 @@ pub struct AntragsbegleitblattInfo {
     pub gemarkungsnummer: String, // %%GEMARKUNG_NUMMER%%
     pub fluren_bearbeitet: String, // %%FLUREN_NUMMERN%%
     pub flurstuecke_bearbeitet: Vec<(String, String)>, // <!-- %%FLURSTUECKE%% --> // Fl. X: Y
-    pub eigentuemer: Vec<(String, Vec<String>)>, // <!-- %%ROWS%% --> // "Herr Soundso" -> { Fl. 1: Flst. 44, Fl. 2: Flst 55 }
+    pub eigentuemer: Vec<(EigentuemerClean, Vec<String>)>, // <!-- %%ROWS%% --> // "Herr Soundso" -> { Fl. 1: Flst. 44, Fl. 2: Flst 55 }
 }
 
 pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<u8> {
@@ -41,9 +41,9 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
     crate::zip::write_files_to_zip(&zip)
 }
 
-fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(String, Vec<String>)) -> String {
+fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(EigentuemerClean, Vec<String>)) -> String {
     ANTRAGSBEGLEITBLATT_DOCX_ZEILE_XML
-    .replace("<w:t>%tn1%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(eigentuemer)))
+    .replace("<w:t>%tn1%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&eigentuemer.format())))
     .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&flst.join(", "))))
 }
 
@@ -84,7 +84,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
     sharedstrings.extend(default_strings.iter().map(|s| s.1.clone()));
     
     for (flst_id, v) in info.eigentuemer.iter() {
-        let eig: String = v.eigentuemer.join("; ");
+        let eig: String = v.eigentuemer.iter().map(|c| c.format()).collect::<Vec<_>>().join("; ");
         let row_strings = vec![
             flst_id.format_nice(),
             v.nutzung.to_string(),
@@ -112,7 +112,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
     for (i, (flst_id, v)) in info.eigentuemer.iter().enumerate() {
 
-        let eig: String = v.eigentuemer.join("; ");
+        let eig: String = v.eigentuemer.iter().map(|c| c.format()).collect::<Vec<_>>().join("; ");
         let (has_custom_format, row_style) = match v.status {
             crate::csv::Status::Bleibt => (false, "s=\"13\" t=\"s\""),
             crate::csv::Status::AenderungKeineBenachrichtigung => (true, "s=\"17\" t=\"s\""),

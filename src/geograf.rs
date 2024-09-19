@@ -286,9 +286,86 @@ pub async fn export_aenderungen_geograf(
 pub struct FlstEigentuemer {
     pub nutzung: String,
     pub status: Status,
-    pub eigentuemer: Vec<String>,
+    pub eigentuemer: Vec<EigentuemerClean>,
     pub notiz: String,
     pub auto_notiz: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EigentuemerClean {
+    Herr { vorname: String, nachname: String },
+    Frau { vorname: String, nachname: String },
+    Firma { name: String },
+    Sonstige { name: String }
+}
+
+impl PartialOrd for EigentuemerClean {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.order(other))
+    }
+}
+
+impl Ord for EigentuemerClean {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.order(other)
+    }
+}
+
+impl EigentuemerClean {
+    pub fn order(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (EigentuemerClean::Herr { vorname, nachname }, EigentuemerClean::Frau { vorname: _1, nachname: _2 }) |
+            (EigentuemerClean::Herr { vorname, nachname }, EigentuemerClean::Herr { vorname: _1, nachname: _2 }) |
+            (EigentuemerClean::Frau { vorname, nachname }, EigentuemerClean::Frau { vorname: _1, nachname: _2 }) |
+            (EigentuemerClean::Frau { vorname, nachname }, EigentuemerClean::Herr { vorname: _1, nachname: _2 }) 
+            => {
+                let a = format!("{vorname} {nachname}");
+                let b = format!("{_1} {_2}");
+                a.cmp(&b)
+            },
+            (EigentuemerClean::Firma { name }, EigentuemerClean::Firma { name: name2 }) => {
+                name.cmp(name2)
+            },
+            (EigentuemerClean::Sonstige { name }, EigentuemerClean::Sonstige { name: name2 }) => {
+                name.cmp(name2)
+            },
+            (oa, ob) => oa.rank().cmp(&ob.rank()),
+        }
+    }
+
+    pub fn rank(&self) -> usize {
+        match self {
+            EigentuemerClean::Firma { name } => 0,
+            EigentuemerClean::Sonstige { name } => 1,
+            EigentuemerClean::Herr { .. } | EigentuemerClean::Frau { .. } => 2,
+        }
+    }
+
+    pub fn format(&self) -> String {
+        match self {
+            EigentuemerClean::Herr { vorname, nachname } |
+            EigentuemerClean::Frau { vorname, nachname } => format!("{vorname} {nachname}"),
+            EigentuemerClean::Firma { name } => name.trim().to_string(),
+            EigentuemerClean::Sonstige { name } => name.trim().to_string(),
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        let comma_split = s.split(",").map(|q| q.trim().to_string()).collect::<Vec<_>>();
+        if comma_split.iter().any(|s| s.contains("Herr")) {
+            let vorname = comma_split.get(1).map(|s| s.replace("(Herr)", "").trim().to_string()).unwrap_or_default();
+            let nachname = comma_split.get(0).map(|s| s.replace("(Herr)", "").trim().to_string()).unwrap_or_default();
+            Self::Herr { vorname, nachname }
+        } else if comma_split.iter().any(|s| s.contains("Frau")) {
+            let vorname = comma_split.get(1).map(|s| s.replace("(Frau)", "").trim().to_string()).unwrap_or_default();
+            let nachname = comma_split.get(0).map(|s| s.replace("(Frau)", "").trim().to_string()).unwrap_or_default();
+            Self::Herr { vorname, nachname }
+        } else if comma_split.iter().any(|s| s.contains("Firma")) {
+            Self::Firma { name: s.replace("(Firma)", "").trim().to_string() }
+        } else {
+            Self::Sonstige { name: s.trim().to_string() }
+        }
+    }
 }
 
 pub fn splitflaechen_eigentuemer_map(
@@ -303,7 +380,7 @@ pub fn splitflaechen_eigentuemer_map(
         let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
         let nutzung = ds_0.nutzung.clone();
 
-        let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
+        let mut eigentuemer = ds.iter().map(|s| EigentuemerClean::from_str(&s.eigentuemer)).collect::<Vec<_>>();
         eigentuemer.sort();
         eigentuemer.dedup();
 
@@ -333,20 +410,12 @@ pub fn get_modified_fluren_flst(
 
 pub fn get_eigentuemer(
     eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>,
-) -> Vec<(String, Vec<String>)> {
-    let mut firmen = BTreeMap::new();
-    let mut eigentuemer = BTreeMap::new();
+) -> Vec<(EigentuemerClean, Vec<String>)> {
+    let mut target = BTreeMap::new();
 
     for (k, v) in eigentuemer_map.iter() {
         for e in v.eigentuemer.iter() {
-            let is_firma = !(e.contains("Herr") || e.contains("Frau"));
-            let mut_map = if is_firma {
-                &mut firmen
-            } else {
-                &mut eigentuemer
-            };
-
-            mut_map.entry(e.clone())
+            target.entry(e.clone())
             .or_insert_with(|| BTreeMap::new())
             .entry(k.flur)
             .or_insert_with(|| Vec::new())
@@ -354,14 +423,11 @@ pub fn get_eigentuemer(
         }
     }
 
-    let mut target = Vec::new();
-    for (eigentuemer, fluren) in firmen {
-        target.push((eigentuemer.clone(), fluren.iter().filter_map(|(fl, flst)| Some(format!("Fl. {fl}: {}", join_flst(flst)?))).collect()));
+    let mut target2 = Vec::new();
+    for (eigentuemer, fluren) in target {
+        target2.push((eigentuemer.clone(), fluren.iter().filter_map(|(fl, flst)| Some(format!("Fl. {fl}: {}", join_flst(flst)?))).collect::<Vec<_>>()));
     }
-    for (eigentuemer, fluren) in eigentuemer {
-        target.push((eigentuemer.clone(), fluren.iter().filter_map(|(fl, flst)| Some(format!("Fl. {fl}: {}", join_flst(flst)?))).collect()));
-    }
-    target
+    target2
 }
 
 pub fn join_modified_fluren(
