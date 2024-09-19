@@ -466,7 +466,13 @@ fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
 
     Some(target.chunks(2).filter_map(|w| {
         match &w {
-            &[a, b] => Some(format!("{a} - {b}")),
+            &[a, b] => {
+                if a == b { 
+                    Some(a.trim().to_string()) 
+                } else { 
+                    Some(format!("{a} - {b}")) 
+                }
+            },
             _ => None,
         }
     }).collect::<Vec<_>>().join(", "))

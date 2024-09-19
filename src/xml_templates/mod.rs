@@ -49,7 +49,7 @@ fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(EigentuemerClean, Vec<Stri
 
 fn antragsbegleitblatt_gen_bearbeitete_flst((flur, flst): &(String, String)) -> String {
     ANTRAGSBEGLEITBLATT_DOCX_FLURSTUECKE_XML
-    .replace("<w:t>%%FLUR%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flur)))
+    .replace("<w:t xml:space=\"preserve\">%%FLUR%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flur)))
     .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flst)))
 }
 
