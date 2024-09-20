@@ -292,7 +292,7 @@ pub struct TaggedPolygon {
     pub attributes: BTreeMap<String, String>,
 }
 
-const MAP: &[(&str, &str);163] = &[
+const MAP: &[(&str, &str);164] = &[
     ("WBFPA", "AX_Ebene=AX_Wohnbauflaeche,funktion=1200"),
     ("WBF", "AX_Ebene=AX_Wohnbauflaeche"),
     ("A", "AX_Ebene=AX_Landwirtschaft,vegetationsmerkmal=1010"),
@@ -401,6 +401,7 @@ const MAP: &[(&str, &str);163] = &[
     ("MILB", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=6800"),
     ("MIFB", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=7600"),
     ("MIFW", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=3000"),
+    ("MI", "AX_Ebene=AX_FlaecheGemischterNutzung"),
     ("BPÖ", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1100"),
     ("BPV", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1110"),
     ("BPB", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1120"),

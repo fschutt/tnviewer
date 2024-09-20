@@ -667,7 +667,7 @@ pub fn export_splitflaechen(
     let calc_pdf_final = HeaderCalcConfig::from_csv(&split_nas, csv, &Some(riss_extent_cutpoly_noborder.clone()));
 
     let riss_rect = riss_extent_reprojected.get_rect();
-    let splitflaechen = splitflaechen.iter()
+    let splitflaechen2 = splitflaechen.iter()
     .filter_map(|s| {
         if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
             Some(s)
@@ -686,6 +686,13 @@ pub fn export_splitflaechen(
             Some(s)
         }
     })
+    .cloned()
+    .collect::<Vec<_>>();
+
+    // TODO: accurate?
+    let alle_flurstuecke = splitflaechen2.iter().map(|s| s.flst_id.clone()).collect::<BTreeSet<_>>();
+    let splitflaechen = splitflaechen.iter()
+    .filter_map(|s| if alle_flurstuecke.contains(&s.flst_id) { Some(s) } else { None })
     .cloned()
     .collect::<Vec<_>>();
 
