@@ -112,7 +112,7 @@ pub fn generate_legende_xlsx(info: &LegendeInfo) -> Vec<u8> {
         let text_id = sharedstrings_lookup_list.get(r)?;
 
         Some(ROW_TEXT
-        .replace("%%ID%%", &(i + 1).to_string())
+        .replace("%%ID%%", &(i + 2).to_string())
         .replace("%%TEXT_ID%%", &text_id.to_string()))
     })
     .collect::<Vec<_>>()
