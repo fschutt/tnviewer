@@ -10,6 +10,18 @@ pub const ANTRAGSBEGLEITBLATT_DOCX_XML: &str = include_str!("./antragsbegleitbla
 pub const ANTRAGSBEGLEITBLATT_DOCX_FLURSTUECKE_XML: &str = include_str!("./antragsbegleitblatt_flurstuecke.xml");
 pub const ANTRAGSBEGLEITBLATT_DOCX_ZEILE_XML: &str = include_str!("./antragsbegleitblatt_row.xml");
 
+pub const ANTRAGSBEGLEITBLATT_CELL_XML: &str = r#"
+    <w:r>
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+        </w:rPr>
+        <!-- %%BREAKLINE_OPT%% -->
+        <w:t>%%FLURSTUECKE%%</w:t>
+    </w:r>
+"#;
+
 pub const BEARBEITUNGSLISTE_SHAREDSTRINGS_XML: &str = include_str!("./bearbeitungsliste_sharedstrings.xml");
 pub const BEARBEITUNGSLISTE_SHEET1_XML: &str = include_str!("./bearbeitungsliste_sheet1.xml");
 pub const BEARBEITUNGSLISTE_HEADER_XML: &str = include_str!("./bearbeitungsliste_header.xml");
@@ -44,9 +56,16 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
 }
 
 fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(EigentuemerClean, Vec<String>)) -> String {
+
+    let flst_joined = flst.iter().enumerate().map(|(i, f)| {
+        ANTRAGSBEGLEITBLATT_CELL_XML.trim()
+        .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(f)))
+        .replace("<!-- %%BREAKLINE_OPT%% -->", if i == 0 { "" } else { "<w:br/>" })
+    }).collect::<Vec<_>>().join("\r\n");
+
     ANTRAGSBEGLEITBLATT_DOCX_ZEILE_XML
     .replace("<w:t>%tn1%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&eigentuemer.format())))
-    .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(&flst.join(", "))))
+    .replace("<!-- %%FLURSTUECKE_ROWS%% -->", &flst_joined)
 }
 
 fn antragsbegleitblatt_gen_bearbeitete_flst((flur, flst): &(String, String)) -> String {

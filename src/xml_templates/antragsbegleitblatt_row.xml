@@ -108,14 +108,7 @@
                 <w:szCs w:val="18"/>
             </w:rPr>
         </w:pPr>
-        <w:r>
-            <w:rPr>
-                <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
-                <w:sz w:val="18"/>
-                <w:szCs w:val="18"/>
-            </w:rPr>
-            <w:t>%%FLURSTUECKE%%</w:t>
-        </w:r>
+        <!-- %%FLURSTUECKE_ROWS%% -->
     </w:p>
 </w:tc>
 <w:tc>
