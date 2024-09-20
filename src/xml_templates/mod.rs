@@ -5,6 +5,7 @@ use crate::{geograf::FlstEigentuemer, geograf::EigentuemerClean, xlsx::FlstIdPar
 pub const ANTRAGSBEGLEITBLATT_ZIP: &[u8] = include_bytes!("./Antragsbegleitblatt.zip");
 pub const BEARBEITUNGSLISTE_ZIP: &[u8] = include_bytes!("./Bearbeitungsliste.zip");
 pub const FORTFUEHRUNGSBELEG_ZIP: &[u8] = include_bytes!("./Fortfuehrungsbeleg.zip");
+pub const LEGENDE_ZIP: &[u8] = include_bytes!("./Legende.zip");
 
 pub const ANTRAGSBEGLEITBLATT_DOCX_XML: &str = include_str!("./antragsbegleitblatt_document.xml");
 pub const ANTRAGSBEGLEITBLATT_DOCX_FLURSTUECKE_XML: &str = include_str!("./antragsbegleitblatt_flurstuecke.xml");
@@ -26,6 +27,9 @@ pub const BEARBEITUNGSLISTE_SHAREDSTRINGS_XML: &str = include_str!("./bearbeitun
 pub const BEARBEITUNGSLISTE_SHEET1_XML: &str = include_str!("./bearbeitungsliste_sheet1.xml");
 pub const BEARBEITUNGSLISTE_HEADER_XML: &str = include_str!("./bearbeitungsliste_header.xml");
 pub const BEARBEITUNGSLISTE_ROW_XML: &str = include_str!("./bearbeitungsliste_row.xml");
+
+pub const LEGENDE_SHAREDSTRINGS_XML: &str = include_str!("./legende_sharedstrings.xml");
+pub const LEGENDE_SHEET1_XML: &str = include_str!("./legende_sheet1.xml");
 
 pub const FORTFUEHRUNGSBELEG_DOCX_XML: &str = include_str!("./fortfuehrungsbeleg_document.xml");
 
@@ -72,6 +76,53 @@ fn antragsbegleitblatt_gen_bearbeitete_flst((flur, flst): &(String, String)) -> 
     ANTRAGSBEGLEITBLATT_DOCX_FLURSTUECKE_XML
     .replace("<w:t>%%FLUR%%</w:t>", &format!("<w:t xml:space=\"preserve\">{}</w:t>", clean_ascii(flur)))
     .replace("<w:t>%%FLURSTUECKE%%</w:t>", &format!("<w:t>{}</w:t>", clean_ascii(flst)))
+}
+
+
+pub struct LegendeInfo {
+    pub header: String,
+    pub zeilen: Vec<String>,
+}
+
+pub fn generate_legende_xlsx(info: &LegendeInfo) -> Vec<u8> {
+
+    const ROW_TEXT: &str = r#"
+        <row r="%%ID%%" spans="1:1" x14ac:dyDescent="0.2">
+            <c r="A%%ID%%" s="3" t="s">
+                <v>%%TEXT_ID%%</v>
+            </c>
+        </row>
+    "#;
+
+    let mut sharedstrings = BTreeSet::new();
+    sharedstrings.insert(info.header.to_string());
+    for s in info.zeilen.iter() {
+        sharedstrings.insert(s.clone());
+    }
+    let sharedstrings_list = sharedstrings.iter().cloned().collect::<Vec<_>>();
+    let sharedstrings_lookup_list = sharedstrings_list.iter().cloned().enumerate().map(|(k, v)| (v, k)).collect::<BTreeMap<_, _>>();
+
+    let sharedstrings_xml = LEGENDE_SHAREDSTRINGS_XML
+    .replace("%%SHARED_STRINGS_COUNT%%", &sharedstrings.len().to_string())
+    .replace("<!-- %%SHARED_STRINGS%% -->", &sharedstrings_list.iter().map(|s| format!("<si><t xml:space=\"preserve\">{}</t></si>", clean_ascii(s))).collect::<Vec<_>>().join("\r\n"));
+    
+    let sheet1_xml = LEGENDE_SHEET1_XML
+    .replace("%%HEADER%%", &sharedstrings_lookup_list.get(&info.header).unwrap_or(&0).to_string())
+    .replace("<!-- %%ROWS%% -->", &info.zeilen.iter().enumerate().filter_map(|(i, r)| {
+        let text_id = sharedstrings_lookup_list.get(r)?;
+
+        Some(ROW_TEXT
+        .replace("%%ID%%", &(i + 1).to_string())
+        .replace("%%TEXT_ID%%", &text_id.to_string()))
+    })
+    .collect::<Vec<_>>()
+    .join("\r\n"));
+
+    let mut zip = crate::zip::read_files_from_zip(LEGENDE_ZIP, true, &[".rels"]);
+    zip.push((Some("xl".to_string()), "sharedStrings.xml".into(), sharedstrings_xml.as_bytes().to_vec()));
+    zip.push((Some("xl/worksheets".to_string()), "sheet1.xml".into(), sheet1_xml.as_bytes().to_vec()));
+    crate::zip::write_files_to_zip(&zip)
+
 }
 
 pub struct BearbeitungslisteInfo {

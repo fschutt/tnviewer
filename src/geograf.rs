@@ -1444,8 +1444,6 @@ pub fn generate_legende_xlsx(
     splitflaechen: &[AenderungenIntersection]
 ) -> Vec<u8> {
 
-    use simple_excel_writer::*;
-
     let alle_kuerzel = splitflaechen
     .iter()
     .flat_map(|s| {
@@ -1462,30 +1460,10 @@ pub fn generate_legende_xlsx(
 
     lines.sort();
 
-    let mut wb = Workbook::create_in_memory();
-    let mut sheet = wb.create_sheet("Legende");
-
-    // ID
-    sheet.add_column(Column { width: 60.0 });
-
-
-    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
-        
-        let sw = sheet_writer;
-        sw.append_row(row!["Legende Abkürzungen"])?;
-
-        for l in lines.iter() {
-            sw.append_row(row![l.to_string()])?;
-        }
-
-        Ok(())
-    });
-
-    match wb.close() {
-        Ok(Some(o)) => o,
-        _ => Vec::new(),
-    }
-
+    crate::xml_templates::generate_legende_xlsx(&crate::xml_templates::LegendeInfo {
+        header: "Legende Abkürzungen".to_string(),
+        zeilen: lines.clone(),
+    })
 }
 
 pub fn append_shp(

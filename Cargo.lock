@@ -1798,15 +1798,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
 
 [[package]]
-name = "simple_excel_writer"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5915e32350e15d125e0beb01a6c84c889ad0b3f15401ed88a4bedc92a10176a8"
-dependencies = [
- "zip 0.5.13",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2001,13 +1992,12 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "shapefile",
- "simple_excel_writer",
  "uneval",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "xmlparser",
- "zip 2.2.0",
+ "zip",
 ]
 
 [[package]]
@@ -2437,18 +2427,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "zip"
-version = "0.5.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ab48844d61251bb3835145c521d88aa4031d7139e8485990f60ca911fa0815"
-dependencies = [
- "byteorder",
- "crc32fast",
- "flate2",
- "thiserror",
 ]
 
 [[package]]
