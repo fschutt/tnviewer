@@ -215,7 +215,7 @@ pub async fn export_aenderungen_geograf(
         gemeindename: projekt_info.gemeinde.clone(),
         gemarkungsname: projekt_info.gemarkung.clone(),
         gemarkungsnummer: main_gemarkung.to_string(),
-        fluren_modified: get_fluren_string(&splitflaechen, main_gemarkung),
+        fluren_modified: join_fluren(&modified.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
         antragsnummer_51: projekt_info.antragsnr.replace("-30-", "-51-"),
         tatsaechliche_nutzung_modified: splitflaechen.0.iter().any(|s| s.alt != s.neu),
         topografie_und_bauwerke_modified: !aenderungen.gebaeude_loeschen.is_empty(),
@@ -286,7 +286,18 @@ fn get_fluren_string(splitflaechen: &AenderungenIntersections, main_gemarkung: u
         .into_iter()
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
+    format_fluren(&fl)
+}
 
+fn get_fluren_string_modified(eigentuemer_map_modified: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>) -> String {
+    let fl = eigentuemer_map_modified
+        .keys()
+        .map(|f| f.flur.to_string())
+        .collect::<Vec<_>>();
+    format_fluren(&fl)
+}
+
+fn format_fluren(fl: &[String]) -> String {
     if fl.is_empty() {
         String::new()
     } else if fl.len() == 1 {
@@ -498,6 +509,50 @@ fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
 
     if let Some(l) = v.last() {
         target.push(l.format_str());
+    }
+
+    Some(target.chunks(2).filter_map(|w| {
+        match &w {
+            &[a, b] => {
+                if a == b { 
+                    Some(a.trim().to_string()) 
+                } else { 
+                    Some(format!("{a} - {b}")) 
+                }
+            },
+            _ => None,
+        }
+    }).collect::<Vec<_>>().join(", "))
+}
+
+fn join_fluren(v: &[usize]) -> Option<String> {
+
+    let mut v = v.to_vec();
+    v.sort();
+    v.dedup();
+
+    let (mut i, first) = match v.get(0) {
+        Some(s) => (*s, *s),
+        None => return None,
+    };
+
+    if v.len() == 1 {
+        return Some(first.to_string());
+    }
+
+    let mut target = vec![first.to_string()];
+    let mut last = first;
+    for q in v.iter().skip(1).take(v.len() - 1) {
+        if i + 1 != *q {
+            target.push(last.to_string());
+            target.push(q.to_string());
+        }
+        last = *q;
+        i = *q;
+    }
+
+    if let Some(l) = v.last() {
+        target.push(l.to_string());
     }
 
     Some(target.chunks(2).filter_map(|w| {
