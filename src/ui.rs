@@ -258,12 +258,17 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
         Some(PopoverState::Configuration(cw)) => {
             use ConfigurationView::*;
 
-            static IMG_SETTINGS: &[u8] =
-                include_bytes!("./img/icons8-grey-gear-94.png");
+            static IMG_SETTINGS: &[u8] = include_bytes!("./img/icons8-grey-gear-94.png");
             let img_settings = base64_encode(IMG_SETTINGS);
 
             static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-94.png");
             let img_clean = base64_encode(IMG_CLEAN);
+
+            static IMG_SAVE: &[u8] = include_bytes!("./img/icons8-save-94.png");
+            let img_save = base64_encode(IMG_SAVE);
+
+            static IMG_LOAD: &[u8] = include_bytes!("./img/icons8-open-file-94.png");
+            let img_load = base64_encode(IMG_LOAD);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
             let active_darstellung_pdf = if *cw == DarstellungPdf { " active" } else { "" };
@@ -305,6 +310,16 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     <div class='__application_configuration_sidebar_section{active_pdf_symbole}' onmouseup='activateConfigurationView(event, \"pdf-symbole\")'>
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
                         <p>PDF Symbole</p>
+                    </div>
+
+                    <div style='display:flex;min-height:50px;'></div>
+                    <div class='__application_configuration_sidebar_section' onmouseup='loadSettings();'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_load}'></img>
+                        <p>Einstellungen laden</p>
+                    </div>
+                    <div class='__application_configuration_sidebar_section' onmouseup='saveSettings();'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_save}'></img>
+                        <p>Einstellungen speichern</p>
                     </div>
                 </div>
             ");

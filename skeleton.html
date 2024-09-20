@@ -1244,6 +1244,43 @@
       downloadBlob(b, window.info.antragsnr + ".json", 'application/octet-stream');
     }
 
+    function saveSettings() {
+      if (!window.configuration) {
+        return;
+      }
+      var s = JSON.stringify(window.configuration, null, 4);
+      downloadBlob(s, "TNViewer.Einstellungen.json", 'application/octet-stream');
+    }
+
+    window.saveSettings = saveSettings;
+
+    function loadSettings() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = ".json";
+
+      input.onchange = e => { 
+        if (e.target.files.length < 1) {
+          return;
+        }
+        var file = e.target.files[0];
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          var json = JSON.parse(readerEvent.target.result);
+          if (json) {
+            window.configuration = json;
+            replacePopOver(null);
+            reinitDOPLayers();
+            reinitMapDrawnStaticLayers();
+          }
+        }
+      }
+      input.click();
+    }
+
+    window.loadSettings = loadSettings;
+
     function loadProjectDataFromFile() {
       var input = document.createElement('input');
       input.type = 'file';
