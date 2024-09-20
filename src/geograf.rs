@@ -8,7 +8,7 @@ use proj4rs::proj;
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo}};
+use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo, FortfuehrungsbelegInfo}};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -209,6 +209,19 @@ pub async fn export_aenderungen_geograf(
     });
     files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
 
+    let splitflaechen_xlsx = crate::xml_templates::generate_fortfuehrungsbeleg_docx(&FortfuehrungsbelegInfo {
+        datum: projekt_info.bearbeitung_beendet_am.clone(),
+        jahrgang: projekt_info.antragsnr.split("-").next().unwrap_or("2024").to_string(),
+        gemeindename: projekt_info.gemeinde.clone(),
+        gemarkungsname: projekt_info.gemarkung.clone(),
+        gemarkungsnummer: main_gemarkung.to_string(),
+        fluren_modified: get_fluren_string(&splitflaechen, main_gemarkung),
+        antragsnummer_51: projekt_info.antragsnr.replace("-30-", "-51-"),
+        tatsaechliche_nutzung_modified: splitflaechen.0.iter().any(|s| s.alt != s.neu),
+        topografie_und_bauwerke_modified: !aenderungen.gebaeude_loeschen.is_empty(),
+    });
+    files.push((None, format!("{antragsnr}.Fortfuehrungsbeleg.docx").into(), splitflaechen_xlsx));
+    log_status(&format!("OK: Fortführungsbeleg erstellt"));
 
     let lq_flurstuecke = nas_xml.get_linien_quadtree();
     let lq_flurstuecke_und_nutzungsarten = split_nas.get_linien_quadtree();

@@ -15,6 +15,8 @@ pub const BEARBEITUNGSLISTE_SHEET1_XML: &str = include_str!("./bearbeitungsliste
 pub const BEARBEITUNGSLISTE_HEADER_XML: &str = include_str!("./bearbeitungsliste_header.xml");
 pub const BEARBEITUNGSLISTE_ROW_XML: &str = include_str!("./bearbeitungsliste_row.xml");
 
+pub const FORTFUEHRUNGSBELEG_DOCX_XML: &str = include_str!("./fortfuehrungsbeleg_document.xml");
+
 pub struct AntragsbegleitblattInfo {
     pub datum: String, // %%REPLACEME_DATUM%%
     pub antragsnr: String, // %%ANTRAGSNR%%
@@ -164,10 +166,31 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
 
 
 pub struct FortfuehrungsbelegInfo {
-    pub datum: String,
-
+    pub datum: String, // %%DATUM%%
+    pub jahrgang: String, // %%JAHR%%
+    pub gemeindename: String, // %%GEMEINDENAME%%
+    pub gemarkungsname: String, // %%GENAMRKUNGNAME%%
+    pub gemarkungsnummer: String, // %%GEMARKUNGNUMMER%%
+    pub fluren_modified: String, // %%FLUREN_MODIFIED%%
+    pub antragsnummer_51: String, // %%ANTRAGSNUMMER_51%%
+    pub tatsaechliche_nutzung_modified: bool, // %%TATSAECHLICHE_NUTZUNG_X%%
+    pub topografie_und_bauwerke_modified: bool, // %%TOPOGRAFIE_UND_BAUWERKE_X%%
 }
 
 pub fn generate_fortfuehrungsbeleg_docx(info: &FortfuehrungsbelegInfo) -> Vec<u8> {
-    Vec::new()
+
+    let document_xml = FORTFUEHRUNGSBELEG_DOCX_XML
+    .replace("%%DATUM%%", &clean_ascii(&info.datum))
+    .replace("%%JAHR%%", &clean_ascii(&info.jahrgang))
+    .replace("%%GEMEINDENAME%%", &clean_ascii(&info.gemeindename))
+    .replace("%%GENAMRKUNGNAME%%", &clean_ascii(&info.gemarkungsname))
+    .replace("%%GEMARKUNGNUMMER%%", &clean_ascii(&info.gemarkungsnummer))
+    .replace("%%FLUREN_MODIFIED%%", &clean_ascii(&info.fluren_modified))
+    .replace("%%ANTRAGSNUMMER_51%%", &clean_ascii(&info.antragsnummer_51))
+    .replace("%%TATSAECHLICHE_NUTZUNG_X%%", if info.tatsaechliche_nutzung_modified { "x" } else { "" })
+    .replace("%%TOPOGRAFIE_UND_BAUWERKE_X%%", if info.topografie_und_bauwerke_modified { "x" } else { "" });
+
+    let mut zip = crate::zip::read_files_from_zip(FORTFUEHRUNGSBELEG_ZIP, true, &[".rels"]);
+    zip.push((Some("word".to_string()), "document.xml".into(), document_xml.as_bytes().to_vec()));
+    crate::zip::write_files_to_zip(&zip)
 }
