@@ -191,28 +191,13 @@ pub async fn export_aenderungen_geograf(
         eigentuemer: eigentuemer_map.clone(),
         auftragsnr: projekt_info.antragsnr.trim().to_string(),
         gemarkung_name: projekt_info.gemarkung.clone(),
-        fluren: {
-            let fl = splitflaechen
-                .get_fluren(main_gemarkung)
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            if fl.is_empty() {
-                String::new()
-            } else if fl.len() == 1 {
-                fl[0].clone()
-            } else {
-                let first = fl.first().unwrap();
-                let last = fl.last().unwrap();
-                format!("{first} - {last}")
-            }
-        },
+        fluren: get_fluren_string(&splitflaechen, main_gemarkung),
     });
     files.push((None, format!("{antragsnr}.Bearbeitungsliste.xlsx").into(), splitflaechen_xlsx));
     log_status(&format!("OK: {} Flurstücke exportiert in Bearbeitungsliste", eigentuemer_map.len()));
 
-    let modified = get_modified_fluren_flst(&eigentuemer_map, main_gemarkung);
+    let eigentuemer_map_modified = splitflaechen_eigentuemer_map_modified(&csv_data, &splitflaechen);
+    let modified = get_modified_fluren_flst(&eigentuemer_map_modified, main_gemarkung);
     let antragsbegleitblatt = crate::xml_templates::generate_antragsbegleitblatt_docx(&AntragsbegleitblattInfo {
         datum: projekt_info.bearbeitung_beendet_am.clone(),
         antragsnr: projekt_info.antragsnr.replace("-30-", "-51-"),
@@ -280,6 +265,24 @@ pub async fn export_aenderungen_geograf(
     }
 
     write_files_to_zip(&files)
+}
+
+fn get_fluren_string(splitflaechen: &AenderungenIntersections, main_gemarkung: usize) -> String {
+    let fl = splitflaechen
+        .get_fluren(main_gemarkung)
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+
+    if fl.is_empty() {
+        String::new()
+    } else if fl.len() == 1 {
+        fl[0].clone()
+    } else {
+        let first = fl.first().unwrap();
+        let last = fl.last().unwrap();
+        format!("{first} - {last}")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -372,12 +375,30 @@ pub fn splitflaechen_eigentuemer_map(
     datensaetze: &CsvDataType,
     splitflaechen: &AenderungenIntersections,
 ) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
+    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, false)
+}
+
+pub fn splitflaechen_eigentuemer_map_modified(
+    datensaetze: &CsvDataType,
+    splitflaechen: &AenderungenIntersections,
+) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
+    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, true)
+}
+
+fn splitflaechen_eigentuemer_map_internal(
+    datensaetze: &CsvDataType,
+    splitflaechen: &AenderungenIntersections,
+    filter_only_modified: bool,
+) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
     datensaetze.iter().filter_map(|(flst_id, ds)| {
 
         let ds_0 = ds.get(0)?;
         let f = FlstIdParsed::from_str(flst_id).parse_num()?;
         let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
         let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
+        if filter_only_modified && status != Status::AenderungMitBenachrichtigung {
+            return None;
+        }
         let nutzung = ds_0.nutzung.clone();
 
         let mut eigentuemer = ds.iter().map(|s| EigentuemerClean::from_str(&s.eigentuemer)).collect::<Vec<_>>();
@@ -400,10 +421,9 @@ pub fn get_modified_fluren_flst(
 ) -> BTreeMap<usize, Vec<FlstIdParsedNumber>> {
     let mut target_map = BTreeMap::new();
     for (e, v) in eigentuemer_map.iter() {
-        if v.status != Status::AenderungMitBenachrichtigung {
-            continue;
+        if v.status == Status::AenderungMitBenachrichtigung && e.gemarkung == main_gemarkung {
+            target_map.entry(e.flur).or_insert_with(|| Vec::new()).push(e.clone());
         }
-        target_map.entry(e.flur).or_insert_with(|| Vec::new()).push(e.clone());
     }
     target_map
 }
@@ -433,7 +453,10 @@ pub fn get_eigentuemer(
 pub fn join_modified_fluren(
     modified: &BTreeMap<usize, Vec<FlstIdParsedNumber>>,
 ) -> BTreeMap<String, String> {
-    modified.iter().filter_map(|(k, v)| Some((format!("Fl. {k}: "), join_flst(v)?))).collect()
+    modified
+    .iter()
+    .filter_map(|(k, v)| Some((format!("Fl. {k}: "), join_flst(v)?)))
+    .collect()
 }
 
 fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
