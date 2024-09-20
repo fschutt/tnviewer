@@ -903,39 +903,6 @@
     reinitMapDrawnStaticLayers();
   }
 
-  function colorFlurstuecke() {
-    if (!window.csv_data) {
-      return;
-    }
-    for (var k in window.csv_data) {
-      var e = window.csv_data[k];
-      for (var i = 0; i < e.length; i++) {
-        var q = e[i];
-        if (q.status == 'bleibt') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#3e3e58';
-          }
-          break;
-        }
-        if (q.status == 'aenderung-keine-benachrichtigung') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#ff9a5a';
-          }
-          break;
-        }
-        if (q.status == 'aenderung-mit-benachrichtigung') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#ff4545';
-          }
-          break;
-        }
-      }
-    }
-  }
-
   window.get_layer_style = get_layer_style;
   
   function splitNasDataOnEachFeatureClicked(e) {
@@ -2069,7 +2036,6 @@
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
     window.projectInfoEdit = projectInfoEdit;
-    window.setInterval(colorFlurstuecke, 200);
     window.nutzungenSaeubern = nutzungenSaeubern;
 
     var tab_functions = {
