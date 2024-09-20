@@ -20,7 +20,6 @@ pub struct CsvDatensatz {
     pub eigentuemer: String,
     pub nutzung: String,
     pub notiz: String,
-    pub status: Status,
 }
 
 pub fn parse_csv(
@@ -61,7 +60,6 @@ pub fn parse_csv(
             eigentuemer,
             nutzung,
             notiz: String::new(),
-            status: Status::Bleibt,
         });
     }
 

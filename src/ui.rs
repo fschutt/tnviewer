@@ -3051,13 +3051,6 @@ fn render_csv_editable(
 
     let content = csv.iter()
     .filter_map(|(k, v)| {
-        if filter_out_bleibt && v.iter().any(|f| f.status == Status::Bleibt) {
-            None
-        } else {
-            Some((k, v))
-        }
-    })
-    .filter_map(|(k, v)| {
         let flstidparsed = FlstIdParsed::from_str(k).parse_num()?;
         let selected = if selected_edit_flst.is_empty() {
             false 
@@ -3065,24 +3058,12 @@ fn render_csv_editable(
             selected_edit_flst.starts_with(k) 
         };
         Some(format!("
-        <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background: {background_col};padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
+        <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background:#3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Fl. {flur_formatted} Flst. {flst_id_formatted}</h5>
             <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
-            <!--
-            <select style='font-size:16px;padding:5px;' onchange='changeStatus(event);' data-id='{flst_id}'>
-                <option value='bleibt' {selected_bleibt}>Bleibt</option>
-                <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
-                <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
-            </select>
-            -->
             {split_nas}
         </div>",
-        background_col = match v.get(0).map(|f| f.status).unwrap_or(Status::Bleibt) {
-            Status::Bleibt => "#3e3e58",
-            Status::AenderungKeineBenachrichtigung => "#ff9a5a",
-            Status::AenderungMitBenachrichtigung => "#ff4545",
-        },
         nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
         flst_id = k,
         border = if selected {
@@ -3093,9 +3074,6 @@ fn render_csv_editable(
         flur_formatted = flstidparsed.get_flur(),
         flst_id_formatted = flstidparsed.format_str(),
         notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
-        selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
-        selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
-        selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
         split_nas = if selected {
             match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
                 None => String::new(),

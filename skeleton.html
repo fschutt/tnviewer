@@ -1855,14 +1855,6 @@
       replacePopOver("config");
     }
 
-    function exportExcel() {
-        if (!window.csv_data) {
-          return;
-        }
-        var xlsx = export_xlsx(JSON.stringify(window.csv_data));
-        downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
-    }
-
     async function exportUebersicht(event) {
       if (!window.csv_data) {
         return;
@@ -2051,7 +2043,6 @@
         open_help: function(event) { openHelp(); },
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
-        export_excel: function(event) { exportExcel(); },
         export_uebersicht: async function(event) { await exportUebersicht(event); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },

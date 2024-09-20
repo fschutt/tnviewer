@@ -9,22 +9,8 @@ use crate::csv::Status;
 
 pub fn get_alle_flst(datensaetze: &CsvDataType) -> String {
     let all = get_alle_flst_internal(datensaetze);
-
-    let alle_flst = all.iter()
-    .map(|(v, _)| v.clone())
-    .collect::<Vec<_>>();
-    
-    let veraendert = all.iter()
-    .filter_map(|(v, b)| if *b {
-        Some(v.clone())
-    } else {
-        None
-    }).collect::<Vec<FlstIdParsedNumber>>();
-
-    let s1 = format_flst_liste(alle_flst);
-    let s2 = format_flst_liste(veraendert);
-
-    format!("FLURSTUECKE:\r\n{s1}\r\n\r\nVERAENDERT:\r\n\r\n{s2}\r\n")
+    let s1 = format_flst_liste(all);
+    format!("FLURSTUECKE:\r\n{s1}\r\n")
 }
 
 fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> String {
@@ -55,15 +41,10 @@ fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> String {
     }
 }
 
-fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(FlstIdParsedNumber, bool)> {
+fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<FlstIdParsedNumber> {
     // 12 1175 003 00038 00000
     let mut target = Vec::new();
     for (ds, v) in datensaetze.iter() {
-
-        let ds_modified = v
-        .get(0)
-        .map(|s| s.status == Status::AenderungMitBenachrichtigung)
-        .unwrap_or(false);
 
         let flst = FlstIdParsed::from_str(ds);
         let flst_num = match flst.parse_num() {
@@ -71,61 +52,9 @@ fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<(FlstIdParsedNumber,
             None => continue,
         };
 
-        target.push((flst_num, ds_modified));
+        target.push(flst_num);
     }
     target
-}
-
-pub fn generate_report(datensaetze: &CsvDataType) -> Vec<u8> {
-
-    use simple_excel_writer::*;
-    
-    let mut wb = Workbook::create_in_memory();
-    let mut sheet = wb.create_sheet("Flurstuecke");
-
-    // ID
-    sheet.add_column(Column { width: 30.0 });
-    // Nutzung
-    sheet.add_column(Column { width: 60.0 });
-    // Status
-    sheet.add_column(Column { width: 30.0 });
-    // Eigentümer
-    sheet.add_column(Column { width: 60.0 });
-
-    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
-        let sw = sheet_writer;
-        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer"])?;
-        for (flst_id, ds) in datensaetze.iter() {
-            let ds_0 = match ds.get(0) {
-                Some(s) => s,
-                None => continue
-            };
-            let notiz = ds_0.notiz.clone();
-            let status = ds_0.status.clone();
-            let mut eigentuemer = ds.iter().map(|s| s.eigentuemer.clone()).collect::<Vec<_>>();
-            eigentuemer.sort();
-            eigentuemer.dedup();
-            let eig: String = eigentuemer.join("; ");
-            let nutzung = ds_0.nutzung.clone();
-            sw.append_row(row![
-                FlstIdParsed::from_str(&flst_id).to_nice_string(),
-                nutzung.to_string(),
-                match status {
-                    crate::csv::Status::Bleibt => "bleibt".to_string(),
-                    crate::csv::Status::AenderungKeineBenachrichtigung => notiz + " (keine Benachrichtigung)",
-                    crate::csv::Status::AenderungMitBenachrichtigung => notiz + " (mit Benachrichtigung)",
-                },
-                eig.to_string()
-            ])?;
-        }
-
-        Ok(())
-    });
-
-    match wb.close() {
-        Ok(Some(o)) => o,
-        _ => Vec::new(),
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Serialize, Deserialize)]

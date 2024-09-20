@@ -903,16 +903,6 @@ pub fn export_alle_flst(s: String) -> String {
     crate::xlsx::get_alle_flst(&data)
 }
 
-#[wasm_bindgen]
-pub fn export_xlsx(s: String) -> Vec<u8> {
-    let data = match serde_json::from_str::<CsvDataType>(&s) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    crate::xlsx::generate_report(&data)
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct KonfigurationLayerAlle {
     pub result: Konfiguration, 

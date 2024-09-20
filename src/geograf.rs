@@ -205,7 +205,7 @@ pub async fn export_aenderungen_geograf(
         gemarkungsnummer: main_gemarkung.to_string(),
         fluren_bearbeitet: modified.keys().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
         flurstuecke_bearbeitet: join_modified_fluren(&modified).into_iter().collect(),
-        eigentuemer: get_eigentuemer(&eigentuemer_map),
+        eigentuemer: get_eigentuemer(&eigentuemer_map_modified),
     });
     files.push((None, format!("{antragsnr}.Antragsbegleitblatt.docx").into(), antragsbegleitblatt));
 
@@ -500,55 +500,6 @@ fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
         }
     }).collect::<Vec<_>>().join(", "))
 }
-
-
-/*
-pub fn splitflaechen_zu_bearbeitungsliste(eigentuemer_map: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>) -> Vec<u8> {
-    
-    use simple_excel_writer::*;
-    
-    let mut wb = Workbook::create_in_memory();
-    let mut sheet = wb.create_sheet("Flurstuecke");
-
-    // ID
-    sheet.add_column(Column { width: 30.0 });
-    // Nutzung
-    sheet.add_column(Column { width: 60.0 });
-    // Status
-    sheet.add_column(Column { width: 30.0 });
-    // Eigentümer
-    sheet.add_column(Column { width: 60.0 });
-
-    let _ = wb.write_sheet(&mut sheet, |sheet_writer| {
-        let sw = sheet_writer;
-        sw.append_row(row!["ID", "Nutzung", "Status", "Eigentümer", "Kommentare"])?;
-
-        for (flst_id, v) in eigentuemer_map.iter() {
-
-            let eig: String = v.eigentuemer.join("; ");
-            sw.append_row(row![
-                flst_id.format_nice(),
-                v.nutzung.to_string(),
-                match v.status {
-                    crate::csv::Status::Bleibt => "bleibt".to_string(),
-                    crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone() + " (keine Benachrichtigung)",
-                    crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone() + " (mit Benachrichtigung)",
-                },
-                eig.to_string(),
-                v.notiz.clone()
-            ])?;
-        }
-
-        Ok(())
-    });
-
-    match wb.close() {
-        Ok(Some(o)) => o,
-        _ => Vec::new(),
-    }
-}
-
-*/
 
 pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,
