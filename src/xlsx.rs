@@ -44,7 +44,7 @@ fn format_flst_liste(all: Vec<FlstIdParsedNumber>) -> String {
 fn get_alle_flst_internal(datensaetze: &CsvDataType) -> Vec<FlstIdParsedNumber> {
     // 12 1175 003 00038 00000
     let mut target = Vec::new();
-    for (ds, v) in datensaetze.iter() {
+    for (ds, v) in datensaetze.get_old_fallback().iter() {
 
         let flst = FlstIdParsed::from_str(ds);
         let flst_num = match flst.parse_num() {

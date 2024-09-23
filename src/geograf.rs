@@ -450,7 +450,7 @@ fn splitflaechen_eigentuemer_map_internal(
     splitflaechen: &AenderungenIntersections,
     filter_only_modified: bool,
 ) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
-    datensaetze.iter().filter_map(|(flst_id, ds)| {
+    datensaetze.get_old_fallback().iter().filter_map(|(flst_id, ds)| {
 
         let ds_0 = ds.get(0)?;
         let f = FlstIdParsed::from_str(flst_id).parse_num()?;

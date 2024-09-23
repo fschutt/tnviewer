@@ -3064,7 +3064,9 @@ fn render_csv_editable(
 
     let selected_edit_flst = FlstIdParsed::from_str(&selected_edit_flst).parse_num().map(|s| s.format_nice());
 
-    let content = csv.iter()
+    let content = csv
+    .get_old_fallback()
+    .iter()
     .filter_map(|(k, v)| {
         let flstidparsed = FlstIdParsed::from_str(k).parse_num()?;
         let selected = if let Some(sf) = selected_edit_flst.as_ref() {

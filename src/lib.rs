@@ -54,7 +54,7 @@ pub fn format_savefile(info: String, risse: Option<String>, csv: Option<String>,
     let savefile = SaveFile {
         info,
         risse,
-        csv,
+        csv: csv.migrate_new(),
         aenderungen,
     };
 
