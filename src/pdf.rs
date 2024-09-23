@@ -584,6 +584,7 @@ pub enum PdfTargetUse {
     HintergrundCheck,
 }
 
+#[derive(Default)]
 pub struct HintergrundCache {
     pub images: BTreeMap<RissConfigId, Vec<PdfImage>>
 }
@@ -673,6 +674,7 @@ pub async fn export_overview(
     split_nas: &SplitNasXml,
     csv: &CsvDataType,
     use_dgm: bool,
+    use_background: bool,
 ) -> Vec<u8> {
 
 
@@ -766,12 +768,16 @@ pub async fn export_overview(
     };
     
     let risse = riss_extente_reprojected.iter().map(|s| s.0.clone()).collect::<Vec<_>>();
-    let mut cache = HintergrundCache::build(
-        if use_dgm { konfiguration.map.dgm_source.clone() } else { konfiguration.map.dop_source.clone() },
-        if use_dgm { konfiguration.map.dgm_layers.clone() } else { konfiguration.map.dop_layers.clone() },
-        &risse, 
-        &nas_xml.crs
-    ).await;
+    let mut cache = if use_background {
+        HintergrundCache::build(
+            if use_dgm { konfiguration.map.dgm_source.clone() } else { konfiguration.map.dop_source.clone() },
+            if use_dgm { konfiguration.map.dgm_layers.clone() } else { konfiguration.map.dop_layers.clone() },
+            &risse, 
+            &nas_xml.crs
+        ).await
+    } else {
+        HintergrundCache::default()
+    };
 
     let page_len = riss_extente_reprojected.len();
 
@@ -1746,7 +1752,7 @@ fn write_nutzungsarten(
     
     let mut flurstueck_nutzungen_grouped_by_ebene = Vec::new();
 
-    if style.pdf.nutzungsarten.is_empty() {
+    if style.pdf.nutzungsarten.is_empty() || has_background {
         flurstueck_nutzungen_grouped_by_ebene = split_flurstuecke.flurstuecke_nutzungen.iter().map(|(f, v)| {
             (PdfEbenenStyle::default_grau(f, has_background), v.iter().collect::<Vec<_>>())
         }).collect();

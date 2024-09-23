@@ -138,6 +138,7 @@ pub async fn export_pdf_overview(
     split_nas_xml: Option<String>,
     csv: Option<String>,
     use_dgm: bool,
+    use_background: bool,
 ) -> Vec<u8> {
     let split_nas_xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()) {
         Ok(s) => s,
@@ -178,6 +179,7 @@ pub async fn export_pdf_overview(
         &split_nas_xml, 
         &csv_data,
         use_dgm,
+        use_background,
     ).await
 }
 
