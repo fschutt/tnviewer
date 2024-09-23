@@ -1529,6 +1529,17 @@ pub struct SvgLine {
 
 impl SvgLine {
 
+    pub fn to_points_vec(&self) -> Vec<(SvgPoint, SvgPoint)> {
+        let mut v = Vec::new();
+        for p in self.points.windows(2) {
+            match &p {
+                &[a, b] => v.push((*a, *b)),
+                _ => { },
+            }
+        }
+        v
+    }
+
     pub fn get_hash(&self) -> [u64;4] {
         use highway::{HighwayHasher, HighwayHash};
         let rounded = SvgPolygon::from_line(self).round_to_3dec().get_all_pointcoords_sorted();

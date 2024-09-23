@@ -8,7 +8,7 @@ use proj4rs::proj;
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType, Status}, nas::{self, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo, FortfuehrungsbelegInfo}};
+use crate::{csv::{self, CsvDataType, Status}, nas::{self, cleanup_poly, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, process::{AngleDegrees, PointOnLineConfig}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo, FortfuehrungsbelegInfo}};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -45,6 +45,37 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
             normal: Vector::z_axis(),
             horizontal_text_justification: dxf::enums::HorizontalTextJustification::Center,
             vertical_text_justification: dxf::enums::VerticalTextJustification::Middle,
+        }));
+        let _entity_ref = drawing.add_entity(entity);
+    }
+
+    let v = Vec::new();
+    let mut buf = BufWriter::new(v);
+    let _ = drawing.save(&mut buf);
+    buf.into_inner().unwrap_or_default()
+}
+
+pub fn lines_to_points_dxf(lines: &[SvgLine]) -> Vec<u8> {
+    use dxf::Drawing;
+    use dxf::entities::*;
+
+    let line_points = lines.iter().flat_map(|s| s.to_points_vec()).collect::<Vec<_>>();
+    let lines_joined = merge_lines_again(line_points);
+    let config = &PointOnLineConfig {
+        symbol_width_m: 5.0,
+        distance_on_line_m: 10.0,
+    };
+    let points = crate::process::generate_points_along_lines(config, &lines_joined);
+
+    let mut drawing = Drawing::new();
+    let zone = 33;
+
+    for (location, angle) in points.iter() {
+        let newx = update_dxf_x(zone, location.x);
+        let entity = Entity::new(EntityType::ModelPoint(ModelPoint { 
+            location: dxf::Point { x: newx, y: location.y, z: 0.0 }, 
+            angle: *angle,
+            .. Default::default()
         }));
         let _entity_ref = drawing.add_entity(entity);
     }
@@ -707,7 +738,7 @@ pub fn export_splitflaechen(
     let na_splitflaechen = get_na_splitflaechen(&splitflaechen, &split_nas, Some(riss_extent_reprojected.get_rect()));
     let aenderungen_nutzungsarten_linien = get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq_flurstuecke);
     if !aenderungen_nutzungsarten_linien.is_empty() {
-        files.push((None, format!("Linien_NAGrenze_Untergehend_{pdir_name}.dxf").into(), lines_to_dxf(&aenderungen_nutzungsarten_linien)));
+        files.push((None, format!("Punkte_NAGrenze_Untergehend_{pdir_name}.dxf").into(), lines_to_points_dxf(&aenderungen_nutzungsarten_linien)));
     }
     log_status(&format!("[{num_riss} / {total_risse}] {} Linien für untergehende NA-Grenzen generiert.", aenderungen_nutzungsarten_linien.len()));
 
