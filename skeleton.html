@@ -1801,7 +1801,7 @@
   function selectFlst(id) {
     window.uidata.selected_edit_flst = validate_format_flst_id(id);
     replaceProjectContent();
-    var v = document.getElementById('csv_flst_' + id.replace("/", "-").replace("-", "_"));
+    var v = document.getElementById('csv_flst_' + window.uidata.selected_edit_flst.replace("/", "-").replace("-", "_"));
     if (v) {
       v.scrollIntoView();
     }
