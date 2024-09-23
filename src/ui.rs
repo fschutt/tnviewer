@@ -3062,25 +3062,23 @@ fn render_csv_editable(
     split_fs: Option<&SplitNasXml>,
 ) -> String {
 
-    let selected_edit_flst = selected_edit_flst.replace("_", "");
+    let selected_edit_flst = FlstIdParsed::from_str(&selected_edit_flst).parse_num().map(|s| s.format_nice());
 
     let content = csv.iter()
     .filter_map(|(k, v)| {
         let flstidparsed = FlstIdParsed::from_str(k).parse_num()?;
-        let selected = if selected_edit_flst.is_empty() {
-            false 
+        let selected = if let Some(sf) = selected_edit_flst.as_ref() {
+            sf.as_str() == flstidparsed.format_nice().as_str()
         } else {
-            selected_edit_flst.starts_with(k) 
+            false
         };
         Some(format!("
         <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background:#3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Fl. {flur_formatted} Flst. {flst_id_formatted}</h5>
-            <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
             {split_nas}
         </div>",
-        nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
-        flst_id = k,
+        flst_id = flstidparsed.format_nice().replace("/", "-").replace("-", "_"),
         border = if selected {
             "border:1px solid red;"
         } else {
@@ -3108,7 +3106,7 @@ fn render_csv_editable(
                             let auto_kuerzel = tp.get_auto_kuerzel(&ax_ebene);
                             let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(&ax_ebene);
                             Some(format!(
-                                "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
+                                "<div><p style='cursor:pointer;text-decoration:underline;' onmouseup='zoomToFlstPart(event);' data-part-id='{objid_total}'>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
                                 render_select(&
                                     aenderungen.na_definiert.get(&objid_total).cloned()
                                     .or(auto_kuerzel.clone())

@@ -131,6 +131,70 @@ struct GetCoordsReturn {
     projection: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchFlstInternalReturn {
+    id_input: String,
+    id_nice: String,
+    ebene: String,
+    flst: SvgPolygon,
+}
+
+#[wasm_bindgen]
+pub fn search_flst_internal(
+    id: String,
+    nas_projected: Option<String>
+) -> Option<String> {
+    let id_target = FlstIdParsed::from_str(&id).parse_num()?.format_nice();
+    let nas = serde_json::from_str::<NasXMLFile>(&nas_projected.unwrap_or_default()).unwrap_or_default();
+    nas.ebenen.get("AX_Flurstueck").and_then(|s| {
+        s.iter().find_map(|s| {
+            let found_id = FlstIdParsed::from_str(
+                &s.attributes.get("AX_Flurstueck").or_else(|| s.attributes.get("flurstueckskennzeichen"))?
+            ).parse_num()?.format_nice(); 
+            
+            if found_id == id_target {
+                Some(serde_json::to_string(&SearchFlstInternalReturn {
+                    id_input: id.clone(),
+                    id_nice: id_target.clone(),
+                    ebene: "AX_Flurstueck".to_string(),
+                    flst: s.poly.clone(),
+                }).ok()?)
+            } else {
+                None
+            }
+        })
+    })
+}
+
+#[wasm_bindgen]
+pub fn search_flst_part_internal(
+    id: String,
+    split_nas_projected: Option<String>
+) -> Option<String> {
+    let nas = serde_json::from_str::<SplitNasXml>(&split_nas_projected.unwrap_or_default()).unwrap_or_default();
+    nas.flurstuecke_nutzungen.iter().find_map(|(k, v)| {
+        let id_nice = FlstIdParsed::from_str(&k).parse_num()?.format_nice();
+        v.iter().find_map(|s| {
+            let part_id = s.get_flst_part_id()?;
+            if part_id == id {
+                Some(serde_json::to_string(&SearchFlstInternalReturn {
+                    id_input: id.clone(),
+                    id_nice: id_nice.clone(),
+                    ebene: s.get_ebene().unwrap_or_default(),
+                    flst: s.poly.clone(),
+                }).ok()?)
+            } else {
+                None
+            }
+        })
+    })
+}
+
+#[wasm_bindgen]
+pub fn validate_format_flst_id(id: String) -> String {
+    FlstIdParsed::from_str(&id).parse_num().map(|s| s.format_nice()).unwrap_or_default()
+}
+
 #[wasm_bindgen]
 pub async fn export_pdf_overview(
     konfiguration: Option<String>,
@@ -669,8 +733,8 @@ pub fn ui_render_project_content(
 
 #[wasm_bindgen]
 pub fn get_geojson_polygon(s: String) -> String {
-    let flst = match serde_json::from_str::<TaggedPolygon>(&s) {
-        Ok(o) => o,
+    let flst = match serde_json::from_str::<SvgPolygon>(&s) {
+        Ok(o) => TaggedPolygon { poly: o, attributes: BTreeMap::new() },
         Err(e) => return e.to_string()
     };
     crate::nas::tagged_polys_to_featurecollection(&[flst])
@@ -678,7 +742,7 @@ pub fn get_geojson_polygon(s: String) -> String {
 
 #[wasm_bindgen]
 pub fn get_fit_bounds(s: String) -> String {
-    let flst = match serde_json::from_str::<TaggedPolygon>(&s) {
+    let flst = match serde_json::from_str::<SvgPolygon>(&s) {
         Ok(o) => o,
         Err(e) => return e.to_string()
     };
@@ -695,10 +759,7 @@ pub fn search_for_polyneu(aenderungen: String, poly_id: String) -> String {
 
     let tp = aenderungen.na_polygone_neu.iter()
     .find_map(|(k, v)| if k.as_str() == poly_id.as_str() {
-        Some(TaggedPolygon {
-            attributes: BTreeMap::new(),
-            poly: v.poly.clone(),
-        })
+        Some(v.poly.clone())
     } else {
         None
     });

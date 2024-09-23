@@ -108,8 +108,6 @@ pub fn write_files_to_zip(files: Vec<(Option<String>, PathBuf, Vec<u8>)>) -> Vec
             let path = path_buf.as_path();
             let name = path;
 
-            total += file_contents.len();
-
             #[allow(deprecated)]
             if let Err(e) = zip.start_file_from_path(name, options) {
                 log_status(&format!("{}", e.to_string()));

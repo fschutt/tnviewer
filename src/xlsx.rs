@@ -142,7 +142,13 @@ impl FlstIdParsed {
 
         // 12 1180 003 00001 0000 00
         // 12-1180-003-00261/0000
-        let id = id.replace("-", "").replace("/", "").replace(" ", "").replace("_", "");
+        let id = id
+            .replace("-", "")
+            .replace("_", "")
+            .replace("/", "")
+            .replace(" ", "")
+            .replace("_", "");
+        
         let chars = id.chars().collect::<Vec<_>>();
         
         let mut land = chars.iter().skip(0).take(2).collect::<String>();

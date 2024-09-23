@@ -1635,23 +1635,39 @@
   window.get_layer_style = get_layer_style;
   
   function splitNasDataOnEachFeatureClicked(e) {
-    console.log("splitNasDataOnEachFeatureClicked");
-    console.log(e.target);
     var flst_id = e.target.feature.properties.flurstueckskennzeichen;
     if (!flst_id) {
       return;
     }
-    window.uidata.selected_edit_flst = flst_id.replace("_", "");
-    console.log(flst_id.replace("_", ""));
-    replaceProjectContent();
-    var found = searchFlst(window.uidata.selected_edit_flst, window.projectdata);
+    window.uidata.selected_edit_flst = validate_format_flst_id(flst_id);
+    console.log(window.uidata.selected_edit_flst);
+    var found = searchFlst(window.uidata.selected_edit_flst);
     if (found) {
+      console.log("found!");
       selectFlst(window.uidata.selected_edit_flst);
       highlightPolygon(found.flst);
     } else {
       alert("Flurstück " + window.uidata.selected_edit_flst + " nicht in XML-Daten gefunden!");
     }
+    replaceProjectContent();
   }
+
+  function zoomToFlstPart(event) {
+    var partid = event.target.dataset.partId;
+    if (!partid) {
+      return;
+    }
+
+    console.log("zooming to " + partid);
+    var found = searchFlstPart(partid);
+    if (found) {
+      highlightPolygon(found.flst);
+    } else {
+      alert("Flurstück " + partid + " nicht in XML-Daten gefunden!");
+    }
+  }
+
+  window.zoomToFlstPart = zoomToFlstPart;
 
   function splitNasDataOnEachFeature(feature, layer) {
         layer.on({
@@ -1783,9 +1799,9 @@
 }
 
   function selectFlst(id) {
-    window.uidata.selected_edit_flst = id;
+    window.uidata.selected_edit_flst = validate_format_flst_id(id);
     replaceProjectContent();
-    var v = document.getElementById('csv_flst_' + id);
+    var v = document.getElementById('csv_flst_' + id.replace("/", "-").replace("-", "_"));
     if (v) {
       v.scrollIntoView();
     }
@@ -1798,7 +1814,8 @@
         return;
       }
 
-      var found = searchFlst(id, window.projectdata);
+      var found = searchFlst(id);
+      console.log(found);
       if (found) {
         selectFlst(id);
         highlightPolygon(found.flst);
@@ -1807,33 +1824,36 @@
       }
     }
 
-    function searchFlst(id, pd) {
-      var id = id.replace(/0+$/, "");
-      // minimum 14 chars, prevent numbers such as "70" from being reduced to "7"
-      if (id.length < 14) {
-        for (let i = (14 - id.length); i > 0; i--) {
-          id += "0";
+    function searchFlst(id) {
+      var parsed = null;
+      try {
+        var j = search_flst_internal(id, JSON.stringify(window.projectdata));
+        if (j) {
+          parsed = JSON.parse(j);
         }
+      } catch (error) {
+        console.log(error);
+        return parsed;
       }
-
-      if (!pd) {
-        return null;
-      }
-
-      for (var ebene_id in pd.ebenen) {
-        var ebene = pd.ebenen[ebene_id];
-        for (var i = 0; i < ebene.length; i++) {
-          var flst = ebene[i];
-          if (flst.attributes["flurstueckskennzeichen"] && flst.attributes["flurstueckskennzeichen"].startsWith(id)) {
-            return {
-              flst: flst,
-              ebene: ebene_id,
-            };
-          }
-        }
-      }
-      return null;
+      return parsed;
     }
+
+
+    function searchFlstPart(id) {
+      var parsed = null;
+      try {
+        var j = search_flst_part_internal(id, JSON.stringify(window.split_flurstuecke));
+        if (j) {
+          parsed = JSON.parse(j);
+        }
+      } catch (error) {
+        console.log(error);
+        return parsed;
+      }
+      return parsed;
+    }
+
+    window.searchFlstPart = searchFlstPart;
 
     function newProjectFromCSV() {
       var input = document.createElement('input');
