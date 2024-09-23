@@ -120,7 +120,9 @@ pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
         }
     };
 
-    let i = printpdf::Image::from_dynamic_image(&decoded);
+    let lightened = decoded.adjust_contrast(-25.0).brighten(70);
+
+    let i = printpdf::Image::from_dynamic_image(&lightened);
         
     Some(i)
 }

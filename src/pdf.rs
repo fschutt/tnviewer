@@ -1,6 +1,7 @@
 use core::num;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
+use std::path::PathBuf;
 
 use printpdf::path::PaintMode;
 use printpdf::{calculate_points_for_circle, CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Px, Rgb, TextRenderingMode};
@@ -739,33 +740,7 @@ pub async fn export_overview(
         max_y -= height_m * 0.8;
     }
 
-    let (mut doc, page1, layer1) = PdfDocument::new(
-        "Riss",
-        Mm(width_mm as f32),
-        Mm(height_mm as f32),
-        &format!("Uebersicht"),
-    );
-
-    doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
-        requires_icc_profile: false,
-        requires_xmp_metadata: false,
-        .. Default::default()
-    }));
-
-    let helvetica = match doc.add_builtin_font(printpdf::BuiltinFont::HelveticaBold) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    let times_roman = match doc.add_builtin_font(printpdf::BuiltinFont::TimesRoman) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
-
-    let times_roman_bold = match doc.add_builtin_font(printpdf::BuiltinFont::TimesBold) {
-        Ok(o) => o,
-        Err(_) => return Vec::new(),
-    };
+    let mut files = Vec::new();
     
     let risse = riss_extente_reprojected.iter().map(|s| s.0.clone()).collect::<Vec<_>>();
     let mut cache = if use_background {
@@ -783,9 +758,35 @@ pub async fn export_overview(
 
     for (i0, risse_contig) in riss_extente_reprojected.chunks(4).enumerate() {
 
-        let (page0_idx, layer0_idx) = if i0 == 0 { (page1, layer1) } else {
-            doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht")
+        let (mut doc, page1, layer1) = PdfDocument::new(
+            "Riss",
+            Mm(width_mm as f32),
+            Mm(height_mm as f32),
+            &format!("Uebersicht"),
+        );
+
+        doc = doc.with_conformance(PdfConformance::Custom(CustomPdfConformance {
+            requires_icc_profile: false,
+            requires_xmp_metadata: false,
+            .. Default::default()
+        }));
+
+        let helvetica = match doc.add_builtin_font(printpdf::BuiltinFont::HelveticaBold) {
+            Ok(o) => o,
+            Err(_) => return Vec::new(),
         };
+
+        let times_roman = match doc.add_builtin_font(printpdf::BuiltinFont::TimesRoman) {
+            Ok(o) => o,
+            Err(_) => return Vec::new(),
+        };
+
+        let times_roman_bold = match doc.add_builtin_font(printpdf::BuiltinFont::TimesBold) {
+            Ok(o) => o,
+            Err(_) => return Vec::new(),
+        };
+        
+        let (page0_idx, layer0_idx) = (page1, layer1);
         let (page1_idx, layer1_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
         let (page2_idx, layer2_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
         let (page3_idx, layer3_idx) = doc.add_page(Mm(width_mm as f32), Mm(height_mm as f32), "Übersicht");
@@ -877,11 +878,13 @@ pub async fn export_overview(
             );
             log_status(&format!("ok done page {i_real} / {page_len}"));
         }
+    
+        let bytes = doc.save_to_bytes().unwrap_or_default();
+        files.push((None, PathBuf::from(format!("Uebersicht{i0}.pdf")), bytes));
     }
 
     log_status("ok done PDF");
-
-    doc.save_to_bytes().unwrap_or_default()
+    crate::zip::write_files_to_zip(&files)
 }
 
 pub fn generate_pdf_internal(
