@@ -1801,11 +1801,9 @@
   function selectFlst(id) {
     window.uidata.selected_edit_flst = validate_format_flst_id(id);
     replaceProjectContent();
-    var e = window.uidata.selected_edit_flst.replace("/", "-");
-    e = e.replace("-", "_");
-    console.log("csv_flst_" + e);
-    var v = document.getElementById('csv_flst_' + e);
-    console.log(v);
+    var e = window.uidata.selected_edit_flst.replace(/\//g, "-");
+    var q = e.replace(/-/g, "_");
+    var v = document.getElementById('csv_flst_' + q);
     if (v) {
       v.scrollIntoView();
     }
