@@ -313,7 +313,7 @@ pub async fn export_aenderungen_geograf(
         }
     }
 
-    write_files_to_zip(&files)
+    write_files_to_zip(files)
 }
 
 fn get_fluren_string(splitflaechen: &AenderungenIntersections, main_gemarkung: usize) -> String {

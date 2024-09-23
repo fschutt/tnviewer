@@ -56,7 +56,7 @@ pub fn generate_antragsbegleitblatt_docx(info: &AntragsbegleitblattInfo) -> Vec<
 
     let mut zip = crate::zip::read_files_from_zip(ANTRAGSBEGLEITBLATT_ZIP, true, &[".rels"]);
     zip.push((Some("word".to_string()), "document.xml".into(), document_xml.as_bytes().to_vec()));
-    crate::zip::write_files_to_zip(&zip)
+    crate::zip::write_files_to_zip(zip)
 }
 
 fn antragsbegleitblatt_gen_row((eigentuemer, flst): &(EigentuemerClean, Vec<String>)) -> String {
@@ -121,7 +121,7 @@ pub fn generate_legende_xlsx(info: &LegendeInfo) -> Vec<u8> {
     let mut zip = crate::zip::read_files_from_zip(LEGENDE_ZIP, true, &[".rels"]);
     zip.push((Some("xl".to_string()), "sharedStrings.xml".into(), sharedstrings_xml.as_bytes().to_vec()));
     zip.push((Some("xl/worksheets".to_string()), "sheet1.xml".into(), sheet1_xml.as_bytes().to_vec()));
-    crate::zip::write_files_to_zip(&zip)
+    crate::zip::write_files_to_zip(zip)
 
 }
 
@@ -231,7 +231,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
     let mut zip = crate::zip::read_files_from_zip(BEARBEITUNGSLISTE_ZIP, true, &[".rels"]);
     zip.push((Some("xl".to_string()), "sharedStrings.xml".into(), sharedstrings_xml.as_bytes().to_vec()));
     zip.push((Some("xl/worksheets".to_string()), "sheet1.xml".into(), sheet1_xml.as_bytes().to_vec()));
-    crate::zip::write_files_to_zip(&zip)
+    crate::zip::write_files_to_zip(zip)
 }
 
 
@@ -262,5 +262,5 @@ pub fn generate_fortfuehrungsbeleg_docx(info: &FortfuehrungsbelegInfo) -> Vec<u8
 
     let mut zip = crate::zip::read_files_from_zip(FORTFUEHRUNGSBELEG_ZIP, true, &[".rels"]);
     zip.push((Some("word".to_string()), "document.xml".into(), document_xml.as_bytes().to_vec()));
-    crate::zip::write_files_to_zip(&zip)
+    crate::zip::write_files_to_zip(zip)
 }

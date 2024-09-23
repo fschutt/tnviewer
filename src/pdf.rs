@@ -884,7 +884,7 @@ pub async fn export_overview(
     }
 
     log_status("ok done PDF");
-    crate::zip::write_files_to_zip(&files)
+    crate::zip::write_files_to_zip(files)
 }
 
 pub fn generate_pdf_internal(

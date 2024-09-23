@@ -75,20 +75,17 @@ pub fn read_files_from_zip(zip: &[u8], remove_top_folder: bool, dotfiles: &[&str
     contents
 }
 
-pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u8> {
-    use std::io::Cursor;
+pub fn write_files_to_zip(files: Vec<(Option<String>, PathBuf, Vec<u8>)>) -> Vec<u8> {
     use std::io::Write;
-    use zip::write::{FileOptions, ZipWriter};
+    use zip::write::ZipWriter;
 
     let mut cursor = Cursor::new(Vec::new());
-
-    let mut total = 0;
 
     {
         let mut zip = ZipWriter::new(&mut cursor);
 
         let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
+        .compression_method(zip::CompressionMethod::Stored)
         .unix_permissions(0o755);
 
         for (option_dir, _, _) in files.iter() {
@@ -98,7 +95,7 @@ pub fn write_files_to_zip(files: &[(Option<String>, PathBuf, Vec<u8>)]) -> Vec<u
             }
         }
 
-        for (option_dir, path_buf, file_contents) in files.iter() {
+        for (option_dir, path_buf, file_contents) in files {
             let path = path_buf.as_path();
             let name = path;
 
