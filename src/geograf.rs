@@ -55,9 +55,7 @@ pub fn texte_zu_dxf_datei(texte: &[TextPlacement]) -> Vec<u8> {
     buf.into_inner().unwrap_or_default()
 }
 
-pub fn lines_to_points_dxf(lines: &[SvgLine]) -> Vec<u8> {
-    use dxf::Drawing;
-    use dxf::entities::*;
+pub fn lines_to_points(lines: &[SvgLine]) -> Vec<(SvgPoint, AngleDegrees)> {
 
     let line_points = lines.iter().flat_map(|s| s.to_points_vec()).collect::<Vec<_>>();
     let lines_joined = merge_lines_again(line_points);
@@ -65,8 +63,15 @@ pub fn lines_to_points_dxf(lines: &[SvgLine]) -> Vec<u8> {
         symbol_width_m: 5.0,
         distance_on_line_m: 10.0,
     };
-    let points = crate::process::generate_points_along_lines(config, &lines_joined);
+    crate::process::generate_points_along_lines(config, &lines_joined)
+}
 
+pub fn lines_to_points_dxf(lines: &[SvgLine]) -> Vec<u8> {
+    use dxf::Drawing;
+    use dxf::entities::*;
+
+    let points = lines_to_points(lines);
+    
     let mut drawing = Drawing::new();
     let zone = 33;
 

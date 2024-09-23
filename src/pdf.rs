@@ -3,12 +3,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Split;
 
 use printpdf::path::PaintMode;
-use printpdf::{CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Px, Rgb, TextRenderingMode};
+use printpdf::{calculate_points_for_circle, CustomPdfConformance, ImageTransform, IndirectFontRef, LineDashPattern, Mm, PdfConformance, PdfDocument, PdfLayerReference, Px, Rgb, TextRenderingMode};
 use quadtree_f32::QuadTree;
 use serde_derive::{Deserialize, Serialize};
 use web_sys::console::log_1;
 use crate::geograf::{get_aenderungen_rote_linien, get_default_riss_extent, HeaderCalcConfig, LinienQuadTree, PADDING};
 use crate::optimize::{OptimizeConfig, OptimizedTextPlacement};
+use crate::process::AngleDegrees;
 use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
@@ -970,7 +971,7 @@ pub fn generate_pdf_internal(
     let _ = write_rote_linien(&mut layer, &rote_linien);
 
     log_status(&format!("[{num_riss} / {total_risse}] Rendere NA untergehend Linien... {} Linien", na_untergehend_linien.len()));
-    let na_untergehend_linien = na_untergehend_linien.iter().map(|l| line_into_pdf_space(&l, riss_extent, rc)).collect::<Vec<_>>();
+    let na_untergehend_linien = crate::geograf::lines_to_points(&na_untergehend_linien).iter().map(|(p, a)| (point_into_pdf_space(p, riss_extent, rc), *a)).collect::<Vec<_>>();
     let _ = write_na_untergehend_linien(&mut layer, &na_untergehend_linien);
 
     log_status(&format!("[{num_riss} / {total_risse}] Rendere Beschriftungen..."));
@@ -1226,7 +1227,7 @@ fn point_into_pdf_space(
 
 fn write_na_untergehend_linien(
     layer: &mut PdfLayerReference,
-    linien: &[SvgLine],
+    linien: &[(SvgPoint, AngleDegrees)],
 ) -> Option<()> {
 
 
@@ -1243,7 +1244,10 @@ fn write_na_untergehend_linien(
     layer.set_line_cap_style(printpdf::LineCapStyle::Round);
     layer.set_line_join_style(printpdf::LineJoinStyle::Round);
 
-    for l in linien.iter() {
+    for (p, a) in linien.iter() {
+        let circle = calculate_points_for_circle(Mm(1.0), Mm(p.x as f32), Mm(p.y as f32));
+        layer.add_line(printpdf::Line { points: circle, is_closed: true });
+        /*
         layer.add_line(printpdf::Line { 
             points: l.points.iter().map(|p| (printpdf::Point {
                 x: Mm(p.x as f32).into_pt(),
@@ -1251,6 +1255,7 @@ fn write_na_untergehend_linien(
             }, false)).collect(), 
             is_closed: l.is_closed() 
         })
+         */
     }
 
     layer.restore_graphics_state();
