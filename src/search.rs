@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NutzungsArt {
+    pub atr: String,
     pub wia: String,
     pub nab: String,
     pub nak: String,
@@ -18,12 +19,15 @@ pub struct NutzungsArt {
 
 pub type NutzungsArtMap = BTreeMap<String, NutzungsArt>;
 
-pub fn get_map_internal() -> NutzungsArtMap {
-    include!(concat!(env!("OUT_DIR"), "/nutzung.rs"))
+pub fn get_nutzungsartenkatalog() -> NutzungsArtMap {
+    serde_json::from_str::<NutzungsArtMap>(&crate::uuid_wasm::get_js_nak())
+    .unwrap_or_else(|_| {
+        include!(concat!(env!("OUT_DIR"), "/nutzung.rs"))
+    })
 }
 
 pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {
-    let map = crate::get_map();
+    let map = crate::get_nutzungsartenkatalog();
     let mut target = BTreeMap::new();
     let s = term.to_lowercase();
     for (k, v) in map.iter() {

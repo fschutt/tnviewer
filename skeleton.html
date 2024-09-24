@@ -994,6 +994,7 @@
               }
           }
         };
+        // INJECT_NUTZUNGSARTEN_KATALOG
     </script>
 
     <!--LEAFLET_CSS_LINK-->
@@ -2107,6 +2108,16 @@
     }
 
     window.export_status_clear = export_status_clear;
+
+    function get_nak() {
+      if (window.nutzungsarten) {
+        return JSON.stringify(window.nutzungsarten);
+      } else {
+        return "";
+      }
+    }
+
+    window.get_nak = get_nak;
 
     function update_export_status(s) {
       if (!window.export_log) {

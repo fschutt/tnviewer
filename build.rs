@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NutzungsArt {
+    pub atr: String, // Attribute
     pub wia: String, // Wirtschaftsart
     pub nab: String,
     pub nak: String,

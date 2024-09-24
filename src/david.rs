@@ -62,7 +62,7 @@ pub fn aenderungen_zu_fa_xml(
             if ids_to_delete.contains(&flst_part_id) {
                 return None;
             }
-            let kuerzel = tp.get_auto_kuerzel(&ebene)?;
+            let kuerzel = tp.get_auto_kuerzel()?;
             Some(AenderungenIntersection {
                 alt: kuerzel.clone(),
                 neu: kuerzel,

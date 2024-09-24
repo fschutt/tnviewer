@@ -1486,7 +1486,7 @@ pub fn get_na_splitflaechen(
 
             let ebene = q.get_ebene()?;
             let obj_id = q.attributes.get("id")?;
-            let alt_kuerzel = q.get_auto_kuerzel(&ebene)?;
+            let alt_kuerzel = q.get_auto_kuerzel()?;
             let intersect_id = q
                 .attributes
                 .get("AX_IntersectionId")
@@ -1899,7 +1899,7 @@ pub fn generate_legende_xlsx(splitflaechen: &[AenderungenIntersection]) -> Vec<u
         .flat_map(|s| vec![s.alt.clone(), s.neu.clone()].into_iter())
         .collect::<BTreeSet<_>>();
 
-    let map = crate::get_map();
+    let map = crate::get_nutzungsartenkatalog();
 
     let mut lines = alle_kuerzel
         .iter()

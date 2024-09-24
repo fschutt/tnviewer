@@ -23,6 +23,11 @@ extern "C" {
     fn random() -> f64;
     fn update_export_status(s: String);
     fn export_status_clear();
+    fn get_nak() -> String;
+}
+
+pub fn get_js_nak() -> String{
+    get_nak()
 }
 
 pub fn js_random() -> f64 {

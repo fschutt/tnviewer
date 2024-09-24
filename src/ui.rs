@@ -1446,7 +1446,7 @@ impl AenderungenIntersections {
                     polys.iter().map(|p| AenderungenIntersection {
                         alt: alt.clone(),
                         neu: neu.clone(),
-                        flst_id: flst_id.clone(),
+                        flst_id: flst_id.to_string(),
                         flst_id_part: flst_id_part.clone(),
                         poly_cut: p.clone(),
                     })
@@ -1620,7 +1620,7 @@ impl AenderungenClean {
                     Some(s) => s.clone(),
                     None => continue,
                 };
-                let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel(&ebene) {
+                let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel() {
                     Some(s) => s,
                     None => continue,
                 };
@@ -1679,12 +1679,8 @@ impl AenderungenClean {
         ));
 
         for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
-            let ebene = match flst_part.get_ebene() {
-                Some(s) => s.clone(),
-                None => continue,
-            };
 
-            let alt_kuerzel = match flst_part.get_auto_kuerzel(&ebene) {
+            let alt_kuerzel = match flst_part.get_auto_kuerzel() {
                 Some(s) => s.clone(),
                 None => continue,
             };
@@ -1783,7 +1779,7 @@ impl AenderungenClean {
 
             let kuerzel = match flst_part
                 .get_ebene()
-                .and_then(|k| flst_part.get_auto_kuerzel(&k))
+                .and_then(|k| flst_part.get_auto_kuerzel())
             {
                 Some(s) => s,
                 None => continue,
@@ -1850,7 +1846,7 @@ impl AenderungenClean {
                     {
                         continue;
                     }
-                    let kuerzel = match part.get_auto_kuerzel(&ebene) {
+                    let kuerzel = match part.get_auto_kuerzel() {
                         Some(s) => s,
                         None => continue,
                     };
@@ -1943,7 +1939,7 @@ impl AenderungenClean {
                 {
                     continue;
                 }
-                let kuerzel = match part.get_auto_kuerzel(&ebene) {
+                let kuerzel = match part.get_auto_kuerzel() {
                     Some(s) => s,
                     None => continue,
                 };
@@ -3530,7 +3526,7 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
 }
 
 pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_id: &str) -> String {
-    let map = crate::get_map();
+    let map = crate::get_nutzungsartenkatalog();
     let mut s =
         format!("<select id='{html_id}-{id}' onchange='{function}(event);' data-id='{id}'>");
     s.push_str(&format!(
@@ -3715,7 +3711,7 @@ fn render_csv_editable(
                             if quadratmeter == "0" {
                                 return None;
                             }
-                            let auto_kuerzel = tp.get_auto_kuerzel(&ax_ebene);
+                            let auto_kuerzel = tp.get_auto_kuerzel();
                             let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(&ax_ebene);
                             Some(format!(
                                 "<div><p style='cursor:pointer;text-decoration:underline;' onmouseup='zoomToFlstPart(event);' data-part-id='{objid_total}'>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 

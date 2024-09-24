@@ -1220,7 +1220,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
     let alle_auto_kuerzel = nas_parsed_complete
         .ebenen
         .iter()
-        .flat_map(|(k, s)| s.into_iter().filter_map(|tp| tp.get_auto_kuerzel(k)))
+        .flat_map(|(k, s)| s.into_iter().filter_map(|tp| tp.get_auto_kuerzel()))
         .collect::<BTreeSet<_>>();
 
     let neue_ebenen = alle_auto_kuerzel
@@ -1372,8 +1372,8 @@ pub fn edit_konfiguration_move_layer(
     serde_json::to_string(&config).unwrap_or_default()
 }
 
-pub fn get_map() -> BTreeMap<String, crate::search::NutzungsArt> {
-    crate::search::get_map_internal()
+pub fn get_nutzungsartenkatalog() -> BTreeMap<String, crate::search::NutzungsArt> {
+    crate::search::get_nutzungsartenkatalog()
 }
 
 pub fn decode(bytes: Vec<u8>) -> String {
