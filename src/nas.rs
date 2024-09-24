@@ -2362,7 +2362,7 @@ impl NasXmlQuadTree {
                 let (flst_id, i) = self.ebenen_map.get(&itemid)?;
                 let tp = self.original.ebenen.get(flst_id)?.get(*i)?;
                 let ebene = tp.get_ebene()?;
-                if alle_ebenen.contains(&ebene) {
+                if alle_ebenen.contains(&ebene) && poly.overlaps(&tp.poly) {
                     Some((ebene, tp.clone()))
                 } else {
                     None

@@ -232,7 +232,7 @@ pub fn aenderungen_zu_fa_xml(
         )
     */
 
-    let delete_string = replace_obj_ids.iter().filter_map(|(_ebene, obj_id)| {
+    let mut delete_obj_strings = replace_obj_ids.iter().filter_map(|(_ebene, obj_id)| {
         let o = objects.objects.get(obj_id)?;
         if o.poly.is_none() {
             return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
@@ -240,8 +240,10 @@ pub fn aenderungen_zu_fa_xml(
         let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
         let rid = format!("{obj_id}{beginnt}");
         let typename = &o.member_type;
-        Some(format!("\r\n            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
-    }).collect::<Vec<_>>().join("\r\n");
+        Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
+    }).collect::<Vec<_>>();
+    delete_obj_strings.sort();
+    let delete_string = delete_obj_strings.join("\r\n");
 
     let insert_string = "";
 
