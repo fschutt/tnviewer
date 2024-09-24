@@ -1,16 +1,21 @@
-use rand::{Rng, SeedableRng};
-use serde_derive::Serialize;
-use serde_derive::Deserialize;
-use wasm_bindgen::prelude::*;
-use web_sys::js_sys::Map;
-use std::char;
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use rand::{
+    Rng,
+    SeedableRng,
+};
 use rand_xorshift::XorShiftRng;
-use std::sync::Mutex;
-
-use crate::pdf::Konfiguration;
-use crate::pdf::MapKonfiguration;
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
+use std::{
+    char,
+    collections::BTreeMap,
+    sync::{
+        Arc,
+        Mutex,
+    },
+};
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
@@ -58,18 +63,17 @@ pub async fn get_wms_images(obj: &[FetchWmsImageRequest]) -> Vec<Option<printpdf
     combined_futures.await;
 
     let mut target_lock = target.lock().unwrap();
-    
-    (0..obj_len).map(|id| {
-        target_lock.remove(&id).and_then(|s| s)
-    }).collect::<Vec<_>>()
+
+    (0..obj_len)
+        .map(|id| target_lock.remove(&id).and_then(|s| s))
+        .collect::<Vec<_>>()
 }
 
 async fn wms_future(
-    target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>, 
-    o: FetchWmsImageRequest, 
-    i: usize
+    target: Arc<Mutex<BTreeMap<usize, Option<printpdf::Image>>>>,
+    o: FetchWmsImageRequest,
+    i: usize,
 ) {
-    
     let mut url = o.dop_source.clone().unwrap_or_default();
     url += "&SERVICE=WMS";
     url += "&REQUEST=GetMap";
@@ -87,11 +91,9 @@ async fn wms_future(
     web_sys::console::log_1(&format!("reqwest fetching url {url}").into());
 
     let s = match reqwest::get(&url).await.ok() {
-        Some(s) => {
-            match s.bytes().await.ok() {
-                Some(s) => decode_image(s.as_ref()),
-                None => None,
-            }
+        Some(s) => match s.bytes().await.ok() {
+            Some(s) => decode_image(s.as_ref()),
+            None => None,
         },
         None => None,
     };
@@ -101,18 +103,23 @@ async fn wms_future(
     }
 }
 
-
 pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
-
-    let format = match image::guess_format(bytes){
+    let format = match image::guess_format(bytes) {
         Ok(o) => o,
         Err(e) => {
-            web_sys::console::log_1(&format!("failed image format: {} {:?}", e.to_string(), bytes.iter().take(10).collect::<Vec<_>>()).into());
-            return None; 
+            web_sys::console::log_1(
+                &format!(
+                    "failed image format: {} {:?}",
+                    e.to_string(),
+                    bytes.iter().take(10).collect::<Vec<_>>()
+                )
+                .into(),
+            );
+            return None;
         }
     };
 
-    let decoded = match image::load_from_memory_with_format(bytes , format) {
+    let decoded = match image::load_from_memory_with_format(bytes, format) {
         Ok(o) => o,
         Err(e) => {
             web_sys::console::log_1(&format!("error 1: {}", e.to_string()).into());
@@ -123,7 +130,7 @@ pub fn decode_image(bytes: &[u8]) -> Option<printpdf::Image> {
     let lightened = decoded.adjust_contrast(-25.0).brighten(70);
 
     let i = printpdf::Image::from_dynamic_image(&lightened);
-        
+
     Some(i)
 }
 
@@ -133,13 +140,15 @@ pub fn uuid() -> String {
 }
 
 pub fn random_color() -> String {
-    use random_color::color_dictionary::{ColorDictionary, ColorInformation};
-    use random_color::{Color, Luminosity, RandomColor};
+    use random_color::{
+        Luminosity,
+        RandomColor,
+    };
 
     RandomColor::new()
-    .luminosity(Luminosity::Light) // Optional
-    .seed((random() * 1000.0) as i64) // Optional
-    .to_hex()
+        .luminosity(Luminosity::Light) // Optional
+        .seed((random() * 1000.0) as i64) // Optional
+        .to_hex()
 }
 
 enum UuidElements {
@@ -202,17 +211,20 @@ fn make_bytes(value: f64) -> [u8; 16] {
     let b7: u8 = ((bytes >> 8) & 0xff) as u8;
     let b8: u8 = (bytes & 0xff) as u8;
 
-    [b8, b7, b6, b5, b4, b3, b2, b1, b1, b2, b3, b4, b5, b6, b7, b8]
+    [
+        b8, b7, b6, b5, b4, b3, b2, b1, b1, b2, b3, b4, b5, b6, b7, b8,
+    ]
 }
 
 pub fn gen_uuid_with_xorshift(seed: f64) -> String {
     let bytes = make_bytes(seed);
     let mut rng = XorShiftRng::from_seed(bytes);
-    
+
     // prevent duplication
     rng.gen_range(0.0..1.0);
 
-    UUID_V4_FORMAT.into_iter()
+    UUID_V4_FORMAT
+        .into_iter()
         .map(|n| match n {
             UuidElements::Random09AF => {
                 let random = rng.gen_range(0.0..1.0);

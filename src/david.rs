@@ -1,37 +1,56 @@
-use std::collections::{BTreeMap, BTreeSet};
-
-use crate::csv::CsvDataType;
-use crate::nas::{NasXMLFile, NasXmlObjects, TaggedPolygon};
-use crate::pdf::join_polys;
-use crate::ui::{Aenderungen, AenderungenIntersection};
-use crate::uuid_wasm::log_status;
-use crate::SplitNasXml;
+use crate::{
+    csv::CsvDataType,
+    nas::{
+        NasXMLFile,
+        NasXmlObjects,
+        TaggedPolygon,
+    },
+    pdf::join_polys,
+    ui::{
+        Aenderungen,
+        AenderungenIntersection,
+    },
+    SplitNasXml,
+};
+use std::collections::{
+    BTreeMap,
+    BTreeSet,
+};
 
 pub fn aenderungen_zu_fa_xml(
-    aenderungen: &Aenderungen, 
-    split_nas: &SplitNasXml, 
-    nas_xml: &NasXMLFile, 
+    aenderungen: &Aenderungen,
+    split_nas: &SplitNasXml,
+    nas_xml: &NasXMLFile,
     csv_data: &CsvDataType,
     objects: &NasXmlObjects,
 ) -> String {
-    
-    let splitflaechen = crate::geograf::calc_splitflaechen(
-        &aenderungen, split_nas, nas_xml, &csv_data
-    );
+    let splitflaechen =
+        crate::geograf::calc_splitflaechen(&aenderungen, split_nas, nas_xml, &csv_data);
 
-    let mut ids_to_delete = splitflaechen.0.iter().filter_map(|s| {
-        let oid = s.get_object_id()?;
-        // TODO: hat, ist_teil_von, etc. !!!
-        Some(oid)
-    }).collect::<BTreeSet<_>>();
-    
+    let ids_to_delete = splitflaechen
+        .0
+        .iter()
+        .filter_map(|s| {
+            let oid = s.get_object_id()?;
+            // TODO: hat, ist_teil_von, etc. !!!
+            Some(oid)
+        })
+        .collect::<BTreeSet<_>>();
+
     let mut insert = BTreeMap::new();
-    splitflaechen.0.iter().filter_map(|s| {
-        let ebene = TaggedPolygon::get_auto_ebene(&s.neu)?;
-        Some((ebene, s))
-    }).for_each(|(ebene, s)| {
-        insert.entry(ebene.to_string()).or_insert_with(|| Vec::new()).push(s.clone());
-    });
+    splitflaechen
+        .0
+        .iter()
+        .filter_map(|s| {
+            let ebene = TaggedPolygon::get_auto_ebene(&s.neu)?;
+            Some((ebene, s))
+        })
+        .for_each(|(ebene, s)| {
+            insert
+                .entry(ebene.to_string())
+                .or_insert_with(|| Vec::new())
+                .push(s.clone());
+        });
 
     for (ebene, v) in nas_xml.ebenen.iter() {
         if !insert.contains_key(ebene) {
@@ -52,18 +71,25 @@ pub fn aenderungen_zu_fa_xml(
                 poly_cut: tp.poly.clone(),
             })
         }) {
-            insert.entry(ebene.clone()).or_insert_with(|| Vec::new()).push(s);
+            insert
+                .entry(ebene.clone())
+                .or_insert_with(|| Vec::new())
+                .push(s);
         }
     }
 
     // TODO: join all objects by ebene and split / recombine by outer ring
-    let ebenen = nas_xml.ebenen.iter().filter_map(|(ebene, v)| {
-        let svgs = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-        let joined = join_polys(&svgs, false, false)?;
-        Some((ebene.clone(), joined))
-    }).collect::<Vec<_>>();
+    let _ebenen = nas_xml
+        .ebenen
+        .iter()
+        .filter_map(|(ebene, v)| {
+            let svgs = v.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
+            let joined = join_polys(&svgs, false, false)?;
+            Some((ebene.clone(), joined))
+        })
+        .collect::<Vec<_>>();
 
-    /* 
+    /*
     for (ebene, v) in ebenen {
         let string = polygon_to_xml(v);
         format!("<wfs:Insert>{}</wfs:Insert>")
@@ -71,7 +97,7 @@ pub fn aenderungen_zu_fa_xml(
     */
 
     // TODO: now compare the geometry: if any object is the same, neither delete nor insert it
-    
+
     let delete_string = ids_to_delete.iter().filter_map(|id| {
         let o = objects.objects.get(id)?;
         if o.poly.is_none() {
@@ -95,4 +121,3 @@ pub fn aenderungen_zu_fa_xml(
         antragsnr = ""
     )
 }
-

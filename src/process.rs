@@ -1,4 +1,7 @@
-use crate::nas::{SvgLine, SvgPoint};
+use crate::nas::{
+    SvgLine,
+    SvgPoint,
+};
 
 pub type AngleDegrees = f64;
 
@@ -7,14 +10,15 @@ pub struct PointOnLineConfig {
     pub distance_on_line_m: f64,
 }
 
-pub fn generate_points_along_lines(config: &PointOnLineConfig, lines: &[SvgLine]) -> Vec<(SvgPoint, AngleDegrees)> {
-
+pub fn generate_points_along_lines(
+    config: &PointOnLineConfig,
+    lines: &[SvgLine],
+) -> Vec<(SvgPoint, AngleDegrees)> {
     let symbol_width_half = config.symbol_width_m / 2.0;
 
     let mut target_points = Vec::new();
 
     for l in lines.iter() {
-
         let items = l.to_points_vec();
 
         let line_length = items.iter().map(|e| get_length(e)).sum();
@@ -24,18 +28,14 @@ pub fn generate_points_along_lines(config: &PointOnLineConfig, lines: &[SvgLine]
         let mut sum_length_elements_so_far = 0.0;
 
         'outer: for e in items.iter() {
-
             let element_length = get_length(e);
 
             while offset_on_path < sum_length_elements_so_far + element_length {
-
                 if offset_on_path + config.symbol_width_m > line_length {
                     break 'outer;
                 }
 
-                let point_on_path = offset_on_path -
-                    sum_length_elements_so_far +
-                    symbol_width_half;
+                let point_on_path = offset_on_path - sum_length_elements_so_far + symbol_width_half;
 
                 let current_t_on_element = get_t_at_offset(e, point_on_path);
 
@@ -46,10 +46,13 @@ pub fn generate_points_along_lines(config: &PointOnLineConfig, lines: &[SvgLine]
                 let point_x = get_x_at_t(e, current_t_on_element);
                 let point_y = get_y_at_t(e, current_t_on_element);
 
-                points_for_line.push((SvgPoint {
-                    x: point_x,
-                    y: point_y
-                }, current_angle));
+                points_for_line.push((
+                    SvgPoint {
+                        x: point_x,
+                        y: point_y,
+                    },
+                    current_angle,
+                ));
 
                 offset_on_path += config.symbol_width_m + config.distance_on_line_m;
             }
@@ -115,14 +118,10 @@ fn get_t_at_offset(ab: &(SvgPoint, SvgPoint), offset: f64) -> f64 {
     offset / get_length(ab)
 }
 
-fn get_tangent_vector_at_t((a, b): &(SvgPoint, SvgPoint), t: f64) -> SvgVector {
+fn get_tangent_vector_at_t((a, b): &(SvgPoint, SvgPoint), _t: f64) -> SvgVector {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
-    SvgVector {
-        x: dx,
-        y: dy,
-    }
-    .normalize()
+    SvgVector { x: dx, y: dy }.normalize()
 }
 
 pub fn get_x_at_t((a, b): &(SvgPoint, SvgPoint), t: f64) -> f64 {

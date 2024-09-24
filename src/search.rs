@@ -1,11 +1,14 @@
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::BTreeMap;
-use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NutzungsArt {
     pub wia: String,
     pub nab: String,
-    pub nak: String, 
+    pub nak: String,
     pub bez: String,
     pub def: String,
     pub ken: String,
@@ -49,7 +52,10 @@ pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {
         }
     }
 
-    let mut preferred = direct_match.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>();
+    let mut preferred = direct_match
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect::<Vec<_>>();
     preferred.extend(target.iter().map(|(k, v)| (k.clone(), v.clone())));
     preferred
 }

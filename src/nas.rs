@@ -1,41 +1,49 @@
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::io::Split;
+use crate::{
+    csv::CsvDataType,
+    geograf::{
+        points_to_rect,
+        LinienQuadTree,
+    },
+    ui::{
+        dist_to_segment,
+        Aenderungen,
+        AenderungenIntersection,
+    },
+    uuid_wasm::{
+        log_status,
+        uuid,
+    },
+    xlsx::FlstIdParsed,
+    xml::{
+        get_all_nodes_in_subtree,
+        XmlNode,
+    },
+};
 use chrono::DateTime;
 use float_cmp::approx_eq;
-use float_cmp::ApproxEq;
-use float_cmp::F64Margin;
-use geo::Area;
-use geo::Centroid;
-use geo::ConvexHull;
-use geo::CoordsIter;
-use geo::TriangulateEarcut;
-use geo::Within;
-use polylabel_mini::LineString;
-use polylabel_mini::Point;
-use polylabel_mini::Polygon;
-use quadtree_f32::Item;
-use quadtree_f32::ItemId;
-use quadtree_f32::QuadTree;
-use quadtree_f32::Rect;
-use serde::Serialize;
-use serde_derive::{Serialize, Deserialize};
-use web_sys::console::log_1;
-use crate::csv::CsvDataType;
-use crate::csv::Status;
-use crate::geograf::points_to_rect;
-use crate::search::NutzungsArt;
-use crate::ui::dist_to_segment;
-use crate::ui::Aenderungen;
-use crate::ui::AenderungenIntersection;
-use crate::uuid_wasm::log_status;
-use crate::uuid_wasm::log_status_clear;
-use crate::uuid_wasm::uuid;
-use crate::xlsx::FlstIdParsed;
-use crate::xml::XmlNode;
-use crate::xml::get_all_nodes_in_subtree;
+use geo::{
+    Area,
+    Centroid,
+    ConvexHull,
+    CoordsIter,
+    TriangulateEarcut,
+    Within,
+};
 use proj4rs::Proj;
-use crate::geograf::LinienQuadTree;
+use quadtree_f32::{
+    Item,
+    ItemId,
+    QuadTree,
+    Rect,
+};
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
+use std::collections::{
+    BTreeMap,
+    BTreeSet,
+};
 
 pub const LATLON_STRING: &str = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
@@ -56,16 +64,29 @@ impl Default for NasXMLFile {
 }
 
 impl NasXMLFile {
-
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
-
         let default = Vec::new();
-        let mut alle_linie_split_flurstuecke = self.ebenen.get("AX_Flurstueck")
-        .unwrap_or(&default).iter().flat_map(|q| {
-            let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
-            lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
-            lines
-        }).collect::<Vec<_>>();
+        let mut alle_linie_split_flurstuecke = self
+            .ebenen
+            .get("AX_Flurstueck")
+            .unwrap_or(&default)
+            .iter()
+            .flat_map(|q| {
+                let mut lines = q
+                    .poly
+                    .outer_rings
+                    .iter()
+                    .flat_map(crate::geograf::l_to_points)
+                    .collect::<Vec<_>>();
+                lines.extend(
+                    q.poly
+                        .inner_rings
+                        .iter()
+                        .flat_map(crate::geograf::l_to_points),
+                );
+                lines
+            })
+            .collect::<Vec<_>>();
         alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
         alle_linie_split_flurstuecke.dedup();
         let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
@@ -74,7 +95,6 @@ impl NasXMLFile {
     }
 
     pub fn create_quadtree(&self) -> NasXmlQuadTree {
-
         let mut ebenen_map = BTreeMap::new();
         let mut items = BTreeMap::new();
         let mut itemid = 0;
@@ -86,7 +106,7 @@ impl NasXMLFile {
                 ebenen_map.insert(id, (flst_id.clone(), i));
             }
         }
-        
+
         let qt = QuadTree::new(items.into_iter());
 
         NasXmlQuadTree {
@@ -122,10 +142,8 @@ pub struct GebaeudeDebugMap {
 }
 
 impl NasXMLFile {
-
     // Returns GeoJSON for all available AX_Gebaeude
-    pub fn get_gebaeude(&self, csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
-
+    pub fn get_gebaeude(&self, _csv: &CsvDataType, aenderungen: &Aenderungen) -> String {
         let ax_flurstuecke = match self.ebenen.get("AX_Flurstueck") {
             Some(o) => o,
             None => return format!("keine Ebene AX_Flurstueck vorhanden"),
@@ -137,33 +155,44 @@ impl NasXMLFile {
         };
 
         // Flurstueck_ID => Flurstueck Poly
-        let ax_flurstuecke_map = ax_flurstuecke.iter().filter_map(|tp| {
-            let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
-            let rect = tp.get_rect();
-            Some((flst_id, rect, &tp.poly))
-        }).collect::<Vec<(_, _, _)>>();
-
-        let gebaeude_avail = ax_gebaeude.iter().enumerate().filter_map(|(i, tp)| {
-            
-            let gebaeude_id = tp.attributes.get("id").cloned()?;
-            let flst_rect = tp.get_rect();
-            let flst = ax_flurstuecke_map.iter()
-            .filter(|(id, r, poly)| flst_rect.overlaps_rect(r))
-            .filter(|(id, r, poly)| {
-                crate::nas::relate(poly, &tp.poly, 1.0).overlaps()
+        let ax_flurstuecke_map = ax_flurstuecke
+            .iter()
+            .filter_map(|tp| {
+                let flst_id = tp.attributes.get("flurstueckskennzeichen").cloned()?;
+                let rect = tp.get_rect();
+                Some((flst_id, rect, &tp.poly))
             })
-            .map(|(id, _, _)| id.clone())
-            .collect::<Vec<_>>();
+            .collect::<Vec<(_, _, _)>>();
 
-            Some((gebaeude_id.clone(), GebaeudeInfo {
-                flst_id: flst.clone(),
-                deleted: aenderungen.gebaeude_loeschen.values().any(|v| v.gebaeude_id == gebaeude_id),
-                gebaeude_id: gebaeude_id.clone(),
-                poly: tp.clone(),
-            }))
-        }).collect::<BTreeMap<_, _>>();
+        let gebaeude_avail = ax_gebaeude
+            .iter()
+            .enumerate()
+            .filter_map(|(_i, tp)| {
+                let gebaeude_id = tp.attributes.get("id").cloned()?;
+                let flst_rect = tp.get_rect();
+                let flst = ax_flurstuecke_map
+                    .iter()
+                    .filter(|(_id, r, _poly)| flst_rect.overlaps_rect(r))
+                    .filter(|(_id, _r, poly)| crate::nas::relate(poly, &tp.poly, 1.0).overlaps())
+                    .map(|(id, _, _)| id.clone())
+                    .collect::<Vec<_>>();
 
-        let geom = gebaeude_avail.iter().filter_map(|(k, v)| {
+                Some((
+                    gebaeude_id.clone(),
+                    GebaeudeInfo {
+                        flst_id: flst.clone(),
+                        deleted: aenderungen
+                            .gebaeude_loeschen
+                            .values()
+                            .any(|v| v.gebaeude_id == gebaeude_id),
+                        gebaeude_id: gebaeude_id.clone(),
+                        poly: tp.clone(),
+                    },
+                ))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        let geom = gebaeude_avail.iter().filter_map(|(_k, v)| {
 
             let holes = v.poly.poly.inner_rings.iter()
             .map(convert_svgline_to_string)
@@ -199,7 +228,6 @@ impl NasXMLFile {
     }
 
     pub fn get_geojson_labels(&self, layer: &str) -> Vec<Label> {
-
         let objekte = match self.ebenen.get(layer) {
             Some(o) => o,
             None => return Vec::new(),
@@ -207,10 +235,10 @@ impl NasXMLFile {
 
         let mut labels = Vec::new();
         for o in objekte.iter() {
-
-            let flst = o.attributes
-            .get("flurstueckskennzeichen")
-            .and_then(|s| FlstIdParsed::from_str(s).parse_num());
+            let flst = o
+                .attributes
+                .get("flurstueckskennzeichen")
+                .and_then(|s| FlstIdParsed::from_str(s).parse_num());
 
             let text = match flst {
                 Some(s) => s,
@@ -223,10 +251,14 @@ impl NasXMLFile {
             };
 
             let label = Label {
-                lon: label_pos.x, 
+                lon: label_pos.x,
                 lat: label_pos.y,
                 content: text.format_str(),
-                id: o.attributes.get("flurstueckskennzeichen").cloned().unwrap_or_default(),
+                id: o
+                    .attributes
+                    .get("flurstueckskennzeichen")
+                    .cloned()
+                    .unwrap_or_default(),
             };
             labels.push(label);
         }
@@ -236,7 +268,6 @@ impl NasXMLFile {
 
     /// Returns GeoJSON für die Ebene
     pub fn get_geojson_ebene(&self, layer: &str) -> String {
-
         let objekte = match self.ebenen.get(layer) {
             Some(o) => o,
             None => return format!("keine Ebene {layer} vorhanden"),
@@ -245,9 +276,7 @@ impl NasXMLFile {
     }
 }
 
-
 pub fn tagged_polys_to_featurecollection(objekte: &[TaggedPolygon]) -> String {
-
     let geom = objekte.iter().filter_map(|poly| {
 
         let holes = poly.poly.inner_rings.iter()
@@ -275,9 +304,9 @@ pub fn tagged_polys_to_featurecollection(objekte: &[TaggedPolygon]) -> String {
     format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
 }
 
-fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
+fn convert_poly_to_string(p: &SvgLine, holes: &str) -> String {
     format!(
-        "[{src}{comma}{holes}]", 
+        "[{src}{comma}{holes}]",
         src = convert_svgline_to_string(p),
         comma = if holes.trim().is_empty() { "" } else { "," },
         holes = holes,
@@ -285,7 +314,14 @@ fn convert_poly_to_string(p: &SvgLine, holes:&str) -> String {
 }
 
 fn convert_svgline_to_string(q: &SvgLine) -> String {
-    format!("[{}]", q.points.iter().map(|s| format!("[{}, {}]", s.x, s.y)).collect::<Vec<_>>().join(","))
+    format!(
+        "[{}]",
+        q.points
+            .iter()
+            .map(|s| format!("[{}, {}]", s.x, s.y))
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -294,7 +330,7 @@ pub struct TaggedPolygon {
     pub attributes: BTreeMap<String, String>,
 }
 
-const MAP: &[(&str, &str);164] = &[
+const MAP: &[(&str, &str); 164] = &[
     ("WBFPA", "AX_Ebene=AX_Wohnbauflaeche,funktion=1200"),
     ("WBF", "AX_Ebene=AX_Wohnbauflaeche"),
     ("A", "AX_Ebene=AX_Landwirtschaft,vegetationsmerkmal=1010"),
@@ -312,12 +348,30 @@ const MAP: &[(&str, &str);164] = &[
     ("KURZ", "AX_Ebene=AX_Landwirtschaft,vegetationsmerkmal=1100"),
     ("BRA", "AX_Ebene=AX_Landwirtschaft,vegetationsmerkmal=1200"),
     ("LW", "AX_Ebene=AX_Landwirtschaft"),
-    ("WABFVNL", "AX_Ebene=AX_Wald,vegetationsmerkmal=1100,nutzung=3000,zustand=6100"),
-    ("VNFL", "AX_Ebene=AX_Wald,vegetationsmerkmal=1100,nutzung=1000,zustand=6100"),
-    ("WABFVNN", "AX_Ebene=AX_Wald,vegetationsmerkmal=1200,nutzung=3000,zustand=6100"),
-    ("VNFN", "AX_Ebene=AX_Wald,vegetationsmerkmal=1200,nutzung=1000,zustand=6100"),
-    ("WABFVLN", "AX_Ebene=AX_Wald,vegetationsmerkmal=1300,nutzung=3000,zustand=6100"),
-    ("VNFLN", "AX_Ebene=AX_Wald,vegetationsmerkmal=1300,nutzung=1000,zustand=6100"),
+    (
+        "WABFVNL",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1100,nutzung=3000,zustand=6100",
+    ),
+    (
+        "VNFL",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1100,nutzung=1000,zustand=6100",
+    ),
+    (
+        "WABFVNN",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1200,nutzung=3000,zustand=6100",
+    ),
+    (
+        "VNFN",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1200,nutzung=1000,zustand=6100",
+    ),
+    (
+        "WABFVLN",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1300,nutzung=3000,zustand=6100",
+    ),
+    (
+        "VNFLN",
+        "AX_Ebene=AX_Wald,vegetationsmerkmal=1300,nutzung=1000,zustand=6100",
+    ),
     ("LH", "AX_Ebene=AX_Wald,vegetationsmerkmal=1100"),
     ("NH", "AX_Ebene=AX_Wald,vegetationsmerkmal=1200"),
     ("LNH", "AX_Ebene=AX_Wald,vegetationsmerkmal=1300"),
@@ -326,94 +380,286 @@ const MAP: &[(&str, &str);164] = &[
     ("FWF", "AX_Ebene=AX_Wald,nutzung=1000"),
     ("WABF", "AX_Ebene=AX_Wald,nutzung=3000"),
     ("WALD", "AX_Ebene=AX_Wald"),
-    ("VSWA", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=1000 "),
-    ("VSKK", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=2000 "),
-    ("VSSO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=3000 "),
-    ("VSWI", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=4000 "),
-    ("VSVE", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=7000 "),
-    ("VSKO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=7100 "),
-    ("FÖG", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2700,foerdergut=2000"),
-    ("VSKWA", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=1000"),
-    ("VSKKK", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=2000"),
-    ("VSKSO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=3000"),
-    ("VSKWI", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=4000"),
-    ("VSKVE", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=7000"),
-    ("VSKKO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=7100"),
-    ("VSHWA", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=1000"),
-    ("VSHKK", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=2000"),
-    ("VSHSO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=3000"),
-    ("VSHWI", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=4000"),
-    ("VSHVE", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=7000"),
-    ("VSHKO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=7100"),
+    (
+        "VSWA",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=1000 ",
+    ),
+    (
+        "VSKK",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=2000 ",
+    ),
+    (
+        "VSSO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=3000 ",
+    ),
+    (
+        "VSWI",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=4000 ",
+    ),
+    (
+        "VSVE",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=7000 ",
+    ),
+    (
+        "VSKO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500,primaerenergie=7100 ",
+    ),
+    (
+        "FÖG",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2700,foerdergut=2000",
+    ),
+    (
+        "VSKWA",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=1000",
+    ),
+    (
+        "VSKKK",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=2000",
+    ),
+    (
+        "VSKSO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=3000",
+    ),
+    (
+        "VSKWI",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=4000",
+    ),
+    (
+        "VSKVE",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=7000",
+    ),
+    (
+        "VSKKO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530, primaerenergie=7100",
+    ),
+    (
+        "VSHWA",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=1000",
+    ),
+    (
+        "VSHKK",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=2000",
+    ),
+    (
+        "VSHSO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=3000",
+    ),
+    (
+        "VSHWI",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=4000",
+    ),
+    (
+        "VSHVE",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=7000",
+    ),
+    (
+        "VSHKO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570, primaerenergie=7100",
+    ),
     ("FÖ", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2700"),
-    ("VSW", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2520"),
-    ("VSK", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530"),
-    ("VSU", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2540"),
-    ("VSH", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570"),
-    ("IGFPA", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1200"),
+    (
+        "VSW",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2520",
+    ),
+    (
+        "VSK",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2530",
+    ),
+    (
+        "VSU",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2540",
+    ),
+    (
+        "VSH",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2570",
+    ),
+    (
+        "IGFPA",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1200",
+    ),
     ("HD", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1400"),
-    ("HDH", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1440"),
-    ("HDM", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1450"),
-    ("HDG", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1490"),
+    (
+        "HDH",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1440",
+    ),
+    (
+        "HDM",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1450",
+    ),
+    (
+        "HDG",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=1490",
+    ),
     ("VS", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2500"),
     ("ES", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2600"),
-    ("ESA", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2610"),
-    ("ESDO", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2630"),
-    ("ESDU", "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2640"),
+    (
+        "ESA",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2610",
+    ),
+    (
+        "ESDO",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2630",
+    ),
+    (
+        "ESDU",
+        "AX_Ebene=AX_IndustrieUndGewerbeflaeche,funktion=2640",
+    ),
     ("IG", "AX_Ebene=AX_IndustrieUndGewerbeflaeche"),
-    ("TGTAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1001,zustand=2100"),
+    (
+        "TGTAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1001,zustand=2100",
+    ),
     ("TGT", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1001"),
-    ("TGLAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1004,zustand=2100"),
+    (
+        "TGLAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1004,zustand=2100",
+    ),
     ("TGL", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1004"),
-    ("TGSAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1008,zustand=2100"),
+    (
+        "TGSAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1008,zustand=2100",
+    ),
     ("TGS", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1008"),
-    ("TGKIAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1009,zustand=2100"),
+    (
+        "TGKIAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1009,zustand=2100",
+    ),
     ("TGKI", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1009"),
-    ("TGQAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1012,zustand=2100"),
+    (
+        "TGQAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1012,zustand=2100",
+    ),
     ("TGQ", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=1012"),
-    ("TGKSAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2005,zustand=2100"),
+    (
+        "TGKSAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2005,zustand=2100",
+    ),
     ("TGKS", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2005"),
-    ("TGGAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2010,zustand=2100"),
+    (
+        "TGGAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2010,zustand=2100",
+    ),
     ("TGG", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=2010"),
-    ("TGTFAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4010,zustand=2100"),
+    (
+        "TGTFAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4010,zustand=2100",
+    ),
     ("TGTF", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4010"),
-    ("TGBAB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4021,zustand=2100"),
+    (
+        "TGBAB",
+        "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4021,zustand=2100",
+    ),
     ("TGB", "AX_Ebene=AX_TagebauGrubeSteinbruch,abbaugut=4021"),
     ("TGPA", "AX_Ebene=AX_TagebauGrubeSteinbruch,funktion=1200"),
     ("TG", "AX_Ebene=AX_TagebauGrubeSteinbruch"),
     ("BEAB", "AX_Ebene=AX_Bergbaubetrieb,zustand=2100"),
     ("BE", "AX_Ebene=AX_Bergbaubetrieb"),
-    ("SFS", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4100"),
-    ("SFG", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4110"),
-    ("SFZ", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4200"),
-    ("SFWP", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4220"),
-    ("SFB", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4240"),
-    ("SFM", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4250"),
-    ("SFA", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4260"),
-    ("SFMO", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4290"),
-    ("EH", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4300"),
-    ("WFH", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4310"),
-    ("SCHW", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4320"),
-    ("CAM", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4330"),
-    ("GRÜ", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4400"),
-    ("PARK", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4420"),
-    ("SFPA", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4440"),
+    (
+        "SFS",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4100",
+    ),
+    (
+        "SFG",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4110",
+    ),
+    (
+        "SFZ",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4200",
+    ),
+    (
+        "SFWP",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4220",
+    ),
+    (
+        "SFB",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4240",
+    ),
+    (
+        "SFM",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4250",
+    ),
+    (
+        "SFA",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4260",
+    ),
+    (
+        "SFMO",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4290",
+    ),
+    (
+        "EH",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4300",
+    ),
+    (
+        "WFH",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4310",
+    ),
+    (
+        "SCHW",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4320",
+    ),
+    (
+        "CAM",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4330",
+    ),
+    (
+        "GRÜ",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4400",
+    ),
+    (
+        "PARK",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4420",
+    ),
+    (
+        "SFPA",
+        "AX_Ebene=AX_SportFreizeitUndErholungsflaeche,funktion=4440",
+    ),
     ("SF", "AX_Ebene=AX_SportFreizeitUndErholungsflaeche"),
     ("MIPA", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=1200"),
     ("MILB", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=6800"),
     ("MIFB", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=7600"),
     ("MIFW", "AX_Ebene=AX_FlaecheGemischterNutzung,funktion=3000"),
     ("MI", "AX_Ebene=AX_FlaecheGemischterNutzung"),
-    ("BPÖ", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1100"),
-    ("BPV", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1110"),
-    ("BPB", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1120"),
-    ("BPK", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1130"),
-    ("BPR", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1140"),
-    ("BPG2", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1150"),
-    ("BPS", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1160"),
-    ("BPO2", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1170"),
-    ("BPPA", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1200"),
-    ("BPHA", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1300"),
+    (
+        "BPÖ",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1100",
+    ),
+    (
+        "BPV",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1110",
+    ),
+    (
+        "BPB",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1120",
+    ),
+    (
+        "BPK",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1130",
+    ),
+    (
+        "BPR",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1140",
+    ),
+    (
+        "BPG2",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1150",
+    ),
+    (
+        "BPS",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1160",
+    ),
+    (
+        "BPO2",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1170",
+    ),
+    (
+        "BPPA",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1200",
+    ),
+    (
+        "BPHA",
+        "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung,funktion=1300",
+    ),
     ("BP", "AX_Ebene=AX_FlaecheBesondererFunktionalerPraegung"),
     ("FPA", "AX_Ebene=AX_Friedhof,funktion=1200"),
     ("F", "AX_Ebene=AX_Friedhof"),
@@ -447,11 +693,26 @@ const MAP: &[(&str, &str);164] = &[
     ("MOOR", "AX_Ebene=AX_Moor"),
     ("SUM", "AX_Ebene=AX_Sumpf"),
     ("HAL", "AX_Ebene=AX_Halde"),
-    ("UVS", "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1020"),
-    ("UVS", "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1030"),
-    ("UVSA", "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1040"),
-    ("WAB", "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1100"),
-    ("NF", "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1300"),
+    (
+        "UVS",
+        "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1020",
+    ),
+    (
+        "UVS",
+        "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1030",
+    ),
+    (
+        "UVSA",
+        "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1000,oberflaechenmaterial=1040",
+    ),
+    (
+        "WAB",
+        "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1100",
+    ),
+    (
+        "NF",
+        "AX_Ebene=AX_UnlandVegetationsloseFlaeche,funktion=1300",
+    ),
     ("UV", "AX_Ebene=AX_UnlandVegetationsloseFlaeche"),
     ("KAN", "AX_Ebene=AX_Fliessgewaesser,funktion=8300"),
     ("WAF", "AX_Ebene=AX_Fliessgewaesser"),
@@ -462,19 +723,30 @@ const MAP: &[(&str, &str);164] = &[
 ];
 
 impl TaggedPolygon {
-
     pub fn get_auto_ebene(kuerzel: &str) -> Option<&str> {
-        let attribute = MAP.iter().find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None })?;
+        let attribute = MAP
+            .iter()
+            .find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None })?;
         attribute.split(",").find_map(|kv| {
             let mut sp = kv.split("=");
             let k = sp.next()?;
             let v = sp.next()?;
-            if k == "AX_Ebene" { Some(v) } else { None }
+            if k == "AX_Ebene" {
+                Some(v)
+            } else {
+                None
+            }
         })
     }
 
-    pub fn get_auto_attributes_for_kuerzel(kuerzel: &str, flurstueck: &str) -> BTreeMap<String, String> {
-        let attribute = MAP.iter().find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None }).unwrap_or("");
+    pub fn get_auto_attributes_for_kuerzel(
+        kuerzel: &str,
+        flurstueck: &str,
+    ) -> BTreeMap<String, String> {
+        let attribute = MAP
+            .iter()
+            .find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None })
+            .unwrap_or("");
         let mut map = BTreeMap::new();
         for kv in attribute.split(",") {
             let mut sp = kv.split("=");
@@ -511,46 +783,50 @@ impl TaggedPolygon {
     pub fn get_flst_part_id(&self) -> Option<String> {
         let ebene = self.get_ebene()?;
         let id = self.get_de_id()?;
-        let intersection = self.get_intersection_id().unwrap_or_else(|| "0".to_string());
+        let intersection = self
+            .get_intersection_id()
+            .unwrap_or_else(|| "0".to_string());
         let flurstueck = self.get_flurstueck_id()?;
         Some(format!("{flurstueck}:{ebene}:{id}:{intersection}"))
     }
 
     fn check_line_for_points(
-        l: &SvgLine, 
-        start: &SvgPoint, 
-        end: &SvgPoint, 
-        log: &mut Vec<String>,
+        l: &SvgLine,
+        start: &SvgPoint,
+        end: &SvgPoint,
+        _log: &mut Vec<String>,
         dst: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
-
         let start = start.round_to_3dec();
         let end = end.round_to_3dec();
 
         let mut start_is_on_line = None;
         let mut end_is_on_line = None;
-        let mut pos_start_extra = None;
-        let mut pos_end_extra = None;
 
         let mut pos_start = match l.points.iter().position(|p| p.equals(&start)) {
-            Some(s) => {
-                pos_start_extra = Some((s, l.points[s]));
-                s
-            },
+            Some(s) => s,
             None => {
-                
-                let starting_point_on_lines = 
-                l.points.iter().enumerate().zip(l.points.iter().skip(1))
-                .map(|((pos, s0), e0)| {
-                    (pos, s0.clone(), e0.clone(), crate::ui::dist_to_segment(start, *s0, *e0))
-                }).collect::<Vec<_>>();
+                let starting_point_on_lines = l
+                    .points
+                    .iter()
+                    .enumerate()
+                    .zip(l.points.iter().skip(1))
+                    .map(|((pos, s0), e0)| {
+                        (
+                            pos,
+                            s0.clone(),
+                            e0.clone(),
+                            crate::ui::dist_to_segment(start, *s0, *e0),
+                        )
+                    })
+                    .collect::<Vec<_>>();
 
                 let nearest_line = starting_point_on_lines
                     .into_iter()
                     .min_by_key(|f| (f.3.distance * 100000.0).round().abs() as usize)
                     .map(|s| s.clone());
-                
+
                 let nearest_line = match nearest_line {
                     Some(s) => s,
                     None => return Vec::new(),
@@ -563,33 +839,33 @@ impl TaggedPolygon {
                 start_is_on_line = Some(nearest_line.clone());
 
                 nearest_line.0
-            },
+            }
         };
 
         let mut pos_end = match l.points.iter().position(|p| p.equals(&end)) {
-            Some(s) => {
-                pos_end_extra = Some((s, l.points[s]));
-                s
-            },
+            Some(s) => s,
             None => {
-
-                let ending_point_on_lines = 
-                l.points.iter().enumerate().zip(l.points.iter().skip(1))
-                .map(|((pos, s0), e0)| {
-                    let p_is_on_line = crate::ui::dist_to_segment(end, *s0, *e0);
-                    (pos, s0.clone(), e0.clone(), p_is_on_line)
-                }).collect::<Vec<_>>();
+                let ending_point_on_lines = l
+                    .points
+                    .iter()
+                    .enumerate()
+                    .zip(l.points.iter().skip(1))
+                    .map(|((pos, s0), e0)| {
+                        let p_is_on_line = crate::ui::dist_to_segment(end, *s0, *e0);
+                        (pos, s0.clone(), e0.clone(), p_is_on_line)
+                    })
+                    .collect::<Vec<_>>();
 
                 let nearest_line = ending_point_on_lines
                     .into_iter()
                     .min_by_key(|f| (f.3.distance * 100000.0).round().abs() as usize)
                     .map(|s| s.clone());
-                
+
                 let nearest_line = match nearest_line {
                     Some(s) => s,
                     None => return Vec::new(),
                 };
-                
+
                 if nearest_line.3.distance > dst {
                     return Vec::new();
                 }
@@ -597,9 +873,9 @@ impl TaggedPolygon {
                 end_is_on_line = Some(nearest_line.clone());
 
                 nearest_line.0
-            },
+            }
         };
-        
+
         if start_is_on_line.is_some() && end_is_on_line.is_some() {
             return Vec::new(); // TODO - technically wrong, but produces OK results
         }
@@ -616,76 +892,82 @@ impl TaggedPolygon {
 
         let normal_direction = pos_end.saturating_sub(pos_start);
         let reverse_direction = pos_start.saturating_add(l.points.len().saturating_sub(pos_end));
-        
+
         if reverse_direction.min(normal_direction) < 2 {
             return Vec::new(); // shared line between two points
         }
 
-        let normal = l.points.iter()
-        .skip(pos_start.saturating_add(1))
-        .take(normal_direction.saturating_sub(1)).cloned()
-        .collect::<Vec<_>>();
+        let normal = l
+            .points
+            .iter()
+            .skip(pos_start.saturating_add(1))
+            .take(normal_direction.saturating_sub(1))
+            .cloned()
+            .collect::<Vec<_>>();
 
-        let mut rev = l.points.iter().skip(pos_end.saturating_add(1)).cloned().collect::<Vec<_>>();
+        let mut rev = l
+            .points
+            .iter()
+            .skip(pos_end.saturating_add(1))
+            .cloned()
+            .collect::<Vec<_>>();
         rev.extend(l.points.iter().cloned().take(pos_start));
         rev.reverse();
 
-        let normal_error = normal.iter()
-        .map(|s| dist_to_segment(*s, start, end).distance.abs())
-        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-        .unwrap_or(0.0);
+        let normal_error = normal
+            .iter()
+            .map(|s| dist_to_segment(*s, start, end).distance.abs())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(0.0);
 
-        let reverse_error = rev.iter()
-        .map(|s| dist_to_segment(*s, start, end).distance.abs())
-        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-        .unwrap_or(0.0);
-    
+        let reverse_error = rev
+            .iter()
+            .map(|s| dist_to_segment(*s, start, end).distance.abs())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(0.0);
+
         let reverse = reverse_error < normal_error;
 
-        let mut ret = if reverse {
-            rev
-        } else {
-            normal
-        };
+        let mut ret = if reverse { rev } else { normal };
 
         ret.dedup_by(|a, b| a.equals(b));
-        
+
         if pos_end == pos_start {
             return Vec::new();
         }
 
         if ret.len() > 1 {
             match (l.points.get(pos_start), l.points.get(pos_end)) {
-                (
-                    Some(l_start), 
-                    Some(l_end), 
-                ) => {
-                    
+                (Some(l_start), Some(l_end)) => {
                     if l_start.equals(l_end) {
                         return Vec::new();
                     }
-    
+
                     let mut line_normal = vec![*l_start];
                     for p in ret.iter() {
                         line_normal.push(*p);
                     }
                     line_normal.push(*l_end);
-                    let line_normal_length = line_normal.windows(2)
-                    .map(|pts| match &pts {
-                        &[a, b] => a.dist(b),
-                        _ => 0.0,
-                    }).sum::<f64>();
+                    let line_normal_length = line_normal
+                        .windows(2)
+                        .map(|pts| match &pts {
+                            &[a, b] => a.dist(b),
+                            _ => 0.0,
+                        })
+                        .sum::<f64>();
 
                     let mut line_reverse = vec![*l_start];
                     for p in ret.iter().rev() {
                         line_reverse.push(*p);
                     }
                     line_reverse.push(*l_end);
-                    let line_reverse_length = line_reverse.windows(2)
-                    .map(|pts| match &pts {
-                        &[a, b] => a.dist(b),
-                        _ => 0.0,
-                    }).sum::<f64>();
+                    let line_reverse_length = line_reverse
+                        .windows(2)
+                        .map(|pts| match &pts {
+                            &[a, b] => a.dist(b),
+                            _ => 0.0,
+                        })
+                        .sum::<f64>();
 
                     if startend_swapped {
                         if line_normal_length < line_reverse_length {
@@ -696,20 +978,23 @@ impl TaggedPolygon {
                             ret.reverse();
                         }
                     }
-                },
-                _ => { }
-            }    
+                }
+                _ => {}
+            }
         }
 
         let len_original = start.dist(&end);
         let mut len_merged_points = vec![start];
         len_merged_points.extend(ret.iter().cloned());
         len_merged_points.push(end);
-        let len_merged = len_merged_points.windows(2).map(|w| match &w {
-            &[a, b] => a.dist(b),
-            _ => 0.0,
-        }).sum::<f64>();
-        
+        let len_merged = len_merged_points
+            .windows(2)
+            .map(|w| match &w {
+                &[a, b] => a.dist(b),
+                _ => 0.0,
+            })
+            .sum::<f64>();
+
         ret.retain(|p| !p.equals(&start) && !p.equals(&end));
 
         if len_original + maxdev_followline > len_merged {
@@ -719,7 +1004,14 @@ impl TaggedPolygon {
         }
     }
 
-    fn check_lines_for_points(l: &[SvgLine], start: &SvgPoint, end: &SvgPoint, log: &mut Vec<String>, dst: f64, maxdev_followline: f64) -> Vec<SvgPoint> {
+    fn check_lines_for_points(
+        l: &[SvgLine],
+        start: &SvgPoint,
+        end: &SvgPoint,
+        log: &mut Vec<String>,
+        dst: f64,
+        maxdev_followline: f64,
+    ) -> Vec<SvgPoint> {
         for l in l {
             let v = Self::check_line_for_points(l, start, end, log, dst, maxdev_followline);
             if !v.is_empty() {
@@ -730,18 +1022,32 @@ impl TaggedPolygon {
     }
 
     pub fn get_line_between_points(
-        &self, 
+        &self,
         start: &SvgPoint,
-        end: &SvgPoint, 
-        log: &mut Vec<String>, 
+        end: &SvgPoint,
+        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line, maxdev_followline);
+        let v = Self::check_lines_for_points(
+            &self.poly.outer_rings,
+            start,
+            end,
+            log,
+            maxdst_line,
+            maxdev_followline,
+        );
         if !v.is_empty() {
             return v;
         }
-        let v = Self::check_lines_for_points(&self.poly.outer_rings, start, end, log, maxdst_line, maxdev_followline);
+        let v = Self::check_lines_for_points(
+            &self.poly.outer_rings,
+            start,
+            end,
+            log,
+            maxdst_line,
+            maxdev_followline,
+        );
         if !v.is_empty() {
             return v;
         }
@@ -749,7 +1055,11 @@ impl TaggedPolygon {
     }
 
     pub fn get_groesse(&self) -> f64 {
-        translate_to_geo_poly(&self.poly).0.iter().map(|p| p.signed_area()).sum()
+        translate_to_geo_poly(&self.poly)
+            .0
+            .iter()
+            .map(|p| p.signed_area())
+            .sum()
     }
 
     pub fn get_wirtschaftsart(kuerzel: &str) -> Option<String> {
@@ -759,12 +1069,15 @@ impl TaggedPolygon {
 
     pub fn get_nutzungsartenkennung(kuerzel: &str) -> Option<usize> {
         let map = crate::get_map();
-        map.get(kuerzel.trim()).and_then(|s| s.nak.parse::<usize>().ok())
+        map.get(kuerzel.trim())
+            .and_then(|s| s.nak.parse::<usize>().ok())
     }
 
     pub fn get_auto_kuerzel(&self, ebene: &str) -> Option<String> {
-
-        let vegetationsmerkmal = self.attributes.get("vegetationsmerkmal").map(|s| s.as_str());
+        let vegetationsmerkmal = self
+            .attributes
+            .get("vegetationsmerkmal")
+            .map(|s| s.as_str());
         let zustand = self.attributes.get("zustand").map(|s| s.as_str());
         let nutzung = self.attributes.get("nutzung").map(|s| s.as_str());
         let abbaugut = self.attributes.get("abbaugut").map(|s| s.as_str());
@@ -772,12 +1085,15 @@ impl TaggedPolygon {
         let foerdergut = self.attributes.get("foerdergut").map(|s| s.as_str());
         let primaerenergie = self.attributes.get("primaerenergie").map(|s| s.as_str());
         let art = self.attributes.get("art").map(|s| s.as_str());
-        let oberflaechenmaterial = self.attributes.get("oberflaechenmaterial").map(|s| s.as_str());
+        let oberflaechenmaterial = self
+            .attributes
+            .get("oberflaechenmaterial")
+            .map(|s| s.as_str());
 
         match ebene {
             "AX_Wohnbauflaeche" => match funktion {
                 Some("1200") => Some("WBFPA"),
-                _ => Some("WBF")
+                _ => Some("WBF"),
             },
             "AX_Landwirtschaft" => match vegetationsmerkmal {
                 Some("1010") => Some("A"),
@@ -820,7 +1136,7 @@ impl TaggedPolygon {
                 (Some("2500"), Some("4000"), _) => Some("VSWI"), // VSWI
                 (Some("2500"), Some("7000"), _) => Some("VSVE"), // VSVE
                 (Some("2500"), Some("7100"), _) => Some("VSKO"), // VSKO
-                (Some("2700"), _, Some("2000")) => Some("FÖG"), // FÖG
+                (Some("2700"), _, Some("2000")) => Some("FÖG"),  // FÖG
                 (Some("2530"), Some("1000"), _) => Some("VSKWA"), // VSKWA
                 (Some("2530"), Some("2000"), _) => Some("VSKKK"), // VSKKK
                 (Some("2530"), Some("3000"), _) => Some("VSKSO"), // VSKSO
@@ -833,22 +1149,22 @@ impl TaggedPolygon {
                 (Some("2570"), Some("4000"), _) => Some("VSHWI"), // VSHWI // Heizwerk - Wind fehlt?
                 (Some("2570"), Some("7000"), _) => Some("VSHVE"), // VSHVE
                 (Some("2570"), Some("7100"), _) => Some("VSHKO"), // VSHKO
-                (Some("2700"), _, _) => Some("FÖ"), // FÖ
-                (Some("2520"), _, _) => Some("VSW"), // VSW
-                (Some("2530"), _, _) => Some("VSK"), // VSK
-                (Some("2540"), _, _) => Some("VSU"), // VSU
-                (Some("2570"), _, _) => Some("VSH"), // VSH
-                (Some("1200"), _, _) => Some("IGFPA"), // Parken,
-                (Some("1400"), _, _) => Some("HD"), // HD,
-                (Some("1440"), _, _) => Some("HDH"), // HDH
-                (Some("1450"), _, _) => Some("HDM"), // HDM
-                (Some("1490"), _, _) => Some("HDG"), // HDG
-                (Some("2500"), _, _) => Some("VS"), // VS
-                (Some("2600"), _, _) => Some("ES"), // ES
-                (Some("2610"), _, _) => Some("ESA"), // ESA
-                (Some("2630"), _, _) => Some("ESDO"), // ESDO
-                (Some("2640"), _, _) => Some("ESDU"), // ESDU
-                _ => Some("IG")
+                (Some("2700"), _, _) => Some("FÖ"),              // FÖ
+                (Some("2520"), _, _) => Some("VSW"),             // VSW
+                (Some("2530"), _, _) => Some("VSK"),             // VSK
+                (Some("2540"), _, _) => Some("VSU"),             // VSU
+                (Some("2570"), _, _) => Some("VSH"),             // VSH
+                (Some("1200"), _, _) => Some("IGFPA"),           // Parken,
+                (Some("1400"), _, _) => Some("HD"),              // HD,
+                (Some("1440"), _, _) => Some("HDH"),             // HDH
+                (Some("1450"), _, _) => Some("HDM"),             // HDM
+                (Some("1490"), _, _) => Some("HDG"),             // HDG
+                (Some("2500"), _, _) => Some("VS"),              // VS
+                (Some("2600"), _, _) => Some("ES"),              // ES
+                (Some("2610"), _, _) => Some("ESA"),             // ESA
+                (Some("2630"), _, _) => Some("ESDO"),            // ESDO
+                (Some("2640"), _, _) => Some("ESDU"),            // ESDU
+                _ => Some("IG"),
             },
             "AX_TagebauGrubeSteinbruch" => match (abbaugut, funktion, zustand) {
                 (Some("1001"), _, Some("2100")) => Some("TGTAB"),
@@ -930,7 +1246,7 @@ impl TaggedPolygon {
                 Some("5320") => Some("RAP"),
                 Some("5330") => Some("RAS"),
                 Some("5350") => Some("FP"),
-                _ => Some("PL")
+                _ => Some("PL"),
             },
             "AX_Bahnverkehr" => match funktion {
                 Some("1200") => Some("BAPA"),
@@ -952,8 +1268,8 @@ impl TaggedPolygon {
                 Some("1200") => Some("SVPA"),
                 Some("5610") => Some("SVH"),
                 Some("5620") => Some("SVS"),
-                _ => Some("SV")
-            }
+                _ => Some("SV"),
+            },
             "AX_Gehoelz" => Some("GHÖ"),
             "AX_Heide" => Some("HEI"),
             "AX_Moor" => Some("MOOR"),
@@ -975,17 +1291,18 @@ impl TaggedPolygon {
             "AX_StehendesGewaesser" => match funktion {
                 Some("8630") => Some("STS"),
                 Some("8631") => Some("SPB"),
-                _ => Some("WAS")
+                _ => Some("WAS"),
             },
             _ => None,
-        }.map(|s| s.to_string())
+        }
+        .map(|s| s.to_string())
     }
 
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         self.poly.get_rect()
     }
 
-    pub fn get_fit_bounds(&self) -> [[f64;2];2] {
+    pub fn get_fit_bounds(&self) -> [[f64; 2]; 2] {
         self.poly.get_fit_bounds()
     }
 }
@@ -1041,15 +1358,34 @@ pub struct SvgPolygonSerialize {
 
 impl SvgPolygonSerialize {
     pub fn get_old(&self) -> SvgPolygonInner {
-        SvgPolygonInner { 
-            outer_rings: self.or.iter().map(|s| s.trim()).map(|q| Self::line_from(q)).collect(), 
-            inner_rings: self.ir.iter().map(|s| s.trim()).map(|q| Self::line_from(q)).collect(), 
+        SvgPolygonInner {
+            outer_rings: self
+                .or
+                .iter()
+                .map(|s| s.trim())
+                .map(|q| Self::line_from(q))
+                .collect(),
+            inner_rings: self
+                .ir
+                .iter()
+                .map(|s| s.trim())
+                .map(|q| Self::line_from(q))
+                .collect(),
         }
     }
 
     fn line_from(s: &str) -> SvgLine {
-        let p = s.split_whitespace().filter_map(|s| s.parse::<f64>().ok()).collect::<Vec<_>>();
-        let v = p.chunks(2).filter_map(|s| match s { &[x, y] => Some(SvgPoint { x, y }), _ => None }).collect::<Vec<_>>();
+        let p = s
+            .split_whitespace()
+            .filter_map(|s| s.parse::<f64>().ok())
+            .collect::<Vec<_>>();
+        let v = p
+            .chunks(2)
+            .filter_map(|s| match s {
+                &[x, y] => Some(SvgPoint { x, y }),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
         SvgLine { points: v }
     }
 }
@@ -1057,12 +1393,24 @@ impl SvgPolygonSerialize {
 impl SvgPolygonInner {
     fn ser(&self) -> SvgPolygonSerialize {
         SvgPolygonSerialize {
-            or: self.outer_rings.iter().map(|s| Self::serialize_line(s)).collect::<Vec<_>>(),
-            ir: self.inner_rings.iter().map(|s| Self::serialize_line(s)).collect::<Vec<_>>(),
+            or: self
+                .outer_rings
+                .iter()
+                .map(|s| Self::serialize_line(s))
+                .collect::<Vec<_>>(),
+            ir: self
+                .inner_rings
+                .iter()
+                .map(|s| Self::serialize_line(s))
+                .collect::<Vec<_>>(),
         }
     }
     fn serialize_line(l: &SvgLine) -> String {
-        l.points.iter().map(|s| format!("{} {}", s.x, s.y)).collect::<Vec<_>>().join(" ")
+        l.points
+            .iter()
+            .map(|s| format!("{} {}", s.x, s.y))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 
@@ -1079,26 +1427,36 @@ pub enum EqualsAnyRingStatus {
 }
 
 impl SvgPolygonInner {
-
     pub fn recombine_polys(&self) -> Vec<Self> {
-        let outer_rings = self.outer_rings.iter().map(|l| Self::from_line(l)).collect::<Vec<_>>();
-        let inner_rings = self.inner_rings.iter().map(|l| Self::from_line(l)).collect::<Vec<_>>();
-        outer_rings.iter().map(|p| {
-            Self {
+        let outer_rings = self
+            .outer_rings
+            .iter()
+            .map(|l| Self::from_line(l))
+            .collect::<Vec<_>>();
+        let inner_rings = self
+            .inner_rings
+            .iter()
+            .map(|l| Self::from_line(l))
+            .collect::<Vec<_>>();
+        outer_rings
+            .iter()
+            .map(|p| Self {
                 outer_rings: p.outer_rings.clone(),
-                inner_rings: inner_rings.iter().flat_map(|q| {
-                    if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(q)) {
-                        q.outer_rings.clone()
-                    } else {
-                        Vec::new()
-                    }
-                }).collect()
-            }
-        }).collect()
+                inner_rings: inner_rings
+                    .iter()
+                    .flat_map(|q| {
+                        if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(q)) {
+                            q.outer_rings.clone()
+                        } else {
+                            Vec::new()
+                        }
+                    })
+                    .collect(),
+            })
+            .collect()
     }
 
     pub fn overlaps(&self, other: &Self) -> bool {
-
         let self_rect = self.get_rect();
         let other_rect = other.get_rect();
         if !(self_rect.overlaps_rect(&other_rect) || other_rect.overlaps_rect(&self_rect)) {
@@ -1113,41 +1471,53 @@ impl SvgPolygonInner {
             }
         }
 
-        let triangle_points = translate_to_geo_poly(&self).0
-        .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
-        .map(|p| SvgPoint { x: p.x(), y: p.y() })
-        .collect::<Vec<_>>();
-        
-        triangle_points.iter().any(|p| point_is_in_polygon(p, other))
+        let triangle_points = translate_to_geo_poly(&self)
+            .0
+            .iter()
+            .flat_map(|f| f.earcut_triangles())
+            .map(|i| i.centroid())
+            .map(|p| SvgPoint { x: p.x(), y: p.y() })
+            .collect::<Vec<_>>();
+
+        triangle_points
+            .iter()
+            .any(|p| point_is_in_polygon(p, other))
     }
 
     pub fn get_triangle_points(&self) -> Vec<SvgPoint> {
-        translate_to_geo_poly(&self).0
-        .iter().flat_map(|f| f.earcut_triangles()).filter_map(|f| {
-            if f.unsigned_area() > 10.0 {
-                Some(f.centroid())
-            } else {
-                None
-            }
-        })
-        .map(|p| SvgPoint { x: p.x(), y: p.y() })
-        .collect::<Vec<_>>()
+        translate_to_geo_poly(&self)
+            .0
+            .iter()
+            .flat_map(|f| f.earcut_triangles())
+            .filter_map(|f| {
+                if f.unsigned_area() > 10.0 {
+                    Some(f.centroid())
+                } else {
+                    None
+                }
+            })
+            .map(|p| SvgPoint { x: p.x(), y: p.y() })
+            .collect::<Vec<_>>()
     }
 
     pub fn is_completely_inside_of(&self, other: &Self) -> bool {
+        let triangle_points = translate_to_geo_poly(&self)
+            .0
+            .iter()
+            .flat_map(|f| f.earcut_triangles())
+            .map(|i| i.centroid())
+            .collect::<Vec<_>>();
 
-        let triangle_points = translate_to_geo_poly(&self).0
-        .iter().flat_map(|f| f.earcut_triangles()).map(|i| i.centroid())
-        .collect::<Vec<_>>();
-        
         let other = translate_to_geo_poly(other);
 
         triangle_points.iter().all(|p| p.is_within(&other))
     }
 
-
     pub fn from_line(l: &SvgLine) -> Self {
-        Self { outer_rings: vec![l.clone()], inner_rings: Vec::new() }
+        Self {
+            outer_rings: vec![l.clone()],
+            inner_rings: Vec::new(),
+        }
     }
 
     pub fn contains_polygon(&self, other: &Self) -> bool {
@@ -1168,28 +1538,40 @@ impl SvgPolygonInner {
 
         true
     }
-    
+
     pub fn get_hash(&self) -> u64 {
-        use highway::{HighwayHasher, HighwayHash};
+        use highway::{
+            HighwayHash,
+            HighwayHasher,
+        };
         let rounded = self.round_to_3dec().get_all_pointcoords_sorted();
-        let bytes = rounded.iter().flat_map(|[a,b]| {
-            let mut a = a.to_le_bytes().to_vec();
-            a.extend(b.to_le_bytes().into_iter());
-            a
-        }).collect::<Vec<_>>();
+        let bytes = rounded
+            .iter()
+            .flat_map(|[a, b]| {
+                let mut a = a.to_le_bytes().to_vec();
+                a.extend(b.to_le_bytes().into_iter());
+                a
+            })
+            .collect::<Vec<_>>();
         HighwayHasher::default().hash64(&bytes)
     }
 
-    pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize;2]> {
+    pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize; 2]> {
         let mut v = BTreeSet::new();
         for l in self.outer_rings.iter() {
             for p in l.points.iter() {
-                v.insert([(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize]);
+                v.insert([
+                    (p.x * 1000.0).round() as usize,
+                    (p.y * 1000.0).round() as usize,
+                ]);
             }
         }
         for l in self.inner_rings.iter() {
             for p in l.points.iter() {
-                v.insert([(p.x * 1000.0).round() as usize, (p.y * 1000.0).round() as usize]);
+                v.insert([
+                    (p.x * 1000.0).round() as usize,
+                    (p.y * 1000.0).round() as usize,
+                ]);
             }
         }
         v.into_iter().collect()
@@ -1205,11 +1587,31 @@ impl SvgPolygonInner {
         }
     }
 
-    pub fn get_fit_bounds(&self) -> [[f64;2];2] {
-        let mut min_x = self.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut max_x = self.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.x).unwrap_or(0.0);
-        let mut min_y = self.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
-        let mut max_y = self.outer_rings.get(0).and_then(|s| s.points.get(0)).map(|p| p.y).unwrap_or(0.0);
+    pub fn get_fit_bounds(&self) -> [[f64; 2]; 2] {
+        let mut min_x = self
+            .outer_rings
+            .get(0)
+            .and_then(|s| s.points.get(0))
+            .map(|p| p.x)
+            .unwrap_or(0.0);
+        let mut max_x = self
+            .outer_rings
+            .get(0)
+            .and_then(|s| s.points.get(0))
+            .map(|p| p.x)
+            .unwrap_or(0.0);
+        let mut min_y = self
+            .outer_rings
+            .get(0)
+            .and_then(|s| s.points.get(0))
+            .map(|p| p.y)
+            .unwrap_or(0.0);
+        let mut max_y = self
+            .outer_rings
+            .get(0)
+            .and_then(|s| s.points.get(0))
+            .map(|p| p.y)
+            .unwrap_or(0.0);
         for l in self.outer_rings.iter() {
             for p in l.points.iter() {
                 if p.x > max_x {
@@ -1226,21 +1628,30 @@ impl SvgPolygonInner {
                 }
             }
         }
-    
-        [
-            [min_y, min_x],
-            [max_y, max_x]
-        ]
+
+        [[min_y, min_x], [max_y, max_x]]
     }
 
     pub fn insert_points_from(&mut self, other: &Self, maxdst: f64) {
-        self.outer_rings = self.outer_rings.iter().map(|o| o.insert_points_from(other, maxdst)).collect();
-        self.inner_rings = self.inner_rings.iter().map(|o| o.insert_points_from(other, maxdst)).collect();
+        self.outer_rings = self
+            .outer_rings
+            .iter()
+            .map(|o| o.insert_points_from(other, maxdst))
+            .collect();
+        self.inner_rings = self
+            .inner_rings
+            .iter()
+            .map(|o| o.insert_points_from(other, maxdst))
+            .collect();
         self.correct_almost_touching_points(other, maxdst, false);
     }
 
-    pub fn correct_almost_touching_points(&mut self, other: &Self, maxdst: f64, correct_points_on_lines: bool) {
-       
+    pub fn correct_almost_touching_points(
+        &mut self,
+        other: &Self,
+        maxdst: f64,
+        correct_points_on_lines: bool,
+    ) {
         let mut other_points = Vec::new();
         let mut other_lines = Vec::new();
 
@@ -1252,7 +1663,7 @@ impl SvgPolygonInner {
                 for p in l.points.windows(2) {
                     match p {
                         &[a, b] => other_lines.push((a, b)),
-                        _ => {},
+                        _ => {}
                     }
                 }
             }
@@ -1266,7 +1677,7 @@ impl SvgPolygonInner {
                 for p in l.points.windows(2) {
                     match p {
                         &[a, b] => other_lines.push((a, b)),
-                        _ => {},
+                        _ => {}
                     }
                 }
             }
@@ -1275,61 +1686,68 @@ impl SvgPolygonInner {
         let max_items_points = other_points.len().saturating_div(20).max(500);
         let max_items_lines = other_lines.len().saturating_div(20).max(500);
 
-        let qt_points = quadtree_f32::QuadTree::new_with_max_items_per_quad(other_points.iter().enumerate().map(|(i, s)| {
-            (ItemId(i), Item::Point(quadtree_f32::Point { x: s.x, y: s.y }))
-        }), max_items_points);
+        let qt_points = quadtree_f32::QuadTree::new_with_max_items_per_quad(
+            other_points.iter().enumerate().map(|(i, s)| {
+                (
+                    ItemId(i),
+                    Item::Point(quadtree_f32::Point { x: s.x, y: s.y }),
+                )
+            }),
+            max_items_points,
+        );
 
         for l in self.outer_rings.iter_mut() {
             for p in l.points.iter_mut() {
-                let mut closest_other_point = qt_points.get_points_contained_by(&p.get_rect(maxdst))
-                .into_iter()
-                .map(|p| SvgPoint { x: p.x, y: p.y })
-                .filter(|s| s.dist(&p) < maxdst)
-                .collect::<Vec<_>>();
+                let mut closest_other_point = qt_points
+                    .get_points_contained_by(&p.get_rect(maxdst))
+                    .into_iter()
+                    .map(|p| SvgPoint { x: p.x, y: p.y })
+                    .filter(|s| s.dist(&p) < maxdst)
+                    .collect::<Vec<_>>();
                 closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
                 if let Some(first) = closest_other_point.first() {
                     *p = *first;
                 } else {
-                    
                 }
             }
         }
 
         for l in self.inner_rings.iter_mut() {
             for p in l.points.iter_mut() {
-                let mut closest_other_point = qt_points.get_points_contained_by(&p.get_rect(maxdst))
-                .into_iter()
-                .map(|p| SvgPoint { x: p.x, y: p.y })
-                .filter(|s| s.dist(&p) < maxdst)
-                .collect::<Vec<_>>();
+                let mut closest_other_point = qt_points
+                    .get_points_contained_by(&p.get_rect(maxdst))
+                    .into_iter()
+                    .map(|p| SvgPoint { x: p.x, y: p.y })
+                    .filter(|s| s.dist(&p) < maxdst)
+                    .collect::<Vec<_>>();
                 closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
                 if let Some(first) = closest_other_point.first() {
                     *p = *first;
                 }
             }
         }
-
 
         if !correct_points_on_lines {
             return;
         }
 
         let qt_lines = quadtree_f32::QuadTree::new_with_max_items_per_quad(
-            other_lines.iter().enumerate().map(|(i, s)| {
-            (ItemId(i), Item::Rect(points_to_rect(&(s.0, s.1))))
-        }), max_items_lines);
+            other_lines
+                .iter()
+                .enumerate()
+                .map(|(i, s)| (ItemId(i), Item::Rect(points_to_rect(&(s.0, s.1))))),
+            max_items_lines,
+        );
 
         for l in self.outer_rings.iter_mut() {
             for p in l.points.iter_mut() {
                 let mut closest_other_lines = qt_lines
-                .get_ids_that_overlap(&p.get_rect(maxdst))
-                .into_iter()
-                .filter_map(|i| other_lines.get(i.0))
-                .map(|q| {
-                    dist_to_segment(*p, q.0, q.1)
-                })
-                .filter(|s| s.distance < maxdst)
-                .collect::<Vec<_>>();
+                    .get_ids_that_overlap(&p.get_rect(maxdst))
+                    .into_iter()
+                    .filter_map(|i| other_lines.get(i.0))
+                    .map(|q| dist_to_segment(*p, q.0, q.1))
+                    .filter(|s| s.distance < maxdst)
+                    .collect::<Vec<_>>();
                 closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
                 if let Some(first) = closest_other_lines.first() {
                     *p = first.nearest_point;
@@ -1339,27 +1757,33 @@ impl SvgPolygonInner {
 
         for l in self.inner_rings.iter_mut() {
             for p in l.points.iter_mut() {
-                let mut closest_other_lines = qt_lines.get_ids_that_overlap(&p.get_rect(maxdst))
-                .into_iter()
-                .filter_map(|i| other_lines.get(i.0))
-                .map(|q| {
-                    dist_to_segment(*p, q.0, q.1)
-                })
-                .filter(|s| s.distance < maxdst)
-                .collect::<Vec<_>>();
+                let mut closest_other_lines = qt_lines
+                    .get_ids_that_overlap(&p.get_rect(maxdst))
+                    .into_iter()
+                    .filter_map(|i| other_lines.get(i.0))
+                    .map(|q| dist_to_segment(*p, q.0, q.1))
+                    .filter(|s| s.distance < maxdst)
+                    .collect::<Vec<_>>();
                 closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
                 if let Some(first) = closest_other_lines.first() {
                     *p = first.nearest_point;
                 }
             }
         }
-
     }
 
     pub fn inverse_point_order(&self) -> Self {
         Self {
-            outer_rings: self.outer_rings.iter().map(|s| s.inverse_point_order()).collect(),
-            inner_rings: self.inner_rings.iter().map(|s| s.inverse_point_order()).collect(),
+            outer_rings: self
+                .outer_rings
+                .iter()
+                .map(|s| s.inverse_point_order())
+                .collect(),
+            inner_rings: self
+                .inner_rings
+                .iter()
+                .map(|s| s.inverse_point_order())
+                .collect(),
         }
     }
 
@@ -1384,7 +1808,11 @@ impl SvgPolygonInner {
     }
 
     pub fn area_m2(&self) -> f64 {
-        crate::nas::translate_to_geo_poly(&self).0.iter().map(|p| p.signed_area()).sum::<f64>()
+        crate::nas::translate_to_geo_poly(&self)
+            .0
+            .iter()
+            .map(|p| p.signed_area())
+            .sum::<f64>()
     }
 
     pub fn equals_any_ring(&self, other: &Self) -> EqualsAnyRingStatus {
@@ -1428,13 +1856,16 @@ impl SvgPolygonInner {
             Some(s) => s,
             None => return false,
         };
-    
+
         let mut b_poly = SvgPolygonInner::from_line(b);
         b_poly.correct_winding_order();
 
         for tri in a_poly.earcut_triangles_iter() {
             let cen = tri.centroid();
-            let cen = SvgPoint { x: cen.x(), y: cen.y() };
+            let cen = SvgPoint {
+                x: cen.x(),
+                y: cen.y(),
+            };
             if !point_is_in_polygon(&cen, &b_poly) {
                 return true;
             }
@@ -1443,19 +1874,22 @@ impl SvgPolygonInner {
         false
     }
 
-    pub fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool { 
+    pub fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool {
         let tr = translate_to_geo_poly(&SvgPolygonInner::from_line(a));
         let a_poly = match tr.0.get(0) {
             Some(s) => s,
             None => return false,
         };
-    
+
         let mut b_poly = SvgPolygonInner::from_line(b);
         b_poly.correct_winding_order();
 
         for tri in a_poly.earcut_triangles_iter() {
             let cen = tri.centroid();
-            let cen = SvgPoint { x: cen.x(), y: cen.y() };
+            let cen = SvgPoint {
+                x: cen.x(),
+                y: cen.y(),
+            };
             return point_is_in_polygon(&cen, &b_poly);
         }
 
@@ -1463,56 +1897,85 @@ impl SvgPolygonInner {
     }
 
     fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
-        
         let mut a_points = a.points.clone();
         a_points.dedup_by(|a, b| a.equals(b));
-        
+
         let mut b_points = b.points.clone();
         b_points.dedup_by(|a, b| a.equals(b));
-        
-        a_points.iter().all(|a| {
-            b_points.iter().any(|p| p.dist(a) < 0.005)
-        })
+
+        a_points
+            .iter()
+            .all(|a| b_points.iter().any(|p| p.dist(a) < 0.005))
     }
 
     fn any_points_equal(a: &SvgLine, b: &SvgLine) -> bool {
-        
         let mut a_points = a.points.clone();
         a_points.dedup_by(|a, b| a.equals(b));
-        
+
         let mut b_points = b.points.clone();
         b_points.dedup_by(|a, b| a.equals(b));
-        
-        a_points.iter().any(|a| {
-            b_points.iter().any(|p| p.dist(a) < 0.005)
-        })
+
+        a_points
+            .iter()
+            .any(|a| b_points.iter().any(|p| p.dist(a) < 0.005))
     }
 
     pub fn translate_y(&self, newy: f64) -> Self {
         Self {
-            outer_rings: self.outer_rings.iter().map(|s| SvgLine {
-                points: s.points.iter().map(|p| SvgPoint { x: p.x, y: p.y + newy }).collect()
-            }).collect(),
-            inner_rings: self.inner_rings.iter().map(|s| SvgLine {
-                points: s.points.iter().map(|p| SvgPoint { x: p.x, y: p.y + newy }).collect()
-            }).collect(),
+            outer_rings: self
+                .outer_rings
+                .iter()
+                .map(|s| SvgLine {
+                    points: s
+                        .points
+                        .iter()
+                        .map(|p| SvgPoint {
+                            x: p.x,
+                            y: p.y + newy,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            inner_rings: self
+                .inner_rings
+                .iter()
+                .map(|s| SvgLine {
+                    points: s
+                        .points
+                        .iter()
+                        .map(|p| SvgPoint {
+                            x: p.x,
+                            y: p.y + newy,
+                        })
+                        .collect(),
+                })
+                .collect(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.outer_rings.is_empty() &&
-        self.inner_rings.is_empty()
+        self.outer_rings.is_empty() && self.inner_rings.is_empty()
     }
-    
+
     pub fn equals(&self, other: &Self) -> bool {
-        self.outer_rings.len() == other.outer_rings.len() &&
-        self.inner_rings.len() == other.inner_rings.len() &&
-        self.outer_rings.iter().zip(other.outer_rings.iter()).all(|(a, b)| a.equals(b)) &&
-        self.inner_rings.iter().zip(other.inner_rings.iter()).all(|(a, b)| a.equals(b))
+        self.outer_rings.len() == other.outer_rings.len()
+            && self.inner_rings.len() == other.inner_rings.len()
+            && self
+                .outer_rings
+                .iter()
+                .zip(other.outer_rings.iter())
+                .all(|(a, b)| a.equals(b))
+            && self
+                .inner_rings
+                .iter()
+                .zip(other.inner_rings.iter())
+                .all(|(a, b)| a.equals(b))
     }
 
     fn round_line(s: &SvgLine) -> SvgLine {
-        SvgLine { points: s.points.iter().map(SvgPoint::round_to_3dec).collect() }
+        SvgLine {
+            points: s.points.iter().map(SvgPoint::round_to_3dec).collect(),
+        }
     }
 
     pub fn round_to_3dec(&self) -> Self {
@@ -1523,7 +1986,6 @@ impl SvgPolygonInner {
     }
 
     pub fn get_secondary_label_pos(&self) -> Option<SvgPoint> {
-        
         if self.is_empty() || self.is_zero_area() {
             return None;
         }
@@ -1532,21 +1994,23 @@ impl SvgPolygonInner {
         let first_poly = first_poly.first()?;
 
         let mut triangles = first_poly.earcut_triangles();
-        
-        triangles.sort_by(|a, b| {
-            a.unsigned_area().total_cmp(&b.unsigned_area())
-        });
+
+        triangles.sort_by(|a, b| a.unsigned_area().total_cmp(&b.unsigned_area()));
 
         triangles.reverse();
 
         triangles.pop();
-        let center = triangles.iter().next().map(|second_largest| second_largest.centroid())?;
-        Some(SvgPoint { x: center.x(), y: center.y() })
+        let center = triangles
+            .iter()
+            .next()
+            .map(|second_largest| second_largest.centroid())?;
+        Some(SvgPoint {
+            x: center.x(),
+            y: center.y(),
+        })
     }
 
-
     pub fn get_tertiary_label_pos(&self) -> Option<SvgPoint> {
-        
         if self.is_empty() || self.is_zero_area() {
             return None;
         }
@@ -1555,26 +2019,32 @@ impl SvgPolygonInner {
         let first_poly = first_poly.first()?;
 
         let mut triangles = first_poly.earcut_triangles();
-        
+
         if triangles.len() < 3 {
             let center = self.get_rect().get_center();
-            return Some(SvgPoint { x: center.x, y: center.y });
+            return Some(SvgPoint {
+                x: center.x,
+                y: center.y,
+            });
         }
-        
-        triangles.sort_by(|a, b| {
-            a.unsigned_area().total_cmp(&b.unsigned_area())
-        });
-        
+
+        triangles.sort_by(|a, b| a.unsigned_area().total_cmp(&b.unsigned_area()));
+
         triangles.reverse();
 
         triangles.pop();
         triangles.pop();
-        let center = triangles.iter().next().map(|second_largest| second_largest.centroid())?;
-        Some(SvgPoint { x: center.x(), y: center.y() })
+        let center = triangles
+            .iter()
+            .next()
+            .map(|second_largest| second_largest.centroid())?;
+        Some(SvgPoint {
+            x: center.x(),
+            y: center.y(),
+        })
     }
 
     pub fn get_label_pos(&self) -> Option<SvgPoint> {
-        
         if self.is_empty() || self.is_zero_area() {
             return None;
         }
@@ -1594,13 +2064,17 @@ impl SvgPolygonInner {
         let first_poly = first_poly.first()?;
 
         let triangles = first_poly.earcut_triangles();
-        
-        let largest_triangle = triangles.iter()
-        .max_by_key(|t| (t.unsigned_area() * 1000.0) as usize)?;
+
+        let largest_triangle = triangles
+            .iter()
+            .max_by_key(|t| (t.unsigned_area() * 1000.0) as usize)?;
 
         let center = largest_triangle.centroid();
 
-        Some(SvgPoint { x: center.x(), y: center.y() })
+        Some(SvgPoint {
+            x: center.x(),
+            y: center.y(),
+        })
     }
 }
 
@@ -1610,26 +2084,33 @@ pub struct SvgLine {
 }
 
 impl SvgLine {
-
     pub fn to_points_vec(&self) -> Vec<(SvgPoint, SvgPoint)> {
         let mut v = Vec::new();
         for p in self.points.windows(2) {
             match &p {
                 &[a, b] => v.push((*a, *b)),
-                _ => { },
+                _ => {}
             }
         }
         v
     }
 
-    pub fn get_hash(&self) -> [u64;4] {
-        use highway::{HighwayHasher, HighwayHash};
-        let rounded = SvgPolygonInner::from_line(self).round_to_3dec().get_all_pointcoords_sorted();
-        let bytes = rounded.iter().flat_map(|[a,b]| {
-            let mut a = a.to_le_bytes().to_vec();
-            a.extend(b.to_le_bytes().into_iter());
-            a
-        }).collect::<Vec<_>>();
+    pub fn get_hash(&self) -> [u64; 4] {
+        use highway::{
+            HighwayHash,
+            HighwayHasher,
+        };
+        let rounded = SvgPolygonInner::from_line(self)
+            .round_to_3dec()
+            .get_all_pointcoords_sorted();
+        let bytes = rounded
+            .iter()
+            .flat_map(|[a, b]| {
+                let mut a = a.to_le_bytes().to_vec();
+                a.extend(b.to_le_bytes().into_iter());
+                a
+            })
+            .collect::<Vec<_>>();
         let res3: [u64; 4] = HighwayHasher::default().hash256(&bytes);
         res3
     }
@@ -1640,42 +2121,47 @@ impl SvgLine {
                 let mut newp = self.points.clone();
                 newp.reverse();
                 newp
-            }
+            },
         }
     }
 
     pub fn insert_points_from(&self, other: &SvgPolygonInner, maxdst: f64) -> SvgLine {
         use crate::geograf::l_to_points;
-        let mut other_lines = other.outer_rings.iter().flat_map(|ol| l_to_points(ol)).collect::<Vec<_>>();
-        other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
-        
-        let mut newpoints = self.points.iter().flat_map(|p| {
-            
-            let mut nearest_other_line = other_lines
+        let mut other_lines = other
+            .outer_rings
             .iter()
-            .filter_map(|(start, end)| {
-                let dst = dist_to_segment(*p, *start, *end);
-                if dst.distance < maxdst {
-                    Some(dst)
-                } else {
-                    None
-                }
-            })
-            .map(|s| s.nearest_point)
+            .flat_map(|ol| l_to_points(ol))
             .collect::<Vec<_>>();
+        other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
 
-            nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
+        let mut newpoints = self
+            .points
+            .iter()
+            .flat_map(|p| {
+                let mut nearest_other_line = other_lines
+                    .iter()
+                    .filter_map(|(start, end)| {
+                        let dst = dist_to_segment(*p, *start, *end);
+                        if dst.distance < maxdst {
+                            Some(dst)
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|s| s.nearest_point)
+                    .collect::<Vec<_>>();
 
-            let mut ret = vec![*p];
-            ret.append(&mut nearest_other_line);
-            ret
-        }).collect::<Vec<_>>();
+                nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
+
+                let mut ret = vec![*p];
+                ret.append(&mut nearest_other_line);
+                ret
+            })
+            .collect::<Vec<_>>();
 
         newpoints.dedup_by(|a, b| a.equals(b));
 
-        SvgLine {
-            points: newpoints,
-        }
+        SvgLine { points: newpoints }
     }
 
     pub fn reverse(&self) -> SvgLine {
@@ -1683,7 +2169,7 @@ impl SvgLine {
         p.reverse();
         Self { points: p }
     }
-    
+
     pub fn is_closed(&self) -> bool {
         self.is_closed_internal().is_some()
     }
@@ -1710,17 +2196,22 @@ impl SvgLine {
 
         (p1, p2)
     }
-    
+
     pub fn equals(&self, other: &Self) -> bool {
-        self.points.len() == other.points.len() &&
-        self.points.iter().zip(other.points.iter()).all(|(a, b)| a.equals(b))
+        self.points.len() == other.points.len()
+            && self
+                .points
+                .iter()
+                .zip(other.points.iter())
+                .all(|(a, b)| a.equals(b))
     }
 
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         SvgPolygonInner {
             outer_rings: vec![self.clone()],
             inner_rings: Vec::new(),
-        }.get_rect()
+        }
+        .get_rect()
     }
 }
 
@@ -1731,7 +2222,6 @@ pub struct SvgPoint {
 }
 
 impl SvgPoint {
-
     pub fn translate(&self, x: f64, y: f64) -> Self {
         Self {
             x: self.x + x,
@@ -1756,16 +2246,15 @@ impl SvgPoint {
     }
 
     pub fn equals(&self, other: &Self) -> bool {
-        approx_eq!(f64, self.x, other.x, epsilon = 0.001) &&
-        approx_eq!(f64, self.y, other.y, epsilon = 0.001)
+        approx_eq!(f64, self.x, other.x, epsilon = 0.001)
+            && approx_eq!(f64, self.y, other.y, epsilon = 0.001)
     }
-
 
     pub fn equals_approx(&self, other: &Self, epsilon: f64) -> bool {
-        approx_eq!(f64, self.x, other.x, epsilon = epsilon) &&
-        approx_eq!(f64, self.y, other.y, epsilon = epsilon)
+        approx_eq!(f64, self.x, other.x, epsilon = epsilon)
+            && approx_eq!(f64, self.y, other.y, epsilon = epsilon)
     }
-    
+
     pub fn get_rect(&self, dst: f64) -> quadtree_f32::Rect {
         quadtree_f32::Rect {
             max_x: self.x + dst,
@@ -1776,7 +2265,7 @@ impl SvgPoint {
     }
 }
 
-impl Eq for SvgPoint { }
+impl Eq for SvgPoint {}
 
 impl Ord for SvgPoint {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
@@ -1796,14 +2285,13 @@ impl Ord for SvgPoint {
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
 pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
-
     // CRS parsen
 
     let mut crs: Option<String> = None;
     let crs_nodes = get_all_nodes_in_subtree(&xml, "AA_Koordinatenreferenzsystemangaben");
     for c in crs_nodes {
         match get_all_nodes_in_subtree(&c.children, "standard").first() {
-            Some(XmlNode { text: Some(s), .. }) if s == "true" => { },
+            Some(XmlNode { text: Some(s), .. }) if s == "true" => {}
             _ => continue,
         }
         let nodes = get_all_nodes_in_subtree(&c.children, "crs");
@@ -1833,7 +2321,7 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
             Some(s) => s,
             None => continue,
         };
-        let flst_id = match o_node.attributes.get("id") {
+        let _flst_id = match o_node.attributes.get("id") {
             Some(s) => s.clone(),
             None => continue,
         };
@@ -1845,19 +2333,18 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
             Some(s) => s,
             None => continue,
         };
-        
-        let mut attributes = o_node.children.iter()
-        .filter_map(|cn| match &cn.text {
-            Some(s) => Some((cn.node_type.clone(), s.clone())),
-            None => None,
-        }).collect::<BTreeMap<_, _>>();
+
+        let mut attributes = o_node
+            .children
+            .iter()
+            .filter_map(|cn| match &cn.text {
+                Some(s) => Some((cn.node_type.clone(), s.clone())),
+                None => None,
+            })
+            .collect::<BTreeMap<_, _>>();
         attributes.extend(o_node.attributes.clone().into_iter());
 
-
-        let tp = TaggedPolygon {
-            poly,
-            attributes,
-        };
+        let tp = TaggedPolygon { poly, attributes };
 
         objekte.entry(key).or_insert_with(|| Vec::new()).push(tp);
     }
@@ -1868,9 +2355,7 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
     })
 }
 
-
 fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
-
     let patches = get_all_nodes_in_subtree(&xml, "PolygonPatch");
     if patches.is_empty() {
         return None;
@@ -1878,10 +2363,12 @@ fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
 
     let mut outer_rings = Vec::new();
     let mut inner_rings = Vec::new();
-    let children = patches.iter().flat_map(|s| s.children.clone()).collect::<Vec<_>>();
+    let children = patches
+        .iter()
+        .flat_map(|s| s.children.clone())
+        .collect::<Vec<_>>();
 
     for e_i in children.iter() {
-
         let external = match e_i.node_type.as_str() {
             "exterior" => true,
             "interior" => false,
@@ -1893,27 +2380,31 @@ fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
         let linestring_points = linestrings
             .iter()
             .flat_map(|s| {
-                s.children.iter()
-                .filter_map(|s| s.text.clone())
-                .map(|text| {
-                    let pts = text
-                    .split_whitespace()
-                    .filter_map(|s| s.parse::<f64>().ok())
-                    .collect::<Vec<_>>();
-                    pts.chunks(2).filter_map(|f| {
-                        match f {
-                            [east, false_north] => Some(SvgPoint {
-                                x: *east,
-                                y: *false_north,
-                            }),
-                            _ => None,
-                        }
-                    }).collect::<Vec<_>>()
-                })
+                s.children
+                    .iter()
+                    .filter_map(|s| s.text.clone())
+                    .map(|text| {
+                        let pts = text
+                            .split_whitespace()
+                            .filter_map(|s| s.parse::<f64>().ok())
+                            .collect::<Vec<_>>();
+                        pts.chunks(2)
+                            .filter_map(|f| match f {
+                                [east, false_north] => Some(SvgPoint {
+                                    x: *east,
+                                    y: *false_north,
+                                }),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
             })
             .collect::<Vec<_>>();
 
-        let mut line_points = linestring_points.into_iter().flat_map(|f| f.into_iter()).collect::<Vec<_>>();
+        let mut line_points = linestring_points
+            .into_iter()
+            .flat_map(|f| f.into_iter())
+            .collect::<Vec<_>>();
         line_points.dedup();
         if line_points.len() < 3 {
             return None;
@@ -1953,78 +2444,99 @@ pub struct MemberObject {
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NasXmlObjects {
-    pub objects: BTreeMap<String, MemberObject>
+    pub objects: BTreeMap<String, MemberObject>,
 }
 
 pub fn parse_nas_xml_objects(xml: &Vec<XmlNode>) -> NasXmlObjects {
-    
     let mut map = BTreeMap::new();
 
     let objekte_nodes = get_all_nodes_in_subtree(&xml, "member");
-    
+
     for o in objekte_nodes.iter() {
-        
         let o_node = match o.children.first() {
             Some(s) => s,
             None => continue,
         };
-        
+
         let id = match o_node.attributes.get("id").map(|s| s.clone()) {
             Some(s) => s,
             None => continue,
         };
-        
-        let beginnt = match o_node.select_subitems(&["lebenszeitintervall", "AA_Lebenszeitintervall", "beginnt"])
-        .first().and_then(|s| DateTime::parse_from_rfc3339(&s.text.as_ref()?).ok()) {
+
+        let beginnt = match o_node
+            .select_subitems(&["lebenszeitintervall", "AA_Lebenszeitintervall", "beginnt"])
+            .first()
+            .and_then(|s| DateTime::parse_from_rfc3339(&s.text.as_ref()?).ok())
+        {
             Some(s) => s,
             None => continue,
         };
-        
+
         let member_type = o_node.node_type.clone();
 
-        let dient_zur_darstellung_von = o_node.select_subitems(&["dientZurDarstellungVon"])
-        .first().and_then(|s| s.attributes.get("href").cloned());
+        let dient_zur_darstellung_von = o_node
+            .select_subitems(&["dientZurDarstellungVon"])
+            .first()
+            .and_then(|s| s.attributes.get("href").cloned());
 
-        let ist_bestandteil_von = o_node.select_subitems(&["istBestandteilVon"])
-        .first().and_then(|s| s.attributes.get("href").cloned());
+        let ist_bestandteil_von = o_node
+            .select_subitems(&["istBestandteilVon"])
+            .first()
+            .and_then(|s| s.attributes.get("href").cloned());
 
-        let ist_teil_von = o_node.select_subitems(&["istTeilVon"])
-        .first().and_then(|s| s.attributes.get("href").cloned());
+        let ist_teil_von = o_node
+            .select_subitems(&["istTeilVon"])
+            .first()
+            .and_then(|s| s.attributes.get("href").cloned());
 
-        let hat = o_node.select_subitems(&["hat"])
-        .first().and_then(|s| s.attributes.get("href").cloned());
+        let hat = o_node
+            .select_subitems(&["hat"])
+            .first()
+            .and_then(|s| s.attributes.get("href").cloned());
 
-        let poly = xml_select_svg_polygon(&o_node.select_subitems(&["position"]).into_iter().cloned().collect());
+        let poly = xml_select_svg_polygon(
+            &o_node
+                .select_subitems(&["position"])
+                .into_iter()
+                .cloned()
+                .collect(),
+        );
 
-        let extra_attribute = o_node.children.iter()
-        .filter_map(|s| Some((s.node_type.clone(), s.text.clone()?)))
-        .collect();
+        let extra_attribute = o_node
+            .children
+            .iter()
+            .filter_map(|s| Some((s.node_type.clone(), s.text.clone()?)))
+            .collect();
 
-        map.insert(id, MemberObject {
-            member_type,
-            beginnt,
-            dient_zur_darstellung_von,
-            ist_bestandteil_von,
-            hat,
-            ist_teil_von,
-            extra_attribute,
-            poly,
-        });
+        map.insert(
+            id,
+            MemberObject {
+                member_type,
+                beginnt,
+                dient_zur_darstellung_von,
+                ist_bestandteil_von,
+                hat,
+                ist_teil_von,
+                extra_attribute,
+                poly,
+            },
+        );
     }
 
     NasXmlObjects { objects: map }
 }
 
 fn get_proj_string(input: &str) -> Option<String> {
-
     let mut known_strings = BTreeMap::new();
     for i in 0..60 {
-        known_strings.insert(format!("ETRS89_UTM{i}"), format!("+proj=utm +ellps=GRS80 +units=m +no_defs +zone={i}"));
+        known_strings.insert(
+            format!("ETRS89_UTM{i}"),
+            format!("+proj=utm +ellps=GRS80 +units=m +no_defs +zone={i}"),
+        );
     }
 
     known_strings.get(input).cloned()
 }
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum UseRadians {
@@ -2053,24 +2565,44 @@ impl UseRadians {
     }
 }
 
-pub fn reproject_line(line: &SvgLine, source: &Proj, target: &Proj, use_radians: UseRadians) -> SvgLine {
+pub fn reproject_line(
+    line: &SvgLine,
+    source: &Proj,
+    target: &Proj,
+    use_radians: UseRadians,
+) -> SvgLine {
     SvgLine {
-        points: line.points.iter().filter_map(|p| {
-            reproject_point(p, source, target, use_radians)
-        }).collect()
+        points: line
+            .points
+            .iter()
+            .filter_map(|p| reproject_point(p, source, target, use_radians))
+            .collect(),
     }
 }
 
-pub fn reproject_point(p: &SvgPoint, source: &Proj, target: &Proj, use_radians: UseRadians) -> Option<SvgPoint> {
-    let mut point3d = if use_radians.for_source()  {
-        (p.x.to_radians(), p.y.to_radians(), 0.0_f64) 
+pub fn reproject_point(
+    p: &SvgPoint,
+    source: &Proj,
+    target: &Proj,
+    use_radians: UseRadians,
+) -> Option<SvgPoint> {
+    let mut point3d = if use_radians.for_source() {
+        (p.x.to_radians(), p.y.to_radians(), 0.0_f64)
     } else {
-        (p.x, p.y, 0.0_f64) 
+        (p.x, p.y, 0.0_f64)
     };
     proj4rs::transform::transform(source, target, &mut point3d).ok()?;
     Some(SvgPoint {
-        x: if use_radians.for_target() { point3d.0 } else { point3d.0.to_degrees() }, 
-        y: if use_radians.for_target() { point3d.1 } else { point3d.1.to_degrees() },
+        x: if use_radians.for_target() {
+            point3d.0
+        } else {
+            point3d.0.to_degrees()
+        },
+        y: if use_radians.for_target() {
+            point3d.1
+        } else {
+            point3d.1.to_degrees()
+        },
     })
 }
 
@@ -2081,31 +2613,44 @@ pub fn reproject_poly(
     use_radians: UseRadians,
 ) -> SvgPolygonInner {
     SvgPolygonInner {
-        outer_rings: poly.outer_rings.iter()
-        .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
-        .collect(),
-        inner_rings: poly.inner_rings.iter()
-        .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
-        .collect(),
+        outer_rings: poly
+            .outer_rings
+            .iter()
+            .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
+            .collect(),
+        inner_rings: poly
+            .inner_rings
+            .iter()
+            .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
+            .collect(),
     }
 }
 
-pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -> Result<NasXMLFile, String> {
+pub fn transform_nas_xml_to_lat_lon(
+    input: &NasXMLFile,
+    _log: &mut Vec<String>,
+) -> Result<NasXMLFile, String> {
     let source_proj = Proj::from_proj_string(&input.crs)
-    .map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
-    
-    let latlon_proj = Proj::from_proj_string(LATLON_STRING)
-    .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+        .map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
 
-    let objekte = input.ebenen.iter()
-    .map(|(k, v)| {
-        (k.clone(), v.iter().map(|v| {
-            TaggedPolygon {
-                attributes: v.attributes.clone(),
-                poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None)
-            }
-        }).collect())
-    }).collect();
+    let latlon_proj = Proj::from_proj_string(LATLON_STRING)
+        .map_err(|e| format!("latlon_proj_string: {e}: {LATLON_STRING:?}"))?;
+
+    let objekte = input
+        .ebenen
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                v.iter()
+                    .map(|v| TaggedPolygon {
+                        attributes: v.attributes.clone(),
+                        poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
+                    })
+                    .collect(),
+            )
+        })
+        .collect();
 
     Ok(NasXMLFile {
         ebenen: objekte,
@@ -2113,27 +2658,48 @@ pub fn transform_nas_xml_to_lat_lon(input: &NasXMLFile, log: &mut Vec<String>) -
     })
 }
 
-pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<String>) -> Result<SplitNasXml, String> {
-    let source_proj = Proj::from_proj_string(&input.crs).map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
+pub fn transform_split_nas_xml_to_lat_lon(
+    input: &SplitNasXml,
+    _log: &mut Vec<String>,
+) -> Result<SplitNasXml, String> {
+    let source_proj = Proj::from_proj_string(&input.crs)
+        .map_err(|e| format!("source_proj_string: {e}: {:?}", input.crs))?;
     let latlon_proj_string = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-    let latlon_proj = Proj::from_proj_string(latlon_proj_string).map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
+    let latlon_proj = Proj::from_proj_string(latlon_proj_string)
+        .map_err(|e| format!("latlon_proj_string: {e}: {latlon_proj_string:?}"))?;
 
-    let flurstuecke_nutzungen = input.flurstuecke_nutzungen.iter()
-    .map(|(k, v)| {
-        (k.clone(), v.iter().map(|v| {
-            TaggedPolygon {
-                attributes: v.attributes.clone(),
-                poly: SvgPolygonInner {
-                    outer_rings: v.poly.outer_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, UseRadians::None))
+    let flurstuecke_nutzungen = input
+        .flurstuecke_nutzungen
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                v.iter()
+                    .map(|v| TaggedPolygon {
+                        attributes: v.attributes.clone(),
+                        poly: SvgPolygonInner {
+                            outer_rings: v
+                                .poly
+                                .outer_rings
+                                .iter()
+                                .map(|l| {
+                                    reproject_line(l, &source_proj, &latlon_proj, UseRadians::None)
+                                })
+                                .collect(),
+                            inner_rings: v
+                                .poly
+                                .inner_rings
+                                .iter()
+                                .map(|l| {
+                                    reproject_line(l, &source_proj, &latlon_proj, UseRadians::None)
+                                })
+                                .collect(),
+                        },
+                    })
                     .collect(),
-                    inner_rings: v.poly.inner_rings.iter()
-                    .map(|l| reproject_line(l, &source_proj, &latlon_proj, UseRadians::None))
-                    .collect(),
-                }
-            }
-        }).collect())
-    }).collect();
+            )
+        })
+        .collect();
 
     Ok(SplitNasXml {
         flurstuecke_nutzungen: flurstuecke_nutzungen,
@@ -2143,13 +2709,16 @@ pub fn transform_split_nas_xml_to_lat_lon(input: &SplitNasXml, log: &mut Vec<Str
 
 pub fn fixup_flst_groesse(unprojected: &SplitNasXml, projected: &mut SplitNasXml) {
     for (key, up_polys) in unprojected.flurstuecke_nutzungen.iter() {
-        let mut p_polys = match projected.flurstuecke_nutzungen.get_mut(key) {
+        let p_polys = match projected.flurstuecke_nutzungen.get_mut(key) {
             Some(s) => s,
             None => continue,
         };
         for (up, p) in up_polys.iter().zip(p_polys.iter_mut()) {
             let up_size = up.get_groesse();
-            p.attributes.insert("BerechneteGroesseM2".to_string(), up_size.round().to_string());
+            p.attributes.insert(
+                "BerechneteGroesseM2".to_string(),
+                up_size.round().to_string(),
+            );
         }
     }
 }
@@ -2178,72 +2747,98 @@ fn default_etrs33() -> String {
 }
 
 impl SplitNasXml {
-
     pub fn only_retain_gemarkung(&self, target_gemarkung: usize) -> Self {
         Self {
             crs: self.crs.clone(),
-            flurstuecke_nutzungen: self.flurstuecke_nutzungen.iter().filter_map(|(id, polys)| {
-                let oid = FlstIdParsed::from_str(&id).parse_num()?;
-                if oid.gemarkung == target_gemarkung {
-                    Some((id.clone(), polys.clone()))
-                } else {
-                    None
-                }
-            }).collect()
+            flurstuecke_nutzungen: self
+                .flurstuecke_nutzungen
+                .iter()
+                .filter_map(|(id, polys)| {
+                    let oid = FlstIdParsed::from_str(&id).parse_num()?;
+                    if oid.gemarkung == target_gemarkung {
+                        Some((id.clone(), polys.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
         }
     }
 
     pub fn as_splitflaechen(&self) -> Vec<AenderungenIntersection> {
-        self.flurstuecke_nutzungen.iter()
-        .flat_map(|(flst_id, nutzungen)| {
-            nutzungen.iter().filter_map(|tp| {
-                let ebene = tp.get_ebene()?;
-                let kuerzel = tp.get_auto_kuerzel(&ebene)?;
-                Some(AenderungenIntersection {
-                    alt: kuerzel.clone(),
-                    neu: kuerzel,
-                    flst_id: tp.get_flurstueck_id()?,
-                    poly_cut: tp.poly.clone(),
-                    flst_id_part: tp.get_flst_part_id()?,
-                } )
+        self.flurstuecke_nutzungen
+            .iter()
+            .flat_map(|(_flst_id, nutzungen)| {
+                nutzungen.iter().filter_map(|tp| {
+                    let ebene = tp.get_ebene()?;
+                    let kuerzel = tp.get_auto_kuerzel(&ebene)?;
+                    Some(AenderungenIntersection {
+                        alt: kuerzel.clone(),
+                        neu: kuerzel,
+                        flst_id: tp.get_flurstueck_id()?,
+                        poly_cut: tp.poly.clone(),
+                        flst_id_part: tp.get_flst_part_id()?,
+                    })
+                })
             })
-        }).collect::<Vec<_>>()
+            .collect::<Vec<_>>()
     }
 
     pub fn migrate_future(&self, spliflaechen: &[AenderungenIntersection]) -> Self {
         Self {
             crs: self.crs.clone(),
-            flurstuecke_nutzungen: self.flurstuecke_nutzungen.iter().map(|(k, v)| {
+            flurstuecke_nutzungen: self
+                .flurstuecke_nutzungen
+                .iter()
+                .map(|(k, v)| {
+                    let flst_parts_neu = spliflaechen
+                        .iter()
+                        .filter_map(|ai| {
+                            if ai.flst_id == *k {
+                                Some(TaggedPolygon {
+                                    attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(
+                                        &ai.neu, k,
+                                    ),
+                                    poly: ai.poly_cut.clone(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>();
 
-                let flst_parts_neu = spliflaechen.iter()
-                .filter_map(|ai| if ai.flst_id == *k {
-                    Some(TaggedPolygon {
-                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&ai.neu, k),
-                        poly: ai.poly_cut.clone(),
-                    })
-                } else {
-                    None
+                    if flst_parts_neu.is_empty() {
+                        (k.clone(), v.clone())
+                    } else {
+                        (k.clone(), flst_parts_neu)
+                    }
                 })
-                .collect::<Vec<_>>();
-
-                if flst_parts_neu.is_empty() {
-                    (k.clone(), v.clone())
-                } else {
-                    (k.clone(), flst_parts_neu)
-                }
-            }).collect()
+                .collect(),
         }
     }
-    
-    pub fn get_linien_quadtree(&self) -> LinienQuadTree {
 
-        let mut alle_linie_split_flurstuecke = self.flurstuecke_nutzungen.iter().flat_map(|(_, s)| {
-            s.iter().flat_map(|q| {
-                let mut lines = q.poly.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
-                lines.extend(q.poly.inner_rings.iter().flat_map(crate::geograf::l_to_points));
-                lines
+    pub fn get_linien_quadtree(&self) -> LinienQuadTree {
+        let mut alle_linie_split_flurstuecke = self
+            .flurstuecke_nutzungen
+            .iter()
+            .flat_map(|(_, s)| {
+                s.iter().flat_map(|q| {
+                    let mut lines = q
+                        .poly
+                        .outer_rings
+                        .iter()
+                        .flat_map(crate::geograf::l_to_points)
+                        .collect::<Vec<_>>();
+                    lines.extend(
+                        q.poly
+                            .inner_rings
+                            .iter()
+                            .flat_map(crate::geograf::l_to_points),
+                    );
+                    lines
+                })
             })
-        }).collect::<Vec<_>>();
+            .collect::<Vec<_>>();
         alle_linie_split_flurstuecke.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
         alle_linie_split_flurstuecke.dedup();
         let alle_linie_split_flurstuecke = alle_linie_split_flurstuecke;
@@ -2260,23 +2855,23 @@ impl SplitNasXml {
         };
 
         match intersect_id {
-            Some(s) => {
-                self.flurstuecke_nutzungen.get(ax_flurstueck)?
+            Some(s) => self
+                .flurstuecke_nutzungen
+                .get(ax_flurstueck)?
                 .iter()
                 .find(|p| {
-                    p.get_ebene().as_deref() == Some(ax_ebene) &&
-                    p.attributes.get("AX_IntersectionId").map(|s| s.as_str()) == Some(s) &&
-                    p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
-                })
-            },
-            None => {
-                self.flurstuecke_nutzungen.get(ax_flurstueck)?
+                    p.get_ebene().as_deref() == Some(ax_ebene)
+                        && p.attributes.get("AX_IntersectionId").map(|s| s.as_str()) == Some(s)
+                        && p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
+                }),
+            None => self
+                .flurstuecke_nutzungen
+                .get(ax_flurstueck)?
                 .iter()
                 .find(|p| {
-                    p.get_ebene().as_deref() == Some(ax_ebene) &&
-                    p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
-                })
-            }
+                    p.get_ebene().as_deref() == Some(ax_ebene)
+                        && p.attributes.get("id").map(|s| s.as_str()) == Some(cut_obj_id)
+                }),
         }
     }
 }
@@ -2291,25 +2886,29 @@ pub struct NasXmlQuadTree {
 
 impl NasXmlQuadTree {
     pub fn from_aenderungen(aenderungen: &Aenderungen) -> Self {
-
         let original = NasXMLFile {
             crs: "".to_string(),
-            ebenen: aenderungen.na_polygone_neu.iter().map(|(k, v)| {
-                (k.clone(), vec![TaggedPolygon {
-                    attributes: {
-                        let mut q = vec![
-                            ("aenderungID".to_string(), k.to_string()),
-                        ];
-                        if let Some(n) = v.nutzung.clone() {
-                            q.push(("nutzung".to_string(), n.to_string()));
-                        }
-                        q.into_iter().collect()
-                    },
-                    poly: v.poly.get_inner(),
-                }])
-            }).collect::<BTreeMap<_, _>>()
+            ebenen: aenderungen
+                .na_polygone_neu
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        vec![TaggedPolygon {
+                            attributes: {
+                                let mut q = vec![("aenderungID".to_string(), k.to_string())];
+                                if let Some(n) = v.nutzung.clone() {
+                                    q.push(("nutzung".to_string(), n.to_string()));
+                                }
+                                q.into_iter().collect()
+                            },
+                            poly: v.poly.get_inner(),
+                        }],
+                    )
+                })
+                .collect::<BTreeMap<_, _>>(),
         };
-    
+
         let mut ebenen_map = BTreeMap::new();
         let mut items = BTreeMap::new();
         let mut itemid = 0;
@@ -2321,7 +2920,7 @@ impl NasXmlQuadTree {
                 ebenen_map.insert(id, (flst_id.clone(), i));
             }
         }
-        
+
         let qt = QuadTree::new(items.into_iter());
 
         Self {
@@ -2333,21 +2932,23 @@ impl NasXmlQuadTree {
     }
 
     pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<TaggedPolygon> {
-        self.qt.get_ids_that_overlap(rect)
-        .into_iter()
-        .filter_map(|itemid| {
-            let (flst_id, i) = self.ebenen_map.get(&itemid)?;
-            self.original.ebenen.get(flst_id)?.get(*i).cloned()
-        }).collect()
+        self.qt
+            .get_ids_that_overlap(rect)
+            .into_iter()
+            .filter_map(|itemid| {
+                let (flst_id, i) = self.ebenen_map.get(&itemid)?;
+                self.original.ebenen.get(flst_id)?.get(*i).cloned()
+            })
+            .collect()
     }
 
     // return = empty if points not on any flst line
     pub fn get_line_between_points(
-        &self, 
-        start: &SvgPoint, 
-        end: &SvgPoint, 
-        log: &mut Vec<String>, 
-        maxdst_line: f64, 
+        &self,
+        start: &SvgPoint,
+        end: &SvgPoint,
+        log: &mut Vec<String>,
+        maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
         exclude_id: Option<String>,
@@ -2399,7 +3000,6 @@ impl SplitNasXml {
     }
 
     pub fn create_quadtree(&self) -> SplitNasXmlQuadTree {
-
         let mut flst_nutzungen_map = BTreeMap::new();
         let mut items = BTreeMap::new();
         let mut itemid = 0;
@@ -2411,7 +3011,7 @@ impl SplitNasXml {
                 flst_nutzungen_map.insert(id, (flst_id.clone(), i));
             }
         }
-        
+
         let qt = QuadTree::new(items.into_iter());
 
         SplitNasXmlQuadTree {
@@ -2425,17 +3025,28 @@ impl SplitNasXml {
 
 impl SplitNasXmlQuadTree {
     pub fn get_overlapping_flst(&self, rect: &quadtree_f32::Rect) -> Vec<(String, TaggedPolygon)> {
-        self.qt.get_ids_that_overlap(rect)
-        .into_iter()
-        .filter_map(|itemid| {
-            let (flst_id, i) = self.flst_nutzungen_map.get(&itemid)?;
-            Some((flst_id.clone(), self.original.flurstuecke_nutzungen.get(flst_id)?.get(*i).cloned()?))
-        }).collect()
+        self.qt
+            .get_ids_that_overlap(rect)
+            .into_iter()
+            .filter_map(|itemid| {
+                let (flst_id, i) = self.flst_nutzungen_map.get(&itemid)?;
+                Some((
+                    flst_id.clone(),
+                    self.original
+                        .flurstuecke_nutzungen
+                        .get(flst_id)?
+                        .get(*i)
+                        .cloned()?,
+                ))
+            })
+            .collect()
     }
 }
 
-pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) -> Result<SplitNasXml, String> {
-
+pub fn split_xml_flurstuecke_inner(
+    input: &NasXMLFile,
+    _log: &mut Vec<String>,
+) -> Result<SplitNasXml, String> {
     let mut input = input.clone();
     let mut default = SplitNasXml {
         crs: input.crs.clone(),
@@ -2460,62 +3071,74 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
         }
     }
 
-    let nutzungs_qt = QuadTree::new(btree_id_to_poly.iter().map(|(k, v)| {
-        (ItemId(*k), Item::Rect(v.get_rect()))
-    }));
+    let nutzungs_qt = QuadTree::new(
+        btree_id_to_poly
+            .iter()
+            .map(|(k, v)| (ItemId(*k), Item::Rect(v.get_rect()))),
+    );
 
-    let flurstuecke_nutzungen = ax_flurstuecke.iter().filter_map(|flst| {
+    let flurstuecke_nutzungen = ax_flurstuecke
+        .iter()
+        .filter_map(|flst| {
+            let id = flst
+                .attributes
+                .get("flurstueckskennzeichen")?
+                .replace("_", "");
+            let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
 
-        let id = flst.attributes.get("flurstueckskennzeichen")?.replace("_", "");
-        let id = FlstIdParsed::from_str(&id).parse_num()?.format_start_str();
+            let bounds = flst.get_rect();
+            let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
+            let polys = ids
+                .iter()
+                .filter_map(|i| btree_id_to_poly.get(&i.0))
+                .collect::<Vec<_>>();
 
-        let bounds = flst.get_rect();
-        let ids = nutzungs_qt.get_ids_that_overlap(&bounds);
-        let polys = ids.iter().filter_map(|i| btree_id_to_poly.get(&i.0)).collect::<Vec<_>>();
+            let flst_area = flst.poly.area_m2();
 
-        let flst_area = flst.poly.area_m2();
+            let mut polys = polys
+                .iter()
+                .flat_map(|p| {
+                    let intersection_mp = intersect_polys(&flst.poly, &p.poly);
+                    intersection_mp
+                        .into_iter()
+                        .filter(|p| !p.is_zero_area())
+                        .enumerate()
+                        .filter_map(|(i, svg_poly)| {
+                            let tp = TaggedPolygon {
+                                attributes: {
+                                    let mut attrs = p.attributes.clone();
+                                    attrs.insert("AX_Flurstueck".to_string(), id.clone());
+                                    attrs.insert("AX_IntersectionId".to_string(), i.to_string());
+                                    attrs
+                                },
+                                poly: svg_poly,
+                            };
+                            let ebene = p.get_ebene()?;
+                            let kuerzel = tp.get_auto_kuerzel(&ebene)?;
+                            let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?;
+                            Some((tp, nak))
+                        })
+                })
+                .collect::<Vec<_>>();
 
-        let mut polys = polys.iter().flat_map(|p| {
-            let intersection_mp = intersect_polys(&flst.poly, &p.poly);
-            intersection_mp
-            .into_iter()
-            .filter(|p| !p.is_zero_area())
-            .enumerate()
-            .filter_map(|(i, svg_poly)| {
-
-                let tp = TaggedPolygon {
-                    attributes: {
-                        let mut attrs = p.attributes.clone();
-                        attrs.insert("AX_Flurstueck".to_string(), id.clone());
-                        attrs.insert("AX_IntersectionId".to_string(), i.to_string());
-                        attrs
-                    },
-                    poly: svg_poly,
-                };
-                let ebene = p.get_ebene()?;
-                let kuerzel = tp.get_auto_kuerzel(&ebene)?;
-                let nak = TaggedPolygon::get_nutzungsartenkennung(&kuerzel)?;
-                Some((tp, nak))
-            })
-        }).collect::<Vec<_>>();
-
-        polys.sort_by(|a, b| a.1.cmp(&b.1));
-        let mut sum_poly_areas = 0.0;
-        let mut final_polys = Vec::new();
-        for tp in polys.iter() {
-            let tp_area = tp.0.poly.area_m2();
-            sum_poly_areas += tp_area;
-            if sum_poly_areas < (flst_area + 1.0) {
-                final_polys.push(tp.0.clone());
+            polys.sort_by(|a, b| a.1.cmp(&b.1));
+            let mut sum_poly_areas = 0.0;
+            let mut final_polys = Vec::new();
+            for tp in polys.iter() {
+                let tp_area = tp.0.poly.area_m2();
+                sum_poly_areas += tp_area;
+                if sum_poly_areas < (flst_area + 1.0) {
+                    final_polys.push(tp.0.clone());
+                }
             }
-        }
 
-        if final_polys.is_empty() {
-            None
-        } else {
-            Some((id.clone(), final_polys))
-        }
-    }).collect();
+            if final_polys.is_empty() {
+                None
+            } else {
+                Some((id.clone(), final_polys))
+            }
+        })
+        .collect();
 
     Ok(SplitNasXml {
         crs: input.crs.clone(),
@@ -2524,27 +3147,50 @@ pub fn split_xml_flurstuecke_inner(input: &NasXMLFile, log: &mut Vec<String>) ->
 }
 
 pub fn cleanup_poly(s: &SvgPolygonInner) -> SvgPolygonInner {
+    let outer_rings = s
+        .outer_rings
+        .iter()
+        .filter_map(|l| {
+            if SvgPolygonInner::from_line(l).is_zero_area() {
+                None
+            } else {
+                Some(l)
+            }
+        })
+        .filter_map(|r| {
+            let mut s = SvgPolygonInner::from_line(r);
+            s.correct_winding_order();
+            if s.is_zero_area() {
+                None
+            } else {
+                s.outer_rings.get(0).cloned()
+            }
+        })
+        .flat_map(|r| clean_ring_2(&r))
+        .collect();
 
-    let outer_rings = s.outer_rings.iter()
-    .filter_map(|l| if SvgPolygonInner::from_line(l).is_zero_area() { None } else { Some(l) })
-    .filter_map(|r| {
-        let mut s =  SvgPolygonInner::from_line(r);
-        s.correct_winding_order();
-        if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
-    })
-    .flat_map(|r| clean_ring_2(&r))
-    .collect();
-
-    let inner_rings = s.inner_rings.iter()
-    .filter_map(|l| if SvgPolygonInner::from_line(l).is_zero_area() { None } else { Some(l) })
-    .filter_map(|r| {
-        let mut s =  SvgPolygonInner::from_line(r);
-        s.correct_winding_order();
-        if s.is_zero_area()  { None } else { s.outer_rings.get(0).cloned() }
-    })
-    .flat_map(|r| clean_ring_2(&r))
-    .map(|l| l.reverse())
-    .collect();
+    let inner_rings = s
+        .inner_rings
+        .iter()
+        .filter_map(|l| {
+            if SvgPolygonInner::from_line(l).is_zero_area() {
+                None
+            } else {
+                Some(l)
+            }
+        })
+        .filter_map(|r| {
+            let mut s = SvgPolygonInner::from_line(r);
+            s.correct_winding_order();
+            if s.is_zero_area() {
+                None
+            } else {
+                s.outer_rings.get(0).cloned()
+            }
+        })
+        .flat_map(|r| clean_ring_2(&r))
+        .map(|l| l.reverse())
+        .collect();
 
     SvgPolygonInner {
         outer_rings,
@@ -2553,7 +3199,6 @@ pub fn cleanup_poly(s: &SvgPolygonInner) -> SvgPolygonInner {
 }
 
 fn clean_ring_2(r: &SvgLine) -> Vec<SvgLine> {
-    
     let mut p1 = clean_points(&r.points);
     p1.reverse();
     let mut p2 = clean_points(&p1);
@@ -2568,10 +3213,13 @@ const CLEAN_LINE_DST: f64 = 0.1;
 
 fn clean_points(points: &[SvgPoint]) -> Vec<SvgPoint> {
     // insert points whenever a line ends on another line
-    let mut lines = points.windows(2).map(|a| match &a {
-        &[a, b] => vec![*a, *b],
-        _ => Vec::new(),
-    }).collect::<Vec<_>>();
+    let mut lines = points
+        .windows(2)
+        .map(|a| match &a {
+            &[a, b] => vec![*a, *b],
+            _ => Vec::new(),
+        })
+        .collect::<Vec<_>>();
 
     for r in points.iter().skip(1).take(points.len().saturating_sub(2)) {
         for p in lines.iter_mut() {
@@ -2590,7 +3238,10 @@ fn clean_points(points: &[SvgPoint]) -> Vec<SvgPoint> {
         }
     }
 
-    let mut points = lines.into_iter().flat_map(|v| v.into_iter()).collect::<Vec<_>>();
+    let mut points = lines
+        .into_iter()
+        .flat_map(|v| v.into_iter())
+        .collect::<Vec<_>>();
     points.dedup_by(|a, b| a.equals(&b));
     points
 }
@@ -2635,44 +3286,42 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
         newpoints.push(*p);
     }
     newpoints.dedup_by(|a, b| a.equals(&b));
-    v.push(SvgLine {
-        points: newpoints,
-    });
+    v.push(SvgLine { points: newpoints });
 }
 
+macro_rules! define_func {
+    ($fn_name:ident, $op:expr) => {
+        pub fn $fn_name(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
+            use geo::BooleanOps;
 
-macro_rules! define_func {($fn_name:ident, $op:expr) => {
-        
-    pub fn $fn_name(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
-        use geo::BooleanOps;
+            let mut a = a.round_to_3dec();
+            let mut b = b.round_to_3dec();
+            a.correct_winding_order();
+            b.correct_winding_order();
 
-        let mut a = a.round_to_3dec();
-        let mut b = b.round_to_3dec();
-        a.correct_winding_order();
-        b.correct_winding_order();
+            if a.is_zero_area() {
+                return Vec::new();
+            }
+            if b.is_zero_area() {
+                return Vec::new();
+            }
+            if a.equals(&b) {
+                return vec![a];
+            }
 
-        if a.is_zero_area() {
-            return Vec::new();
+            let a = translate_to_geo_poly(&a);
+            let b = translate_to_geo_poly(&b);
+            let intersect = a.boolean_op(&b, $op);
+            let mut s = translate_from_geo_poly(&intersect);
+
+            for q in s.iter_mut() {
+                q.correct_winding_order();
+            }
+
+            s
         }
-        if b.is_zero_area() {
-            return Vec::new();
-        }
-        if a.equals(&b) {
-            return vec![a];
-        }
-
-        let a = translate_to_geo_poly(&a);
-        let b = translate_to_geo_poly(&b);
-        let intersect = a.boolean_op(&b, $op);
-        let mut s = translate_from_geo_poly(&intersect);
-
-        for q in s.iter_mut() {
-            q.correct_winding_order();
-        }
-        
-        s
-    }
-};}
+    };
+}
 
 define_func!(intersect_polys, geo::OpType::Intersection);
 define_func!(xor_polys, geo::OpType::Xor);
@@ -2690,7 +3339,9 @@ fn xor_combine(a: &SvgPolygonInner, b: &SvgPolygonInner) -> SvgPolygonInner {
 
 fn union(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
     let xor = xor_combine(a, b);
-    translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&xor).convex_hull()]))
+    translate_from_geo_poly(&geo::MultiPolygon(vec![
+        translate_to_geo_poly(&xor).convex_hull()
+    ]))
 }
 
 pub fn convex_hull_polys(a: &SvgPolygonInner, b: &[SvgPolygonInner]) -> SvgPolygonInner {
@@ -2698,8 +3349,12 @@ pub fn convex_hull_polys(a: &SvgPolygonInner, b: &[SvgPolygonInner]) -> SvgPolyg
     for b in b.iter() {
         x = xor_combine(&x, b);
     }
-    translate_from_geo_poly(&geo::MultiPolygon(vec![translate_to_geo_poly(&x).convex_hull()]))
-    .get(0).cloned().unwrap_or_default()
+    translate_from_geo_poly(&geo::MultiPolygon(vec![
+        translate_to_geo_poly(&x).convex_hull()
+    ]))
+    .get(0)
+    .cloned()
+    .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2733,21 +3388,22 @@ fn point_in_line_2(p: &SvgPoint, l: &SvgLine) -> bool {
     let mut count = 0;
     for side in l.points.windows(2) {
         match &side {
-            &[a, b] => if ray_intersects_segment(p, (a, b)) {
-                count += 1;
-            },
-            _ => { }
+            &[a, b] => {
+                if ray_intersects_segment(p, (a, b)) {
+                    count += 1;
+                }
+            }
+            _ => {}
         }
     }
     if count % 2 == 0 {
         false // outside
     } else {
-        true // inside 
+        true // inside
     }
 }
 
 fn ray_intersects_segment(p: &SvgPoint, (mut a, mut b): (&SvgPoint, &SvgPoint)) -> bool {
-
     // B must be "above" A
     if b.y < a.y {
         std::mem::swap(&mut a, &mut b);
@@ -2771,22 +3427,21 @@ fn ray_intersects_segment(p: &SvgPoint, (mut a, mut b): (&SvgPoint, &SvgPoint)) 
     }
 
     let m_red = if a.x != b.x {
-        (b.y - a.y)/(b.x - a.x)
+        (b.y - a.y) / (b.x - a.x)
     } else {
         std::f64::INFINITY
     };
 
     let m_blue = if a.x != p.x {
-        (p.y - a.y)/(p.x - a.x)
+        (p.y - a.y) / (p.x - a.x)
     } else {
         std::f64::INFINITY
     };
-    
+
     m_blue >= m_red
 }
 
 pub fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygonInner) -> bool {
-    
     let mut c_in_outer = false;
     for o in poly.outer_rings.iter() {
         if point_in_line(p, o) {
@@ -2814,10 +3469,9 @@ pub struct Relate {
 }
 
 impl Relate {
-
     pub fn touches_other_poly_outside(&self) -> bool {
-        (self.is_1.points_inside_other_poly == 0 && self.is_2.points_inside_other_poly == 0) &&
-        (self.is_1.points_touching_lines != 0 || self.is_2.points_touching_lines != 0)
+        (self.is_1.points_inside_other_poly == 0 && self.is_2.points_inside_other_poly == 0)
+            && (self.is_1.points_touching_lines != 0 || self.is_2.points_touching_lines != 0)
     }
 
     pub fn only_touches(&self) -> bool {
@@ -2835,8 +3489,7 @@ impl Relate {
     }
 
     pub fn overlaps(&self) -> bool {
-        self.is_1.overlaps_other_poly() ||
-        self.is_2.overlaps_other_poly()
+        self.is_1.overlaps_other_poly() || self.is_2.overlaps_other_poly()
     }
 
     pub fn a_contained_in_b(&self) -> bool {
@@ -2851,10 +3504,7 @@ impl Relate {
 pub fn relate(a: &SvgPolygonInner, b: &SvgPolygonInner, dst: f64) -> Relate {
     let is_1 = only_touches_internal(a, b, dst);
     let is_2 = only_touches_internal(b, a, dst);
-    Relate {
-        is_1,
-        is_2,
-    }
+    Relate { is_1, is_2 }
 }
 
 pub fn line_contained_in_line(outer: &SvgLine, inner: &SvgLine) -> bool {
@@ -2867,9 +3517,16 @@ pub fn line_contained_in_line(outer: &SvgLine, inner: &SvgLine) -> bool {
 }
 
 // Only touches the other polygon but does not intersect
-pub fn only_touches_internal(a: &SvgPolygonInner, b: &SvgPolygonInner, dst: f64) -> SvgPolyInternalResult {
-
-    let points_a = a.outer_rings.iter().flat_map(|l| l.points.iter()).collect::<Vec<_>>();
+pub fn only_touches_internal(
+    a: &SvgPolygonInner,
+    b: &SvgPolygonInner,
+    dst: f64,
+) -> SvgPolyInternalResult {
+    let points_a = a
+        .outer_rings
+        .iter()
+        .flat_map(|l| l.points.iter())
+        .collect::<Vec<_>>();
     // let b_geo = translate_to_geo_poly(b);
 
     let mut points_touching_lines = 0;
@@ -2890,7 +3547,7 @@ pub fn only_touches_internal(a: &SvgPolygonInner, b: &SvgPolygonInner, dst: f64)
         num_points: points_a.len(),
         points_touching_lines,
         points_inside_other_poly,
-        all_points_are_on_line
+        all_points_are_on_line,
     }
 }
 
@@ -2902,8 +3559,8 @@ pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygonInner, dst: f64) -> b
                     if dist_to_segment(*p, *sa, *eb).distance < dst {
                         return true;
                     }
-                },
-                _ => { }
+                }
+                _ => {}
             }
         }
     }
@@ -2915,57 +3572,78 @@ pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygonInner, dst: f64) -> b
                     if dist_to_segment(*p, *sa, *eb).distance < dst {
                         return true;
                     }
-                },
-                _ => { }
+                }
+                _ => {}
             }
         }
     }
-    
+
     false
 }
 
 pub fn translate_to_geo_poly(a: &SvgPolygonInner) -> geo::MultiPolygon<f64> {
-    geo::MultiPolygon(a.outer_rings.iter().map(|outer| {
-        let outer = translate_geoline(outer);
-        let inner = a.inner_rings.iter().map(translate_geoline).collect::<Vec<_>>();
-        geo::Polygon::new(outer, inner)
-    }).collect())
+    geo::MultiPolygon(
+        a.outer_rings
+            .iter()
+            .map(|outer| {
+                let outer = translate_geoline(outer);
+                let inner = a
+                    .inner_rings
+                    .iter()
+                    .map(translate_geoline)
+                    .collect::<Vec<_>>();
+                geo::Polygon::new(outer, inner)
+            })
+            .collect(),
+    )
 }
 
 pub fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
-    geo::LineString(a.points.iter().map(|coord| geo::Coord {
-        x: coord.x,
-        y: coord.y,
-    }).collect())
+    geo::LineString(
+        a.points
+            .iter()
+            .map(|coord| geo::Coord {
+                x: coord.x,
+                y: coord.y,
+            })
+            .collect(),
+    )
 }
 
 pub fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygonInner> {
-    a.0.iter().map(|s| {
-        SvgPolygonInner {
+    a.0.iter()
+        .map(|s| SvgPolygonInner {
             outer_rings: vec![translate_ring(s.exterior())],
             inner_rings: s.interiors().iter().map(translate_ring).collect(),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 pub fn translate_from_geo_poly_special(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygonInner> {
-    a.0.iter().flat_map(|s| {
-        let mut q = vec![translate_ring(s.exterior())];
-        q.extend(s.interiors().iter().map(translate_ring));
-        q.iter().map(|l| {
-            let mut p = SvgPolygonInner::from_line(l); 
-            p.correct_winding_order();
-            p
-        }).collect::<Vec<_>>()
-    }).collect()
+    a.0.iter()
+        .flat_map(|s| {
+            let mut q = vec![translate_ring(s.exterior())];
+            q.extend(s.interiors().iter().map(translate_ring));
+            q.iter()
+                .map(|l| {
+                    let mut p = SvgPolygonInner::from_line(l);
+                    p.correct_winding_order();
+                    p
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
-
 
 fn translate_ring(a: &geo::LineString<f64>) -> SvgLine {
     SvgLine {
-        points: a.coords_iter().into_iter().map(|coord| SvgPoint {
-            x: coord.x,
-            y: coord.y,
-        }).collect(),
+        points: a
+            .coords_iter()
+            .into_iter()
+            .map(|coord| SvgPoint {
+                x: coord.x,
+                y: coord.y,
+            })
+            .collect(),
     }
 }
