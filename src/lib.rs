@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgPoint, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use dxf::objects;
+use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, NasXmlObjects, SplitNasXml, SvgPoint, SvgPolygon, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, reproject_point_back_into_latlon, reproject_point_into_latlon, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
@@ -508,16 +509,38 @@ pub async fn aenderungen_zu_geograf(
 
 
 #[wasm_bindgen]
-pub fn aenderungen_zu_david(aenderungen: String, split_nas_xml: String) -> String {
+pub fn aenderungen_zu_david(
+    aenderungen: String, 
+    split_nas: String,
+    nas_xml: String,
+    csv_data: String,
+    xml_objects: String,
+) -> String {
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    let xml = match serde_json::from_str::<SplitNasXml>(&split_nas_xml) {
+    let split_nas = match serde_json::from_str::<SplitNasXml>(&split_nas) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_fa_xml(&aenderungen, &xml)
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let xml_objects = match serde_json::from_str::<NasXmlObjects>(&xml_objects) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &split_nas, &nas_xml, &csv_data, &xml_objects)
 }
 
 #[wasm_bindgen]
@@ -794,6 +817,7 @@ pub fn search_for_gebauede(s: String, gebaeude_id: String) -> String {
 pub struct LoadNasReturn {
     pub log: Vec<String>,
     pub xml_parsed: Vec<XmlNode>,
+    pub xml_objects: NasXmlObjects,
     pub nas_original: NasXMLFile,
     pub nas_cut_original: SplitNasXml,
     pub nas_projected: NasXMLFile,
@@ -840,7 +864,8 @@ pub fn load_nas_xml(s: String, style: String) -> String {
             log: log,
         }).unwrap_or_default(),
     };
-    let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t, &mut log) {
+    let xml_objects = crate::nas::parse_nas_xml_objects(&xml_parsed);
+    let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t) {
         Ok(o) => o,
         Err(e) => return serde_json::to_string(&NasParseError {
             error: e,
@@ -876,6 +901,7 @@ pub fn load_nas_xml(s: String, style: String) -> String {
         nas_cut_original,
         nas_projected,
         nas_cut_projected,
+        xml_objects,
     }).unwrap_or_default()
 }
 
@@ -989,7 +1015,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
 
     log.push(format!("alle_ax: {:?}", kuerzel));
 
-    let nas_parsed_complete = match parse_nas_xml(nas_projected, &kuerzel, &mut Vec::new()) {
+    let nas_parsed_complete = match parse_nas_xml(nas_projected, &kuerzel) {
         Ok(s) => s,
         Err(_) => NasXMLFile::default(),
     };

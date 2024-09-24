@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::io::Split;
+use chrono::DateTime;
 use float_cmp::approx_eq;
 use float_cmp::ApproxEq;
 use float_cmp::F64Margin;
@@ -460,6 +461,16 @@ const MAP: &[(&str, &str);164] = &[
 ];
 
 impl TaggedPolygon {
+
+    pub fn get_auto_ebene(kuerzel: &str) -> Option<&str> {
+        let attribute = MAP.iter().find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None })?;
+        attribute.split(",").find_map(|kv| {
+            let mut sp = kv.split("=");
+            let k = sp.next()?;
+            let v = sp.next()?;
+            if k == "AX_Ebene" { Some(v) } else { None }
+        })
+    }
 
     pub fn get_auto_attributes_for_kuerzel(kuerzel: &str, flurstueck: &str) -> BTreeMap<String, String> {
         let attribute = MAP.iter().find_map(|(k, v)| if *k == kuerzel { Some(*v) } else { None }).unwrap_or("");
@@ -1713,11 +1724,7 @@ impl Ord for SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(s: Vec<XmlNode>, whitelist: &[String], log: &mut Vec<String>) -> Result<NasXMLFile, String> {
-    xml_nodes_to_nas_svg_file(s, whitelist)
-}
-
-fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
+pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
 
     // CRS parsen
 
@@ -1755,64 +1762,18 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<
             Some(s) => s,
             None => continue,
         };
+        let flst_id = match o_node.attributes.get("id") {
+            Some(s) => s.clone(),
+            None => continue,
+        };
         if !whitelist.contains(o_node.node_type.as_str()) {
             continue;
         }
         let key = o_node.node_type.clone();
-        let patches = get_all_nodes_in_subtree(&o_node.children, "PolygonPatch");
-        if patches.is_empty() {
-            continue;
-        }
-        let mut outer_rings = Vec::new();
-        let mut inner_rings = Vec::new();
-        let children = patches.iter().flat_map(|s| s.children.clone()).collect::<Vec<_>>();
-        for e_i in children.iter() {
-            let external = match e_i.node_type.as_str() {
-                "exterior" => true,
-                "interior" => false,
-                _ => continue,
-            };
-            let linestrings = get_all_nodes_in_subtree(&e_i.children, "LineStringSegment");
-            let linestring_points = linestrings
-                .iter()
-                .flat_map(|s| {
-                    s.children.iter()
-                    .filter_map(|s| s.text.clone())
-                    .map(|text| {
-                        let pts = text
-                        .split_whitespace()
-                        .filter_map(|s| s.parse::<f64>().ok())
-                        .collect::<Vec<_>>();
-                        pts.chunks(2).filter_map(|f| {
-                            match f {
-                                [east, false_north] => Some(SvgPoint {
-                                    x: *east,
-                                    y: *false_north,
-                                }),
-                                _ => None,
-                            }
-                        }).collect::<Vec<_>>()
-                    })
-                })
-                .collect::<Vec<_>>();
-            let mut line_points = linestring_points.into_iter().flat_map(|f| f.into_iter()).collect::<Vec<_>>();
-            line_points.dedup();
-            if line_points.len() < 3 {
-                continue;
-            }
-            let line = SvgLine {
-                points: line_points,
-            };
-            if external {
-                outer_rings.push(line);
-            } else {
-                inner_rings.push(line);
-            }
-        }
-
-        if outer_rings.is_empty() && inner_rings.is_empty() {
-            continue;
-        }
+        let poly = match xml_select_svg_polygon(&o_node.children) {
+            Some(s) => s,
+            None => continue,
+        };
         
         let mut attributes = o_node.children.iter()
         .filter_map(|cn| match &cn.text {
@@ -1821,16 +1782,9 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<
         }).collect::<BTreeMap<_, _>>();
         attributes.extend(o_node.attributes.clone().into_iter());
 
-        let flst_id = match attributes.get("id") {
-            Some(s) => s.clone(),
-            None => continue,
-        };
 
         let tp = TaggedPolygon {
-            poly: SvgPolygon {
-                outer_rings: outer_rings,
-                inner_rings: inner_rings,
-            },
+            poly,
             attributes,
         };
 
@@ -1841,6 +1795,153 @@ fn xml_nodes_to_nas_svg_file(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<
         crs: crs,
         ebenen: objekte,
     })
+}
+
+
+fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygon> {
+
+    let patches = get_all_nodes_in_subtree(&xml, "PolygonPatch");
+    if patches.is_empty() {
+        return None;
+    }
+
+    let mut outer_rings = Vec::new();
+    let mut inner_rings = Vec::new();
+    let children = patches.iter().flat_map(|s| s.children.clone()).collect::<Vec<_>>();
+
+    for e_i in children.iter() {
+
+        let external = match e_i.node_type.as_str() {
+            "exterior" => true,
+            "interior" => false,
+            _ => continue,
+        };
+
+        let linestrings = get_all_nodes_in_subtree(&e_i.children, "LineStringSegment");
+
+        let linestring_points = linestrings
+            .iter()
+            .flat_map(|s| {
+                s.children.iter()
+                .filter_map(|s| s.text.clone())
+                .map(|text| {
+                    let pts = text
+                    .split_whitespace()
+                    .filter_map(|s| s.parse::<f64>().ok())
+                    .collect::<Vec<_>>();
+                    pts.chunks(2).filter_map(|f| {
+                        match f {
+                            [east, false_north] => Some(SvgPoint {
+                                x: *east,
+                                y: *false_north,
+                            }),
+                            _ => None,
+                        }
+                    }).collect::<Vec<_>>()
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut line_points = linestring_points.into_iter().flat_map(|f| f.into_iter()).collect::<Vec<_>>();
+        line_points.dedup();
+        if line_points.len() < 3 {
+            return None;
+        }
+        let line = SvgLine {
+            points: line_points,
+        };
+        if external {
+            outer_rings.push(line);
+        } else {
+            inner_rings.push(line);
+        }
+    }
+
+    if outer_rings.is_empty() && inner_rings.is_empty() {
+        return None;
+    }
+
+    Some(SvgPolygon {
+        outer_rings: outer_rings,
+        inner_rings: inner_rings,
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MemberObject {
+    // AX_...
+    pub member_type: String,
+    pub beginnt: DateTime<chrono::FixedOffset>,
+    pub dient_zur_darstellung_von: Option<String>,
+    pub ist_bestandteil_von: Option<String>,
+    pub hat: Option<String>,
+    pub ist_teil_von: Option<String>,
+    pub extra_attribute: BTreeMap<String, String>,
+    pub poly: Option<SvgPolygon>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NasXmlObjects {
+    pub objects: BTreeMap<String, MemberObject>
+}
+
+pub fn parse_nas_xml_objects(xml: &Vec<XmlNode>) -> NasXmlObjects {
+    
+    let mut map = BTreeMap::new();
+
+    let objekte_nodes = get_all_nodes_in_subtree(&xml, "member");
+    
+    for o in objekte_nodes.iter() {
+        
+        let o_node = match o.children.first() {
+            Some(s) => s,
+            None => continue,
+        };
+        
+        let id = match o_node.attributes.get("id").map(|s| s.clone()) {
+            Some(s) => s,
+            None => continue,
+        };
+        
+        let beginnt = match o_node.select_subitems(&["lebenszeitintervall", "AA_Lebenszeitintervall", "beginnt"])
+        .first().and_then(|s| DateTime::parse_from_rfc3339(&s.text.as_ref()?).ok()) {
+            Some(s) => s,
+            None => continue,
+        };
+        
+        let member_type = o_node.node_type.clone();
+
+        let dient_zur_darstellung_von = o_node.select_subitems(&["dientZurDarstellungVon"])
+        .first().and_then(|s| s.attributes.get("href").cloned());
+
+        let ist_bestandteil_von = o_node.select_subitems(&["istBestandteilVon"])
+        .first().and_then(|s| s.attributes.get("href").cloned());
+
+        let ist_teil_von = o_node.select_subitems(&["istTeilVon"])
+        .first().and_then(|s| s.attributes.get("href").cloned());
+
+        let hat = o_node.select_subitems(&["hat"])
+        .first().and_then(|s| s.attributes.get("href").cloned());
+
+        let poly = xml_select_svg_polygon(&o_node.select_subitems(&["position"]).into_iter().cloned().collect());
+
+        let extra_attribute = o_node.children.iter()
+        .filter_map(|s| Some((s.node_type.clone(), s.text.clone()?)))
+        .collect();
+
+        map.insert(id, MemberObject {
+            member_type,
+            beginnt,
+            dient_zur_darstellung_von,
+            ist_bestandteil_von,
+            hat,
+            ist_teil_von,
+            extra_attribute,
+            poly,
+        });
+    }
+
+    NasXmlObjects { objects: map }
 }
 
 fn get_proj_string(input: &str) -> Option<String> {

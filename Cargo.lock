@@ -1967,6 +1967,7 @@ dependencies = [
  "base64",
  "bresenham",
  "chardetng",
+ "chrono",
  "csscolorparser",
  "dbase",
  "dxf",

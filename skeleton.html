@@ -1699,6 +1699,7 @@
           window.projectdata = parsed.nas_projected;
           window.split_flurstuecke_original = parsed.nas_cut_original;
           window.split_flurstuecke = parsed.nas_cut_projected;
+          window.xml_objects = parsed.xml_objects;
           window.parse_log = parsed.log;
 
           // remove old LeafLet layers
@@ -1817,7 +1818,6 @@
       }
 
       var found = searchFlst(id);
-      console.log(found);
       if (found) {
         selectFlst(id);
         highlightPolygon(found.flst);
@@ -2637,7 +2637,10 @@
       }
       var xml = aenderungen_zu_david(
         JSON.stringify(window.aenderungen), 
-        JSON.stringify(window.split_flurstuecke_original)
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.csv_data),
+        JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
@@ -2684,15 +2687,10 @@
       if (event.target.dataset.polyNeuId) {
         id = event.target.dataset.polyNeuId;
       }
-
-      console.log("lockunlock");
       var f = lock_unlock_poly(
         id, 
         JSON.stringify(window.aenderungen),
       );
-      console.log("lockunlock done");
-      console.log(f);
-
       var n = null;
       try {
         n = JSON.parse(f);

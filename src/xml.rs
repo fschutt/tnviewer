@@ -71,6 +71,39 @@ impl XmlNode {
             .filter(|n| n.node_type.as_str() == node_type)
             .collect()
     }
+
+    // select subitems by their predecessors
+    pub fn select_subitems<'a>(&'a self, node_types: &[&str]) -> Vec<&'a XmlNode> {
+
+        let mut nt = node_types.to_vec();
+        nt.reverse();
+        if nt.is_empty() {
+            return Vec::new();
+        }
+
+        let mut nt_final = vec![self];
+
+        while let Some(next_test_type) = nt.pop() {
+            let nt_final_clone = nt_final.clone();
+            let mut nt_final_new = Vec::new();
+            if nt_final.is_empty() {
+                break;
+            }
+            for n in nt_final.iter() {
+                for c in n.children.iter() {
+                    if c.node_type == next_test_type {
+                        nt_final_new.push(c);
+                    }
+                }
+            }
+            if nt_final_new.is_empty() {
+                break;
+            }
+            nt_final = nt_final_new;
+        }
+
+        nt_final
+    }
 }
 
 pub fn parse_xml_string(xml: &str, log: &mut Vec<String>) -> Result<Vec<XmlNode>, XmlParseError> {
