@@ -36,7 +36,7 @@ impl CsvDataType {
                                 notiz: v
                                     .iter()
                                     .find_map(|s| {
-                                        if s.notiz.is_empty() {
+                                        if !s.notiz.is_empty() {
                                             Some(s.notiz.clone())
                                         } else {
                                             None
@@ -46,7 +46,7 @@ impl CsvDataType {
                                 nutzung: v
                                     .iter()
                                     .find_map(|s| {
-                                        if s.notiz.is_empty() {
+                                        if !s.nutzung.is_empty() {
                                             Some(s.nutzung.clone())
                                         } else {
                                             None
