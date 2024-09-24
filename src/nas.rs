@@ -373,7 +373,7 @@ impl TaggedPolygon {
 
     pub fn get_auto_attributes_for_kuerzel(
         kuerzel: &str,
-        flurstueck: &str,
+        extra: &[(&str, &str)],
     ) -> BTreeMap<String, String> {
         let nak = crate::get_nutzungsartenkatalog();
         let attribute = nak.get(kuerzel).map(|s| s.atr.as_str()).unwrap_or("");
@@ -386,10 +386,9 @@ impl TaggedPolygon {
                 map.insert(k.to_string(), v.to_string());
             }
         }
-        let id = uuid();
-        map.insert("id".to_string(), id);
-        map.insert("AX_Flurstueck".to_string(), flurstueck.to_string());
-        map.insert("AX_IntersectionId".to_string(), "0".to_string());
+        for (k, v) in extra {
+            map.insert(k.to_string(), v.to_string());
+        }
         log_status(&format!("attribute {kuerzel} = {map:?}"));
         map
     }
@@ -838,11 +837,13 @@ impl SvgPolygonInner {
             .iter()
             .map(|l| Self::from_line(l))
             .collect::<Vec<_>>();
+
         let inner_rings = self
             .inner_rings
             .iter()
             .map(|l| Self::from_line(l))
             .collect::<Vec<_>>();
+
         outer_rings
             .iter()
             .map(|p| Self {
@@ -2202,7 +2203,12 @@ impl SplitNasXml {
                             if ai.flst_id == *k {
                                 Some(TaggedPolygon {
                                     attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(
-                                        &ai.neu, k,
+                                        &ai.neu,
+                                        &[
+                                            ("id", &uuid()),
+                                            ("AX_Flurstueck", k),
+                                            ("AX_IntersectionId", "0"),
+                                        ],
                                     ),
                                     poly: ai.poly_cut.clone(),
                                 })

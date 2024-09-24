@@ -28,11 +28,7 @@
 	<geaenderteObjekte>
 		<wfs:Transaction version="2.0.2" service="WFS">
     
-            {wfs_delete}
-			
-            {wfs_replace}
- 
-            {wfs_insert} 
+{content}
             
 		</wfs:Transaction>
 	</geaenderteObjekte>

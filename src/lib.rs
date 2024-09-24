@@ -658,12 +658,15 @@ pub async fn aenderungen_zu_geograf(
 
 #[wasm_bindgen]
 pub fn aenderungen_zu_david(
+    datum: String,
     aenderungen: String,
-    split_nas: String,
     nas_xml: String,
-    csv_data: String,
     xml_objects: String,
 ) -> String {
+    let datum = match chrono::DateTime::parse_from_rfc3339(&datum) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
@@ -680,7 +683,7 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &xml_objects)
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &xml_objects, &datum)
 }
 
 #[wasm_bindgen]
@@ -1212,7 +1215,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
     let alle_auto_kuerzel = nas_parsed_complete
         .ebenen
         .iter()
-        .flat_map(|(k, s)| s.into_iter().filter_map(|tp| tp.get_auto_kuerzel()))
+        .flat_map(|(_, s)| s.into_iter().filter_map(|tp| tp.get_auto_kuerzel()))
         .collect::<BTreeSet<_>>();
 
     let neue_ebenen = alle_auto_kuerzel

@@ -2646,11 +2646,11 @@
         alert("Keine Projektdaten geladen!");
         return;
       }
+      var date = new Date().toISOString();
       var xml = aenderungen_zu_david(
+        date,
         JSON.stringify(window.aenderungen), 
-        JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
-        JSON.stringify(window.csv_data),
         JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');

@@ -1776,10 +1776,7 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            let kuerzel = match flst_part
-                .get_ebene()
-                .and_then(|k| flst_part.get_auto_kuerzel())
-            {
+            let kuerzel = match flst_part.get_auto_kuerzel() {
                 Some(s) => s,
                 None => continue,
             };

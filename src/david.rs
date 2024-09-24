@@ -1,13 +1,22 @@
 use crate::{
     nas::{
+        self,
+        MemberObject,
         NasXMLFile,
         NasXmlObjects,
         SvgLine,
         SvgPolygonInner,
         TaggedPolygon,
     },
+    pdf::{
+        join_polys,
+        subtract_from_poly,
+    },
     ui::Aenderungen,
-    uuid_wasm::{log_status, uuid},
+    uuid_wasm::{
+        log_status,
+        uuid,
+    },
 };
 use std::collections::{
     BTreeMap,
@@ -43,16 +52,16 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
 
 pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
     const POLY_XML: &str = r#"
-    	<position>
-			<gml:Surface gml:id="$$POLY_ID$$">
-				<gml:patches>
-					<gml:PolygonPatch>
-						$$EXTERIOR_RINGS$$
-						$$INTERIOR_RINGS$$
-					</gml:PolygonPatch>
-				</gml:patches>
-			</gml:Surface>
-		</position>
+                <position>
+                    <gml:Surface gml:id="$$POLY_ID$$">
+                        <gml:patches>
+                            <gml:PolygonPatch>
+                                $$EXTERIOR_RINGS$$
+                                $$INTERIOR_RINGS$$
+                            </gml:PolygonPatch>
+                        </gml:patches>
+                    </gml:Surface>
+                </position>
     "#;
 
     let mut line_id = 0;
@@ -87,7 +96,7 @@ pub fn get_insert_xml_node(
     ax_ebene: &str,
     obj_id: &str,
     attribute: &[(&str, &str)],
-    datum_jetzt: chrono::DateTime<chrono::FixedOffset>,
+    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
     poly: &SvgPolygonInner,
     poly_id: &str,
 ) -> String {
@@ -133,6 +142,51 @@ pub fn get_insert_xml_node(
         .replace("$$EXTRA_ATTRIBUTE$$", &attribute)
 }
 
+pub fn get_replace_xml_node(
+    obj_id: &str,
+    member_object: &MemberObject,
+    poly: &SvgPolygonInner,
+    poly_id: &str,
+) -> String {
+    const REPLACE_XML: &str = r#"
+    	<wfs:Replace>
+            <$$EBENE$$ gml:id="$$RESOURCE_ID$$">
+                <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJECT_ID$$</gml:identifier>
+                <lebenszeitintervall>
+                    <AA_Lebenszeitintervall>
+                        <beginnt>$$ORIGINAL_DATE$$</beginnt>
+                    </AA_Lebenszeitintervall>
+                </lebenszeitintervall>
+                <modellart>
+                    <AA_Modellart>
+                        <advStandardModell>DLKM</advStandardModell>
+                    </AA_Modellart>
+                </modellart>
+                $$POSITION_NODE$$
+            </$$EBENE$$>
+            <fes:Filter>
+                <fes:ResourceId rid="$$RESOURCE_ID$$"/>
+            </fes:Filter>
+        </wfs:Replace>
+    "#;
+
+    let beginnt = member_object
+        .beginnt
+        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+        .replace("-", "")
+        .replace(":", "");
+    let rid = format!("{obj_id}{beginnt}");
+
+    REPLACE_XML
+        .replace("$$EBENE$$", &member_object.member_type)
+        .replace("$$RESOURCE_ID$$", &rid)
+        .replace("$$OBJECT_ID$$", obj_id)
+        .replace("$$ORIGINAL_DATE$$", &member_object.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+        .replace(
+            "$$POSITION_NODE$$",
+            &polygon_to_position_node(poly, poly_id),
+        )
+}
 struct TempOverlapObject {
     neu_kuerzel: String,
     neu_ebene: String,
@@ -140,10 +194,38 @@ struct TempOverlapObject {
     overlaps_objekte: BTreeMap<String, Vec<TaggedPolygon>>,
 }
 
+struct AenderungObject {
+    orig_change_id: String,
+    neu_kuerzel: String,
+    neu_ebene: String,
+    poly: SvgPolygonInner,
+}
+
+pub enum Operation {
+    Delete {
+        obj_id: String,
+        ebene: String,
+        kuerzel: String,
+    },
+    Replace {
+        obj_id: String,
+        ebene: String,
+        kuerzel: String,
+        poly_alt: SvgPolygonInner,
+        poly_neu: SvgPolygonInner,
+    },
+    Insert {
+        ebene: String,
+        kuerzel: String,
+        poly_neu: SvgPolygonInner,
+    },
+}
+
 pub fn aenderungen_zu_fa_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     objects: &NasXmlObjects,
+    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
@@ -198,61 +280,272 @@ pub fn aenderungen_zu_fa_xml(
         },
     ));
 
-    log_status(&format!("aenderungen_zu_fa_xml start --- {} objekte geändert", ids_to_change_nutzungen.len()));
+    // TODO: first join TempOverlapObject wenn ebenen gleich sind!
 
+    // build reverse map (obj id -> relevant changes per changed obj)
+    let mut reverse_map = BTreeMap::new();
     for (k, v) in ids_to_change_nutzungen.iter() {
-        for (k1, k2) in v.overlaps_objekte.iter() {
+        for (_, k2) in v.overlaps_objekte.iter() {
             for tp in k2.iter() {
-                log_status(&format!("obj {}: ({k1} / {} -> {} {})", tp.get_de_id().unwrap_or_default(), tp.get_auto_kuerzel().unwrap_or_default(), v.neu_ebene, v.neu_kuerzel));
+                let de_id = match tp.get_de_id() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                let old_ebene = match tp.get_ebene() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                let old_kuerzel = match tp.get_auto_kuerzel() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                reverse_map
+                    .entry((de_id, old_ebene, old_kuerzel))
+                    .or_insert_with(|| (tp.clone(), Vec::new()))
+                    .1
+                    .push(AenderungObject {
+                        orig_change_id: k.clone(),
+                        neu_kuerzel: v.neu_kuerzel.clone(),
+                        neu_ebene: v.neu_ebene.clone(),
+                        poly: v.poly.clone(),
+                    });
             }
         }
     }
 
-    log_status(&format!("aenderungen_zu_fa_xml end ---"));
+    let mut aenderungen_todo = Vec::new();
 
-    let replace_obj_ids = ids_to_change_nutzungen
-        .values()
-        .flat_map(|overlap| {
-            overlap.overlaps_objekte.iter().flat_map(|(ebene, objs)| {
-                objs.iter()
-                    .filter_map(|o| o.get_de_id())
-                    .map(|obj_id| (ebene.clone(), obj_id.clone()))
+    // depending on neu_ebene, either join (if ebene is same) or subtract (if ebene is different)
+    for ((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aenderungen)) in reverse_map {
+        let aenderungen_joined = aenderungen_todo
+            .iter()
+            .filter_map(|s| match s {
+                Operation::Replace { obj_id, .. } | Operation::Delete { obj_id, .. } => {
+                    Some(obj_id)
+                }
+                _ => None,
             })
-        })
-        .collect::<BTreeSet<(String, String)>>();
+            .collect::<BTreeSet<_>>();
 
-    /*
-        get_insert_xml_node(
-            ax_ebene: &str,
-            obj_id: &str,
-            attribute: &[(&str, &str)],
-            datum_jetzt: chrono::DateTime<chrono::FixedOffset>,
-            poly: &SvgPolygonInner,
-            poly_id: &str,
-        )
-    */
+        let polys_to_add = aenderungen
+            .iter()
+            .filter_map(|a| {
+                let relate = nas::relate(&a.poly, &tp.poly, 0.02);
+                if a.neu_kuerzel == alt_kuerzel
+                    && (relate.touches_other_poly_outside() || relate.overlaps())
+                    && !aenderungen_joined.contains(&a.orig_change_id)
+                {
+                    Some(a)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
-    let mut delete_obj_strings = replace_obj_ids.iter().filter_map(|(_ebene, obj_id)| {
-        let o = objects.objects.get(obj_id)?;
-        if o.poly.is_none() {
-            return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
+        let tp_poly = if !polys_to_add.is_empty() {
+            let polys_to_join = vec![tp.poly.clone()];
+            if let Some(joined) = join_polys(&polys_to_join, false, false) {
+                if joined.area_m2() == tp.poly.area_m2() {
+                    vec![tp.poly.clone()]
+                } else {
+                    joined.recombine_polys()
+                }
+            } else {
+                vec![tp.poly.clone()]
+            }
+        } else {
+            vec![tp.poly.clone()]
+        };
+
+        let alt_kuerzel_nak = TaggedPolygon::get_nutzungsartenkennung(&alt_kuerzel);
+
+        let final_joined_polys = tp_poly
+            .iter()
+            .map(|jp| {
+                let polys_to_subtract = aenderungen
+                    .iter()
+                    .filter_map(|a| {
+                        if a.neu_kuerzel != alt_kuerzel {
+                            Some(a)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter_map(|a| {
+                        if TaggedPolygon::get_nutzungsartenkennung(&a.neu_kuerzel)
+                            >= alt_kuerzel_nak
+                        {
+                            Some(a)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter_map(|a| {
+                        let relate = nas::relate(&a.poly, &jp, 0.02);
+                        if relate.touches_other_poly_outside() || relate.overlaps() {
+                            Some(a)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                let jp_area_m2 = jp.area_m2();
+                let p_subtract = polys_to_subtract
+                    .iter()
+                    .map(|p| &p.poly)
+                    .collect::<Vec<_>>();
+                let subtracted = subtract_from_poly(&tp.poly, &p_subtract);
+
+                (jp_area_m2, subtracted, polys_to_subtract)
+            })
+            .collect::<Vec<_>>();
+
+        if final_joined_polys.len() == 1 {
+            let (jp_area_m2, subtracted, polys_to_subtract) = &final_joined_polys[0];
+
+            if subtracted.is_zero_area() {
+                aenderungen_todo.push(Operation::Delete {
+                    obj_id: alt_obj_id,
+                    ebene: alt_ebene,
+                    kuerzel: alt_kuerzel,
+                });
+                for a in polys_to_subtract.iter() {
+                    aenderungen_todo.push(Operation::Insert {
+                        ebene: a.neu_ebene.clone(),
+                        kuerzel: a.neu_kuerzel.clone(),
+                        poly_neu: a.poly.clone(),
+                    });
+                }
+            } else if subtracted.area_m2().round() < *jp_area_m2 {
+                // original polygon did change, area is now less but not zero: modify obj to be now
+                // subtracted
+                aenderungen_todo.push(Operation::Replace {
+                    obj_id: alt_obj_id,
+                    ebene: alt_ebene,
+                    kuerzel: alt_kuerzel,
+                    poly_alt: tp.poly.clone(),
+                    poly_neu: subtracted.clone(),
+                });
+            } else {
+                // original polygon did not change: subtractions were likely outside / touching
+            }
+        } else {
+            // delete original object, replace with all remaining ones
+            let polys_final = final_joined_polys
+                .iter()
+                .filter_map(|s| {
+                    if s.1.is_zero_area() {
+                        None
+                    } else {
+                        Some(s.1.clone())
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            aenderungen_todo.push(Operation::Delete {
+                obj_id: alt_obj_id.clone(),
+                ebene: alt_ebene.clone(),
+                kuerzel: alt_kuerzel.clone(),
+            });
+
+            for p in polys_final {
+                aenderungen_todo.push(Operation::Insert {
+                    ebene: alt_ebene.clone(),
+                    kuerzel: alt_kuerzel.clone(),
+                    poly_neu: p.clone(),
+                });
+            }
         }
-        let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
-        let rid = format!("{obj_id}{beginnt}");
-        let typename = &o.member_type;
-        Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
-    }).collect::<Vec<_>>();
-    delete_obj_strings.sort();
-    let delete_string = delete_obj_strings.join("\r\n");
+    }
 
-    let insert_string = "";
+    for a in aenderungen_todo.iter() {
+        match a {
+            Operation::Delete {
+                obj_id,
+                ebene: _,
+                kuerzel,
+            } => {
+                log_status(&format!("deleting obj {obj_id} ({kuerzel})"));
+            }
+            Operation::Insert {
+                ebene: _,
+                kuerzel,
+                poly_neu,
+            } => {
+                log_status(&format!(
+                    "inserting {} m2 {kuerzel}",
+                    poly_neu.area_m2().round()
+                ));
+            }
+            Operation::Replace {
+                obj_id: _,
+                ebene: _,
+                kuerzel,
+                poly_alt,
+                poly_neu,
+            } => {
+                log_status(&format!(
+                    "replacing {} m2 {kuerzel} with {} m2 {kuerzel}",
+                    poly_alt.area_m2().round(),
+                    poly_neu.area_m2().round()
+                ));
+            }
+        }
+    }
+
+    let mut final_strings = aenderungen_todo.iter()
+    .filter_map(|s| {
+        match s {
+        Operation::Delete { obj_id, ebene: _, kuerzel: _ } => {
+            let o = objects.objects.get(obj_id)?;
+            if o.poly.is_none() {
+                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
+            }
+            let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
+            let rid = format!("{obj_id}{beginnt}");
+            let typename = &o.member_type;
+            Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
+        },
+        Operation::Insert { ebene, kuerzel, poly_neu } => {
+            let auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
+            let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
+            Some(get_insert_xml_node(
+                ebene,
+                &uuid().replace("-", "").to_ascii_uppercase(),  // TODO
+                &auto_attribute,
+                datum_jetzt,
+                poly_neu,
+                &uuid().replace("-", "").to_ascii_uppercase(), // TODO
+            ))
+        },
+        Operation::Replace {
+            obj_id,
+            ebene: _,
+            kuerzel: _,
+            poly_alt: _,
+            poly_neu
+        } => {
+            let o = objects.objects.get(obj_id)?;
+            if o.poly.is_none() {
+                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
+            }
+            Some(get_replace_xml_node(
+                obj_id,
+                &o,
+                &poly_neu,
+                &uuid().replace("-", "").to_ascii_uppercase(), // TODO
+            ))
+        }
+    }}).collect::<Vec<_>>();
+
+    final_strings.sort();
+    let final_strings = final_strings.join("\r\n");
 
     format!(
         include_str!("./antrag.xml"),
         crs = "",
-        wfs_delete = delete_string,
-        wfs_replace = "",
-        wfs_insert = insert_string,
+        content = final_strings,
         profilkennung = "",
         antragsnr = ""
     )
