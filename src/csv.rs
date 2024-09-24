@@ -23,8 +23,11 @@ impl CsvDataType {
         match self {
             Self::New(n) => Self::New(n.clone()),
             Self::Old(o) => Self::New(o.iter().map(|(k, v)| {
+                let mut et = v.iter().map(|c| c.eigentuemer.clone()).collect::<Vec<_>>();
+                et.sort();
+                et.dedup();
                 (k.clone(), CsvDataFlstInternal {
-                    eigentuemer: v.iter().map(|c| c.eigentuemer.clone()).collect(),
+                    eigentuemer: et,
                     notiz: v.iter().find_map(|s| if s.notiz.is_empty() { Some(s.notiz.clone()) } else { None }).unwrap_or_default(),
                     nutzung: v.iter().find_map(|s| if s.notiz.is_empty() { Some(s.nutzung.clone()) } else { None }).unwrap_or_default(),
                 })
