@@ -7,7 +7,7 @@ use crate::{
         TaggedPolygon,
     },
     ui::Aenderungen,
-    uuid_wasm::uuid,
+    uuid_wasm::{log_status, uuid},
 };
 use std::collections::{
     BTreeMap,
@@ -198,6 +198,18 @@ pub fn aenderungen_zu_fa_xml(
         },
     ));
 
+    log_status(&format!("aenderungen_zu_fa_xml start --- {} objekte geändert", ids_to_change_nutzungen.len()));
+
+    for (k, v) in ids_to_change_nutzungen.iter() {
+        for (k1, k2) in v.overlaps_objekte.iter() {
+            for tp in k2.iter() {
+                log_status(&format!("obj {}: ({k1} / {} -> {k} {})", tp.get_de_id().unwrap_or_default(), tp.get_auto_kuerzel().unwrap_or_default(), v.neu_kuerzel));
+            }
+        }
+    }
+
+    log_status(&format!("aenderungen_zu_fa_xml end ---"));
+
     let replace_obj_ids = ids_to_change_nutzungen
         .values()
         .flat_map(|overlap| {
@@ -225,7 +237,7 @@ pub fn aenderungen_zu_fa_xml(
         if o.poly.is_none() {
             return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
         }
-        let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "");
+        let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
         let rid = format!("{obj_id}{beginnt}");
         let typename = &o.member_type;
         Some(format!("\r\n            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
