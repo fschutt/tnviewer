@@ -21,9 +21,7 @@ pub type NutzungsArtMap = BTreeMap<String, NutzungsArt>;
 
 pub fn get_nutzungsartenkatalog() -> NutzungsArtMap {
     serde_json::from_str::<NutzungsArtMap>(&crate::uuid_wasm::get_js_nak())
-    .unwrap_or_else(|_| {
-        include!(concat!(env!("OUT_DIR"), "/nutzung.rs"))
-    })
+        .unwrap_or_else(|_| include!(concat!(env!("OUT_DIR"), "/nutzung.rs")))
 }
 
 pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {

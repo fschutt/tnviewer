@@ -26,7 +26,7 @@ extern "C" {
     fn get_nak() -> String;
 }
 
-pub fn get_js_nak() -> String{
+pub fn get_js_nak() -> String {
     get_nak()
 }
 

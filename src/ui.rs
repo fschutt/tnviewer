@@ -1679,7 +1679,6 @@ impl AenderungenClean {
         ));
 
         for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
-
             let alt_kuerzel = match flst_part.get_auto_kuerzel() {
                 Some(s) => s.clone(),
                 None => continue,
@@ -2055,11 +2054,6 @@ pub struct AenderungenIntersection {
 }
 
 impl AenderungenIntersection {
-    // returns "DEBBAL730002acBQ" for example
-    pub fn get_object_id(&self) -> Option<String> {
-        self.flst_id_part.split(":").nth(2).map(|s| s.to_string())
-    }
-
     pub fn format_flst_id_func(s: &str) -> String {
         let s = FlstIdParsed::from_str(&s);
         let q = match s.parse_num() {

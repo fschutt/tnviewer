@@ -668,19 +668,11 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    let split_nas = match serde_json::from_str::<SplitNasXml>(&split_nas) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
-    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_nas.crs) {
-        Ok(o) => o,
-        Err(e) => return e.to_string(),
-    };
     let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &nas_xml.crs) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
@@ -688,7 +680,7 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_fa_xml(&aenderungen, &split_nas, &nas_xml, &csv_data, &xml_objects)
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &xml_objects)
 }
 
 #[wasm_bindgen]
@@ -1376,6 +1368,26 @@ pub fn get_nutzungsartenkatalog() -> BTreeMap<String, crate::search::NutzungsArt
     crate::search::get_nutzungsartenkatalog()
 }
 
+pub fn get_nutzungsartenkatalog_ebenen() -> BTreeMap<String, String> {
+    get_nutzungsartenkatalog()
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.atr.split(",").find_map(|s| {
+                    let mut sp = s.split("=");
+                    let k = sp.next()?;
+                    let v = sp.next()?;
+                    if k == "AX_Ebene" {
+                        Some(v.to_string())
+                    } else {
+                        None
+                    }
+                })?,
+            ))
+        })
+        .collect()
+}
 pub fn decode(bytes: Vec<u8>) -> String {
     let mut text_decoder = chardetng::EncodingDetector::new();
     let _ = text_decoder.feed(&bytes[..], true);

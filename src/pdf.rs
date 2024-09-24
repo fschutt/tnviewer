@@ -2357,7 +2357,6 @@ fn write_nutzungsarten(
             let mut fl_btree = BTreeMap::new();
             for (_flst_id, flst_parts) in split_flurstuecke.flurstuecke_nutzungen.iter() {
                 for f in flst_parts.iter() {
-                    
                     let flst_kuerzel_alt = match f.get_auto_kuerzel() {
                         Some(s) => s,
                         None => continue,

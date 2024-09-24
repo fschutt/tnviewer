@@ -331,32 +331,35 @@ pub struct TaggedPolygon {
 }
 
 impl TaggedPolygon {
+    // returns "DEBBAL730002acBQ" for example
+    pub fn get_object_id(s: &str) -> Option<String> {
+        s.split(":").nth(2).map(|s| s.to_string())
+    }
 
     pub fn get_auto_kuerzel(&self) -> Option<String> {
         let nak = crate::get_nutzungsartenkatalog();
         nak.iter()
-        .filter_map(|(kuerzel, na)| {
-            let atr = na.atr.split(",").filter_map(|s| {
-                let mut sq = s.trim().split("=");
-                let key = sq.next()?;
-                let value = sq.next()?;
-                Some((key, value))
-            });
-            for (k, v) in atr {
-                if self.attributes.get(k).map(|s| s.as_str()) != Some(v) {
-                    return None;
+            .filter_map(|(kuerzel, na)| {
+                let atr = na.atr.split(",").filter_map(|s| {
+                    let mut sq = s.trim().split("=");
+                    let key = sq.next()?;
+                    let value = sq.next()?;
+                    Some((key, value))
+                });
+                for (k, v) in atr {
+                    if self.attributes.get(k).map(|s| s.as_str()) != Some(v) {
+                        return None;
+                    }
                 }
-            }
-            Some((kuerzel, &na.atr))
-        })
-        .max_by_key(|a| a.1.len())
-        .map(|s| s.0.clone())
+                Some((kuerzel, &na.atr))
+            })
+            .max_by_key(|a| a.1.len())
+            .map(|s| s.0.clone())
     }
 
     pub fn get_auto_ebene(kuerzel: &str) -> Option<String> {
         let nak = crate::get_nutzungsartenkatalog();
-        nak.get(kuerzel)?.atr.split(",")
-        .find_map(|kv| {
+        nak.get(kuerzel)?.atr.split(",").find_map(|kv| {
             let mut sp = kv.split("=");
             let k = sp.next()?;
             let v = sp.next()?;
@@ -373,8 +376,7 @@ impl TaggedPolygon {
         flurstueck: &str,
     ) -> BTreeMap<String, String> {
         let nak = crate::get_nutzungsartenkatalog();
-        let attribute = nak.get(kuerzel).map(|s| s.atr.as_str())
-            .unwrap_or("");
+        let attribute = nak.get(kuerzel).map(|s| s.atr.as_str()).unwrap_or("");
         let mut map = BTreeMap::new();
         for kv in attribute.split(",") {
             let mut sp = kv.split("=");
@@ -2340,6 +2342,30 @@ impl NasXmlQuadTree {
             .filter_map(|itemid| {
                 let (flst_id, i) = self.ebenen_map.get(&itemid)?;
                 self.original.ebenen.get(flst_id)?.get(*i).cloned()
+            })
+            .collect()
+    }
+
+    pub fn get_overlapping_ebenen(
+        &self,
+        poly: &SvgPolygonInner,
+        alle_ebenen: &BTreeMap<String, String>,
+    ) -> Vec<(String, TaggedPolygon)> {
+        let rect = poly.get_rect();
+        let alle_ebenen = alle_ebenen.values().collect::<BTreeSet<_>>();
+
+        self.qt
+            .get_ids_that_overlap(&rect)
+            .into_iter()
+            .filter_map(|itemid| {
+                let (flst_id, i) = self.ebenen_map.get(&itemid)?;
+                let tp = self.original.ebenen.get(flst_id)?.get(*i)?;
+                let ebene = tp.get_ebene()?;
+                if alle_ebenen.contains(&ebene) {
+                    Some((ebene, tp.clone()))
+                } else {
+                    None
+                }
             })
             .collect()
     }
