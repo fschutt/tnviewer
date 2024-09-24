@@ -796,9 +796,9 @@ pub async fn export_overview(
             let i_real = i0 * 4 + i;
             let (page_idx, layer_idx) = match i {
                 0 => (page0_idx, layer0_idx),
-                1 => (page2_idx, layer2_idx),
+                1 => (page3_idx, layer3_idx),
                 2 => (page1_idx, layer1_idx),
-                3 => (page3_idx, layer3_idx),
+                3 => (page2_idx, layer2_idx),
                 _ => continue,
             };
 
