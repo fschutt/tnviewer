@@ -1748,6 +1748,7 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
             })
             .collect::<BTreeMap<_, _>>();
         attributes.extend(o_node.attributes.clone().into_iter());
+        attributes.insert("AX_Ebene".to_string(), key.clone());
 
         let tp = TaggedPolygon { poly, attributes };
 

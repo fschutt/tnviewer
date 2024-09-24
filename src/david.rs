@@ -203,7 +203,7 @@ pub fn aenderungen_zu_fa_xml(
     for (k, v) in ids_to_change_nutzungen.iter() {
         for (k1, k2) in v.overlaps_objekte.iter() {
             for tp in k2.iter() {
-                log_status(&format!("obj {}: ({k1} / {} -> {k} {})", tp.get_de_id().unwrap_or_default(), tp.get_auto_kuerzel().unwrap_or_default(), v.neu_kuerzel));
+                log_status(&format!("obj {}: ({k1} / {} -> {} {})", tp.get_de_id().unwrap_or_default(), tp.get_auto_kuerzel().unwrap_or_default(), v.neu_ebene, v.neu_kuerzel));
             }
         }
     }
