@@ -15,7 +15,7 @@ use crate::uuid_wasm::log_status;
 use crate::{nas, LatLng};
 use crate::csv::CsvDataType;
 use crate::nas::{
-    intersect_polys, reproject_line, reproject_poly, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon, UseRadians, LATLON_STRING
+    intersect_polys, reproject_line, reproject_poly, translate_from_geo_poly, translate_to_geo_poly, NasXMLFile, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon, UseRadians, LATLON_STRING
 };
 use crate::ui::{Aenderungen, AenderungenIntersection, PolyNeu, TextPlacement, TextStatus};
 use crate::xlsx::FlstIdParsed;
@@ -235,7 +235,7 @@ impl RissExtent {
 
         let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
         let target = proj4rs::Proj::from_proj_string(&target_crs).ok()?;
-        let rissgebiet = self.rissgebiet.as_ref().map(|s| reproject_poly(s, &source, &target, UseRadians::ForSourceAndTarget));
+        let rissgebiet = self.rissgebiet.as_ref().map(|s| reproject_poly(&s.get_inner(), &source, &target, UseRadians::ForSourceAndTarget));
 
         proj4rs::transform::transform(&source, &target, coords.as_mut_slice()).ok()?;
         let points = coords.iter().map(|p| {
@@ -278,7 +278,7 @@ pub struct RissExtentReprojected {
     pub max_x: f64,
     pub min_y: f64,
     pub max_y: f64,
-    pub rissgebiet: Option<SvgPolygon>,
+    pub rissgebiet: Option<SvgPolygonInner>,
 }
 
 impl RissExtentReprojected {
@@ -296,8 +296,8 @@ impl RissExtentReprojected {
             max_y: self.max_y,
         }
     }
-    pub fn get_rect_line_poly(&self) -> SvgPolygon {
-        let mut s = SvgPolygon {
+    pub fn get_rect_line_poly(&self) -> SvgPolygonInner {
+        let mut s = SvgPolygonInner {
             outer_rings: vec![self.get_rect_line()],
             inner_rings: Vec::new(),
         };
@@ -332,7 +332,7 @@ impl RissExtentReprojected {
             ]
         }
     }
-    pub fn get_poly(&self) -> SvgPolygon {
+    pub fn get_poly(&self) -> SvgPolygonInner {
 
         let header_width_mm = 175.0;
         let header_height_mm = 35.0;
@@ -351,7 +351,7 @@ impl RissExtentReprojected {
         //  1---------------6
         // 
 
-        SvgPolygon {
+        SvgPolygonInner {
             outer_rings: vec![
                 SvgLine {
                     points: vec![
@@ -405,6 +405,20 @@ pub struct RissConfig {
 pub struct RissConfigId([u64;4]);
 
 impl RissConfig {
+    pub fn migrate_new(&self) -> Self {
+        let rg = self.rissgebiet.as_ref().map(|s| s.migrate());
+        Self {
+            rissgebiet: rg,
+            .. self.clone()
+        }
+    }
+    pub fn migrate_old(&self) -> Self {
+        let rg = self.rissgebiet.as_ref().map(|s| SvgPolygon::Old(s.get_inner()));
+        Self {
+            rissgebiet: rg,
+            .. self.clone()
+        }
+    }
     pub fn get_id(&self) -> RissConfigId {
         use highway::{HighwayHasher, HighwayHash};
         let mut bytes = self.lat.to_le_bytes().to_vec();
@@ -486,7 +500,7 @@ impl FlurLabel {
 }
 
 impl Fluren {
-    pub fn get_labels(&self, rect: &Option<SvgPolygon>) -> Vec<FlurLabel> {
+    pub fn get_labels(&self, rect: &Option<SvgPolygonInner>) -> Vec<FlurLabel> {
         self.fluren.iter().filter_map(|flst| {
             let poly = match rect {
                 Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
@@ -531,7 +545,7 @@ pub struct FlurstueckeInPdfSpace {
 
 impl Flurstuecke {
 
-    pub fn get_labels(&self, rect: &Option<SvgPolygon>) -> Vec<TextPlacement> {
+    pub fn get_labels(&self, rect: &Option<SvgPolygonInner>) -> Vec<TextPlacement> {
         self.flst.iter().filter_map(|flst| {
             let poly = match rect {
                 Some(s) => intersect_polys(s, &flst.poly).get(0).unwrap_or_else(|| &flst.poly).clone(),
@@ -1031,7 +1045,7 @@ pub fn reproject_aenderungen_into_target_space(
         .iter()
         .map(|(k, v)| {
             (k.clone(), PolyNeu {
-                poly: crate::nas::reproject_poly(&v.poly, &latlon_proj, &target_proj, UseRadians::ForSourceAndTarget),
+                poly: SvgPolygon::Old(crate::nas::reproject_poly(&v.poly.get_inner(), &latlon_proj, &target_proj, UseRadians::ForSourceAndTarget)),
                 nutzung: v.nutzung.clone(),
                 locked: v.locked,
             })
@@ -1085,9 +1099,9 @@ pub fn reproject_point_back_into_latlon(
 }
 
 pub fn reproject_poly_back_into_latlon(
-    poly: &SvgPolygon,
+    poly: &SvgPolygonInner,
     source_proj: &str,
-) -> Result<SvgPolygon, String> {
+) -> Result<SvgPolygonInner, String> {
 
     let source_proj = proj4rs::Proj::from_proj_string(&source_proj)
     .map_err(|e| format!("source_proj_string: {e}: {:?}", source_proj))?;
@@ -1118,7 +1132,7 @@ pub fn reproject_aenderungen_back_into_latlon(
         .iter()
         .map(|(k, v)| {
             (k.clone(), PolyNeu {
-                poly: crate::nas::reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
+                poly: SvgPolygon::Old(crate::nas::reproject_poly(&v.poly.get_inner(), &source_proj, &latlon_proj, UseRadians::None)),
                 nutzung: v.nutzung.clone(),
                 locked: v.locked,
             })
@@ -1201,11 +1215,11 @@ fn reproject_nasxml_into_pdf_space(
 }
 
 fn poly_into_pdf_space(
-    poly: &SvgPolygon,
+    poly: &SvgPolygonInner,
     riss: &RissExtentReprojected,
     riss_config: &RissConfig,
-) -> SvgPolygon {
-    SvgPolygon { 
+) -> SvgPolygonInner {
+    SvgPolygonInner { 
         outer_rings: poly.outer_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
         inner_rings: poly.inner_rings.iter().map(|l| line_into_pdf_space(l, riss, riss_config)).collect(), 
     }
@@ -1892,7 +1906,7 @@ pub fn get_flurstuecke(
 }
  
 // only called in stage5 (subtracting overlapping Aenderungen)
-pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> SvgPolygon {
+pub fn subtract_from_poly(original: &SvgPolygonInner, subtract: &[&SvgPolygonInner]) -> SvgPolygonInner {
     use geo::BooleanOps;
     let mut first = original.round_to_3dec();
     for i in subtract.iter() {
@@ -1909,13 +1923,13 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
             continue;
         }
         if fi.is_zero_area() {
-            return SvgPolygon::default();
+            return SvgPolygonInner::default();
         }
         let a = translate_to_geo_poly(&fi);
         let b = translate_to_geo_poly(&i);
         let join = a.difference(&b);
         let s = translate_from_geo_poly(&join);
-        let new = SvgPolygon {
+        let new = SvgPolygonInner {
             outer_rings: s.iter().flat_map(|s| {
                 s.outer_rings.clone().into_iter()
             }).collect(),
@@ -1930,7 +1944,7 @@ pub fn subtract_from_poly(original: &SvgPolygon, subtract: &[&SvgPolygon]) -> Sv
     first
 }
 
-pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<SvgPolygon> {
+pub fn join_polys(polys: &[SvgPolygonInner], autoclean: bool, debug: bool) -> Option<SvgPolygonInner> {
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
         Some(s) => s.round_to_3dec(),
@@ -1950,7 +1964,7 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
         let b = translate_to_geo_poly(&i);     
         let join = a.union(&b);
         let s = translate_from_geo_poly(&join);
-        let new = SvgPolygon {
+        let new = SvgPolygonInner {
             outer_rings: s.iter().flat_map(|s| {
                 s.outer_rings.clone().into_iter()
             }).collect(),
@@ -1966,14 +1980,14 @@ pub fn join_polys(polys: &[SvgPolygon], autoclean: bool, debug: bool) -> Option<
 }
 
 fn join_poly_only_touches(
-    a: &SvgPolygon,
-    b: &SvgPolygon
-) -> SvgPolygon {
+    a: &SvgPolygonInner,
+    b: &SvgPolygonInner
+) -> SvgPolygonInner {
     let mut outer_rings = a.outer_rings.clone();
     let mut inner_rings = a.inner_rings.clone();
     outer_rings.extend(b.outer_rings.iter().cloned());
     inner_rings.extend(b.inner_rings.iter().cloned());
-    SvgPolygon { outer_rings, inner_rings }
+    SvgPolygonInner { outer_rings, inner_rings }
 }
 
 pub fn get_gebaeude(
@@ -2179,7 +2193,7 @@ fn write_fluren(
 }
 
 fn translate_poly(
-    svg: &SvgPolygon,
+    svg: &SvgPolygonInner,
     paintmode: PaintMode,
 ) -> printpdf::Polygon {
     printpdf::Polygon {

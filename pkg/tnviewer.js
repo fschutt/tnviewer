@@ -318,6 +318,29 @@ export function get_new_poly_id() {
 }
 
 /**
+* @param {string} savefile
+* @returns {string}
+*/
+export function lib_parse_savefile(savefile) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(savefile, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.lib_parse_savefile(retptr, ptr0, len0);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred2_0 = r0;
+        deferred2_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_0(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
 * @param {string} info
 * @param {string | undefined} [risse]
 * @param {string | undefined} [csv]
@@ -1968,7 +1991,7 @@ function __wbg_get_imports() {
         const ret = Promise.resolve(getObject(arg0));
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper7444 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper7515 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 270, __wbg_adapter_32);
         return addHeapObject(ret);
     };

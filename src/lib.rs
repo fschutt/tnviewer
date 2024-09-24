@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use dxf::objects;
-use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, NasXmlObjects, SplitNasXml, SvgPoint, SvgPolygon, TaggedPolygon, LATLON_STRING};
+use nas::{intersect_polys, parse_nas_xml, translate_to_geo_poly, NasXMLFile, NasXmlObjects, SplitNasXml, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon, LATLON_STRING};
 use pdf::{reproject_aenderungen_back_into_latlon, reproject_aenderungen_into_target_space, reproject_point_back_into_latlon, reproject_point_into_latlon, EbenenStyle, Konfiguration, PdfEbenenStyle, ProjektInfo, RissConfig, RissExtent, Risse, StyleConfig};
 use proj4rs::proj;
 use ui::{Aenderungen, AenderungenIntersection, PolyNeu};
@@ -45,6 +45,20 @@ struct SaveFile {
 }
 
 #[wasm_bindgen]
+pub fn lib_parse_savefile(savefile: String) -> String {
+    let sf = match serde_json::from_str::<SaveFile>(&savefile) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    serde_json::to_string(&SaveFile {
+        info: sf.info,
+        csv: sf.csv.clone(),
+        risse: sf.risse.iter().map(|(k, v)| (k.clone(), v.migrate_old())).collect(),
+        aenderungen: sf.aenderungen.migrate_old(),
+    }).unwrap_or_default()
+}
+
+#[wasm_bindgen]
 pub fn format_savefile(info: String, risse: Option<String>, csv: Option<String>, aenderungen: Option<String>) -> String {
     
     let info = serde_json::from_str::<ProjektInfo>(info.as_str()).unwrap_or_default();
@@ -54,9 +68,9 @@ pub fn format_savefile(info: String, risse: Option<String>, csv: Option<String>,
 
     let savefile = SaveFile {
         info,
-        risse,
+        risse: risse.iter().map(|(k, v)| (k.clone(), v.migrate_new())).collect(),
         csv: csv.migrate_new(),
-        aenderungen,
+        aenderungen: aenderungen.migrate_new(),
     };
 
     serde_json::to_string_pretty(&savefile).unwrap_or_default()
@@ -88,7 +102,7 @@ pub fn get_main_gemarkung(csv: &CsvDataType) -> usize {
 
 #[wasm_bindgen]
 pub fn get_rissgebiet_geojson(poly: String) -> String {
-    let s1 = serde_json::from_str::<SvgPolygon>(&poly.trim()).unwrap_or_default();
+    let s1 = serde_json::from_str::<SvgPolygonInner>(&poly.trim()).unwrap_or_default();
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),
         attributes: BTreeMap::new(),
@@ -103,8 +117,8 @@ pub fn get_problem_geojson() -> String {
     let poly_string1 = "{\"outer_rings\":[{\"points\":[{\"x\":429491.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890535.068},{\"x\":429491.18,\"y\":5890535.068},{\"x\":429491.18,\"y\":5889303.068}]}],\"inner_rings\":[]}";
     let poly_string2 = "{\"outer_rings\":[{\"points\":[{\"x\":430328.22,\"y\":5890303.658},{\"x\":430244.425,\"y\":5890222.958},{\"x\":429528.201,\"y\":5889670.36},{\"x\":429502.62,\"y\":5889670.776},{\"x\":430002.015,\"y\":5889593.062},{\"x\":430044.428,\"y\":5889573.752},{\"x\":430404.975,\"y\":5890378.925},{\"x\":430328.22,\"y\":5890303.658}]}],\"inner_rings\":[]}";
     
-    let s1 = serde_json::from_str::<SvgPolygon>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default();
+    let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
@@ -137,7 +151,7 @@ pub struct SearchFlstInternalReturn {
     id_input: String,
     id_nice: String,
     ebene: String,
-    flst: SvgPolygon,
+    flst: SvgPolygonInner,
 }
 
 #[wasm_bindgen]
@@ -557,7 +571,7 @@ pub fn get_geojson_fuer_neue_polygone(aenderungen: String) -> String {
     let construct_polys = |(k, v): (&String, &PolyNeu)| {
         TaggedPolygon {
             attributes: vec![("newPolyId".to_string(), k.clone())].into_iter().collect(),
-            poly: v.poly.clone(),
+            poly: v.poly.get_inner(),
         }
     };
 
@@ -613,8 +627,9 @@ pub fn get_polyline_guides_in_current_bounds(
             };
             let mut ringe = split_fs.get_polyline_guides_in_bounds(rect);
             let mut aenderungen_ringe = aenderungen.na_polygone_neu.values().flat_map(|p| {
-                let mut v = p.poly.outer_rings.clone();
-                v.append(&mut p.poly.inner_rings.clone());
+                let mut p_inner = p.poly.get_inner();
+                let mut v = p_inner.outer_rings;
+                v.append(&mut p_inner.inner_rings);
                 v.into_iter()
             }).collect::<Vec<_>>();
             ringe.append(&mut aenderungen_ringe);
@@ -648,7 +663,7 @@ pub fn fixup_polyline(
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();
     let points = serde_json::from_str::<Vec<LatLng>>(&points).unwrap_or_default();
 
-    fn fixup_polyline_internal(points: &[LatLng], split_fs: &SplitNasXml) -> Option<SvgPolygon> {
+    fn fixup_polyline_internal(points: &[LatLng], split_fs: &SplitNasXml) -> Option<SvgPolygonInner> {
         
         let mut points = points.to_vec();
         
@@ -656,7 +671,7 @@ pub fn fixup_polyline(
             points.push(points.first()?.clone());
         }
 
-        Some(SvgPolygon {
+        Some(SvgPolygonInner {
             outer_rings: vec![SvgLine {
                 points: points.iter().map(|p| {
                     SvgPoint {
@@ -675,7 +690,7 @@ pub fn fixup_polyline(
     };
 
     serde_json::to_string(&crate::ui::PolyNeu {
-        poly: poly,
+        poly: SvgPolygon::Old(poly),
         nutzung: None,
         locked: false,
     }).unwrap_or_default()
@@ -756,7 +771,7 @@ pub fn ui_render_project_content(
 
 #[wasm_bindgen]
 pub fn get_geojson_polygon(s: String) -> String {
-    let flst = match serde_json::from_str::<SvgPolygon>(&s) {
+    let flst = match serde_json::from_str::<SvgPolygonInner>(&s) {
         Ok(o) => TaggedPolygon { poly: o, attributes: BTreeMap::new() },
         Err(e) => return e.to_string()
     };
@@ -765,7 +780,7 @@ pub fn get_geojson_polygon(s: String) -> String {
 
 #[wasm_bindgen]
 pub fn get_fit_bounds(s: String) -> String {
-    let flst = match serde_json::from_str::<SvgPolygon>(&s) {
+    let flst = match serde_json::from_str::<SvgPolygonInner>(&s) {
         Ok(o) => o,
         Err(e) => return e.to_string()
     };

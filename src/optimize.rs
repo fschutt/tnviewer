@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, f64::consts::PI};
 use ndarray::Axis;
 use web_sys::console::log_1;
 
-use crate::{nas::{intersect_polys, translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
+use crate::{nas::{intersect_polys, translate_geoline, translate_to_geo_poly, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner}, pdf::{Flurstuecke, FlurstueckeInPdfSpace, Gebaeude, GebaeudeInPdfSpace, RissConfig, RissExtentReprojected}, ui::{AenderungenIntersection, TextPlacement}, uuid_wasm::{js_random, log_status, uuid}};
 
 #[derive(Debug)]
 pub struct OptimizedTextPlacement {
@@ -90,8 +90,8 @@ impl OptimizeConfig {
         }
     }
 
-    pub fn polygon_to_pixel_space(&self, poly: &SvgPolygon) -> SvgPolygon {
-        SvgPolygon {
+    pub fn polygon_to_pixel_space(&self, poly: &SvgPolygonInner) -> SvgPolygonInner {
+        SvgPolygonInner {
             outer_rings: poly.outer_rings.iter().map(|p| self.line_to_pixel_space(p)).collect(),
             inner_rings: poly.inner_rings.iter().map(|p| self.line_to_pixel_space(p)).collect(),
         }
@@ -118,7 +118,7 @@ pub fn optimize_labels(
     flurstuecke: &SplitNasXml,
     splitflaechen: &[AenderungenIntersection],
     gebaeude: &Gebaeude,
-    avoid_areas_in_pdf_space: &[SvgPolygon],
+    avoid_areas_in_pdf_space: &[SvgPolygonInner],
     initial_text_pos: &[TextPlacement],
     config: &OptimizeConfig,
 ) -> Vec<OptimizedTextPlacement> {
@@ -414,7 +414,7 @@ fn render_stage1_overlap_boolmap(
     flurstuecke: &SplitNasXml,
     splitflaechen: &[AenderungenIntersection],
     gebaeude: &Gebaeude,
-    do_not_overlap_areas: &[SvgPolygon],
+    do_not_overlap_areas: &[SvgPolygonInner],
     config: &OptimizeConfig
 ) -> Option<ndarray::Array2<bool>> {
 

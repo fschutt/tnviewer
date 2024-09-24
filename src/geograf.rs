@@ -8,7 +8,7 @@ use proj4rs::proj;
 use quadtree_f32::Rect;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use crate::{csv::{self, CsvDataType, Status}, nas::{self, cleanup_poly, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, process::{AngleDegrees, PointOnLineConfig}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo, FortfuehrungsbelegInfo}};
+use crate::{csv::{self, CsvDataType, Status}, nas::{self, cleanup_poly, only_touches_internal, point_is_in_polygon, reproject_poly, translate_to_geo_poly, SvgPolygon, SvgPolygonInner, TaggedPolygon, UseRadians}, optimize::OptimizeConfig, pdf::{get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_poly_back_into_latlon, HintergrundCache, RissConfig, RissExtent, RissExtentReprojected}, process::{AngleDegrees, PointOnLineConfig}, ui::{AenderungenIntersections, TextStatus}, uuid_wasm::log_status, xlsx::FlstIdParsedNumber, xml_templates::{AntragsbegleitblattInfo, BearbeitungslisteInfo, FortfuehrungsbelegInfo}};
 use crate::{csv::CsvDatensatz, nas::{NasXMLFile, SplitNasXml, SvgLine, SvgPoint, LATLON_STRING}, pdf::{reproject_aenderungen_into_target_space, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui::{Aenderungen, AenderungenClean, AenderungenIntersection, TextPlacement}, xlsx::FlstIdParsed, zip::write_files_to_zip};
 use serde_derive::{Serialize, Deserialize};
 
@@ -713,7 +713,7 @@ pub fn export_splitflaechen(
     })
     .filter_map(|s| {
         if let Some(rg) = riss_extent_reprojected.rissgebiet.as_ref() {
-            if s.poly_cut.overlaps(rg) || rg.overlaps(&s.poly_cut)  {
+            if s.poly_cut.overlaps(&rg) || rg.overlaps(&s.poly_cut)  {
                 Some(s)
             } else {
                 None
@@ -770,7 +770,7 @@ pub fn export_splitflaechen(
         area: 1000,
         pos: fl.pos,
         ref_pos: fl.pos,
-        poly: SvgPolygon::default(),
+        poly: SvgPolygonInner::default(),
     })
     .collect::<Vec<_>>();
     if !flur_texte.is_empty() {
@@ -1193,7 +1193,7 @@ pub fn get_aenderungen_nutzungsarten_linien(splitflaechen: &[AenderungenIntersec
     v
 }
 
-fn get_shared_lines(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgLine> {
+fn get_shared_lines(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgLine> {
     let lines_a = get_linecoords(a);
     let lines_b = get_linecoords(b);
     let same = lines_a.intersection(&lines_b).collect::<Vec<_>>();
@@ -1224,7 +1224,7 @@ fn get_shared_lines(a: &SvgPolygon, b: &SvgPolygon) -> Vec<SvgLine> {
     }).collect()
 }
 
-fn get_linecoords(p: &SvgPolygon) -> BTreeSet<((u64, u64), (u64, u64))> {
+fn get_linecoords(p: &SvgPolygonInner) -> BTreeSet<((u64, u64), (u64, u64))> {
     let mut lines = p.outer_rings.iter().flat_map(crate::geograf::l_to_points).collect::<Vec<_>>();
     lines.extend(p.inner_rings.iter().flat_map(crate::geograf::l_to_points));
     lines.into_iter()
@@ -1418,7 +1418,7 @@ impl HeaderCalcConfig {
         self.get_fluren_string_internal().len()
     }
 
-    pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_poly: &Option<SvgPolygon>) -> Self {
+    pub fn from_csv(split_nas: &SplitNasXml, csv: &CsvDataType, extent_poly: &Option<SvgPolygonInner>) -> Self {
 
         let target_gemarkung_nr = crate::get_main_gemarkung(csv);
         

@@ -2012,7 +2012,7 @@
         var reader = new FileReader();
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
-          var json = JSON.parse(readerEvent.target.result);
+          var json = JSON.parse(lib_parse_savefile(readerEvent.target.result));
           window.csv_data = json.csv;
           if (json.aenderungen) {
             window.aenderungen = json.aenderungen;
