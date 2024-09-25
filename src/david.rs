@@ -427,8 +427,16 @@ pub fn aenderungen_zu_fa_xml(
                     poly_alt: tp.poly.clone(),
                     poly_neu: subtracted.clone(),
                 });
+                for s in polys_to_subtract.iter() {
+                    aenderungen_todo.push(Operation::Insert { 
+                        ebene: s.neu_ebene.clone(),
+                        kuerzel: s.neu_kuerzel.clone(),
+                        poly_neu: s.poly.clone(),
+                    });
+                }
             } else {
                 // original polygon did not change: subtractions were likely outside / touching
+                log_status(&format!("{}: original polygon did not change!!!", tp.get_de_id().unwrap_or_default()));
             }
         } else {
             // delete original object, replace with all remaining ones
