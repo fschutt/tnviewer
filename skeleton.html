@@ -2651,6 +2651,7 @@
         date,
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
@@ -2664,6 +2665,7 @@
       var xml = aenderungen_zu_nas_xml(
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".Fortgefuehr.NAS.xml", 'text/xml');

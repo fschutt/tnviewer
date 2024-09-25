@@ -27,10 +27,10 @@ use serde_derive::{
     Deserialize,
     Serialize,
 };
-use std::collections::{
+use std::{collections::{
     BTreeMap,
     BTreeSet,
-};
+}, io::Split};
 use ui::{
     Aenderungen,
     PolyNeu,
@@ -660,6 +660,7 @@ pub async fn aenderungen_zu_geograf(
 pub fn aenderungen_zu_nas_xml(
     aenderungen: String,
     nas_xml: String,
+    split_nas: String,
     xml_objects: String,
 ) -> String {
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
@@ -667,6 +668,10 @@ pub fn aenderungen_zu_nas_xml(
         Err(e) => return e.to_string(),
     };
     let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let split_nas = match serde_json::from_str::<SplitNasXml>(&split_nas) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
@@ -678,7 +683,7 @@ pub fn aenderungen_zu_nas_xml(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_nas_xml(&aenderungen, &nas_xml, &xml_objects)
+    crate::david::aenderungen_zu_nas_xml(&aenderungen, &nas_xml, &split_nas, &xml_objects)
 }
 
 #[wasm_bindgen]
@@ -686,6 +691,7 @@ pub fn aenderungen_zu_david(
     datum: String,
     aenderungen: String,
     nas_xml: String,
+    split_nas: String,
     xml_objects: String,
 ) -> String {
     let datum = match chrono::DateTime::parse_from_rfc3339(&datum) {
@@ -700,6 +706,10 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
+    let split_nas = match serde_json::from_str::<SplitNasXml>(&split_nas) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
     let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &nas_xml.crs) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
@@ -708,7 +718,7 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &xml_objects, &datum)
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &split_nas, &xml_objects, &datum)
 }
 
 #[wasm_bindgen]

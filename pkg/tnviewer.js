@@ -671,53 +671,24 @@ export function aenderungen_zu_geograf(split_nas_xml, nas_xml, projekt_info, kon
 /**
 * @param {string} aenderungen
 * @param {string} nas_xml
+* @param {string} split_nas
 * @param {string} xml_objects
 * @returns {string}
 */
-export function aenderungen_zu_nas_xml(aenderungen, nas_xml, xml_objects) {
-    let deferred4_0;
-    let deferred4_1;
+export function aenderungen_zu_nas_xml(aenderungen, nas_xml, split_nas, xml_objects) {
+    let deferred5_0;
+    let deferred5_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passStringToWasm0(nas_xml, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(xml_objects, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len2 = WASM_VECTOR_LEN;
-        wasm.aenderungen_zu_nas_xml(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
-        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred4_0 = r0;
-        deferred4_1 = r1;
-        return getStringFromWasm0(r0, r1);
-    } finally {
-        wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_0(deferred4_0, deferred4_1, 1);
-    }
-}
-
-/**
-* @param {string} datum
-* @param {string} aenderungen
-* @param {string} nas_xml
-* @param {string} xml_objects
-* @returns {string}
-*/
-export function aenderungen_zu_david(datum, aenderungen, nas_xml, xml_objects) {
-    let deferred5_0;
-    let deferred5_1;
-    try {
-        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-        const ptr0 = passStringToWasm0(datum, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(nas_xml, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const ptr2 = passStringToWasm0(split_nas, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len2 = WASM_VECTOR_LEN;
         const ptr3 = passStringToWasm0(xml_objects, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len3 = WASM_VECTOR_LEN;
-        wasm.aenderungen_zu_david(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        wasm.aenderungen_zu_nas_xml(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         deferred5_0 = r0;
@@ -726,6 +697,41 @@ export function aenderungen_zu_david(datum, aenderungen, nas_xml, xml_objects) {
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
         wasm.__wbindgen_export_0(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+* @param {string} datum
+* @param {string} aenderungen
+* @param {string} nas_xml
+* @param {string} split_nas
+* @param {string} xml_objects
+* @returns {string}
+*/
+export function aenderungen_zu_david(datum, aenderungen, nas_xml, split_nas, xml_objects) {
+    let deferred6_0;
+    let deferred6_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(datum, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(nas_xml, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(split_nas, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(xml_objects, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len4 = WASM_VECTOR_LEN;
+        wasm.aenderungen_zu_david(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred6_0 = r0;
+        deferred6_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_0(deferred6_0, deferred6_1, 1);
     }
 }
 
@@ -2024,7 +2030,7 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function(arg0) {
         queueMicrotask(getObject(arg0));
     };
-    imports.wbg.__wbindgen_closure_wrapper8106 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper8108 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 444, __wbg_adapter_32);
         return addHeapObject(ret);
     };

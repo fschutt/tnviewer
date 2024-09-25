@@ -1,12 +1,6 @@
 use crate::{
     nas::{
-        self,
-        MemberObject,
-        NasXMLFile,
-        NasXmlObjects,
-        SvgLine,
-        SvgPolygonInner,
-        TaggedPolygon,
+        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPolygonInner, TaggedPolygon
     },
     pdf::{
         join_polys,
@@ -266,11 +260,12 @@ impl Operation {
 pub fn aenderungen_zu_nas_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
     objects: &NasXmlObjects,
 ) -> String {
 
     log_status_clear();
-    let a_internal = get_aenderungen_internal(aenderungen, nas_xml);
+    let a_internal = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
     // process operations in NAS file
     format!("TODO!")
 }
@@ -278,17 +273,18 @@ pub fn aenderungen_zu_nas_xml(
 fn get_aenderungen_internal(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
 ) -> Vec<Operation> {
 
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
     let qt = nas_xml.create_quadtree();
-
+        
     let mut ids_to_change_nutzungen = aenderungen
         .na_definiert
         .iter()
-        .filter_map(|(k, v)| Some((TaggedPolygon::get_object_id(&k)?, v)))
-        .filter_map(|(obj_id, v)| {
+        .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
+        .filter_map(|(k, obj_id, v)| {
             let (ebene, tp) = nas_xml.ebenen.iter().find_map(|(ebene, items)| {
                 items
                     .iter()
@@ -305,7 +301,10 @@ fn get_aenderungen_internal(
                     neu_ebene,
                     neu_kuerzel,
                     poly: tp.clone(),
-                    overlaps_objekte: vec![(ebene, vec![tp])].into_iter().collect(),
+                    overlaps_objekte: vec![(ebene, vec![TaggedPolygon {
+                        attributes: tp.attributes.clone(),
+                        poly: k.poly.clone(),
+                    }])].into_iter().collect(),
                 },
             ))
         })
@@ -534,13 +533,14 @@ fn get_aenderungen_internal(
 pub fn aenderungen_zu_fa_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
 
     log_status_clear();
 
-    let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml);
+    let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
     
     log_aenderungen(&aenderungen_todo);
 
