@@ -626,8 +626,7 @@ pub fn aenderungen_zu_fa_xml(
     );
 
     s.lines()
-    .map(|s| s.trim_end())
-    .filter_map(|s| if s.is_empty() { None } else { Some(s.to_string()) })
+    .filter_map(|s| if s.trim().is_empty() { None } else { Some(s.to_string()) })
     .collect::<Vec<_>>()
     .join("\r\n")
 }
