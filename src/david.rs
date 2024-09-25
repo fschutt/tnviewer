@@ -744,5 +744,8 @@ fn merge_aenderungen_with_existing_nas(
         }
     }
 
+
+    aenderungen_clean.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
+    aenderungen_clean.dedup();
     aenderungen_clean
 }
