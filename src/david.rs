@@ -24,17 +24,17 @@ use std::collections::{
 
 pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
     const RING_XML: &str = r#"
-                                <gml:Ring>
-                                    <gml:curveMember>
-                                        <gml:Curve gml:id="$$CURVEID$$">
-                                            <gml:segments>
-                                                <gml:LineStringSegment>
-                                                    <gml:posList>$$POSLIST$$</gml:posList>
-                                                </gml:LineStringSegment>
-                                            </gml:segments>
-                                        </gml:Curve>
-                                    </gml:curveMember>
-                                </gml:Ring>
+                                        <gml:Ring>
+                                            <gml:curveMember>
+                                                <gml:Curve gml:id="$$CURVEID$$">
+                                                    <gml:segments>
+                                                        <gml:LineStringSegment>
+                                                            <gml:posList>$$POSLIST$$</gml:posList>
+                                                        </gml:LineStringSegment>
+                                                    </gml:segments>
+                                                </gml:Curve>
+                                            </gml:curveMember>
+                                        </gml:Ring>
     "#;
 
     RING_XML
@@ -51,16 +51,16 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
 
 pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
     const POLY_XML: &str = r#"
-                <position>
-                    <gml:Surface gml:id="$$POLY_ID$$">
-                        <gml:patches>
-                            <gml:PolygonPatch>
-                                $$EXTERIOR_RINGS$$
-                                $$INTERIOR_RINGS$$
-                            </gml:PolygonPatch>
-                        </gml:patches>
-                    </gml:Surface>
-                </position>
+                    <position>
+                        <gml:Surface gml:id="$$POLY_ID$$">
+                            <gml:patches>
+                                <gml:PolygonPatch>
+                                    $$EXTERIOR_RINGS$$
+                                    $$INTERIOR_RINGS$$
+                                </gml:PolygonPatch>
+                            </gml:patches>
+                        </gml:Surface>
+                    </position>
     "#;
 
     let mut line_id = 0;
@@ -79,9 +79,9 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         outer_rings 
     } else {
         format!("
-                                <gml:exterior>
-                                {outer_rings}
-                                </gml:exterior>
+                                    <gml:exterior>
+                                    {outer_rings}
+                                    </gml:exterior>
         ")
     };
 
@@ -99,9 +99,9 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         inner_rings 
     } else {
         format!("
-                <gml:interior>
-                {inner_rings}
-                </gml:interior>
+                                    <gml:interior>
+                                    {inner_rings}
+                                    </gml:interior>
         ")
     };
 
@@ -168,25 +168,25 @@ pub fn get_replace_xml_node(
     poly_id: &str,
 ) -> String {
     const REPLACE_XML: &str = r#"
-    	<wfs:Replace>
-            <$$EBENE$$ gml:id="$$RESOURCE_ID$$">
-                <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJECT_ID$$</gml:identifier>
-                <lebenszeitintervall>
-                    <AA_Lebenszeitintervall>
-                        <beginnt>$$ORIGINAL_DATE$$</beginnt>
-                    </AA_Lebenszeitintervall>
-                </lebenszeitintervall>
-                <modellart>
-                    <AA_Modellart>
-                        <advStandardModell>DLKM</advStandardModell>
-                    </AA_Modellart>
-                </modellart>
-                $$POSITION_NODE$$
-            </$$EBENE$$>
-            <fes:Filter>
-                <fes:ResourceId rid="$$RESOURCE_ID$$"/>
-            </fes:Filter>
-        </wfs:Replace>
+            <wfs:Replace>
+                <$$EBENE$$ gml:id="$$RESOURCE_ID$$">
+                    <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJECT_ID$$</gml:identifier>
+                    <lebenszeitintervall>
+                        <AA_Lebenszeitintervall>
+                            <beginnt>$$ORIGINAL_DATE$$</beginnt>
+                        </AA_Lebenszeitintervall>
+                    </lebenszeitintervall>
+                    <modellart>
+                        <AA_Modellart>
+                            <advStandardModell>DLKM</advStandardModell>
+                        </AA_Modellart>
+                    </modellart>
+                    $$POSITION_NODE$$
+                </$$EBENE$$>
+                <fes:Filter>
+                    <fes:ResourceId rid="$$RESOURCE_ID$$"/>
+                </fes:Filter>
+            </wfs:Replace>
     "#;
 
     let beginnt = member_object
@@ -226,6 +226,7 @@ pub enum Operation {
         obj_id: String,
         ebene: String,
         kuerzel: String,
+        poly_alt: SvgPolygonInner,
     },
     Replace {
         obj_id: String,
@@ -244,7 +245,7 @@ pub enum Operation {
 impl Operation {
     fn get_str_id(&self) -> String {
         match self {
-            Operation::Delete { obj_id, ebene, kuerzel } => format!("Delete:{obj_id}::{ebene}::{kuerzel}"),
+            Operation::Delete { obj_id, ebene, kuerzel , poly_alt } => format!("Delete:{obj_id}::{ebene}::{kuerzel}::{}", poly_alt.get_hash()),
             Operation::Replace { obj_id, ebene, kuerzel, poly_alt, poly_neu } => format!("Replace:{obj_id}::{ebene}::{kuerzel}::{}::{}", poly_alt.get_hash(), poly_neu.get_hash()),
             Operation::Insert { ebene, kuerzel, poly_neu } => format!("Insert:{ebene}::{kuerzel}::{}", poly_neu.get_hash()),
         }
@@ -422,25 +423,26 @@ pub fn aenderungen_zu_fa_xml(
                     })
                     .collect::<Vec<_>>();
 
-                let jp_area_m2 = jp.area_m2();
                 let p_subtract = polys_to_subtract
                     .iter()
                     .map(|p| &p.poly.poly)
                     .collect::<Vec<_>>();
                 let subtracted = subtract_from_poly(&tp.poly, &p_subtract);
 
-                (jp_area_m2, subtracted, polys_to_subtract)
+                (jp, subtracted, polys_to_subtract)
             })
             .collect::<Vec<_>>();
 
         if final_joined_polys.len() == 1 {
-            let (jp_area_m2, subtracted, polys_to_subtract) = &final_joined_polys[0];
+            let (jp, subtracted, polys_to_subtract) = &final_joined_polys[0];
+            let jp_area_m2 = jp.area_m2();
 
             if subtracted.is_zero_area() {
                 aenderungen_todo.push(Operation::Delete {
                     obj_id: alt_obj_id,
                     ebene: alt_ebene,
                     kuerzel: alt_kuerzel,
+                    poly_alt: (*jp).clone(),
                 });
                 for a in polys_to_subtract.iter() {
                     aenderungen_todo.push(Operation::Insert {
@@ -449,7 +451,7 @@ pub fn aenderungen_zu_fa_xml(
                         poly_neu: a.poly.poly.correct_winding_order_cloned(),
                     });
                 }
-            } else if subtracted.area_m2().round() < *jp_area_m2 {
+            } else if subtracted.area_m2().round() < jp_area_m2 {
                 // original polygon did change, area is now less but not zero: modify obj to be now
                 // subtracted
                 aenderungen_todo.push(Operation::Replace {
@@ -492,6 +494,7 @@ pub fn aenderungen_zu_fa_xml(
                 obj_id: alt_obj_id.clone(),
                 ebene: alt_ebene.clone(),
                 kuerzel: alt_kuerzel.clone(),
+                poly_alt: tp.poly.clone(),
             });
 
             for p in polys_final {
@@ -513,8 +516,9 @@ pub fn aenderungen_zu_fa_xml(
                 obj_id,
                 ebene: _,
                 kuerzel,
+                poly_alt,
             } => {
-                log_status(&format!("deleting obj {obj_id} ({kuerzel})"));
+                log_status(&format!("deleting {} m2 {kuerzel} (obj {obj_id})", poly_alt.area_m2()));
             }
             Operation::Insert {
                 ebene: _,
@@ -545,7 +549,7 @@ pub fn aenderungen_zu_fa_xml(
     let mut final_strings = aenderungen_todo.iter()
     .filter_map(|s| {
         match s {
-        Operation::Delete { obj_id, ebene: _, kuerzel: _ } => {
+        Operation::Delete { obj_id, .. } => {
             let o = objects.objects.get(obj_id)?;
             if o.poly.is_none() {
                 return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
@@ -591,13 +595,19 @@ pub fn aenderungen_zu_fa_xml(
     final_strings.sort();
     let final_strings = final_strings.join("\r\n");
 
-    format!(
+    let s = format!(
         include_str!("./antrag.xml"),
         crs = "",
         content = final_strings,
         profilkennung = "",
         antragsnr = ""
-    )
+    );
+
+    s.lines()
+    .map(|s| s.trim())
+    .filter_map(|s| if s.is_empty() { None } else { Some(s.to_string()) })
+    .collect::<Vec<_>>()
+    .join("\r\n")
 }
 
 /// Maps an index number to a value, i.e.:
