@@ -657,6 +657,31 @@ pub async fn aenderungen_zu_geograf(
 }
 
 #[wasm_bindgen]
+pub fn aenderungen_zu_nas_xml(
+    aenderungen: String,
+    nas_xml: String,
+    xml_objects: String,
+) -> String {
+    let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &nas_xml.crs) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    let xml_objects = match serde_json::from_str::<NasXmlObjects>(&xml_objects) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::david::aenderungen_zu_nas_xml(&aenderungen, &nas_xml, &xml_objects)
+}
+
+#[wasm_bindgen]
 pub fn aenderungen_zu_david(
     datum: String,
     aenderungen: String,

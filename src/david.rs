@@ -252,14 +252,23 @@ impl Operation {
     }
 }
 
-pub fn aenderungen_zu_fa_xml(
+
+pub fn aenderungen_zu_nas_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     objects: &NasXmlObjects,
-    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
 
     log_status_clear();
+    let a_internal = get_aenderungen_internal(aenderungen, nas_xml);
+    // process operations in NAS file
+    format!("TODO!")
+}
+
+fn get_aenderungen_internal(
+    aenderungen: &Aenderungen,
+    nas_xml: &NasXMLFile,
+) -> Vec<Operation> {
 
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
@@ -509,6 +518,19 @@ pub fn aenderungen_zu_fa_xml(
 
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
+    aenderungen_todo
+}
+
+pub fn aenderungen_zu_fa_xml(
+    aenderungen: &Aenderungen,
+    nas_xml: &NasXMLFile,
+    objects: &NasXmlObjects,
+    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
+) -> String {
+
+    log_status_clear();
+
+    let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml);
     
     for a in aenderungen_todo.iter() {
         match a {

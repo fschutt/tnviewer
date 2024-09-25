@@ -2656,6 +2656,19 @@
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
 
+    function exportNasXML() {
+      if (!window.split_flurstuecke_original) {
+        alert("Keine Projektdaten geladen!");
+        return;
+      }
+      var xml = aenderungen_zu_nas_xml(
+        JSON.stringify(window.aenderungen), 
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.xml_objects),
+      );
+      downloadBlob(xml, window.info.antragsnr + ".Fortgefuehr.NAS.xml", 'text/xml');
+    }
+
     async function exportGeoGraf(event) {
       
       var render_dgm = event.altKey;
@@ -2813,6 +2826,7 @@
         export_alle_flst: function(event) { exportAlleFlst(); },
         export_geograf: async function(event) { await exportGeoGraf(event); },
         export_david: function(event) { exportDavid(); },
+        export_nas_xml: function(event) { exportNasXML(); },
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
         undo: function(event) { },

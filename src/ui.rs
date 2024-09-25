@@ -1001,6 +1001,23 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
         ")
     };
 
+
+    let export_nas_xml = {
+        format!("
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='tab_functions.export_nas_xml(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_xml_base64}'>
+                    </div>
+                    <div>
+                        <p>Fortführung</p>
+                        <p>in NAS-XML</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
     let clean_stage7_test = {
         format!("
 
@@ -1170,13 +1187,13 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
+                        {export_alle_flurstuecke}
                         {export_uebersicht}
                     </div>
                 </div>
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_alle_flurstuecke}
                         {export_geograf}
                         {export_david}
                     </div>
@@ -1185,6 +1202,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {export_log}
+                        {export_nas_xml}
                         {projekt_speichern}
                     </div>
                 </div>
