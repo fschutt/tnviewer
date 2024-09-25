@@ -46,7 +46,6 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
                 .collect::<Vec<_>>()
                 .join(" "),
         )
-        .replace("$$CURVEID$$", line_id)
 }
 
 pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
@@ -72,18 +71,15 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
             line_id += 1;
             line_to_ring(l, &number_to_alphabet_value(line_id))
         })
+        .map(|or| {
+            format!("
+            <gml:exterior>
+            {or}
+            </gml:exterior>
+            ")
+        })
         .collect::<Vec<_>>()
         .join("\r\n");
-
-    let outer_rings = if outer_rings.is_empty() { 
-        outer_rings 
-    } else {
-        format!("
-                                    <gml:exterior>
-                                    {outer_rings}
-                                    </gml:exterior>
-        ")
-    };
 
     let inner_rings = p
         .inner_rings
@@ -92,23 +88,19 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
             line_id += 1;
             line_to_ring(l, &number_to_alphabet_value(line_id))
         })
+        .map(|ir| {
+            format!("
+            <gml:interior>
+            {ir}
+            </gml:interior>
+            ")
+        })
         .collect::<Vec<_>>()
         .join("\r\n");
-
-    let inner_rings = if inner_rings.is_empty() { 
-        inner_rings 
-    } else {
-        format!("
-                                    <gml:interior>
-                                    {inner_rings}
-                                    </gml:interior>
-        ")
-    };
 
     POLY_XML
         .replace("$$EXTERIOR_RINGS$$", &outer_rings)
         .replace("$$INTERIOR_RINGS$$", &inner_rings)
-        .replace("$$POLY_ID$$", poly_id)
 }
 
 pub fn get_insert_xml_node(
