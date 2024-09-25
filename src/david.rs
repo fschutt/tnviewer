@@ -113,7 +113,7 @@ pub fn get_insert_xml_node(
 ) -> String {
     const INSERT_XML: &str = r#"
             <wfs:Insert>
-                <$$AX_EBENE$$>
+                <$$AX_EBENE$$ gml:id="$$OBJ_ID$$">
                     <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
                     <lebenszeitintervall>
                         <AA_Lebenszeitintervall>
@@ -141,6 +141,7 @@ pub fn get_insert_xml_node(
 
     INSERT_XML
         .replace("$$AX_EBENE$$", ax_ebene)
+        .replace("$$OBJ_ID$$", obj_id)
         .replace(
             "$$POSITION_NODE$$",
             &polygon_to_position_node(poly, poly_id),
@@ -584,7 +585,8 @@ pub fn aenderungen_zu_fa_xml(
     }
 
     let mut final_strings = aenderungen_todo.iter()
-    .filter_map(|s| {
+    .enumerate()
+    .filter_map(|(i, s)| {
         match s {
         Operation::Delete { obj_id, .. } => {
             let o = objects.objects.get(obj_id)?;
@@ -602,7 +604,7 @@ pub fn aenderungen_zu_fa_xml(
             let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
             Some(get_insert_xml_node(
                 ebene,
-                &uuid().replace("-", "").to_ascii_uppercase(),  // TODO
+                &("DE_001".to_string() + &format!("{i:010}")),  // TODO
                 &auto_attribute,
                 datum_jetzt,
                 poly_neu,
