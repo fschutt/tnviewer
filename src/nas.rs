@@ -1193,6 +1193,12 @@ impl SvgPolygonInner {
         }
     }
 
+    pub fn correct_winding_order_cloned(&self) -> Self {
+        let mut s = self.clone();
+        s.correct_winding_order();
+        s
+    }
+
     pub fn correct_winding_order(&mut self) {
         let normal_winding_area = self.area_m2();
         if normal_winding_area > 1.0 {

@@ -25,17 +25,17 @@ use std::collections::{
 
 pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
     const RING_XML: &str = r#"
-                    <gml:Ring>
-                        <gml:curveMember>
-                            <gml:Curve gml:id="$$CURVEID$$">
-                                <gml:segments>
-                                    <gml:LineStringSegment>
-                                        <gml:posList>$$POSLIST$$</gml:posList>
-                                    </gml:LineStringSegment>
-                                </gml:segments>
-                            </gml:Curve>
-                        </gml:curveMember>
-                    </gml:Ring>
+                            <gml:Ring>
+                                <gml:curveMember>
+                                    <gml:Curve gml:id="$$CURVEID$$">
+                                        <gml:segments>
+                                            <gml:LineStringSegment>
+                                                <gml:posList>$$POSLIST$$</gml:posList>
+                                            </gml:LineStringSegment>
+                                        </gml:segments>
+                                    </gml:Curve>
+                                </gml:curveMember>
+                            </gml:Ring>
     "#;
 
     RING_XML
@@ -76,6 +76,16 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         .collect::<Vec<_>>()
         .join("\r\n");
 
+    let outer_rings = if outer_rings.is_empty() { 
+        outer_rings 
+    } else {
+        format!("
+                <gml:exterior>
+                {outer_rings}
+                </gml:exterior>
+        ")
+    };
+
     let inner_rings = p
         .inner_rings
         .iter()
@@ -85,6 +95,16 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\r\n");
+
+    let inner_rings = if inner_rings.is_empty() { 
+        inner_rings 
+    } else {
+        format!("
+                <gml:interior>
+                {inner_rings}
+                </gml:interior>
+        ")
+    };
 
     POLY_XML
         .replace("$$EXTERIOR_RINGS$$", &outer_rings)
@@ -201,6 +221,7 @@ struct AenderungObject {
     poly: SvgPolygonInner,
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Operation {
     Delete {
         obj_id: String,
@@ -219,6 +240,16 @@ pub enum Operation {
         kuerzel: String,
         poly_neu: SvgPolygonInner,
     },
+}
+
+impl Operation {
+    fn get_str_id(&self) -> String {
+        match self {
+            Operation::Delete { obj_id, ebene, kuerzel } => format!("Delete:{obj_id}::{ebene}::{kuerzel}"),
+            Operation::Replace { obj_id, ebene, kuerzel, poly_alt, poly_neu } => format!("Replace:{obj_id}::{ebene}::{kuerzel}::{}::{}", poly_alt.get_hash(), poly_neu.get_hash()),
+            Operation::Insert { ebene, kuerzel, poly_neu } => format!("Insert:{ebene}::{kuerzel}::{}", poly_neu.get_hash()),
+        }
+    }
 }
 
 pub fn aenderungen_zu_fa_xml(
@@ -414,7 +445,7 @@ pub fn aenderungen_zu_fa_xml(
                     aenderungen_todo.push(Operation::Insert {
                         ebene: a.neu_ebene.clone(),
                         kuerzel: a.neu_kuerzel.clone(),
-                        poly_neu: a.poly.clone(),
+                        poly_neu: a.poly.correct_winding_order_cloned(),
                     });
                 }
             } else if subtracted.area_m2().round() < *jp_area_m2 {
@@ -425,13 +456,13 @@ pub fn aenderungen_zu_fa_xml(
                     ebene: alt_ebene,
                     kuerzel: alt_kuerzel,
                     poly_alt: tp.poly.clone(),
-                    poly_neu: subtracted.clone(),
+                    poly_neu: subtracted.correct_winding_order_cloned(),
                 });
                 for s in polys_to_subtract.iter() {
                     aenderungen_todo.push(Operation::Insert { 
                         ebene: s.neu_ebene.clone(),
                         kuerzel: s.neu_kuerzel.clone(),
-                        poly_neu: s.poly.clone(),
+                        poly_neu: s.poly.correct_winding_order_cloned(),
                     });
                 }
             } else {
@@ -461,12 +492,15 @@ pub fn aenderungen_zu_fa_xml(
                 aenderungen_todo.push(Operation::Insert {
                     ebene: alt_ebene.clone(),
                     kuerzel: alt_kuerzel.clone(),
-                    poly_neu: p.clone(),
+                    poly_neu: p.correct_winding_order_cloned(),
                 });
             }
         }
     }
 
+    aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
+    aenderungen_todo.dedup();
+    
     for a in aenderungen_todo.iter() {
         match a {
             Operation::Delete {
@@ -516,7 +550,8 @@ pub fn aenderungen_zu_fa_xml(
             Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
         },
         Operation::Insert { ebene, kuerzel, poly_neu } => {
-            let auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
+            let mut auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
+            auto_attribute.remove("AX_Ebene");
             let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
             Some(get_insert_xml_node(
                 ebene,
