@@ -669,8 +669,8 @@ fn merge_aenderungen_with_existing_nas(
     }
 
     let polys = aenderungen_todo.iter().filter_map(|a| match a {
-        Operation::Delete { .. } => None,
-        Operation::Replace { ebene, kuerzel, poly_neu, .. } |
+        Operation::Delete { .. } |
+        Operation::Replace { .. } => None,
         Operation::Insert { ebene, kuerzel, poly_neu } => Some(ImAenderung {
             ebene: ebene.clone(),
             kuerzel: kuerzel.clone(),
@@ -708,8 +708,8 @@ fn merge_aenderungen_with_existing_nas(
     }
 
     let mut aenderungen_clean = aenderungen_todo.iter().filter_map(|a| match a {
-        Operation::Delete { .. } => Some(a.clone()),
-        Operation::Replace { poly_neu, .. } |
+        Operation::Delete { .. } |
+        Operation::Replace { .. } => Some(a.clone()),
         Operation::Insert { poly_neu, ..} => if attached_polys.contains_key(&poly_neu.get_hash()) { None } else { Some(a.clone()) },
     }).collect::<Vec<_>>();
 
