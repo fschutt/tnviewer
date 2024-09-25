@@ -409,15 +409,6 @@ pub fn aenderungen_zu_fa_xml(
                         }
                     })
                     .filter_map(|a| {
-                        if TaggedPolygon::get_nutzungsartenkennung(&a.neu_kuerzel)
-                            >= alt_kuerzel_nak
-                        {
-                            Some(a)
-                        } else {
-                            None
-                        }
-                    })
-                    .filter_map(|a| {
                         let relate = nas::relate(&a.poly.poly, &jp, 0.02);
                         if relate.touches_other_poly_outside() 
                            || relate.overlaps()
