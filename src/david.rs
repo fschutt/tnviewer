@@ -120,25 +120,25 @@ pub fn get_insert_xml_node(
     poly_id: &str,
 ) -> String {
     const INSERT_XML: &str = r#"
-        <wfs:Insert>
-            <$$AX_EBENE$$ gml:id="$$OBJ_ID$$">
-                <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
-                <lebenszeitintervall>
-                    <AA_Lebenszeitintervall>
-                        <beginnt>9999-01-01T00:00:00Z</beginnt>
-                    </AA_Lebenszeitintervall>
-                </lebenszeitintervall>
-                <modellart>
-                    <AA_Modellart>
-                        <advStandardModell>DLKM</advStandardModell>
-                    </AA_Modellart>
-                </modellart>
-                $$POSITION_NODE$$
-                <datumDerLetztenUeberpruefung>$$DATUM_JETZT$$</datumDerLetztenUeberpruefung>
-                <ergebnisDerUeberpruefung>3000</ergebnisDerUeberpruefung>
-                $$EXTRA_ATTRIBUTE$$
-            </$$AX_EBENE$$>
-        </wfs:Insert>
+            <wfs:Insert>
+                <$$AX_EBENE$$ gml:id="$$OBJ_ID$$">
+                    <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
+                    <lebenszeitintervall>
+                        <AA_Lebenszeitintervall>
+                            <beginnt>9999-01-01T00:00:00Z</beginnt>
+                        </AA_Lebenszeitintervall>
+                    </lebenszeitintervall>
+                    <modellart>
+                        <AA_Modellart>
+                            <advStandardModell>DLKM</advStandardModell>
+                        </AA_Modellart>
+                    </modellart>
+                    $$POSITION_NODE$$
+                    <datumDerLetztenUeberpruefung>$$DATUM_JETZT$$</datumDerLetztenUeberpruefung>
+                    <ergebnisDerUeberpruefung>3000</ergebnisDerUeberpruefung>
+                    $$EXTRA_ATTRIBUTE$$
+                </$$AX_EBENE$$>
+            </wfs:Insert>
     "#;
 
     let attribute = attribute
@@ -168,7 +168,11 @@ pub fn get_replace_xml_node(
     poly_id: &str,
 ) -> String {
 
-    let mut attribute = member_object.extra_attribute.iter().map(|(k, v)| {
+    let mut attr = member_object.extra_attribute.clone();
+    attr.remove("datumDerLetztenUeberpruefung");
+    attr.remove("ergebnisDerUeberpruefung");
+    attr.remove("identifier");
+    let mut attribute = attr.iter().map(|(k, v)| {
         format!("                    <{k}>{v}</{k}>")
     }).collect::<Vec<_>>();
 
@@ -200,7 +204,7 @@ pub fn get_replace_xml_node(
                         </AA_Modellart>
                     </modellart>
                     $$POSITION_NODE$$
-                    $$EXTRA_ATTRIBUTE$$
+$$EXTRA_ATTRIBUTE$$
                 </$$EBENE$$>
                 <fes:Filter>
                     <fes:ResourceId rid="$$RESOURCE_ID$$"/>
@@ -639,10 +643,10 @@ pub fn aenderungen_zu_fa_xml(
 
     let s = format!(
         include_str!("./antrag.xml"),
-        crs = "",
+        crs = "ETRS89_UTM33",
         content = final_strings,
-        profilkennung = "",
-        antragsnr = ""
+        profilkennung = "schuettf",
+        antragsnr = "73_0073_".to_string() + &format!("{}", datum_jetzt.format("%Y%m%d")) + "_999",
     );
 
     s.lines()
