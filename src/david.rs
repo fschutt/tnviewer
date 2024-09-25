@@ -415,10 +415,8 @@ pub fn aenderungen_zu_fa_xml(
                            || relate.b_contained_in_a() 
                            || a.poly.get_de_id() == Some(alt_obj_id.clone()) 
                            || a.poly.poly.get_hash() == jp.get_hash() {
-                            log_status(&format!("filter ! {alt_obj_id} -> {}: passed", a.poly.get_de_id().unwrap_or_default()));
                             Some(a)
                         } else {
-                            log_status(&format!("filter ! {alt_obj_id} -> {}: failed", a.poly.get_de_id().unwrap_or_default()));
                             None
                         }
                     })

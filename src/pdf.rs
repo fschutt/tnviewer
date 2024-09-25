@@ -2520,7 +2520,7 @@ pub fn subtract_from_poly(
         i.correct_winding_order();
         fi.correct_winding_order();
         if fi.equals(&i) {
-            continue;
+            return SvgPolygonInner::default();
         }
         i.correct_almost_touching_points(&fi, 0.05, true);
         let i = i.round_to_3dec();
