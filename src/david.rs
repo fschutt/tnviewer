@@ -26,7 +26,7 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
     const RING_XML: &str = r#"
                                         <gml:Ring>
                                             <gml:curveMember>
-                                                <gml:Curve gml:id="$$CURVEID$$">
+                                                <gml:Curve>
                                                     <gml:segments>
                                                         <gml:LineStringSegment>
                                                             <gml:posList>$$POSLIST$$</gml:posList>
@@ -52,7 +52,7 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
 pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
     const POLY_XML: &str = r#"
                     <position>
-                        <gml:Surface gml:id="$$POLY_ID$$">
+                        <gml:Surface>
                             <gml:patches>
                                 <gml:PolygonPatch>
                                     $$EXTERIOR_RINGS$$
