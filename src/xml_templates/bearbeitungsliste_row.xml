@@ -1,0 +1,19 @@
+<row r="%%ROWID%%" spans="1:7" %%HASCUSTOMFORMAT%%>
+    <c r="A%%ROWID%%" %%CELLSTYLE%% >
+        <v>%%COL0%%</v>
+    </c>
+    <c r="B%%ROWID%%" %%CELLSTYLE%%>
+        <v>%%COL1%%</v>
+    </c>
+    <c r="C%%ROWID%%" %%CELLSTYLE%%>
+        <v>%%COL2%%</v>
+    </c>
+    <c r="D%%ROWID%%" %%CELLSTYLE%%>
+        <v>%%COL3%%</v>
+    </c>
+    <c r="E%%ROWID%%" %%CELLSTYLE%%>
+        <v>%%COL4%%</v>
+    </c>
+    <c r="F%%ROWID%%" %%CELLSTYLE%%/>
+    <c r="G%%ROWID%%" %%CELLSTYLE%%/>
+</row>

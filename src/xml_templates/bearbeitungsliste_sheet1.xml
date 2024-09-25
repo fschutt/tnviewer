@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- xl/worksheets/sheet1.xml -->
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x14ac"
+    xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac">
+    <sheetPr>
+        <pageSetUpPr fitToPage="1"/>
+    </sheetPr>
+    <dimension ref="A1:CP7"/>
+    <sheetViews>
+        <sheetView tabSelected="1" zoomScaleNormal="100" zoomScaleSheetLayoutView="70" workbookViewId="0">
+            <pane xSplit="1" ySplit="4" topLeftCell="B5" activePane="bottomRight" state="frozen"/>
+            <selection pane="topRight" activeCell="B1" sqref="B1"/>
+            <selection pane="bottomLeft" activeCell="A5" sqref="A5"/>
+            <selection pane="bottomRight" activeCell="B7" sqref="B7"/>
+        </sheetView>
+    </sheetViews>
+    <sheetFormatPr baseColWidth="10" defaultRowHeight="15" x14ac:dyDescent="0.25"/>
+    <cols>
+        <col min="1" max="1" width="24" style="2" customWidth="1"/>
+        <col min="2" max="2" width="54.140625" style="11" customWidth="1"/>
+        <col min="3" max="3" width="50.5703125" style="11" bestFit="1" customWidth="1"/>
+        <col min="4" max="4" width="102.28515625" style="11" customWidth="1"/>
+        <col min="5" max="5" width="43.7109375" style="3" customWidth="1"/>
+        <col min="6" max="6" width="8.85546875" style="3" customWidth="1"/>
+        <col min="7" max="7" width="24.28515625" style="3" customWidth="1"/>
+        <col min="8" max="94" width="11.42578125" style="4"/>
+        <col min="95" max="16384" width="11.42578125" style="3"/>
+    </cols>
+    <sheetData>
+        <!-- %%HEADER%% -->
+        <!-- %%ROWS%% -->
+    </sheetData>
+    <autoFilter ref="A4:G7"/>
+    <pageMargins left="0.70866141732283472" right="0.70866141732283472" top="0.78740157480314965" bottom="0.78740157480314965" header="0.31496062992125984" footer="0.31496062992125984"/>
+    <pageSetup paperSize="8" scale="62" fitToHeight="0" orientation="landscape" r:id="rId1"/>
+    <headerFooter>
+        <oddFooter>&amp;RSeite &amp;P</oddFooter>
+    </headerFooter>
+    <drawing r:id="rId2"/>
+</worksheet>

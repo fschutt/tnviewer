@@ -1,4 +1,7 @@
-use serde_derive::{Deserialize, Serialize};
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
 use std::collections::BTreeMap;
 use xmlparser::Error as XmlError;
 
@@ -26,20 +29,19 @@ pub struct XmlNode {
     pub text: Option<String>,
 }
 
-pub fn get_all_nodes_in_subtree<'a>(xml: &'a [XmlNode], node_type_searched: &'static str) -> Vec<&'a XmlNode> {
-    get_all_nodes_in_subtree_comparator(
-        xml, 
-        |node| node.node_type.as_str() == node_type_searched,
-    )
+pub fn get_all_nodes_in_subtree<'a>(
+    xml: &'a [XmlNode],
+    node_type_searched: &'static str,
+) -> Vec<&'a XmlNode> {
+    get_all_nodes_in_subtree_comparator(xml, |node| node.node_type.as_str() == node_type_searched)
 }
-
 
 pub fn get_all_nodes_in_tree<'a>(xml: &'a [XmlNode]) -> Vec<&'a XmlNode> {
     get_all_nodes_in_subtree_comparator(xml, |_| true)
 }
 
 pub fn get_all_nodes_in_subtree_comparator<'a, F: Fn(&XmlNode) -> bool>(
-    xml: &'a [XmlNode], 
+    xml: &'a [XmlNode],
     search_fn: F,
 ) -> Vec<&'a XmlNode> {
     let mut nodes = Vec::new();
@@ -58,7 +60,11 @@ pub fn get_all_nodes_in_subtree_comparator_internal<'a, F: Fn(&XmlNode) -> bool>
         .collect::<Vec<_>>();
 
     for xml_node in xml.iter() {
-        get_all_nodes_in_subtree_comparator_internal(&xml_node.children, search_fn, &mut found_nodes);
+        get_all_nodes_in_subtree_comparator_internal(
+            &xml_node.children,
+            search_fn,
+            &mut found_nodes,
+        );
     }
 
     target.extend(found_nodes.into_iter());
@@ -71,14 +77,47 @@ impl XmlNode {
             .filter(|n| n.node_type.as_str() == node_type)
             .collect()
     }
+
+    // select subitems by their predecessors
+    pub fn select_subitems<'a>(&'a self, node_types: &[&str]) -> Vec<&'a XmlNode> {
+        let mut nt = node_types.to_vec();
+        nt.reverse();
+        if nt.is_empty() {
+            return Vec::new();
+        }
+
+        let mut nt_final = vec![self];
+
+        while let Some(next_test_type) = nt.pop() {
+            let _nt_final_clone = nt_final.clone();
+            let mut nt_final_new = Vec::new();
+            if nt_final.is_empty() {
+                break;
+            }
+            for n in nt_final.iter() {
+                for c in n.children.iter() {
+                    if c.node_type == next_test_type {
+                        nt_final_new.push(c);
+                    }
+                }
+            }
+            if nt_final_new.is_empty() {
+                break;
+            }
+            nt_final = nt_final_new;
+        }
+
+        nt_final
+    }
 }
 
-pub fn parse_xml_string(xml: &str, log: &mut Vec<String>) -> Result<Vec<XmlNode>, XmlParseError> {
-    use xmlparser::ElementEnd::*;
-    use xmlparser::Token::*;
-    use xmlparser::Tokenizer;
-
+pub fn parse_xml_string(xml: &str, _log: &mut Vec<String>) -> Result<Vec<XmlNode>, XmlParseError> {
     use self::XmlParseError::*;
+    use xmlparser::{
+        ElementEnd::*,
+        Token::*,
+        Tokenizer,
+    };
 
     let mut root_node = XmlNode::default();
 
@@ -181,7 +220,10 @@ fn get_item<'a>(hierarchy: &[usize], root_node: &'a mut XmlNode) -> Option<&'a m
     get_item_internal(&mut hierarchy, node)
 }
 
-fn get_item_internal<'a>(hierarchy: &mut Vec<usize>, root_node: &'a mut XmlNode) -> Option<&'a mut XmlNode> {
+fn get_item_internal<'a>(
+    hierarchy: &mut Vec<usize>,
+    root_node: &'a mut XmlNode,
+) -> Option<&'a mut XmlNode> {
     if hierarchy.is_empty() {
         return Some(root_node);
     }

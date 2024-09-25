@@ -3,10 +3,1005 @@
   <head>
     <meta charset="utf-8">
     <title>Tatsächliche Nutzung Viewer / Editor</title>
+    <script type="module">
+        window.configuration = {
+          "map":{
+              "basemap":"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              "dop_source":"https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
+              "dop_layers":"bebb_dop20c",
+              "dgm_source":"https://isk.geobasis-bb.de/mapproxy/dgm/service/wms?",
+              "dgm_layers":"dgm"
+          },
+          "merge":{
+              "stage1_maxdst_point":1.0,
+              "stage1_maxdst_line":1.0,
+              "stage2_maxdst_point":1.0,
+              "stage2_maxdst_line":1.0,
+              "stage3_maxdst_line":0.2,
+              "stage3_maxdst_line2":2.0,
+              "stage3_maxdeviation_followline":5.0
+          },
+          "style":{
+              "ebenen_ordnung":[
+                "b",
+                "c",
+                "d",
+                "e",
+                "f",
+                "g",
+                "h",
+                "i",
+                "j",
+                "l",
+                "m",
+                "n",
+                "o",
+                "p",
+                "q",
+                "r",
+                "s",
+                "t",
+                "u",
+                "v",
+                "w",
+                "x",
+                "y",
+                "z",
+                "za",
+                "zb",
+                "zc",
+                "zd"
+              ],
+              "ebenen":{
+                "b":{
+                    "name":"AX_Flurstueck",
+                    "fill_color":"#ccc",
+                    "outline_color":"#000000",
+                    "outline_thickness":2
+                },
+                "c":{
+                    "name":"AX_Meer",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "d":{
+                    "name":"AX_StehendesGewaesser",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "e":{
+                    "name":"AX_Fliessgewaesser",
+                    "fill_color":"#00ccab",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "f":{
+                    "name":"AX_BauwerkImVerkehrsbereich",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "g":{
+                    "name":"AX_SonstigesBauwerkOderSonstigeEinrichtung",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "h":{
+                    "name":"AX_BauwerkOderAnlageFuerIndustrieUndGewerbe",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "i":{
+                    "name":"AX_Turm",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "j":{
+                    "name":"AX_Bauteil",
+                    "fill_color":"#008822",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "k":{
+                    "name":"AX_Gebaeude",
+                    "fill_color":"#bdbdbd",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "l":{
+                    "name":"AX_Gebaeude",
+                    "fill_color":"#bdbdbd",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "m":{
+                    "name":"AX_Bahnverkehr",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "n":{
+                    "name":"AX_Platz",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "o":{
+                    "name":"AX_Weg",
+                    "fill_color":"#b8b8b8",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "p":{
+                    "name":"AX_Strassenverkehr",
+                    "fill_color":"#cccccc",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "q":{
+                    "name":"AX_Friedhof",
+                    "fill_color":"#638062",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "r":{
+                    "name":"AX_SportFreizeitUndErholungsflaeche",
+                    "fill_color":"#61a360",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "s":{
+                    "name":"AX_FlaecheBesondererFunktionalerPraegung",
+                    "fill_color":"#e364e1",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "t":{
+                    "name":"AX_FlaecheGemischterNutzung",
+                    "fill_color":"#648ae3",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "u":{
+                    "name":"AX_TagebauGrubeSteinbruch",
+                    "fill_color":"#9c9c9c",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "v":{
+                    "name":"AX_Halde",
+                    "fill_color":"#7a7463",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "w":{
+                    "name":"AX_IndustrieUndGewerbeflaeche",
+                    "fill_color":"#fcba03",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "x":{
+                    "name":"AX_Wohnbauflaeche",
+                    "fill_color":"#ffadbe",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "y":{
+                    "name":"AX_UnlandVegetationsloseFlaeche",
+                    "fill_color":"#d9d9d9",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "z":{
+                    "name":"AX_Sumpf",
+                    "fill_color":"#00a367",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "za":{
+                    "name":"AX_Heide",
+                    "fill_color":"#b8005c",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zb":{
+                    "name":"AX_Gehoelz",
+                    "fill_color":"#03b800",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zc":{
+                    "name":"AX_Wald",
+                    "fill_color":"#51ed4e",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "zd":{
+                    "name":"AX_Landwirtschaft",
+                    "fill_color":"#fff596",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                },
+                "ze":{
+                    "name":"AX_BauRaumOderBodenordnungsrecht",
+                    "fill_color":"#ff0000",
+                    "outline_color":"#000000",
+                    "outline_thickness":1
+                }
+              }
+          },
+          "pdf":{
+              "grenzpunkt_svg":null,
+              "pfeil_svg":null,
+              "nordpfeil_svg":null,
+              "gebauede_loeschen_svg":null,
+              "ax_flur_stil":{
+                "kuerzel":"",
+                "fill_color":"#000",
+                "fill":false,
+                "outline_color":"#ccc",
+                "outline_thickness":3,
+                "outline_dash":"5-5-5-5-5-5",
+                "outline_overprint":true,
+                "pattern_svg":null,
+                "pattern_placement":null,
+                "lagebez_ohne_hsnr":{
+                    "art":"",
+                    "fontsize":null,
+                    "font":null,
+                    "color":null
+                }
+              },
+              "ax_bauraum_stil":{
+                "kuerzel":"",
+                "fill_color":"#000",
+                "fill":false,
+                "outline_color":"#ff0000",
+                "outline_thickness":3,
+                "outline_dash":"5-5-5-5-5-5",
+                "outline_overprint":true,
+                "pattern_svg":null,
+                "pattern_placement":null,
+                "lagebez_ohne_hsnr":{
+                    "art":"",
+                    "fontsize":null,
+                    "font":null,
+                    "color":null
+                }
+              },
+              "lagebez_mit_hsnr":{
+                "art":"",
+                "fontsize":null,
+                "font":null,
+                "color":null
+              },
+              "layer_ordnung":[
+                "7d357cd7-b768-421d-95e7-775d2c864737",
+                "0b09166a-c48a-42b9-abdb-3f3081617770",
+                "0383e46c-1ac7-483d-8236-ef0d271e7840",
+                "4772a018-076d-47ca-9f48-b593f525cf98",
+                "d0dfa4c9-f4af-4cf8-a901-c56a38dd7a33",
+                "848bae50-ba59-4278-9db6-ca730c0e2ee8",
+                "94c2730d-d108-44a6-9966-0edc6ed7e7fe",
+                "964a3186-16ec-402b-9625-e2464e7bf98f",
+                "d868a505-d1dd-4f49-b50d-352990a59ccc",
+                "768e6666-1b55-4cfb-bf38-7747c1dd7cec",
+                "0be9cf68-a7b1-42af-995c-fc7c813d776e",
+                "d2f56cc0-550c-4059-ad7f-367fb4f2f2e3",
+                "ae030030-4f3d-4e2f-9d1a-d0f2a0678c2f",
+                "917f86d3-b8c6-4b19-a4cc-39ab83cd8e43",
+                "8d1950ba-c4fd-49cc-8b96-90f8ed108f2a",
+                "41ef0cb9-1fb7-4e91-aa08-9398a44eb7e9",
+                "2ed40ecb-fe11-4d10-8e76-ac5acafb73ac",
+                "1cdafb15-fad8-4855-a49c-cfc39f1c9c48",
+                "f53b84a0-7560-4809-877d-baa7eed43a47",
+                "426af1f2-52ec-40b2-ba09-1aa541f0ba66",
+                "bb725339-0e9c-4421-81ce-0cdf8d0bcec2",
+                "e4bde7c4-ed57-47c7-8398-3bffe3c3e7ad",
+                "5cc3383e-ce19-493c-a0be-77ccffe1c3f8",
+                "ab26453c-1574-48c4-b6e7-bf2ab653a65e",
+                "6e0e385a-ce07-46f7-b11b-a75c84d3111e",
+                "a46aae82-800e-462d-a9f8-fdb34c059d06",
+                "e2f8a1ab-e148-43e0-abb6-0b7bb3cee876",
+                "97aa7cd4-5741-4ecc-a6cb-4b849e1c46c1",
+                "a37c78c1-2d34-4407-b60a-9813ceaf652a",
+                "90adc682-7d7e-4cf0-bc03-fe47395b19d9",
+                "a60b834b-3a85-4465-b1dc-fe258e6bf345",
+                "813bda72-43d5-442a-8be7-14fd795ab650",
+                "b2dab373-858f-4f6a-8327-39ab99df8bf8",
+                "119fbd35-9346-4a1c-ab31-f6cb255abcbb",
+                "12588b26-72c7-4504-adab-3b775b79a512",
+                "31e7a32b-1522-490d-a556-5a77b7c5adf3",
+                "dde54fb6-c643-42e5-ad62-b024c1de97d2",
+                "eb983e63-7824-44fd-9fea-63a08cd06bca",
+                "b1ca9225-b5b8-4d54-a7b8-36938c83801c"
+              ],
+              "nutzungsarten":{
+                "0383e46c-1ac7-483d-8236-ef0d271e7840":{
+                    "kuerzel":"BA",
+                    "fill_color":"#8da4f4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "0b09166a-c48a-42b9-abdb-3f3081617770":{
+                    "kuerzel":"A",
+                    "fill_color":"#95cbf9",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "0be9cf68-a7b1-42af-995c-fc7c813d776e":{
+                    "kuerzel":"F",
+                    "fill_color":"#8888ef",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "119fbd35-9346-4a1c-ab31-f6cb255abcbb":{
+                    "kuerzel":"VSW",
+                    "fill_color":"#a78af7",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "12588b26-72c7-4504-adab-3b775b79a512":{
+                    "kuerzel":"WAF",
+                    "fill_color":"#0080ff",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "1cdafb15-fad8-4855-a49c-cfc39f1c9c48":{
+                    "kuerzel":"HDH",
+                    "fill_color":"#e6fca4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "2ed40ecb-fe11-4d10-8e76-ac5acafb73ac":{
+                    "kuerzel":"HD",
+                    "fill_color":"#f98698",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "31e7a32b-1522-490d-a556-5a77b7c5adf3":{
+                    "kuerzel":"WALD",
+                    "fill_color":"#fc79b6",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "41ef0cb9-1fb7-4e91-aa08-9398a44eb7e9":{
+                    "kuerzel":"HAL",
+                    "fill_color":"#b19eed",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "426af1f2-52ec-40b2-ba09-1aa541f0ba66":{
+                    "kuerzel":"LH",
+                    "fill_color":"#b5f79b",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "4772a018-076d-47ca-9f48-b593f525cf98":{
+                    "kuerzel":"BP",
+                    "fill_color":"#ffdac6",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "5cc3383e-ce19-493c-a0be-77ccffe1c3f8":{
+                    "kuerzel":"OBBP",
+                    "fill_color":"#d6f7a0",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "6e0e385a-ce07-46f7-b11b-a75c84d3111e":{
+                    "kuerzel":"S",
+                    "fill_color":"#fcb0d7",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "768e6666-1b55-4cfb-bf38-7747c1dd7cec":{
+                    "kuerzel":"ESA",
+                    "fill_color":"#9af9d3",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "7d357cd7-b768-421d-95e7-775d2c864737":{
+                    "kuerzel":"NF",
+                    "fill_color":"#ff8040",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "813bda72-43d5-442a-8be7-14fd795ab650":{
+                    "kuerzel":"VSK",
+                    "fill_color":"#cbfca1",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "848bae50-ba59-4278-9db6-ca730c0e2ee8":{
+                    "kuerzel":"BPR",
+                    "fill_color":"#acf7a0",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "8d1950ba-c4fd-49cc-8b96-90f8ed108f2a":{
+                    "kuerzel":"GRÜ",
+                    "fill_color":"#fc85dc",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "90adc682-7d7e-4cf0-bc03-fe47395b19d9":{
+                    "kuerzel":"UV",
+                    "fill_color":"#ef77f9",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "917f86d3-b8c6-4b19-a4cc-39ab83cd8e43":{
+                    "kuerzel":"GR",
+                    "fill_color":"#f0c4fc",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "94c2730d-d108-44a6-9966-0edc6ed7e7fe":{
+                    "kuerzel":"BPV",
+                    "fill_color":"#8dfcb4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "964a3186-16ec-402b-9625-e2464e7bf98f":{
+                    "kuerzel":"BPÖ",
+                    "fill_color":"#fc7481",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "97aa7cd4-5741-4ecc-a6cb-4b849e1c46c1":{
+                    "kuerzel":"SUM",
+                    "fill_color":"#eff9a4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "a37c78c1-2d34-4407-b60a-9813ceaf652a":{
+                    "kuerzel":"TG",
+                    "fill_color":"#ffe3c9",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "a46aae82-800e-462d-a9f8-fdb34c059d06":{
+                    "kuerzel":"SF",
+                    "fill_color":"#97ebf4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "a60b834b-3a85-4465-b1dc-fe258e6bf345":{
+                    "kuerzel":"VS",
+                    "fill_color":"#bc82f2",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "ab26453c-1574-48c4-b6e7-bf2ab653a65e":{
+                    "kuerzel":"PARK",
+                    "fill_color":"#6e7bef",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "ae030030-4f3d-4e2f-9d1a-d0f2a0678c2f":{
+                    "kuerzel":"GHÖ",
+                    "fill_color":"#98f9b7",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "b1ca9225-b5b8-4d54-a7b8-36938c83801c":{
+                    "kuerzel":"WEG",
+                    "fill_color":"#c3f99f",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "b2dab373-858f-4f6a-8327-39ab99df8bf8":{
+                    "kuerzel":"VSKWI",
+                    "fill_color":"#75ea9c",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "bb725339-0e9c-4421-81ce-0cdf8d0bcec2":{
+                    "kuerzel":"LNH",
+                    "fill_color":"#ffc1ba",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "d0dfa4c9-f4af-4cf8-a901-c56a38dd7a33":{
+                    "kuerzel":"BPO2",
+                    "fill_color":"#ffd5c9",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "d2f56cc0-550c-4059-ad7f-367fb4f2f2e3":{
+                    "kuerzel":"G",
+                    "fill_color":"#9e8dfc",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "d868a505-d1dd-4f49-b50d-352990a59ccc":{
+                    "kuerzel":"BRA",
+                    "fill_color":"#ef9b7c",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "dde54fb6-c643-42e5-ad62-b024c1de97d2":{
+                    "kuerzel":"WAS",
+                    "fill_color":"#8d8bf4",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "e2f8a1ab-e148-43e0-abb6-0b7bb3cee876":{
+                    "kuerzel":"SFS",
+                    "fill_color":"#ce83f7",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "e4bde7c4-ed57-47c7-8398-3bffe3c3e7ad":{
+                    "kuerzel":"MI",
+                    "fill_color":"#9e8dfc",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "eb983e63-7824-44fd-9fea-63a08cd06bca":{
+                    "kuerzel":"WBF",
+                    "fill_color":"#87b1ed",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                },
+                "f53b84a0-7560-4809-877d-baa7eed43a47":{
+                    "kuerzel":"IG",
+                    "fill_color":"#c085f7",
+                    "fill":true,
+                    "outline_color":null,
+                    "outline_thickness":null,
+                    "outline_dash":null,
+                    "outline_overprint":false,
+                    "pattern_svg":null,
+                    "pattern_placement":null,
+                    "lagebez_ohne_hsnr":{
+                      "art":"",
+                      "fontsize":null,
+                      "font":null,
+                      "color":null
+                    }
+                }
+              },
+              "beschriftungen":{
+                
+              },
+              "symbole":{
+                
+              }
+          }
+        };
+        // INJECT_NUTZUNGSARTEN_KATALOG
+    </script>
+
     <!--LEAFLET_CSS_LINK-->
     <!--LEAFLET_JS-->
     <!--LEAFLET_DRAW_JS-->
     <!--MAIN_CSS-->
+
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <script type="module">
     function base64ToArrayBuffer(base64) {
@@ -26,6 +1021,7 @@
     var MARKER_NORMAL_WEBP = "";
     var MARKER_MIDDLE_WEBP = "";
     var RISS_COLOR = "blue";
+    var AVOID_COLOR = "red";
 
     var drag_icon_normal_src = 'data:image/png;charset=utf-8;base64,' + MARKER_NORMAL_WEBP;
     var drag_icon_normal = L.icon({
@@ -45,13 +1041,17 @@
     var geojson_repaint_layers = [];
     var leaflet_risse = {};
     var layers = null;
+    var basemaps = null;
     var highlight_layer = null;
     var nutzung_einzeichnen_layer = null;
     var gebaeude_loeschen_layer = null;
     var current_edit_layer = null;
     var guideLayers = [];
-
-    var defaultdate = new Date().getFullYear() + "-31-XXX";
+    var rissgebiet_layer = null;
+    var current_rissgebiet_layer = null;
+    var active_rissgebiet = null;
+    
+    var defaultdate = new Date().getFullYear() + "-30-XXX";
     window.split_flurstuecke = null; // split XML NAS data
     window.projectdata = null; // project XML NAS data
     window.csv_data = null; // project CSV data
@@ -68,6 +1068,12 @@
       na_definiert: {},
       na_polygone_neu: {},
     };
+    var datenow = new Date().toLocaleDateString("de-DE", { // you can use undefined as first argument
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
     window.info = {
       antragsnr: defaultdate,
       katasteramt: "Uckermark",
@@ -76,230 +1082,12 @@
       beruf_kuerzel: "GM",
       gemeinde: "Carmzow-Wallmow",
       gemarkung: "Cremzow",
-      gemarkung_nr: "3911",
+      bearbeitung_beendet_am: datenow,
+      alkis_aktualitaet: datenow,
+      orthofoto_datum: "18.04.2020",
+      gis_feldbloecke_datum: "11.02.2022",
     };
     window.risse = {};
-    window.configuration = {
-      map: {
-        basemap: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        dop_source: "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms?",
-        dop_layers: "bebb_dop20c"
-      },
-      style: {
-        ebenen_ordnung: ["b","c","d","e","f","g","h","i","j","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","za","zb","zc","zd"],
-          ebenen: {
-        "b": {
-          name: "AX_Flurstueck",
-          fill_color: "#ccc",
-          outline_color: "#000000",
-          outline_thickness: 2
-        },
-        "c": {
-          name: "AX_Meer",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "d": {
-          name: "AX_StehendesGewaesser",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "e": {
-          name: "AX_Fliessgewaesser",
-          fill_color: "#00ccab",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "f": {
-          name: "AX_BauwerkImVerkehrsbereich",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "g": {
-          name: "AX_SonstigesBauwerkOderSonstigeEinrichtung",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "h": {
-          name: "AX_BauwerkOderAnlageFuerIndustrieUndGewerbe",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "i": {
-          name: "AX_Turm",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "j": {
-          name: "AX_Bauteil",
-          fill_color: "#008822",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "k": {
-          name: "AX_Gebaeude",
-          fill_color: "#bdbdbd",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "l": {
-          name: "AX_Gebaeude",
-          fill_color: "#bdbdbd",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "m": {
-          name: "AX_Bahnverkehr",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "n": {
-          name: "AX_Platz",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "o": {
-          name: "AX_Weg",
-          fill_color: "#b8b8b8",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "p": {
-          name: "AX_Strassenverkehr",
-          fill_color: "#cccccc",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "q": {
-          name: "AX_Friedhof",
-          fill_color: "#638062",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "r": {
-          name: "AX_SportFreizeitUndErholungsflaeche",
-          fill_color: "#61a360",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "s": {
-          name: "AX_FlaecheBesondererFunktionalerPraegung",
-          fill_color: "#e364e1",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "t": {
-          name: "AX_FlaecheGemischterNutzung",
-          fill_color: "#648ae3",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "u": {
-          name: "AX_TagebauGrubeSteinbruch",
-          fill_color: "#9c9c9c",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "v": {
-          name: "AX_Halde",
-          fill_color: "#7a7463",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "w": {
-          name: "AX_IndustrieUndGewerbeflaeche",
-          fill_color: "#fcba03",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "x": {
-          name: "AX_Wohnbauflaeche",
-          fill_color: "#ffadbe",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "y": {
-          name: "AX_UnlandVegetationsloseFlaeche",
-          fill_color: "#d9d9d9",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "z": {
-          name: "AX_Sumpf",
-          fill_color: "#00a367",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "za": {
-          name: "AX_Heide",
-          fill_color: "#b8005c",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zb": {
-          name: "AX_Gehoelz",
-          fill_color: "#03b800",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zc": {
-          name: "AX_Wald",
-          fill_color: "#51ed4e",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "zd": {
-          name: "AX_Landwirtschaft",
-          fill_color: "#fff596",
-          outline_color: "#000000",
-          outline_thickness: 1
-        },
-        "ze": {
-          name: "AX_BauRaumOderBodenordnungsrecht",
-          fill_color: "#ff0000",
-          outline_color: "#000000",
-          outline_thickness: 1
-        }
-      }
-    },
-    pdf: {
-      grenzpunkt_svg: null,
-      pfeil_svg: null,
-      nordpfeil_svg: null,
-      gebauede_loeschen_svg: null,
-      ax_flur_stil: {
-        fill_color: "#000",
-        fill: false,
-        outline_color: "#ccc",
-        outline_thickness: 3.0,
-        outline_dash: "5-5-5-5-5-5",
-        outline_overprint: true,
-        pattern_svg: null,
-        pattern_placement: null,
-      },
-      ax_bauraum_stil: {
-        fill_color: "#000",
-        fill: false,
-        outline_color: "#ff0000",
-        outline_thickness: 3.0,
-        outline_dash: "5-5-5-5-5-5",
-        outline_overprint: true,
-        pattern_svg: null,
-        pattern_placement: null,
-      },
-      lagebez_mit_hsnr: {
-
-      },
-    }
-  }; // default config object
 
     // INJECT_SELECT_MAP_JS
 
@@ -425,6 +1213,12 @@
       case "map-dop-layer":
         window.configuration.map.dop_layers = value;
         break;
+      case "map-dgm-source":
+        window.configuration.map.dgm_source = value;
+        break;      
+      case "map-dgm-layer":
+        window.configuration.map.dgm_layers = value;
+        break;
       case "map-style-name":
         window.configuration.style.ebenen[style_id].name = value;
         break;
@@ -534,6 +1328,7 @@
       height_mm: 420.0,
       scale: 3500.0,
     };
+    active_rissgebiet = null;
     replaceProjectContent();
     rerenderRisse();  
   }
@@ -548,37 +1343,85 @@
   window.rissLoeschen = rissLoeschen;
 
   function removeRisseLayer() {
+      removeRissGebietLayer();
+      removeRissGebietEinzeichnenLayer();
       for (var [riss_id, riss_objekte] of Object.entries(leaflet_risse)) {
         map.removeLayer(riss_objekte.leaflet_rect);
+        map.removeLayer(riss_objekte.leaflet_rect_avoid);
         map.removeLayer(riss_objekte.leaflet_center_handle);
       }
       leaflet_risse = {};
     }
 
+  window.PADDING = 16.5; // mm
+  
   function rerenderRisse() {
     removeRisseLayer();
+    removeRissGebietLayer();
     for (var [riss_id, riss_config] of Object.entries(window.risse)) {
       var rect = calculate_coords(
-        riss_config.width_mm, 
-        riss_config.height_mm, 
+        riss_config.width_mm - (PADDING * 2.0), 
+        riss_config.height_mm - (PADDING * 2.0), 
         riss_config.scale, 
         riss_config.lon, 
         riss_config.lat
       );
-
+      var crs = null;
+      if (window.split_flurstuecke_original) {
+        crs = window.split_flurstuecke_original.crs;
+      }
+      var avoid_rect = JSON.parse(get_header_coords(JSON.stringify(riss_config), null));
       if (leaflet_risse[riss_id]) {
         leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+        leaflet_risse[riss_id].leaflet_rect_avoid.setBounds(avoid_rect.coords);
         leaflet_risse[riss_id].leaflet_center_handle.setLatLng({ lat:riss_config.lat,lng:riss_config.lon });
       } else {
         var map_extent = L.rectangle(rect.coords, {color: RISS_COLOR, weight: 2});
+        var avoid_extent = L.rectangle(avoid_rect.coords, {color: AVOID_COLOR, weight: 1});
         var map_handle_center = L.marker({ lat:riss_config.lat,lng:riss_config.lon }, { draggable: true, icon: drag_icon_middle, riss_id: riss_id });
         map_handle_center.on('drag', function(event){ drag_handle(event) });
         leaflet_risse[riss_id] = {
           leaflet_rect: map_extent,
+          leaflet_rect_avoid: avoid_extent,
           leaflet_center_handle: map_handle_center,
         };
         map_extent.addTo(map);
+        avoid_extent.addTo(map);
         map_handle_center.addTo(map);
+      }
+      var myLayer = L.layerGroup([]);
+      if (riss_config.rissgebiet) {
+        var f = get_rissgebiet_geojson(
+          JSON.stringify(riss_config.rissgebiet),
+        );
+        var rissgebiet = JSON.parse(f);
+        var style_active = {
+          "color": "#ffcc00",
+          "fillColor": "#ffcc00",
+          "weight": 0.0,
+          "opacity": 0.5,
+          "fillOpacity": 0.5
+        };
+        var style_inactive = {
+          "color": "#fc03b6",
+          "fillColor": "#000000",
+          "weight": 4.0,
+          "opacity": 0.5,
+          "fillOpacity": 0.0
+        };
+        if (L.geoJSON) {
+          myLayer.addLayer(L.geoJSON(rissgebiet, {
+            "style": riss_id == active_rissgebiet ? style_active : style_inactive,
+          }));
+        } else if (L.geoJson) {
+          myLayer.addLayer(L.geoJson(rissgebiet, {
+            "style": riss_id == active_rissgebiet ? style_active : style_inactive,
+          }));
+        }
+      }
+      rissgebiet_layer = myLayer;
+      if (rissgebiet_layer) {
+        rissgebiet_layer.addTo(map);
       }
     }
   }
@@ -606,8 +1449,14 @@
     var scale = window.risse[riss_id].scale;
     window.risse[riss_id].lat = center_lat_lng.lat;
     window.risse[riss_id].lon = center_lat_lng.lng;
-    var rect = calculate_coords(width, height, scale, center_lat_lng.lng, center_lat_lng.lat);
+    var rect = calculate_coords(width - (PADDING * 2.0), height - (PADDING * 2.0), scale, center_lat_lng.lng, center_lat_lng.lat);
     leaflet_risse[riss_id].leaflet_rect.setBounds(rect.coords);
+    var crs = null;
+    if (window.split_flurstuecke_original) {
+      crs = window.split_flurstuecke_original.crs;
+    }
+    var avoid_rect = JSON.parse(get_header_coords(JSON.stringify(window.risse[riss_id]), null));
+    leaflet_risse[riss_id].leaflet_rect_avoid.setBounds(avoid_rect.coords);
   }
 
   function projectInfoEdit(event) {
@@ -627,11 +1476,32 @@
       window.info.gemeinde = newvalue;
     } else if (id == 'gemarkung') {
       window.info.gemarkung = newvalue;
-    } else if (id == 'gemarkung_nr') {
-      window.info.gemarkung_nr = newvalue;
+    } else  if (id == 'bearbeitung_beendet_am') {
+      window.info.bearbeitung_beendet_am = newvalue;
+    } else  if (id == 'alkis_aktualitaet') {
+      window.info.alkis_aktualitaet = newvalue;
+    } else  if (id == 'orthofoto_datum') {
+      window.info.orthofoto_datum = newvalue;
+    } else  if (id == 'gis_feldbloecke_datum') {
+      window.info.gis_feldbloecke_datum = newvalue;
     }
   }
   
+
+  function onAenderungClicked(e) {
+      var aenderung_id = e.target.feature.properties.newPolyId;
+      console.log(aenderung_id);
+      if (aenderung_id) {
+        alert(aenderung_id);
+      }
+  }
+
+  function aenderungClicked(feature, layer) {
+        layer.on({
+            dblclick: onAenderungClicked
+        });
+    }
+
   function reinitMapDrawnStaticLayers() {
     if (current_edit_layer != null) {
       map.removeLayer(current_edit_layer);
@@ -668,7 +1538,8 @@
             "weight": 5,
             "opacity": 1.0,
             "fillOpacity": 0.3,
-          }
+          },
+          "onEachFeature": aenderungClicked
         });
       } else if (L.geoJSON) {
         myLayer = L.geoJSON(geojson, {
@@ -678,7 +1549,8 @@
             "weight": 5,
             "opacity": 1.0,
             "fillOpacity": 0.3,
-          }
+          },
+          "onEachFeature": aenderungClicked
         });
       }
 
@@ -761,41 +1633,49 @@
     reinitMapDrawnStaticLayers();
   }
 
-  function colorFlurstuecke() {
-    if (!window.csv_data) {
+  window.get_layer_style = get_layer_style;
+  
+  function splitNasDataOnEachFeatureClicked(e) {
+    var flst_id = e.target.feature.properties.flurstueckskennzeichen;
+    if (!flst_id) {
       return;
     }
-    for (var k in window.csv_data) {
-      var e = window.csv_data[k];
-      for (var i = 0; i < e.length; i++) {
-        var q = e[i];
-        if (q.status == 'bleibt') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#3e3e58';
-          }
-          break;
-        }
-        if (q.status == 'aenderung-keine-benachrichtigung') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#ff9a5a';
-          }
-          break;
-        }
-        if (q.status == 'aenderung-mit-benachrichtigung') {
-          var e = document.getElementById('csv_flst_' + k);
-          if (e) {
-            e.style.background = '#ff4545';
-          }
-          break;
-        }
-      }
+    window.uidata.selected_edit_flst = validate_format_flst_id(flst_id);
+    console.log(window.uidata.selected_edit_flst);
+    var found = searchFlst(window.uidata.selected_edit_flst);
+    if (found) {
+      console.log("found!");
+      selectFlst(window.uidata.selected_edit_flst);
+      highlightPolygon(found.flst);
+    } else {
+      alert("Flurstück " + window.uidata.selected_edit_flst + " nicht in XML-Daten gefunden!");
+    }
+    replaceProjectContent();
+  }
+
+  function zoomToFlstPart(event) {
+    var partid = event.target.dataset.partId;
+    if (!partid) {
+      return;
+    }
+
+    console.log("zooming to " + partid);
+    var found = searchFlstPart(partid);
+    if (found) {
+      highlightPolygon(found.flst);
+    } else {
+      alert("Flurstück " + partid + " nicht in XML-Daten gefunden!");
     }
   }
 
-  window.get_layer_style = get_layer_style;
-  
+  window.zoomToFlstPart = zoomToFlstPart;
+
+  function splitNasDataOnEachFeature(feature, layer) {
+        layer.on({
+            dblclick: splitNasDataOnEachFeatureClicked
+        });
+    }
+
   function replaceDataNasXML() {
     var input = document.createElement('input');
     input.type = 'file';
@@ -820,6 +1700,7 @@
           window.projectdata = parsed.nas_projected;
           window.split_flurstuecke_original = parsed.nas_cut_original;
           window.split_flurstuecke = parsed.nas_cut_projected;
+          window.xml_objects = parsed.xml_objects;
           window.parse_log = parsed.log;
 
           // remove old LeafLet layers
@@ -870,7 +1751,8 @@
                   "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
-                }
+                },
+                "onEachFeature": splitNasDataOnEachFeature,
               });
             } else if (L.geoJSON) {
               myLayer = L.geoJSON(geojson, {
@@ -880,7 +1762,8 @@
                   "weight": layer_style.outline_thickness,
                   "opacity": 1.0,
                   "fillOpacity": 0.3,
-                }
+                },
+                "onEachFeature": splitNasDataOnEachFeature,
               });
             }
             
@@ -918,9 +1801,14 @@
 }
 
   function selectFlst(id) {
-    window.uidata.selected_edit_flst = id;
+    window.uidata.selected_edit_flst = validate_format_flst_id(id);
     replaceProjectContent();
-    document.getElementById('csv_flst_' + id).scrollIntoView();
+    var e = window.uidata.selected_edit_flst.replace(/\//g, "-");
+    var q = e.replace(/-/g, "_");
+    var v = document.getElementById('csv_flst_' + q);
+    if (v) {
+      v.scrollIntoView();
+    }
   }
 
     function focusFlst(event) {
@@ -930,7 +1818,7 @@
         return;
       }
 
-      var found = searchFlst(id, window.projectdata);
+      var found = searchFlst(id);
       if (found) {
         selectFlst(id);
         highlightPolygon(found.flst);
@@ -939,33 +1827,36 @@
       }
     }
 
-    function searchFlst(id, pd) {
-      var id = id.replace(/0+$/, "");
-      // minimum 14 chars, prevent numbers such as "70" from being reduced to "7"
-      if (id.length < 14) {
-        for (let i = (14 - id.length); i > 0; i--) {
-          id += "0";
+    function searchFlst(id) {
+      var parsed = null;
+      try {
+        var j = search_flst_internal(id, JSON.stringify(window.projectdata));
+        if (j) {
+          parsed = JSON.parse(j);
         }
+      } catch (error) {
+        console.log(error);
+        return parsed;
       }
-
-      if (!pd) {
-        return null;
-      }
-
-      for (var ebene_id in pd.ebenen) {
-        var ebene = pd.ebenen[ebene_id];
-        for (var i = 0; i < ebene.length; i++) {
-          var flst = ebene[i];
-          if (flst.attributes["flurstueckskennzeichen"] && flst.attributes["flurstueckskennzeichen"].startsWith(id)) {
-            return {
-              flst: flst,
-              ebene: ebene_id,
-            };
-          }
-        }
-      }
-      return null;
+      return parsed;
     }
+
+
+    function searchFlstPart(id) {
+      var parsed = null;
+      try {
+        var j = search_flst_part_internal(id, JSON.stringify(window.split_flurstuecke));
+        if (j) {
+          parsed = JSON.parse(j);
+        }
+      } catch (error) {
+        console.log(error);
+        return parsed;
+      }
+      return parsed;
+    }
+
+    window.searchFlstPart = searchFlstPart;
 
     function newProjectFromCSV() {
       var input = document.createElement('input');
@@ -1049,7 +1940,7 @@
 
     function saveProjectDataToFile() {
       if (!window.csv_data || window.csv_data == null) {
-        alert("Kein Projekt geladen!");
+        window.csv_data = {};
       }
       var s = {
         info: window.info,
@@ -1057,9 +1948,57 @@
         csv: window.csv_data,
         aenderungen: window.aenderungen,
       };
-      var b = JSON.stringify(s, null, 4);
+      var b = "";
+      try {
+        b = format_savefile(
+          JSON.stringify(window.info),
+          JSON.stringify(window.risse),
+          JSON.stringify(window.csv_data),
+          JSON.stringify(window.aenderungen),
+        );
+      } catch (error) {
+        b = JSON.stringify(s, null, 4);        
+      }
+
       downloadBlob(b, window.info.antragsnr + ".json", 'application/octet-stream');
     }
+
+    function saveSettings() {
+      if (!window.configuration) {
+        return;
+      }
+      var s = JSON.stringify(window.configuration, null, 4);
+      downloadBlob(s, "TNViewer.Einstellungen.json", 'application/octet-stream');
+    }
+
+    window.saveSettings = saveSettings;
+
+    function loadSettings() {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = ".json";
+
+      input.onchange = e => { 
+        if (e.target.files.length < 1) {
+          return;
+        }
+        var file = e.target.files[0];
+        var reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          var json = JSON.parse(readerEvent.target.result);
+          if (json) {
+            window.configuration = json;
+            replacePopOver(null);
+            reinitDOPLayers();
+            reinitMapDrawnStaticLayers();
+          }
+        }
+      }
+      input.click();
+    }
+
+    window.loadSettings = loadSettings;
 
     function loadProjectDataFromFile() {
       var input = document.createElement('input');
@@ -1074,13 +2013,10 @@
         var reader = new FileReader();
         reader.readAsText(file,'UTF-8');
         reader.onload = readerEvent => {
-          var json = JSON.parse(readerEvent.target.result);
+          var json = JSON.parse(lib_parse_savefile(readerEvent.target.result));
           window.csv_data = json.csv;
           if (json.aenderungen) {
             window.aenderungen = json.aenderungen;
-          }
-          if (json.konfiguration) {
-            window.configuration = json.konfiguration;
           }
           if (json.risse) {
             window.risse = json.risse;
@@ -1107,27 +2043,139 @@
           });
           map.doubleClickZoom.disable(); 
           map.setView([53.2467, 13.6045], 10);
-          var basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
-              maxNativeZoom: 25,
-              maxZoom: 25,
-          });
-          var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
-              layers: window.configuration.map.dop_layers,
-              maxNativeZoom: 25,
-              maxZoom: 25,
-          });
-          var basemaps = {
-            OSM: basemap,
-            DOP: wms,
-          };
-          layers = L.control.layers(basemaps);
-          layers.addTo(map);
+          reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          basemaps.OSM.addTo(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
+
+    function reinitDOPLayers() {
+      var basemap = L.tileLayer(window.configuration.map.basemap, {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', 
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
+      var wms = L.tileLayer.wms(window.configuration.map.dop_source, {
+          layers: window.configuration.map.dop_layers,
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
+      var dgm = L.tileLayer.wms(window.configuration.map.dgm_source, {
+          layers: window.configuration.map.dgm_layers,
+          maxNativeZoom: 25,
+          maxZoom: 25,
+      });
+      if (basemaps) {
+        if (basemaps.OSM) {
+          map.removeLayer(basemaps.OSM);
+        }
+        if (basemaps.DOP) {
+          map.removeLayer(basemaps.DOP);
+        }
+      }
+      basemaps = {
+        OSM: basemap,
+        DOP: wms,
+        DGM: dgm,
+      };
+      if (layers) {
+        layers.removeFrom(map);
+      }
+      layers = L.control.layers(basemaps);
+      layers.addTo(map);
+      if (basemaps.OSM) {
+        try {
+          basemaps.OSM.addTo(map);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
+
+    window.reinitDOPLayers = reinitDOPLayers;
+
+    function exportLog() {
+      if (!window.export_log) {
+        return;
+      }
+      downloadBlob(JSON.stringify(window.export_log, null, 4), window.info.antragsnr + ".LOG.json", 'application/octet-stream')
+    }
+    window.exportLog = exportLog;
+
+    function export_status_clear() {
+      window.export_log = [];
+    }
+
+    window.export_status_clear = export_status_clear;
+
+    function get_nak() {
+      if (window.nutzungsarten) {
+        return JSON.stringify(window.nutzungsarten);
+      } else {
+        return "";
+      }
+    }
+
+    window.get_nak = get_nak;
+
+    function update_export_status(s) {
+      if (!window.export_log) {
+        window.export_log = [];
+      }
+      window.export_log.push(s);
+    }
+
+    window.update_export_status = update_export_status;
+
+    function addProblemGeoJSON(map) {
+      let j = JSON.parse(get_problem_geojson());
+      let geojson1 = JSON.parse(j.geojson1);
+      let geojson2 = JSON.parse(j.geojson2);
+      let bounds = j.bounds;
+      console.log(geojson1);
+      console.log(geojson2);
+
+      var ml = null;
+      var style = {
+        "color": "#ff0000",
+        "fillColor": "#00ffcc",
+        "weight": 1.0,
+        "opacity": 0.8,
+        "fillOpacity": 0.5
+      };
+      if (L.geoJSON) {
+        ml = L.geoJSON(geojson1, {
+          "style": style,
+        });
+      } else if (L.geoJson) {
+        ml = L.geoJson(geojson1, {
+          "style": style,
+        });
+      }
+      map.addLayer(ml);
+
+      var ml = null;
+      var style = {
+        "color": "#0000ff",
+        "fillColor": "#000000",
+        "weight": 3.0,
+        "opacity": 0.8,
+        "fillOpacity": 0.5
+      };
+      if (L.geoJSON) {
+        ml = L.geoJSON(geojson2, {
+          "style": style,
+        });
+      } else if (L.geoJson) {
+        ml = L.geoJson(geojson2, {
+          "style": style,
+        });
+      }
+      map.addLayer(ml);
+
+      map.fitBounds(bounds);
+    }
 
     function replaceRibbon() {
       if (window.uidata.tab == '1' && (!window.split_flurstuecke || window.split_flurstuecke == null)) {
@@ -1221,12 +2269,111 @@
       removeGebaeudeLoeschenLayer();
       removeNutzungEinzeichnenLayer();
       removeRisseLayer();
+      removeRissGebietLayer();
+      removeRissGebietEinzeichnenLayer();
       if (highlight_layer) {
         map.removeLayer(highlight_layer);
         highlight_layer = null;
       }
     }
 
+    function showHideRissGebiet(event) {
+      if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        window.uidata.tool = 'rissgebiet-zeichnen';
+        active_rissgebiet = event.target.dataset.rissId;
+      } else {
+        window.uidata.tool == null;
+        active_rissgebiet = null;
+      }
+      rerenderRisse();
+      reinitRissGebietLayer();
+    }
+
+    window.showHideRissGebiet = showHideRissGebiet;
+
+    function reinitRissGebietLayer() {
+      if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        return;
+      }
+      if (active_rissgebiet == null) {
+        return;
+      }
+      if (!window.risse) {
+        return;
+      }
+      var riss = window.risse[active_rissgebiet];
+      if (!riss) {
+        return;
+      }
+
+      guideLayers = [];
+      var snapEdit = new L.EditToolbar.SnapEdit(map, {
+          featureGroup: L.featureGroup([]),
+          snapOptions: {
+              guideLayers: guideLayers
+          }
+      });
+
+      map.drawControl.setDrawingOptions({
+          polyline: {
+              guideLayers: guideLayers
+          },
+          polygon: {
+              guideLayers: guideLayers,
+              snapDistance: 5
+          },
+          marker: {
+              guideLayers: guideLayers,
+              snapVertices: false
+          },
+          rectangle: false,
+          circle: false
+      });
+
+      map.on('draw:created', function(e) {
+          var layer = e.layer;
+          current_rissgebiet_layer = layer;
+          map.addLayer(layer);
+      });
+
+      map.on('draw:drawstop', function (e) {
+        if (e.layerType != 'polyline') {
+          return;
+        }
+        var layers = e.target._layers;
+        var keys = Object.keys(layers);
+        var lastkey = keys[keys.length - 1];
+        var l = layers[lastkey];
+        if ((!l) || (!l.editing)) {
+          return;
+        }
+        var points = l.editing.latlngs[0];
+        if (points.length == 0) {
+          return;
+        }
+        var f = JSON.parse(fixup_polyline(
+          JSON.stringify(window.projectdata), 
+          JSON.stringify(window.split_flurstuecke), 
+          JSON.stringify(points),
+        ));
+        window.risse[active_rissgebiet].rissgebiet = f.poly;
+        window.uidata.tool = null;
+        rerenderRisse();
+      });
+    }
+
+    function removeRissGebietEinzeichnenLayer() {
+      if (current_rissgebiet_layer && current_rissgebiet_layer != null) {
+        map.removeLayer(current_rissgebiet_layer);
+      }
+    }
+
+    function removeRissGebietLayer() {
+      if (rissgebiet_layer && rissgebiet_layer != null) {
+        map.removeLayer(rissgebiet_layer);
+      }
+    }
+    
     // Gebäude löschen
     function showHideGebaeudeLoeschenLayer() {
       removeAllExtraLayers();
@@ -1247,7 +2394,11 @@
 
     function gebauedeClicked(e) {
       var gebaeude_id = e.target.feature.properties.gebaeude_id;
+      var flst = JSON.parse(e.target.feature.properties.gebaeude_flst_id);
       if (!gebaeude_id) {
+        return;
+      }
+      if (!flst) {
         return;
       }
       if (!window.aenderungen || !window.aenderungen.gebaeude_loeschen) {
@@ -1266,7 +2417,7 @@
           alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
         }
       } else {
-        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = gebaeude_id; // loeschen
+        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst: flst }; // loeschen
       }
       reinitGebaeudeLoeschenLayer();
       replaceProjectContent();
@@ -1274,7 +2425,7 @@
 
     function gebaeudeFeatureClick(feature, layer) {
         layer.on({
-            click: gebauedeClicked
+            dblclick: gebauedeClicked
         });
     }
 
@@ -1443,6 +2594,7 @@
       window.uidata.popover_state = null;
       replacePopOver("config");
       closePopOverSearch();
+      reinitDOPLayers();
     }
 
     function openHelp() {
@@ -1469,12 +2621,24 @@
       replacePopOver("config");
     }
 
-    function exportExcel() {
-        if (!window.csv_data) {
-          return;
-        }
-        var xlsx = export_xlsx(JSON.stringify(window.csv_data));
-        downloadBlob(xlsx, window.info.antragsnr + ".xlsx", 'application/octet-stream');
+    async function exportUebersicht(event) {
+      if (!window.csv_data) {
+        return;
+      }
+      if (!window.split_flurstuecke) {
+        return;
+      }
+      var use_dgm = event.altKey;
+      var use_background = !event.shiftKey;
+      var pdf = await export_pdf_overview(
+        JSON.stringify(window.configuration),
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.csv_data),
+        use_dgm,
+        use_background,
+      );
+      downloadBlob(pdf, window.info.antragsnr + ".Uebersicht.zip", 'application/octet-stream');
     }
 
     function exportDavid() {
@@ -1482,38 +2646,46 @@
         alert("Keine Projektdaten geladen!");
         return;
       }
+      var date = new Date().toISOString();
       var xml = aenderungen_zu_david(
+        date,
         JSON.stringify(window.aenderungen), 
-        JSON.stringify(window.split_flurstuecke_original)
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
 
-    function exportGeoGraf() {
+    function exportNasXML() {
       if (!window.split_flurstuecke_original) {
         alert("Keine Projektdaten geladen!");
         return;
       }
+      var xml = aenderungen_zu_nas_xml(
+        JSON.stringify(window.aenderungen), 
+        JSON.stringify(window.nas_original),
+        JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.xml_objects),
+      );
+      downloadBlob(xml, window.info.antragsnr + ".Fortgefuehr.NAS.xml", 'text/xml');
+    }
 
-      var risse_extent = {};
-      for (var [riss_id, riss_config] of Object.entries(window.risse)) {
-        risse_extent[riss_id] = calculate_coords(
-          riss_config.width_mm, 
-          riss_config.height_mm, 
-          riss_config.scale, 
-          riss_config.lon, 
-          riss_config.lat
-        );
-      }
+    async function exportGeoGraf(event) {
+      
+      var render_dgm = event.altKey;
+      var render_hintergrund_vorschau = render_dgm || event.shiftKey;
 
-      var zip = aenderungen_zu_geograf(
+      var zip = await aenderungen_zu_geograf(
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
         JSON.stringify(window.info),
         JSON.stringify(window.configuration),
         JSON.stringify(window.aenderungen),
         JSON.stringify(window.risse),
-        JSON.stringify(risse_extent),
+        JSON.stringify(window.csv_data),
+        render_hintergrund_vorschau,
+        render_dgm,
       );
       
       downloadBlob(zip, window.info.antragsnr + ".Aenderungen.GEOgraf.zip", 'application/octet-stream');
@@ -1527,49 +2699,46 @@
         downloadBlob(xlsx, window.info.antragsnr + ".FlstNachEigentuemer.xlsx", 'application/octet-stream');
     }
 
-    function exportPdf() {
-      if (!window.projectdata) {
-        alert("Keine Projektdaten geladen!");
-        return;
-      }
-
-      var risse_extent = {};
-      for (var [riss_id, riss_config] of Object.entries(window.risse)) {
-        risse_extent[riss_id] = calculate_coords(
-          riss_config.width_mm, 
-          riss_config.height_mm, 
-          riss_config.scale, 
-          riss_config.lon, 
-          riss_config.lat
-        );
-      }
-
-      var pdf = JSON.parse(export_pdf(
-        JSON.stringify(window.info),
-        JSON.stringify(window.risse),
-        JSON.stringify(window.csv_data),
-        JSON.stringify(window.xml_data),
-        JSON.stringify(window.aenderungen),
-        JSON.stringify(risse_extent),
-        JSON.stringify(window.configuration),
-      ));
-      console.log(pdf.log);
-      downloadBlob(new Uint8Array(pdf.bytes), window.info.antragsnr + ".pdf", 'application/pdf');
-    }
-
     function exportAlleFlst() {
         if (!window.csv_data) {
           return;
         }
         var txt = export_alle_flst(JSON.stringify(window.csv_data));
-        downloadBlob(txt, window.info.antragsnr + "Flurstuecke.txt", 'text/plain');
+        downloadBlob(txt, window.info.antragsnr + ".Flurstuecke.txt", 'text/plain');
     }
 
+
+    function lockUnlockPoly(event) {
+      var id = '';
+      if (event.target.dataset.polyNeuId) {
+        id = event.target.dataset.polyNeuId;
+      }
+      var f = lock_unlock_poly(
+        id, 
+        JSON.stringify(window.aenderungen),
+      );
+      var n = null;
+      try {
+        n = JSON.parse(f);
+      } catch (error) {
+        console.error(error);
+        console.log(n);
+        return;
+      }
+
+      if (n != null) {
+        window.aenderungen = n.aenderungen;
+        console.log(n.log);
+        replaceProjectContent();
+      }
+    }
+
+    window.lockUnlockPoly = lockUnlockPoly;
+    
     function nutzungenSaeubern(event) {
       var id = '';
       if (event.target.dataset.nutzungId) {
         id = event.target.dataset.nutzungId;
-        return;
       }
       if (!window.split_flurstuecke_original) {
         return;
@@ -1580,6 +2749,7 @@
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.configuration),
       );
 
       var n = null;
@@ -1600,20 +2770,21 @@
     
     function cleanStage(id) {
       var n = null;
-      if (!window.split_flurstuecke_original) {
-        return;
-      }
+      console.log("JS: CLEANING STAGE " + id);
       var f = lib_get_aenderungen_clean(
         "" + id, 
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),
+        JSON.stringify(window.configuration),
+        JSON.stringify(window.csv_data),
       );
       try {
         n = JSON.parse(f);
       } catch (error) {
         console.error(error);
         console.log(n);
+        console.log(f);
         return;
       }
       if (n != null) {
@@ -1623,6 +2794,7 @@
       }
     }
 
+    window.cleanStage = cleanStage;
     window.changeStatus = changeStatus;
     window.changeNotiz = changeNotiz;
     window.activateConfigurationView = activateConfigurationView;
@@ -1633,7 +2805,6 @@
     window.replaceRibbon = replaceRibbon;
     window.focusFlst = focusFlst;
     window.searchNA = searchNA;
-    window.exportPdf = exportPdf;
     window.exportDavid = exportDavid;
     window.zoomToGebaeudeLoeschen = zoomToGebaeudeLoeschen;
     window.gebaeudeLoeschenUndo = gebaeudeLoeschenUndo;
@@ -1642,7 +2813,6 @@
     window.zoomToPolyNeu = zoomToPolyNeu;
     window.polyNeuUndo = polyNeuUndo;
     window.projectInfoEdit = projectInfoEdit;
-    window.setInterval(colorFlurstuecke, 200);
     window.nutzungenSaeubern = nutzungenSaeubern;
 
     var tab_functions = {
@@ -1653,15 +2823,14 @@
         open_help: function(event) { openHelp(); },
         open_info: function(event) { openInfo(); },
         open_configuration: function(event) { openConfiguration(); },
-        export_pdf: function(event) { exportPdf(); },
-        export_excel: function(event) { exportExcel(); },
+        export_uebersicht: async function(event) { await exportUebersicht(event); },
         export_flst_nach_eigentuemer: function(event) { exportFlstNachEigentuemer(); },
         export_alle_flst: function(event) { exportAlleFlst(); },
-        export_geograf: function(event) { exportGeoGraf(); },
+        export_geograf: async function(event) { await exportGeoGraf(event); },
         export_david: function(event) { exportDavid(); },
+        export_nas_xml: function(event) { exportNasXML(); },
         gebaeude_loeschen: function(event) { showHideGebaeudeLoeschenLayer(); },
         nutzung_einzeichnen: function(event) { showHideNutzungEinzeichnenLayer(); },
-        clean_stage7_test: function(event) { cleanStage(7); },
         undo: function(event) { },
         redo: function(event) { },
     };

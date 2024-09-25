@@ -1,9 +1,53 @@
-use std::{collections::{BTreeMap, BTreeSet}, f64::MAX};
-
-use serde_derive::{Serialize, Deserialize};
-
 use crate::{
-    csv::{CsvDataType, Status}, nas::{intersect_polys, NasXMLFile, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, TaggedPolygon}, pdf::{difference_polys, join_polys, subtract_from_poly, FlurstueckeInPdfSpace, Konfiguration, ProjektInfo, Risse}, search::NutzungsArt, ui, uuid_wasm::uuid, xlsx::FlstIdParsed, xml::XmlNode
+    csv::{
+        CsvDataType,
+        Status,
+    },
+    geograf::points_to_rect,
+    nas::{
+        self,
+        intersect_polys,
+        line_contained_in_line,
+        translate_to_geo_poly,
+        NasXMLFile,
+        NasXmlQuadTree,
+        SplitNasXml,
+        SplitNasXmlQuadTree,
+        SvgLine,
+        SvgPoint,
+        SvgPolygon,
+        SvgPolygonInner,
+        TaggedPolygon,
+    },
+    pdf::{
+        join_polys,
+        subtract_from_poly,
+        Konfiguration,
+        ProjektInfo,
+        Risse,
+    },
+    uuid_wasm::{
+        log_status,
+        uuid,
+    },
+    xlsx::FlstIdParsed,
+};
+use core::f64;
+use geo::{
+    Centroid,
+    TriangulateEarcut,
+};
+use quadtree_f32::QuadTree;
+use serde_derive::{
+    Deserialize,
+    Serialize,
+};
+use std::{
+    collections::{
+        BTreeMap,
+        BTreeSet,
+    },
+    vec,
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -24,6 +68,8 @@ pub struct UiData {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum Tool {
+    #[serde(rename = "rissgebiet-zeichnen")]
+    RissgebietZeichnen,
     #[serde(rename = "gebaeude-loeschen")]
     GebaeudeLoeschen,
     #[serde(rename = "nutzung-einzeichnen")]
@@ -31,10 +77,8 @@ pub enum Tool {
 }
 
 impl UiData {
-
     pub fn from_string(s: &str) -> UiData {
-        serde_json::from_str::<UiData>(s)
-        .unwrap_or_default()
+        serde_json::from_str::<UiData>(s).unwrap_or_default()
     }
 
     pub fn is_context_menu_open(&self) -> bool {
@@ -53,11 +97,6 @@ pub enum PopoverState {
     Help,
 }
 
-#[test]
-fn test1() {
-    let s = serde_json::to_string(&PopoverState::Info).unwrap_or_default();
-    println!("{s}");
-}
 #[derive(Debug, Copy, PartialEq, Serialize, Deserialize, PartialOrd, Clone)]
 pub enum ConfigurationView {
     #[serde(rename = "allgemein")]
@@ -84,8 +123,8 @@ pub struct ContextMenuData {
 pub fn render_entire_screen(
     projekt_info: &ProjektInfo,
     risse: &Risse,
-    rpc_data: &UiData, 
-    csv: &CsvDataType, 
+    rpc_data: &UiData,
+    csv: &CsvDataType,
     aenderungen: &Aenderungen,
     konfiguration: &Konfiguration,
 ) -> String {
@@ -145,23 +184,29 @@ pub fn render_popover(rpc_data: &UiData, konfiguration: &Konfiguration) -> Strin
 }
 
 pub fn base64_encode<T: AsRef<[u8]>>(input: T) -> String {
-    base64::encode(input)
+    use base64::Engine;
+    base64::prelude::BASE64_STANDARD.encode(input)
 }
 
 pub fn ui_render_search_popover_content(term: &str) -> String {
-    let mut pc = crate::search::search_map(term).into_iter().take(4).map(|(k, v)| {
-        let bez = &v.bez;
-        format!("
+    let mut pc = crate::search::search_map(term)
+        .into_iter()
+        .take(4)
+        .map(|(k, v)| {
+            let bez = &v.bez;
+            format!(
+                "
         <p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>{k} ({bez})</p>
         <div style='line-height:1.5;cursor:pointer;'>
             <div class='kontextmenü-eintrag' data-seite-neu='bv-horz'>
                 {}
             </div>
-        </div>", v.def + " " + v.ehb.as_str()
-    )
-    }).collect::<Vec<_>>().join("");
-
-    
+        </div>",
+                v.def + " " + v.ehb.as_str()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("");
 
     if pc.is_empty() {
         pc = "<p style='padding: 0px 10px;font-size: 14px;color: #444;margin-top: 5px;'>Keine Suchergebnisse</p>".to_string();
@@ -181,21 +226,20 @@ pub fn ui_render_search_popover_content(term: &str) -> String {
 }
 
 pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) -> String {
-    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-96.png");
-
     if rpc_data.popover_state.is_none() {
         return String::new();
     }
-    
+
     let application_popover_color = if !rpc_data.is_context_menu_open() {
         "rgba(0, 0, 0, 0.5)"
     } else {
         "transparent"
     };
 
+    const ICON_CLOSE: &[u8] = include_bytes!("./img/icons8-close-94.png");
     let icon_close_base64 = base64_encode(ICON_CLOSE);
 
-    let close_button = format!("f
+    let close_button = format!("
     <div style='position:absolute;top:50px;z-index:9999;right:-25px;background:white;border-radius:10px;box-shadow: 0px 0px 10px #cccccc88;cursor:pointer;' onmouseup='closePopOver()'>
         <img src='data:image/png;base64,{icon_close_base64}' style='width:50px;height:50px;cursor:pointer;' />
     </div>");
@@ -256,27 +300,35 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
         Some(PopoverState::Configuration(cw)) => {
             use ConfigurationView::*;
 
-            static IMG_SETTINGS: &[u8] =
-                include_bytes!("./img/icons8-settings-system-daydream-96.png");
+            static IMG_SETTINGS: &[u8] = include_bytes!("./img/icons8-grey-gear-94.png");
             let img_settings = base64_encode(IMG_SETTINGS);
 
-            static IMG_REGEX: &[u8] = include_bytes!("./img/icons8-select-96.png");
-            let img_regex = base64_encode(IMG_REGEX);
-
-            static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-96.png");
+            static IMG_CLEAN: &[u8] = include_bytes!("./img/icons8-broom-94.png");
             let img_clean = base64_encode(IMG_CLEAN);
 
-            static IMG_ABK: &[u8] = include_bytes!("./img/icons8-shortcut-96.png");
-            let img_abk = base64_encode(IMG_ABK);
+            static IMG_SAVE: &[u8] = include_bytes!("./img/icons8-save-94.png");
+            let img_save = base64_encode(IMG_SAVE);
 
-            static IMG_FX: &[u8] = include_bytes!("./img/icons8-formula-fx-96.png");
-            let img_fx = base64_encode(IMG_FX);
+            static IMG_LOAD: &[u8] = include_bytes!("./img/icons8-open-file-94.png");
+            let img_load = base64_encode(IMG_LOAD);
 
             let active_allgemein = if *cw == Allgemein { " active" } else { "" };
             let active_darstellung_pdf = if *cw == DarstellungPdf { " active" } else { "" };
-            let active_darstellung_bearbeitung = if *cw == DarstellungBearbeitung { " active" } else { "" };
-            let active_darstellung_pdf_allgemein = if *cw == DarstellungPdfAllgemein { " active" } else { "" };
-            let active_pdf_beschriftungen = if *cw == PdfBeschriftungen { " active" } else { "" };
+            let active_darstellung_bearbeitung = if *cw == DarstellungBearbeitung {
+                " active"
+            } else {
+                ""
+            };
+            let active_darstellung_pdf_allgemein = if *cw == DarstellungPdfAllgemein {
+                " active"
+            } else {
+                ""
+            };
+            let active_pdf_beschriftungen = if *cw == PdfBeschriftungen {
+                " active"
+            } else {
+                ""
+            };
             let active_pdf_symbole = if *cw == PdfSymbole { " active" } else { "" };
 
             let sidebar = format!("
@@ -313,6 +365,16 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                         <img style='width:25px;height:25px;' src='data:image/png;base64,{img_clean}'></img>
                         <p>PDF Symbole</p>
                     </div>
+
+                    <div style='display:flex;min-height:50px;'></div>
+                    <div class='__application_configuration_sidebar_section' onmouseup='loadSettings();'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_load}'></img>
+                        <p>Einstellungen laden</p>
+                    </div>
+                    <div class='__application_configuration_sidebar_section' onmouseup='saveSettings();'>
+                        <img style='width:25px;height:25px;' src='data:image/png;base64,{img_save}'></img>
+                        <p>Einstellungen speichern</p>
+                    </div>
                 </div>
             ");
 
@@ -336,12 +398,24 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                                 <label style='font-size:20px;font-style:italic;'>DOP Ebene</label>
                                 <input type='text' class='konfiguration-editfield1' value='{dop_layer}' data-konfiguration-textfield='map-dop-layer' onchange='editKonfigurationTextField(event)'></input>
                             </div>
+
+                            <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                <label style='font-size:20px;font-style:italic;'>DGM Quelle</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dgm_source}' data-konfiguration-textfield='map-dgm-source' onchange='editKonfigurationTextField(event)'></input>
+                            </div>
+
+                            <div style='display:flex;justify-content:space-between;padding:10px 0px;font-size:16px;'>
+                                <label style='font-size:20px;font-style:italic;'>DGM Ebene</label>
+                                <input type='text' class='konfiguration-editfield1' value='{dgm_layer}' data-konfiguration-textfield='map-dgm-layer' onchange='editKonfigurationTextField(event)'></input>
+                            </div>
                         </div>
                     </div>
                 ",
                     basiskarte = konfiguration.map.basemap.clone().unwrap_or_default().trim(),
                     dop_source = konfiguration.map.dop_source.clone().unwrap_or_default().trim(),
                     dop_layer = konfiguration.map.dop_layers.clone().unwrap_or_default().trim(),
+                    dgm_source = konfiguration.map.dgm_source.clone().unwrap_or_default().trim(),
+                    dgm_layer = konfiguration.map.dgm_layers.clone().unwrap_or_default().trim(),
                 ),
                 DarstellungBearbeitung => {
                     format!("
@@ -491,13 +565,6 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                     )
                 },
                 DarstellungPdfAllgemein => {
-                    
-                    /*
-                        pub ax_flur_stil: PdfEbenenStyle,
-                        pub ax_bauraum_stil: PdfEbenenStyle,
-                        pub lagebez_mit_hsnr: PtoStil,
-                    */
-
                     format!("
                         <div style='padding:5px 0px;display:flex;flex-direction:column;flex-grow:1;'>
                             <div>
@@ -534,7 +601,6 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                         nordpfeil_svg = konfiguration.pdf.nordpfeil_svg.clone().unwrap_or_default(),
                         gebaeude_loeschen_svg = konfiguration.pdf.gebauede_loeschen_svg.clone().unwrap_or_default(),
                     )
-                
                 },
                 PdfBeschriftungen => {
                     format!("
@@ -589,7 +655,7 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
                         </div>
                     </div>
                 </div>", 
-                cm.x, 
+                cm.x,
                 cm.y,
                 seite = 0, // cm.seite_ausgewaehlt
             )
@@ -608,54 +674,65 @@ pub fn render_popover_content(rpc_data: &UiData, konfiguration: &Konfiguration) 
     normalize_for_js(pc)
 }
 
-pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
-    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-settings-48.png");
-    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-help-96.png");
-    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-48.png");
-    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-book-96.png");
-    static ICON_ZURUECK: &[u8] = include_bytes!("./img/icons8-back-48.png");
-    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-48.png");
-    static ICON_EXPORT_CSV: &[u8] = include_bytes!("./img/icons8-microsoft-excel-2019-96.png");
-    static ICON_EXPORT_LEFIS: &[u8] = include_bytes!("./img/icons8-export-96.png");
-    static ICON_DOWNLOAD: &[u8] = include_bytes!("./img/icons8-desktop-download-48.png");
-    static ICON_DELETE: &[u8] = include_bytes!("./img/icons8-delete-trash-48.png");
-    static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-48.png");
-    static ICON_RECHTE_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-scales-96.png");
-    static ICON_FEHLER_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-high-priority-96.png");
-    static ICON_ABT1_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-person-96.png");
-    static ICON_TEILBELASTUNGEN_AUSGEBEN: &[u8] = include_bytes!("./img/icons8-pass-fail-96.png");
-    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-96.png");
-    static ICON_SEARCH: &[u8] = include_bytes!("./img/icons8-search-in-cloud-96.png");
-    static ICON_UPLOAD: &[u8] = include_bytes!("./img/icons8-upload-to-cloud-96.png");
-    static ICON_HVM: &[u8] = include_bytes!("./img/icons8-copy-link-96.png");
-    static RELOAD_PNG: &[u8] = include_bytes!("../src/img/icons8-synchronize-48.png");
-
-    let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
-    let icon_neu_base64 = base64_encode(ICON_NEU);
+pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
+    static ICON_ZURUECK: &[u8] = include_bytes!("./img/icons8-back-94.png");
     let icon_back_base64 = base64_encode(ICON_ZURUECK);
-    let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
-    let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
-    let icon_help_base64 = base64_encode(ICON_HELP);
-    let icon_info_base64 = base64_encode(ICON_INFO);
-    let icon_export_pdf = base64_encode(ICON_PDF);
-    let icon_rechte_speichern = base64_encode(ICON_RECHTE_AUSGEBEN);
-    let icon_fehler_speichern = base64_encode(ICON_FEHLER_AUSGEBEN);
-    let icon_export_teilbelastungen = base64_encode(ICON_TEILBELASTUNGEN_AUSGEBEN);
-    let icon_export_abt1 = base64_encode(ICON_ABT1_AUSGEBEN);
-    let icon_upload_lefis = base64_encode(ICON_UPLOAD);
-    let icon_export_csv = base64_encode(ICON_EXPORT_CSV);
-    let icon_export_lefis = base64_encode(ICON_EXPORT_LEFIS);
-    let icon_hvm = base64_encode(ICON_HVM);
-    let icon_download_base64 = base64_encode(ICON_DOWNLOAD);
-    let icon_delete_base64 = base64_encode(ICON_DELETE);
-    let icon_search_base64 = base64_encode(ICON_SEARCH);
-    let icon_reload = base64_encode(&RELOAD_PNG);
 
+    static ICON_VORWAERTS: &[u8] = include_bytes!("./img/icons8-forward-94.png");
+    let icon_forward_base64 = base64_encode(ICON_VORWAERTS);
+
+    static ICON_EINSTELLUNGEN: &[u8] = include_bytes!("./img/icons8-grey-gear-94.png");
+    let icon_settings_base64 = base64_encode(ICON_EINSTELLUNGEN);
+
+    static ICON_HELP: &[u8] = include_bytes!("./img/icons8-question-94.png");
+    let icon_help_base64 = base64_encode(ICON_HELP);
+
+    static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-94.png");
+    let icon_info_base64 = base64_encode(ICON_INFO);
+
+    static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-94.png");
+    let icon_pdf_base64 = base64_encode(ICON_PDF);
+
+    static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-opened-folder-94.png");
+    let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
+
+    static ICON_SPEICHERN: &[u8] = include_bytes!("./img/icons8-save-94.png");
+    let icon_save_base64 = base64_encode(ICON_SPEICHERN);
+
+    static ICON_TRANSFER: &[u8] = include_bytes!("./img/icons8-transfer-96.png");
+    let icon_transfer_base64 = base64_encode(ICON_TRANSFER);
+
+    static ICON_XML: &[u8] = include_bytes!("./img/icons8-xml-96.png");
+    let icon_xml_base64 = base64_encode(ICON_XML);
+
+    static ICON_HOUSE: &[u8] = include_bytes!("./img/icons8-house-94.png");
+    let icon_house_base64 = base64_encode(ICON_HOUSE);
+
+    static ICON_DAVID: &[u8] = include_bytes!("./img/icons8-david-96.png");
+    let icon_david_base64 = base64_encode(ICON_DAVID);
+
+    static ICON_GEOGRAF: &[u8] = include_bytes!("./img/geograf-96.png");
+    let icon_geograf_base64 = base64_encode(ICON_GEOGRAF);
+
+    static ICON_GEORG: &[u8] = include_bytes!("./img/georg-96.png");
+    let icon_georg_base64 = base64_encode(ICON_GEORG);
+
+    static ICON_NEU: &[u8] = include_bytes!("./img/icons8-add-file-94.png");
+    let icon_neu_base64 = base64_encode(ICON_NEU);
+
+    static ICON_EXCEL: &[u8] = include_bytes!("./img/icons8-microsoft-excel-2019-96.png");
+    let _icon_export_csv = base64_encode(ICON_EXCEL);
+
+    static ICON_BROOM: &[u8] = include_bytes!("./img/icons8-broom-94.png");
+    let icon_export_lefis = base64_encode(ICON_BROOM);
+
+    static ICON_LOG: &[u8] = include_bytes!("./img/icons8-log-94.png");
+    let icon_log_base64 = base64_encode(ICON_LOG);
 
     // TAB 1
     // let disabled = if data_loaded { "" } else { "disabled" };
     let disabled = "";
-    
+
     let projekt_oeffnen = {
         format!("
         <div class='__application-ribbon-section-content'>
@@ -725,7 +802,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.import_data(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon' src='data:image/png;base64,{icon_reload}'>
+                    <img class='icon' src='data:image/png;base64,{icon_xml_base64}'>
                 </div>
                 <div>
                     <p>NAS-Daten</p>
@@ -741,7 +818,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.save_project(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_upload_lefis}'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_save_base64}'>
                 </div>
                 <div>
                     <p>Änderungen</p>
@@ -807,7 +884,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.gebaeude_loeschen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_delete_base64}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_house_base64}'>
                     </div>
                     <div>
                         <p>Gebäude</p>
@@ -826,7 +903,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.nutzung_einzeichnen(event)' class='__application-ribbon-action-vertical-large' style='{active}'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_teilbelastungen}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_transfer_base64}'>
                     </div>
                     <div>
                         <p>Nutzung</p>
@@ -842,51 +919,19 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
 
     // TAB 3
 
-    let export_excel = {
+    let export_uebersicht = {
         format!("
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_excel(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.export_uebersicht(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_pdf_base64}'>
                     </div>
                     <div>
-                        <p>Excel</p>
-                        <p>exportieren</p>
+                        <p>Export</p>
+                        <p>Übersicht</p>
                     </div>
                 </label>
             </div>
-        ")
-    };
-
-    let export_eigentuemer = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_flst_nach_eigentuemer(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_csv}'>
-                    </div>
-                    <div>
-                        <p>Bearb. Flst.</p>
-                        <p>nach Eigentümer</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
-    let export_pdf = {
-        format!("
-        <div class='__application-ribbon-section-content'>
-            <label onmouseup='tab_functions.export_pdf(event)' class='__application-ribbon-action-vertical-large'>
-                <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_pdf}'>
-                </div>
-                <div>
-                    <p>Vorschau</p>
-                    <p>Risse PDF</p>
-                </div>
-            </label>
-        </div>   
         ")
     };
 
@@ -895,7 +940,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         <div class='__application-ribbon-section-content'>
             <label onmouseup='tab_functions.export_geograf(event)' class='__application-ribbon-action-vertical-large'>
                 <div class='icon-wrapper'>
-                    <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_geograf_base64}'>
                 </div>
                 <div>
                     <p>Export</p>
@@ -906,16 +951,34 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
+    let export_log = {
+        format!(
+            "
+        <div class='__application-ribbon-section-content'>
+            <label onmouseup='exportLog();' class='__application-ribbon-action-vertical-large'>
+                <div class='icon-wrapper'>
+                    <img class='icon {disabled}' src='data:image/png;base64,{icon_log_base64}'>
+                </div>
+                <div>
+                    <p>Log-Datei</p>
+                    <p>speichern</p>
+                </div>
+            </label>
+        </div>   
+        "
+        )
+    };
+
     let export_alle_flurstuecke = {
         format!("
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.export_alle_flst(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_georg_base64}'>
                     </div>
                     <div>
-                        <p>Export</p>
-                        <p>alle Flst.</p>
+                        <p>Export Flst.</p>
+                        <p>nach Georg</p>
                     </div>
                 </label>
             </div>
@@ -927,7 +990,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             <div class='__application-ribbon-section-content'>
                 <label onmouseup='tab_functions.export_david(event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_david_base64}'>
                     </div>
                     <div>
                         <p>Export</p>
@@ -938,16 +1001,106 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
         ")
     };
 
-    let clean_stage7_test = {
+
+    let export_nas_xml = {
         format!("
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.clean_stage7_test(event)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='tab_functions.export_nas_xml(event)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_xml_base64}'>
+                    </div>
+                    <div>
+                        <p>Fortführung</p>
+                        <p>in NAS-XML</p>
+                    </div>
+                </label>
+            </div>
+        ")
+    };
+
+    let clean_stage7_test = {
+        format!("
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>1: Punkte auf</p>
+                        <p>Änd. ziehen</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(2);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>2: Punkte einf.</p>
+                        <p>von nahen Änder.</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(25);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>2.5: Änderungen</p>
+                        <p>mergen nach Typ</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(3);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>3: Punkte auf</p>
+                        <p>Flst. ziehen</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>4: Punkte einf.</p>
+                        <p>von nahen Flst.</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>5: Überlappende</p>
+                        <p>Änd. subtrahieren</p>
+                    </div>
+                </label>
+            </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
                         <p>Änderungen</p>
-                        <p>säubern 7 ALL</p>
+                        <p>zu Splitfl.</p>
                     </div>
                 </label>
             </div>
@@ -1019,7 +1172,7 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
             </div>
             "
             )
-        },
+        }
         _ => {
             format!(
                 "
@@ -1027,28 +1180,35 @@ pub fn render_ribbon(rpc_data: &UiData, data_loaded: bool) -> String {
                 <p onmouseup='selectTab(0);'>START</p>
                 <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
                 <div style='flex-grow:1;'></div>
+                <p id='export-status'></p>
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
             <div class='__application-ribbon-body'>
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_excel}
-                        {export_eigentuemer}
+                        {export_alle_flurstuecke}
+                        {export_uebersicht}
                     </div>
                 </div>
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_pdf}
                         {export_geograf}
                         {export_david}
                     </div>
                 </div>
 
+                <div class='__application-ribbon-section 2'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {export_log}
+                        {export_nas_xml}
+                        {projekt_speichern}
+                    </div>
+                </div>
+
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_alle_flurstuecke}
                         {clean_stage7_test}
                     </div>
                 </div>
@@ -1086,109 +1246,816 @@ pub type NewRingId = String; // oudbvW0wu...
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct PolyNeu {
     pub poly: SvgPolygon,
+    #[serde(default)]
     pub nutzung: Option<Kuerzel>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub locked: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !b
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct GebaeudeLoeschen {
+    pub gebaeude_id: String,
+    pub flst_id: Vec<String>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Aenderungen {
-    pub gebaeude_loeschen: BTreeMap<String, GebauedeId>,
+    pub gebaeude_loeschen: BTreeMap<String, GebaeudeLoeschen>,
     pub na_definiert: BTreeMap<FlstPartId, Kuerzel>,
     pub na_polygone_neu: BTreeMap<NewPolyId, PolyNeu>,
+}
+
+impl Aenderungen {
+    pub fn migrate_new(&self) -> Self {
+        Self {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: self
+                .na_polygone_neu
+                .iter()
+                .map(|(id, n)| {
+                    (
+                        id.clone(),
+                        PolyNeu {
+                            locked: n.locked,
+                            poly: n.poly.migrate(),
+                            nutzung: n.nutzung.clone(),
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
+    pub fn migrate_old(&self) -> Self {
+        Self {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: self
+                .na_polygone_neu
+                .iter()
+                .map(|(id, n)| {
+                    (
+                        id.clone(),
+                        PolyNeu {
+                            locked: n.locked,
+                            poly: SvgPolygon::Old(n.poly.get_inner()),
+                            nutzung: n.nutzung.clone(),
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AenderungenClean {
     pub nas_xml_quadtree: SplitNasXmlQuadTree,
-    pub map: BTreeMap<String, SvgPolygon>, 
+    pub aenderungen: Aenderungen,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub struct AenderungenIntersections(pub Vec<AenderungenIntersection>);
+
+impl AenderungenIntersections {
+    pub fn get_fluren(&self, main_gemarkung: usize) -> BTreeSet<usize> {
+        self.0
+            .iter()
+            .filter_map(|s| {
+                let flst_id = FlstIdParsed::from_str(&s.flst_id).parse_num()?;
+                if flst_id.gemarkung != main_gemarkung {
+                    return None;
+                }
+                Some(flst_id.flur)
+            })
+            .collect()
+    }
+
+    pub fn get_future_flaechen(&self) -> Self {
+        let mut vi = Vec::new();
+        for s in self.0.iter() {
+            vi.push(AenderungenIntersection {
+                poly_cut: s.poly_cut.clone(),
+                flst_id: s.flst_id.clone(),
+                flst_id_part: s.flst_id_part.clone(),
+                alt: s.neu.clone(),
+                neu: s.neu.clone(),
+            });
+        }
+        Self(vi).merge_to_nearest(true)
+    }
+
+    pub fn deduplicate(&self) -> Self {
+        let mut aenderungen_2 = BTreeMap::new();
+
+        for a in self.0.iter() {
+            aenderungen_2.insert(a.poly_cut.get_hash(), a.clone());
+        }
+
+        Self(aenderungen_2.values().cloned().collect())
+    }
+
+    pub fn merge_to_nearest(&self, special: bool) -> Self {
+        log_status(&format!("merge_to_nearest {special:?}"));
+
+        let mut splitflaechen_by_flst_kuerzel = BTreeMap::new();
+
+        let aenderungen_uuid = self.0.iter().map(|sf| (uuid(), sf)).collect::<Vec<_>>();
+
+        let aenderungen = if special {
+            Aenderungen {
+                gebaeude_loeschen: BTreeMap::new(),
+                na_definiert: BTreeMap::new(),
+                na_polygone_neu: aenderungen_uuid
+                    .iter()
+                    .map(|(id, sf)| {
+                        (
+                            id.clone(),
+                            PolyNeu {
+                                nutzung: Some(sf.neu.clone()),
+                                poly: SvgPolygon::Old(sf.poly_cut.clone()),
+                                locked: false,
+                            },
+                        )
+                    })
+                    .collect(),
+            }
+            .clean_stage1(&mut Vec::new(), 1.0, 1.0)
+        } else {
+            Aenderungen::default()
+        };
+
+        for (id, s) in aenderungen_uuid.iter() {
+            let s_poly = aenderungen
+                .na_polygone_neu
+                .get(id)
+                .map(|pn| pn.poly.get_inner())
+                .unwrap_or(s.poly_cut.clone());
+            splitflaechen_by_flst_kuerzel
+                .entry((
+                    s.flst_id.clone(),
+                    if !special {
+                        s.flst_id_part.clone()
+                    } else {
+                        String::new()
+                    },
+                ))
+                .or_insert_with(|| BTreeMap::new())
+                .entry((s.alt.clone(), s.neu.clone()))
+                .or_insert_with(|| Vec::new())
+                .push(s_poly.clone());
+        }
+
+        for (k0, v) in splitflaechen_by_flst_kuerzel.iter_mut() {
+            let flst_id = FlstIdParsed::from_str(&k0.0).to_nice_string();
+            for (k1, k) in v.iter_mut() {
+                let k2 = k
+                    .iter()
+                    .flat_map(|p| {
+                        p.outer_rings.iter().map(|l| {
+                            let mut q = SvgPolygonInner::from_line(l); // TODO
+                            for i in p.inner_rings.iter() {
+                                if line_contained_in_line(i, l) || line_contained_in_line(l, i) {
+                                    q.inner_rings.push(i.clone());
+                                }
+                            }
+                            (q.get_hash(), q)
+                        })
+                    })
+                    .collect::<BTreeMap<_, _>>();
+
+                *k = k2.values().map(|s| (*s).clone()).collect::<Vec<_>>();
+
+                if k.len() < 2 {
+                    continue;
+                }
+
+                let polys_to_join = k.iter().cloned().collect::<Vec<_>>();
+
+                let polys_to_join_len = polys_to_join.len();
+
+                log_status(&format!("{flst_id} ({k1:?}): joining"));
+                log_status(&serde_json::to_string(&polys_to_join).unwrap_or_default());
+                let joined = match join_polys(&polys_to_join, false, false) {
+                    Some(s) => s.recombine_polys(),
+                    None => continue,
+                };
+                log_status(&serde_json::to_string(&joined).unwrap_or_default());
+                log_status(&format!("{flst_id}: joined -----"));
+
+                let joined_len = joined.len();
+
+                log_status(&format!("{flst_id}: verbinde {polys_to_join_len} Flächen {k1:?} zu {joined_len} Flächen"));
+
+                *k = joined;
+            }
+        }
+
+        log_status(&format!("merge_to_nearest 4"));
+
+        let new_sf = splitflaechen_by_flst_kuerzel
+            .iter()
+            .flat_map(|((flst_id, flst_id_part), v)| {
+                v.iter().flat_map(|((alt, neu), polys)| {
+                    polys.iter().map(|p| AenderungenIntersection {
+                        alt: alt.clone(),
+                        neu: neu.clone(),
+                        flst_id: flst_id.to_string(),
+                        flst_id_part: flst_id_part.clone(),
+                        poly_cut: p.clone(),
+                    })
+                })
+            })
+            .collect();
+
+        log_status(&format!("merge_to_nearest 5"));
+
+        Self(new_sf)
+    }
+
+    pub fn clean_zero_size_areas(&self) -> Self {
+        Self(
+            self.0
+                .iter()
+                .filter(|q| !q.poly_cut.is_zero_area())
+                .map(|q| {
+                    let filter = |rings: &[SvgLine]| {
+                        rings
+                            .iter()
+                            .filter(|s| !SvgPolygonInner::from_line(s).is_zero_area())
+                            .filter(|s| !SvgPolygonInner::from_line(s).is_zero_area())
+                            .map(|w| w.clone())
+                            .collect::<Vec<_>>()
+                    };
+
+                    let mut q = q.clone();
+                    q.poly_cut.outer_rings = filter(&q.poly_cut.outer_rings);
+                    q.poly_cut.inner_rings = filter(&q.poly_cut.inner_rings);
+                    q
+                })
+                .filter(|q| !q.poly_cut.is_zero_area())
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub fn get_texte(
+        s: &[AenderungenIntersection],
+        riss_visible_area: &SvgPolygonInner,
+    ) -> Vec<TextPlacement> {
+        s.iter()
+            .filter_map(|s| {
+                if s.poly_cut.overlaps(&riss_visible_area)
+                    || riss_visible_area.overlaps(&s.poly_cut)
+                {
+                    Some(s)
+                } else {
+                    None
+                }
+            })
+            .flat_map(|s| {
+                intersect_polys(&riss_visible_area, &s.poly_cut)
+                    .into_iter()
+                    .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
+                    .map(|ip| AenderungenIntersection {
+                        alt: s.alt.clone(),
+                        neu: s.neu.clone(),
+                        flst_id: s.flst_id.clone(),
+                        flst_id_part: s.flst_id_part.clone(),
+                        poly_cut: ip.clone(),
+                    })
+            })
+            .flat_map(|q| {
+                if q.alt == q.neu {
+                    q.poly_cut
+                        .outer_rings
+                        .iter()
+                        .flat_map(|or| {
+                            let p = SvgPolygonInner {
+                                outer_rings: vec![or.clone()],
+                                inner_rings: q.poly_cut.inner_rings.clone(),
+                            };
+                            let lp = match p.get_label_pos() {
+                                Some(s) => s,
+                                None => return Vec::new(),
+                            };
+                            vec![TextPlacement {
+                                kuerzel: q.alt.clone(),
+                                status: TextStatus::StaysAsIs,
+                                pos: lp.clone(),
+                                ref_pos: lp.clone(),
+                                area: p.area_m2().round() as usize,
+                                poly: p.clone(),
+                            }]
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    let polys = q
+                        .poly_cut
+                        .outer_rings
+                        .iter()
+                        .map(|or| SvgPolygonInner {
+                            outer_rings: vec![or.clone()],
+                            inner_rings: q.poly_cut.inner_rings.clone(),
+                        })
+                        .collect::<Vec<_>>();
+                    polys
+                        .iter()
+                        .flat_map(|p| {
+                            let lp = match p.get_label_pos() {
+                                Some(s) => s,
+                                None => return Vec::new(),
+                            };
+                            let sp = match p.get_secondary_label_pos() {
+                                Some(s) => s,
+                                None => lp,
+                            };
+                            vec![
+                                TextPlacement {
+                                    kuerzel: q.alt.clone(),
+                                    status: TextStatus::Old,
+                                    pos: lp.clone(),
+                                    ref_pos: lp.clone(),
+                                    area: p.area_m2().round() as usize,
+                                    poly: p.clone(),
+                                },
+                                TextPlacement {
+                                    kuerzel: q.neu.clone(),
+                                    status: TextStatus::New,
+                                    pos: sp.clone(),
+                                    ref_pos: sp.clone(),
+                                    area: p.area_m2().round() as usize,
+                                    poly: p.clone(),
+                                },
+                            ]
+                        })
+                        .collect()
+                }
+            })
+            .collect()
+    }
 }
 
 impl AenderungenClean {
-    pub fn get_aenderungen_intersections(&self) -> Vec<AenderungenIntersection> {
-        
+    pub fn get_aenderungen_intersections(&self, gemarkung: usize) -> AenderungenIntersections {
         let mut is = Vec::new();
-        let mut stay_polys = BTreeMap::new();
-        
-        for (neu_kuerzel, megapoly) in self.map.iter() {
-            let all_touching_flst_parts = self.nas_xml_quadtree.get_overlapping_flst(&megapoly.get_rect());
-            
-            for potentially_intersecting in all_touching_flst_parts {
-                
-                let ebene = match potentially_intersecting.attributes.get("AX_Ebene") {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
+
+        let aenderung_len = self.aenderungen.na_polygone_neu.len();
+        let mut flst_parts_changed = BTreeMap::new();
+        let mut intersection_sizes = BTreeMap::new();
+
+        for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
+            let neu_kuerzel = match polyneu.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let all_touching_flst_parts = self
+                .nas_xml_quadtree
+                .get_overlapping_flst(&polyneu.poly.get_inner().get_rect());
+            log_status(&format!("[{} / {aenderung_len}] Verschneide Änderung {aenderung_i} mit {} überlappenden Flächen", id + 1, all_touching_flst_parts.len()));
+
+            for (potentially_touching_id, potentially_intersecting) in all_touching_flst_parts {
                 let flurstueck_id = match potentially_intersecting.attributes.get("AX_Flurstueck") {
                     Some(s) => s.clone(),
                     None => continue,
                 };
-                let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel(&ebene) {
+
+                let intersect_id = potentially_intersecting
+                    .attributes
+                    .get("AX_IntersectionId")
+                    .map(|w| format!(":{w}"))
+                    .unwrap_or_default();
+
+                let ebene = match potentially_intersecting.get_ebene() {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let obj_id = match potentially_intersecting.attributes.get("id") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let alt_kuerzel = match potentially_intersecting.get_auto_kuerzel() {
                     Some(s) => s,
                     None => continue,
                 };
 
-                web_sys::console::log_1(&format!("is 1").as_str().into());
+                let anew = potentially_intersecting.poly.round_to_3dec();
+                let bnew = polyneu.poly.get_inner().round_to_3dec();
 
-                let q = intersect_polys(&potentially_intersecting.poly, megapoly)
-                .iter().map(|v| v.round_to_3dec()).collect::<Vec<_>>();
-                
-                web_sys::console::log_1(&format!("is 2").as_str().into());
+                let is_polys = intersect_polys(&anew, &bnew);
+                let mut is_size = 0.0;
+                let flst_id_part =
+                    format!("{potentially_touching_id}:{ebene}:{obj_id}{intersect_id}");
+                for intersect_poly in is_polys {
+                    let intersect_poly = intersect_poly.round_to_3dec();
+                    if intersect_poly.is_zero_area() {
+                        continue;
+                    }
+                    is_size += intersect_poly.area_m2();
+                    flst_parts_changed
+                        .entry(flst_id_part.clone())
+                        .or_insert_with(|| {
+                            (
+                                TaggedPolygon {
+                                    attributes: potentially_intersecting.attributes.clone(),
+                                    poly: anew.clone(),
+                                },
+                                BTreeMap::new(),
+                            )
+                        })
+                        .1
+                        .insert(aenderung_i.clone(), bnew.clone());
 
-                let mut subtract_polys = Vec::new();
-                for intersect_poly in q.iter() {
-                    subtract_polys.push(intersect_poly.round_to_3dec());
-                    is.push(AenderungenIntersection {
+                    let qq = AenderungenIntersection {
                         alt: alt_kuerzel.clone(),
                         neu: neu_kuerzel.clone(),
                         flst_id: flurstueck_id.clone(),
+                        flst_id_part: flst_id_part.clone(),
                         poly_cut: intersect_poly.round_to_3dec(),
-                    });
+                    };
+                    log_status(&format!("Splitflächen (Stufe 1): {flst_id_part}: {alt_kuerzel} -> {neu_kuerzel} = {} m2", intersect_poly.area_m2().round()));
+                    is.push(qq);
                 }
 
-                let subtract_polys = subtract_polys.iter().collect::<Vec<_>>();
-                stay_polys.entry(flurstueck_id)
-                .and_modify(|sp: &mut TaggedPolygon| {
-                    web_sys::console::log_1(&format!("is 2.1").as_str().into());
-                    sp.poly = subtract_from_poly(&sp.poly.round_to_3dec(), &subtract_polys).round_to_3dec();
-                    web_sys::console::log_1(&format!("is 2.2").as_str().into());
-                })
-                .or_insert_with(|| {
-                    web_sys::console::log_1(&format!("is 2.3").as_str().into());
-                    let s = TaggedPolygon {
-                        attributes: potentially_intersecting.attributes.clone(),
-                        poly: subtract_from_poly(&potentially_intersecting.poly.round_to_3dec(), &subtract_polys).round_to_3dec()
-                    };
-                    web_sys::console::log_1(&format!("is 2.4").as_str().into());
-                    s
-                });
+                intersection_sizes.insert((flst_id_part, aenderung_i.clone()), is_size);
             }
         }
 
-        web_sys::console::log_1(&format!("is 5").as_str().into());
+        let mut is = AenderungenIntersections(is)
+            .clean_zero_size_areas()
+            .deduplicate()
+            .merge_to_nearest(false)
+            .0;
 
-        
-        for (flurstueck_id, flst_rest) in stay_polys {
-            if flst_rest.poly.is_empty() {
-                continue;
-            }
-            let ebene = match flst_rest.attributes.get("AX_Ebene") {
+        log_status(&format!(
+            "OK: {} Flurstückteile verändert",
+            flst_parts_changed.len()
+        ));
+
+        for (flst_part_id, (flst_part, areas_to_subtract)) in flst_parts_changed {
+            let alt_kuerzel = match flst_part.get_auto_kuerzel() {
                 Some(s) => s.clone(),
                 None => continue,
             };
-            let alt_kuerzel = match flst_rest.get_auto_kuerzel(&ebene) {
+
+            let flurstueck_id = match flst_part.attributes.get("AX_Flurstueck") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            let jp = join_polys(
+                &areas_to_subtract
+                    .iter()
+                    .map(|(_, s)| s.clone())
+                    .collect::<Vec<_>>(),
+                false,
+                false,
+            );
+            let areas_to_subtract_joined = match jp {
                 Some(s) => s,
                 None => continue,
             };
-            is.push(AenderungenIntersection {
+
+            let orig_size = flst_part.poly.area_m2();
+            let areas_to_subtract_ids = areas_to_subtract
+                .iter()
+                .map(|(id, _)| id.clone())
+                .collect::<BTreeSet<_>>();
+            let size_of_all_intersections = areas_to_subtract_ids
+                .iter()
+                .map(|s| {
+                    intersection_sizes
+                        .get(&(flst_part_id.clone(), s.clone()))
+                        .copied()
+                        .unwrap_or(0.0)
+                })
+                .sum::<f64>();
+            if orig_size - size_of_all_intersections < 1.0 {
+                continue;
+            }
+
+            let subtracted = subtract_from_poly(&flst_part.poly, &[&areas_to_subtract_joined]);
+
+            let neu_kuerzel = self
+                .aenderungen
+                .na_definiert
+                .iter()
+                .find_map(|(k, v)| {
+                    if flst_part_id.starts_with(k) {
+                        Some(v)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(&alt_kuerzel)
+                .clone();
+
+            let qq = AenderungenIntersection {
                 alt: alt_kuerzel.clone(),
-                neu: alt_kuerzel.clone(),
+                neu: neu_kuerzel.clone(),
                 flst_id: flurstueck_id.clone(),
-                poly_cut: flst_rest.poly.round_to_3dec(),
-            });
+                flst_id_part: flst_part_id.clone(),
+                poly_cut: subtracted.round_to_3dec(),
+            };
+
+            log_status(&format!(
+                "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
+                subtracted.area_m2().round()
+            ));
+
+            is.push(qq);
         }
 
-        web_sys::console::log_1(&format!("is 6").as_str().into());
+        let mut is = is
+            .into_iter()
+            .filter(|i| !i.poly_cut.is_zero_area())
+            .collect::<Vec<_>>();
 
-        is
+        // insert na_definiert
+        let na_bereits_definiert = is
+            .iter()
+            .map(|s| s.flst_id_part.clone())
+            .collect::<BTreeSet<_>>();
+
+        for (na_def, neu_kuerzel) in self.aenderungen.na_definiert.iter() {
+            if na_bereits_definiert
+                .iter()
+                .any(|s| na_def.starts_with(s) || s.starts_with(na_def))
+            {
+                continue;
+            }
+
+            let flst_part = match self.nas_xml_quadtree.original.get_flst_part_by_id(&na_def) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let kuerzel = match flst_part.get_auto_kuerzel() {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let flst_id = match flst_part.attributes.get("AX_Flurstueck") {
+                Some(s) => s.clone(),
+                None => continue,
+            };
+
+            is.push(AenderungenIntersection {
+                alt: kuerzel.clone(),
+                neu: neu_kuerzel.clone(),
+                flst_id: flst_id,
+                flst_id_part: na_def.clone(),
+                poly_cut: flst_part.poly.clone(),
+            });
+
+            log_status(&format!(
+                "Splitflächen (Stufe 3): {na_def}: {kuerzel} -> {neu_kuerzel} = {} m2",
+                flst_part.poly.area_m2().round()
+            ));
+        }
+
+        let na_bereits_definiert = is
+            .iter()
+            .map(|s| s.flst_id_part.clone())
+            .collect::<BTreeSet<_>>();
+
+        // insert gebaeude geänderte flst
+        for geb in self.aenderungen.gebaeude_loeschen.values() {
+            for flst_id in geb.flst_id.iter() {
+                let default = Vec::new();
+                for part in self
+                    .nas_xml_quadtree
+                    .original
+                    .flurstuecke_nutzungen
+                    .get(flst_id)
+                    .unwrap_or(&default)
+                {
+                    let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+                    let ebene = match part.get_ebene() {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+                    let obj_id = match part.attributes.get("id") {
+                        Some(s) => s.clone(),
+                        None => continue,
+                    };
+
+                    let intersect_id = part
+                        .attributes
+                        .get("AX_IntersectionId")
+                        .map(|w| format!(":{w}"))
+                        .unwrap_or_default();
+
+                    let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
+                    if na_bereits_definiert
+                        .iter()
+                        .any(|s| flst_part_id.starts_with(s))
+                    {
+                        continue;
+                    }
+                    let kuerzel = match part.get_auto_kuerzel() {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    is.push(AenderungenIntersection {
+                        alt: kuerzel.clone(),
+                        neu: kuerzel.clone(),
+                        flst_id: flurstueck_id,
+                        flst_id_part: flst_part_id.clone(),
+                        poly_cut: part.poly.clone(),
+                    });
+                    log_status(&format!(
+                        "Splitflächen (Stufe 4): {flst_part_id}: {kuerzel} -> {kuerzel} = {} m2",
+                        part.poly.area_m2().round()
+                    ));
+                }
+            }
+        }
+
+        let mut is = is
+            .into_iter()
+            .filter(|i| !i.poly_cut.is_zero_area())
+            .collect::<Vec<_>>();
+
+        // let is = merge_adjacent_intersections(is);
+
+        let default = Vec::new();
+
+        // Remove splitflächen für flurstücke die keine Änderung haben
+        let flst_touched = is
+            .iter()
+            .map(|s| s.flst_id.clone())
+            .collect::<BTreeSet<_>>();
+        let to_remove_flst = flst_touched
+            .iter()
+            .filter_map(|flst_id| {
+                if is
+                    .iter()
+                    .filter(|s| s.flst_id == *flst_id)
+                    .all(|s| s.alt == s.neu)
+                {
+                    Some(flst_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeSet<_>>();
+        if !to_remove_flst.is_empty() {
+            is.retain(|s| !to_remove_flst.contains(&s.flst_id));
+        }
+
+        let na_bereits_definiert = is
+            .iter()
+            .map(|s| s.flst_id_part.clone())
+            .collect::<BTreeSet<_>>();
+
+        // insert other flst areas (bleibt)
+        let flst_touched = is
+            .iter()
+            .map(|s| s.flst_id.clone())
+            .collect::<BTreeSet<_>>();
+        for flst_id in flst_touched.iter() {
+            for part in self
+                .nas_xml_quadtree
+                .original
+                .flurstuecke_nutzungen
+                .get(flst_id)
+                .unwrap_or(&default)
+            {
+                let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let ebene = match part.get_ebene() {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let obj_id = match part.attributes.get("id") {
+                    Some(s) => s.clone(),
+                    None => continue,
+                };
+                let intersect_id = part
+                    .attributes
+                    .get("AX_IntersectionId")
+                    .map(|w| format!(":{w}"))
+                    .unwrap_or_default();
+                let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
+                if na_bereits_definiert
+                    .iter()
+                    .any(|s| flst_part_id.starts_with(s))
+                {
+                    continue;
+                }
+                let kuerzel = match part.get_auto_kuerzel() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                is.push(AenderungenIntersection {
+                    alt: kuerzel.clone(),
+                    neu: kuerzel.clone(),
+                    flst_id: flurstueck_id.clone(),
+                    flst_id_part: flst_part_id.clone(),
+                    poly_cut: part.poly.clone(),
+                });
+                log_status(&format!(
+                    "Splitflächen (Stufe 5): {flst_part_id}: {kuerzel} -> {kuerzel} = {} m2",
+                    part.poly.area_m2().round()
+                ));
+            }
+        }
+
+        let mut is = AenderungenIntersections(is)
+            .clean_zero_size_areas()
+            .deduplicate()
+            .0;
+
+        // Remove Änderungen, wo nichts am Flurstück geändert wurde
+        let alle_flst = is
+            .iter()
+            .map(|s| s.flst_id.clone())
+            .collect::<BTreeSet<_>>();
+        let to_remove = alle_flst
+            .iter()
+            .filter_map(|flst_id| {
+                let all_splitflaechen_fuer_flst = is
+                    .iter()
+                    .filter_map(|s| if s.flst_id == *flst_id { Some(s) } else { None })
+                    .collect::<Vec<_>>();
+                if all_splitflaechen_fuer_flst.iter().all(|s| s.alt == s.neu) {
+                    Some(flst_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeSet<_>>();
+
+        is.retain(|s| !to_remove.contains(&s.flst_id));
+
+        for a in to_remove.iter() {
+            log_status(&format!(
+                "WARN: Lösche Änderung an Flst. {}: keine Änderungen",
+                FlstIdParsed::from_str(&a).to_nice_string()
+            ));
+        }
+
+        is.retain(|s: &AenderungenIntersection| {
+            FlstIdParsed::from_str(&s.flst_id).gemarkung == gemarkung.to_string()
+        });
+
+        let alle_flst = is
+            .iter()
+            .map(|s| s.flst_id.clone())
+            .collect::<BTreeSet<_>>();
+        let _ = alle_flst
+            .into_iter()
+            .filter_map(|flst_id| {
+                let soll = self
+                    .nas_xml_quadtree
+                    .original
+                    .flurstuecke_nutzungen
+                    .get(&flst_id)
+                    .unwrap_or(&default)
+                    .iter()
+                    .map(|tp| tp.poly.area_m2())
+                    .sum::<f64>()
+                    .round();
+                let ist = is
+                    .iter()
+                    .filter_map(|s| {
+                        if s.flst_id == flst_id {
+                            Some(s.poly_cut.area_m2())
+                        } else {
+                            None
+                        }
+                    })
+                    .sum::<f64>()
+                    .round();
+                if ist + 2.0 < soll {
+                    log_status(&format!(
+                        "WARN: Loch in Flst {}: soll = {soll}, ist = {ist}",
+                        FlstIdParsed::from_str(&flst_id).to_nice_string()
+                    ));
+                    Some(flst_id)
+                } else if ist > soll + 2.0 {
+                    log_status(&format!(
+                        "WARN: Doppelte Fläche in Flst {}: soll = {soll}, ist = {ist}",
+                        FlstIdParsed::from_str(&flst_id).to_nice_string()
+                    ));
+                    Some(flst_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeSet<_>>();
+
+        AenderungenIntersections(is).merge_to_nearest(false)
     }
 }
 
@@ -1197,46 +2064,197 @@ pub struct AenderungenIntersection {
     pub alt: Kuerzel,
     pub neu: Kuerzel,
     pub flst_id: FlstId,
-    pub poly_cut: SvgPolygon,
+    pub flst_id_part: String,
+    pub poly_cut: SvgPolygonInner,
 }
 
 impl AenderungenIntersection {
-    
-    pub fn get_text_alt(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
-            return None;
-        }
-        Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
-            kuerzel: self.alt.clone(),
-            pos: self.poly_cut.get_label_pos(0.001)
-        })
+    pub fn format_flst_id_func(s: &str) -> String {
+        let s = FlstIdParsed::from_str(&s);
+        let q = match s.parse_num() {
+            Some(o) => o,
+            None => return s.to_nice_string(),
+        };
+        q.format_nice()
     }
 
-    pub fn get_text_neu(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
-            return None;
+    pub fn format_flst_id(&self) -> String {
+        Self::format_flst_id_func(&self.flst_id)
+    }
+
+    pub fn format_flst_id_search(&self) -> String {
+        let s = FlstIdParsed::from_str(&self.flst_id);
+        let q = match s.parse_num() {
+            Some(o) => o,
+            None => return s.to_nice_string(),
+        };
+        q.format_start_str()
+    }
+
+    pub fn get_splitflaechen_fuer_flst(
+        splitflaechen: &[Self],
+        flst_id: &str,
+    ) -> Vec<AenderungenIntersection> {
+        let flst_id = FlstIdParsed::from_str(flst_id);
+        let flst_id = match flst_id.parse_num() {
+            Some(o) => o.format_nice(),
+            None => flst_id.to_nice_string(),
+        };
+
+        let mut splitflaechen_fuer_flst = splitflaechen
+            .iter()
+            .filter(|s| s.format_flst_id() == flst_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        splitflaechen_fuer_flst.sort_by(|a, b| a.alt.cmp(&b.alt));
+        splitflaechen_fuer_flst.dedup();
+        splitflaechen_fuer_flst
+    }
+
+    pub fn get_splitflaechen_fuer_flst_veraendert(
+        splitflaechen: &[Self],
+        flst_id: &str,
+    ) -> Vec<AenderungenIntersection> {
+        Self::get_splitflaechen_fuer_flst(splitflaechen, flst_id)
+            .into_iter()
+            .filter(|s| s.alt.as_str() != s.neu.as_str())
+            .collect()
+    }
+
+    pub fn get_splitflaechen_fuer_flst_bleibt(
+        splitflaechen: &[Self],
+        flst_id: &str,
+    ) -> Vec<AenderungenIntersection> {
+        Self::get_splitflaechen_fuer_flst(splitflaechen, flst_id)
+            .into_iter()
+            .filter(|s| s.alt.as_str() == s.neu.as_str())
+            .collect()
+    }
+
+    pub fn get_auto_notiz(splitflaechen: &[Self], flst_id: &str) -> String {
+        let (alt_weg, neu_dazu, veraendert) = Self::get_auto_kuerzel(splitflaechen, flst_id);
+
+        let mut neu_dazu_str = neu_dazu.into_iter().collect::<Vec<_>>().join(" / ");
+        if !neu_dazu_str.trim().is_empty() {
+            neu_dazu_str.push_str(" einzeichnen");
         }
-        Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
-            kuerzel: self.neu.clone(),
-            pos: {
-                let mut pos = self.poly_cut.get_label_pos(0.001);
-                pos.y -= 6.0;
-                pos
+
+        let mut alt_weg_str = alt_weg.into_iter().collect::<Vec<_>>().join(" / ");
+        if !alt_weg_str.trim().is_empty() {
+            alt_weg_str.push_str(" entfernen");
+        }
+
+        let mut veraendert_str = veraendert.into_iter().collect::<Vec<_>>().join(" / ");
+        if !veraendert_str.trim().is_empty() {
+            veraendert_str.push_str(" anpassen");
+        }
+
+        let mut v = Vec::new();
+
+        if !alt_weg_str.trim().is_empty() {
+            v.push(alt_weg_str);
+        }
+        if !neu_dazu_str.trim().is_empty() {
+            v.push(neu_dazu_str);
+        }
+        if !veraendert_str.trim().is_empty() {
+            v.push(veraendert_str);
+        }
+
+        v.join(", ").trim().to_string()
+    }
+
+    fn get_auto_kuerzel(
+        splitflaechen: &[Self],
+        flst_id: &str,
+    ) -> (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>) {
+        let veraenderte_splitflaechen =
+            Self::get_splitflaechen_fuer_flst_veraendert(splitflaechen, flst_id);
+
+        if veraenderte_splitflaechen.is_empty() {
+            return (BTreeSet::new(), BTreeSet::new(), BTreeSet::new());
+        }
+
+        let bleibende_kuerzel = Self::get_splitflaechen_fuer_flst_bleibt(splitflaechen, flst_id)
+            .iter()
+            .map(|s| s.alt.clone())
+            .collect::<BTreeSet<_>>();
+
+        let alt_join = veraenderte_splitflaechen
+            .iter()
+            .map(|s| s.alt.clone())
+            .collect::<BTreeSet<_>>();
+        let neu_join = veraenderte_splitflaechen
+            .iter()
+            .map(|s| s.neu.clone())
+            .collect::<BTreeSet<_>>();
+
+        let alt_weg = alt_join
+            .difference(&neu_join)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let neu_dazu = neu_join
+            .difference(&alt_join)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let mut veraendert = alt_join
+            .intersection(&neu_join)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        for k in bleibende_kuerzel.iter() {
+            if alt_weg.contains(k) || neu_dazu.contains(k) {
+                veraendert.insert(k.clone());
             }
-        })
+        }
+        let alt_weg = alt_weg
+            .into_iter()
+            .filter(|s| !bleibende_kuerzel.contains(s))
+            .collect::<BTreeSet<_>>();
+        let neu_dazu = neu_dazu
+            .into_iter()
+            .filter(|s| !bleibende_kuerzel.contains(s))
+            .collect::<BTreeSet<_>>();
+
+        (alt_weg, neu_dazu, veraendert)
     }
 
-    pub fn get_text_bleibt(&self) -> Option<TextPlacement> {
-        if self.alt != self.neu {
-            return None;
+    pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
+        let such_id = match FlstIdParsed::from_str(&flst_id).parse_num() {
+            Some(s) => s,
+            None => return Status::Bleibt,
+        };
+
+        let splitflaechen = splitflaechen
+            .iter()
+            .filter(|sf| {
+                let flst_id = FlstIdParsed::from_str(&sf.flst_id).parse_num();
+                flst_id.as_ref() == Some(&such_id)
+            })
+            .collect::<Vec<_>>();
+
+        let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
+
+        if !wurde_veraendert {
+            return Status::Bleibt;
         }
-        Some(TextPlacement {
-            status: TextStatus::StaysAsIs,
-            kuerzel: self.alt.clone(),
-            pos: self.poly_cut.get_label_pos(0.001)
-        })
+
+        let alte_wirtschaftsarten = splitflaechen
+            .iter()
+            .filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.alt))
+            .collect::<BTreeSet<_>>();
+        let neue_wirtschaftsarten = splitflaechen
+            .iter()
+            .filter_map(|s| TaggedPolygon::get_wirtschaftsart(&s.neu))
+            .collect::<BTreeSet<_>>();
+        let veraendert_2 = alte_wirtschaftsarten
+            .symmetric_difference(&neue_wirtschaftsarten)
+            .collect::<BTreeSet<_>>();
+
+        if veraendert_2.is_empty() {
+            Status::AenderungKeineBenachrichtigung
+        } else {
+            Status::AenderungMitBenachrichtigung
+        }
     }
 }
 
@@ -1245,28 +2263,40 @@ pub struct TextPlacement {
     pub kuerzel: String,
     pub status: TextStatus,
     pub pos: SvgPoint,
+    pub ref_pos: SvgPoint,
+    pub area: usize,
+    pub poly: SvgPolygonInner,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum TextStatus {
     Old,
     New,
     StaysAsIs,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DstToLine {
     pub nearest_point: SvgPoint,
     pub distance: f64,
 }
 
-#[inline] fn sqr(x: f64) -> f64 { x * x }
-#[inline] fn dist2(v: SvgPoint, w: SvgPoint) -> f64 { sqr(v.x - w.x) + sqr(v.y - w.y) }
-#[inline] fn dist(v: SvgPoint, w: SvgPoint) -> f64 { dist2(v, w).sqrt() }
-#[inline] pub fn dist_to_segment(p: SvgPoint, v: SvgPoint, w: SvgPoint) -> DstToLine { 
-    
+#[inline]
+fn sqr(x: f64) -> f64 {
+    x * x
+}
+#[inline]
+pub fn dist2(v: SvgPoint, w: SvgPoint) -> f64 {
+    sqr(v.x - w.x) + sqr(v.y - w.y)
+}
+#[inline]
+pub fn dist(v: SvgPoint, w: SvgPoint) -> f64 {
+    dist2(v, w).sqrt()
+}
+#[inline]
+pub fn dist_to_segment(p: SvgPoint, v: SvgPoint, w: SvgPoint) -> DstToLine {
     let l2 = dist2(v, w);
-    if (l2.abs() < 0.0001) {
+    if l2.abs() < 0.0001 {
         let dst = dist(p, v.clone());
         return DstToLine {
             nearest_point: v,
@@ -1276,155 +2306,875 @@ pub struct DstToLine {
 
     let mut t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
     t = 0.0_f64.max(1.0_f64.min(t));
-    let nearest_point_on_line = SvgPoint { x: v.x + t * (w.x - v.x), y: v.y + t * (w.y - v.y) };
+    let nearest_point_on_line = SvgPoint {
+        x: v.x + t * (w.x - v.x),
+        y: v.y + t * (w.y - v.y),
+    };
     DstToLine {
         nearest_point: nearest_point_on_line,
         distance: dist(p, nearest_point_on_line),
     }
 }
 
-pub const MAX_DST_POINT: f64 = 2.0;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum CorrectPointItem {
+    NearPoint(SvgPoint),
+    NearLine(DstToLine),
+}
+
+impl CorrectPointItem {
+    pub fn get_point(&self) -> SvgPoint {
+        use self::CorrectPointItem::*;
+        match self {
+            NearPoint(p) => *p,
+            NearLine(dst) => dst.nearest_point,
+        }
+    }
+    pub fn is_line(&self) -> bool {
+        use self::CorrectPointItem::*;
+        match self {
+            NearPoint(_) => false,
+            NearLine(_) => true,
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+enum GetNearestPointFilter {
+    Points,
+    Lines,
+    PointsAndLines,
+}
 
 impl Aenderungen {
-    pub fn get_beschriftete_objekte(&self, xml: &NasXMLFile) -> String {
-        // TODO: Welche beschrifteten Objekte gibt es?
-        String::new()
+    pub fn correct_point(
+        p: &SvgPoint,
+        i: &[SvgPolygonInner],
+        maxdst_point: f64,
+        maxdst_line: f64,
+        allow_correctline: bool,
+        moved_points: &Vec<(SvgPoint, SvgPoint)>,
+    ) -> Option<SvgPoint> {
+        if !allow_correctline {
+            Self::get_nearest_point(
+                p,
+                i,
+                maxdst_point,
+                maxdst_line,
+                GetNearestPointFilter::Points,
+                moved_points,
+            )
+        } else {
+            let np1 = Self::get_nearest_point(
+                p,
+                i,
+                maxdst_point,
+                maxdst_line,
+                GetNearestPointFilter::Points,
+                moved_points,
+            );
+            let np2 = Self::get_nearest_point(
+                p,
+                i,
+                maxdst_point,
+                maxdst_line,
+                GetNearestPointFilter::Lines,
+                moved_points,
+            );
+            np1.or(np2)
+        }
     }
 
-    fn correct_point(i: &[SvgLine], p: &mut SvgPoint, maxdst_point: f64, maxdst_line: f64, log: &mut Vec<String>) -> bool {
-        let mut modified = false;
+    fn get_nearest_points(
+        p: &SvgPoint,
+        i: &[SvgPolygonInner],
+        maxdst_point: f64,
+        maxdst_line: f64,
+        mode: GetNearestPointFilter,
+        moved_points: &Vec<(SvgPoint, SvgPoint)>,
+    ) -> Vec<(f64, CorrectPointItem)> {
+        let mut near_points = Vec::new();
+
+        for poly in i.iter() {
+            near_points.append(&mut Self::get_points_near_point(
+                p,
+                &poly.outer_rings,
+                maxdst_point,
+                maxdst_line,
+                mode,
+            ));
+            near_points.append(&mut Self::get_points_near_point(
+                p,
+                &poly.inner_rings,
+                maxdst_point,
+                maxdst_line,
+                mode,
+            ));
+        }
+
+        let mut near_points = near_points
+            .into_iter()
+            .filter_map(|(dst, v)| {
+                let current_target_point = v.get_point();
+                if moved_points
+                    .iter()
+                    .any(|(orig_point, _target_point)| orig_point.equals(&current_target_point))
+                {
+                    return None; // prevent "swapping" of point positions
+                }
+                if v.is_line() && dst.abs() < 0.001 {
+                    None
+                } else {
+                    Some((dst, v))
+                }
+            })
+            .collect::<Vec<_>>();
+
+        near_points.sort_by(|a, b| a.0.total_cmp(&b.0));
+        near_points
+    }
+
+    fn get_nearest_point(
+        p: &SvgPoint,
+        i: &[SvgPolygonInner],
+        maxdst_point: f64,
+        maxdst_line: f64,
+        mode: GetNearestPointFilter,
+        moved_points: &Vec<(SvgPoint, SvgPoint)>,
+    ) -> Option<SvgPoint> {
+        let np = Self::get_nearest_points(p, i, maxdst_point, maxdst_line, mode, moved_points);
+        np.first().map(|p| p.1.get_point())
+    }
+
+    fn get_points_near_point(
+        p: &SvgPoint,
+        i: &[SvgLine],
+        maxdst_point: f64,
+        maxdst_line: f64,
+        mode: GetNearestPointFilter,
+    ) -> Vec<(f64, CorrectPointItem)> {
+        let mut v = Vec::new();
         for line in i.iter() {
             let line: &crate::nas::SvgLine = line;
             for ab in line.points.windows(2) {
                 match &ab {
                     &[a, b] => {
-                        let point_is_near_a = dist(*a, *p) < maxdst_point;
-                        let point_is_near_b = dist(*b, *p) < maxdst_point;
-                        if point_is_near_a {
-                            // log.push(format!("correcting point {:?} -> {:?}", *p, *a));
-                            *p = *a;
-                            modified = true;
-                        } else if point_is_near_b {
-                            // log.push(format!("correcting point {:?} -> {:?}", *p, *b));
-                            *p = *b;
-                            modified = true;
-                        } else {
-                            let nearest_point_on_line = dist_to_segment(*p, *a, *b);
-                            if nearest_point_on_line.distance < maxdst_line {
-                                // log.push(format!("point on line {:?} -> {:?}", *p, nearest_point_on_line));
-                                *p = nearest_point_on_line.nearest_point;
-                                modified = true;
+                        if mode == GetNearestPointFilter::Points
+                            || mode == GetNearestPointFilter::PointsAndLines
+                        {
+                            let dist_ap = dist(*a, *p);
+                            if dist_ap < maxdst_point {
+                                v.push((dist_ap, CorrectPointItem::NearPoint(*a)));
+                            }
+
+                            let dist_bp = dist(*b, *p);
+                            if dist_bp < maxdst_point {
+                                v.push((dist_bp, CorrectPointItem::NearPoint(*b)));
                             }
                         }
-                    },
-                    _ => { },
+                        if mode == GetNearestPointFilter::Lines
+                            || mode == GetNearestPointFilter::PointsAndLines
+                        {
+                            let dst = dist_to_segment(*p, *a, *b);
+                            if dst.distance < maxdst_line {
+                                v.push((dst.distance, CorrectPointItem::NearLine(dst)));
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
-        }  
-        modified
+        }
+        v
     }
 
     pub fn round_to_3decimal(&self) -> Aenderungen {
+        let na_polygone_neu = self
+            .na_polygone_neu
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    PolyNeu {
+                        nutzung: v.nutzung.clone(),
+                        poly: SvgPolygon::Old(if !v.locked {
+                            v.poly.get_inner().round_to_3dec()
+                        } else {
+                            v.poly.get_inner()
+                        }),
+                        locked: v.locked,
+                    },
+                )
+            })
+            .collect();
+
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: self.na_polygone_neu.iter().map(|(k, v)| {
-                (k.clone(), PolyNeu {
-                    nutzung: v.nutzung.clone(),
-                    poly: v.poly.round_to_3dec(),
-                })
-            }).collect()
+            na_polygone_neu: na_polygone_neu,
         }
     }
 
-    pub fn clean_stage1(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage0(&self, maxdst_point: f64) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
 
-        let mut aenderungen_self_merge_lines = 
-        changed_mut.na_polygone_neu.iter().map(|(k, p)| {
-            (k.clone(), p.poly.outer_rings.clone())
-        }).collect::<BTreeMap<_, _>>();
+        log_status(&format!("clean_stage0"));
+
+        let (locked, unlocked) = changed_mut.split_locked_unlocked();
+
+        // deduplicate aenderungen
+        let mut na_polygone_neu = BTreeMap::new();
+        for (id, polyneu) in unlocked.iter() {
+            let json = match serde_json::to_string(&polyneu) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+            na_polygone_neu.insert(json, (id.clone(), polyneu.clone()));
+        }
+        changed_mut.na_polygone_neu = na_polygone_neu
+            .values()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        // join sequential points if
+
+        log_status(&format!("clean_stage0 1"));
+
+        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            let mut p = polyneu.poly.get_inner();
+            for ol in p.outer_rings.iter_mut() {
+                *ol = clean_line(ol, maxdst_point);
+            }
+            for il in p.inner_rings.iter_mut() {
+                *il = clean_line(il, maxdst_point);
+            }
+            polyneu.poly = SvgPolygon::Old(p);
+        }
+
+        log_status(&format!("clean_stage0 2"));
+
+        fn clean_line(l: &SvgLine, dst: f64) -> SvgLine {
+            let mut first_point = match l.points.get(0) {
+                Some(s) => s.clone(),
+                None => return SvgLine::default(),
+            };
+            let first_point_copy = first_point.clone();
+
+            let mut all_points = vec![first_point.clone()];
+            for p in l.points.iter().skip(1) {
+                if p.dist(&first_point) > dst {
+                    all_points.push(*p);
+                    first_point = *p;
+                }
+            }
+
+            // handle last point
+            if first_point.dist(&first_point_copy) > dst {
+                all_points.push(first_point.clone());
+            }
+
+            all_points.push(first_point_copy.clone());
+
+            all_points.dedup_by(|a, b| a.equals(b));
+
+            SvgLine { points: all_points }
+        }
+
+        let mut rounded = changed_mut.round_to_3decimal();
+        rounded.na_polygone_neu.extend(locked.into_iter());
+        rounded
+    }
+
+    pub fn clean_stage1(
+        &self,
+        _log: &mut Vec<String>,
+        maxdst_point: f64,
+        maxdst_line: f64,
+    ) -> Aenderungen {
+        let mut changed_mut = self.clean_stage0(maxdst_point);
+
+        let mut modified_tree = changed_mut.na_polygone_neu.clone();
+
+        log_status(&format!(
+            "cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"
+        ));
+
+        let mut moved_points = Vec::new();
 
         // 1. Änderungen miteinander verbinden
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
-            for line in polyneu.poly.outer_rings.iter_mut() {
+
+            if polyneu.locked {
+                continue;
+            }
+
+            let changes_list = modified_tree
+                .iter()
+                .filter_map(|(k, s)| {
+                    if k == id {
+                        None
+                    } else {
+                        Some(s.poly.get_inner())
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            let changes_btree = QuadTree::new(changes_list.iter().enumerate().map(|(i, p)| {
+                (
+                    quadtree_f32::ItemId(i),
+                    quadtree_f32::Item::Rect(p.get_rect()),
+                )
+            }));
+
+            let mut polyneu_poly = polyneu.poly.get_inner();
+            for line in polyneu_poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
+                    let p_orig = p.clone();
+                    let p_rect = p.get_rect(maxdst_point.max(maxdst_line));
+                    let overlap = changes_btree
+                        .get_ids_that_overlap(&p_rect)
+                        .into_iter()
+                        .filter_map(|i| changes_list.get(i.0).cloned())
+                        .collect::<Vec<_>>();
 
-                    let overlapping_aenderungen_lines = aenderungen_self_merge_lines.iter()
-                    .filter_map(|(k, v)| {
-                        if k == id {
-                            return None; // prevent self-intersection
-                        }
-                        if v.is_empty() {
-                            return None;
-                        }
-                        Some(v.clone())
-                    })
-                    .flat_map(|v| v.into_iter())
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .filter(|l| l.get_rect().overlaps_rect(&p.get_rect(MAX_DST_POINT * 2.0)))
-                    .collect::<Vec<SvgLine>>();
-
-                    if Self::correct_point(&overlapping_aenderungen_lines, p, MAX_DST_POINT * 2.0, MAX_DST_POINT, log) {
+                    if let Some(newp) = Self::correct_point(
+                        p,
+                        &overlap,
+                        maxdst_point,
+                        maxdst_line,
+                        true,
+                        &moved_points,
+                    ) {
+                        *p = newp;
                         modified = true;
+                        moved_points.push((p_orig, newp));
                     }
                 }
             }
-            
-            if (modified) {
-                *aenderungen_self_merge_lines.entry(id.clone())
-                .or_insert_with(|| Vec::new()) = polyneu.poly.outer_rings.clone();
+
+            polyneu.poly = SvgPolygon::Old(polyneu_poly);
+
+            if modified {
+                modified_tree.insert(id.clone(), polyneu.clone());
             }
         }
+
+        log_status(&format!("moved {} points", moved_points.len()));
         changed_mut.round_to_3decimal()
     }
 
-    pub fn clean_stage2(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
+    // 2: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
+    pub fn clean_stage2(
+        &self,
+        log: &mut Vec<String>,
+        maxdst_line: f64,
+        maxdst_line2: f64,
+        maxdev_followline: f64,
+    ) -> Aenderungen {
+        let mut changed_mut = self.round_to_3decimal();
+        log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
+
+        let mut total_cleaned = BTreeSet::new();
+
+        'outer: loop {
+            let aenderungen_quadtree = NasXmlQuadTree::from_aenderungen(&changed_mut);
+            let mut polys_modified = 0;
+
+            for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+                let mut polyneu_poly = polyneu.poly.get_inner();
+                let mut local_modified = 0;
+                if total_cleaned.contains(id) {
+                    continue;
+                }
+
+                if !polyneu.locked {
+                    for line in polyneu_poly.outer_rings.iter_mut() {
+                        let orig_points_len = line.points.len();
+                        let mut nextpoint;
+                        let mut newpoints = match line.points.get(0) {
+                            Some(s) => {
+                                nextpoint = s.clone();
+                                vec![s.clone()]
+                            }
+                            None => continue,
+                        };
+
+                        for p in line.points.iter().skip(1) {
+                            let start = nextpoint.clone();
+                            let end = p;
+                            newpoints.extend(
+                                aenderungen_quadtree
+                                    .get_line_between_points(
+                                        &start,
+                                        end,
+                                        log,
+                                        maxdst_line,
+                                        maxdst_line2,
+                                        maxdev_followline,
+                                        Some(id.clone()),
+                                    )
+                                    .into_iter(),
+                            );
+                            newpoints.push(*end);
+                            nextpoint = *end;
+                        }
+
+                        newpoints.dedup_by(|a, b| a.equals(b));
+
+                        let newpoints_len = newpoints.len();
+                        if newpoints_len != orig_points_len {
+                            local_modified += newpoints_len.saturating_sub(orig_points_len);
+                            log.push(format!(
+                                "{id}: insert {} points",
+                                newpoints_len.saturating_sub(orig_points_len)
+                            ));
+                        }
+
+                        line.points = newpoints;
+                    }
+                }
+                polyneu.poly = SvgPolygon::Old(polyneu_poly);
+                polys_modified += local_modified;
+                if local_modified != 0 {
+                    total_cleaned.insert(id.clone());
+                    continue 'outer;
+                }
+            }
+
+            if polys_modified == 0 {
+                break 'outer;
+            }
+        }
+
+        let all_points_vec = changed_mut
+            .na_polygone_neu
+            .iter()
+            .flat_map(|(_k, q)| {
+                let qpoly = q.poly.get_inner();
+                let mut v = qpoly
+                    .outer_rings
+                    .iter()
+                    .flat_map(|p| p.points.clone())
+                    .collect::<Vec<_>>();
+                v.extend(qpoly.inner_rings.iter().flat_map(|p| p.points.clone()));
+                v.into_iter()
+            })
+            .collect::<Vec<_>>();
+
+        let qt_len = all_points_vec.len().saturating_div(20).max(500);
+        let all_points_btree = QuadTree::new_with_max_items_per_quad(
+            all_points_vec.iter().enumerate().map(|(i, v)| {
+                (
+                    quadtree_f32::ItemId(i),
+                    quadtree_f32::Item::Rect(v.get_rect(0.01)),
+                )
+            }),
+            qt_len,
+        );
+
+        for v in changed_mut.na_polygone_neu.values_mut() {
+            let vpoly = v.poly.get_inner();
+            let ol = vpoly
+                .outer_rings
+                .iter()
+                .map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec))
+                .collect::<Vec<_>>();
+            let il = vpoly
+                .inner_rings
+                .iter()
+                .map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec))
+                .collect::<Vec<_>>();
+            v.poly = SvgPolygon::Old(SvgPolygonInner {
+                outer_rings: ol,
+                inner_rings: il,
+            });
+        }
+
+        changed_mut.round_to_3decimal()
+    }
+
+    fn insert_points(l: &SvgLine, btree: &quadtree_f32::QuadTree, ap_vec: &[SvgPoint]) -> SvgLine {
+        let first = match l.points.first() {
+            Some(s) => s.clone(),
+            None => return SvgLine::default(),
+        };
+        let mut finalized = vec![first];
+        for p in l.points.windows(2) {
+            let (a, b) = match p {
+                &[a, b] => (a, b),
+                _ => continue,
+            };
+
+            let all_points_to_question = btree
+                .get_ids_contained_by(&points_to_rect(&(a, b)))
+                .into_iter()
+                .filter_map(|i| ap_vec.get(i.0))
+                .collect::<Vec<_>>();
+
+            let mut all_points_to_question = all_points_to_question
+                .into_iter()
+                .filter_map(|p| {
+                    let p = SvgPoint { x: p.x, y: p.y };
+                    if p.equals(&a) || p.equals(&b) {
+                        return None;
+                    }
+                    let dst = dist_to_segment(p, a, b).distance.abs();
+                    if dst < 1.0 {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            all_points_to_question.sort_by(|d, e| a.dist(&d).total_cmp(&a.dist(&e)));
+
+            for q in all_points_to_question {
+                finalized.push(q);
+            }
+
+            finalized.push(b);
+        }
+
+        SvgLine { points: finalized }
+    }
+
+    // 3: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
+    pub fn clean_stage25(&self) -> Aenderungen {
+        self.clean_stage25_internal()
+            .clean_stage1(&mut Vec::new(), 0.1, 0.1)
+            .clean_stage25_internal()
+            .move_lines_touching()
+            .clean_stage25_internal()
+    }
+
+    fn move_lines_touching(&self) -> Aenderungen {
+        let aenderungen_by_kuerzel = self
+            .na_polygone_neu
+            .iter()
+            .filter_map(|(_id, k)| {
+                let nutzung = k.nutzung.clone()?;
+                Some((nutzung, k.poly.clone()))
+            })
+            .collect::<Vec<(_, _)>>();
+
+        let mut aenderungen_by_kuerzel_map = BTreeMap::new();
+        for (k, v) in aenderungen_by_kuerzel.into_iter() {
+            aenderungen_by_kuerzel_map
+                .entry(k.clone())
+                .or_insert_with(|| Vec::new())
+                .push(v);
+        }
+
+        let na_poly_clone = self.na_polygone_neu.clone();
+        let mut touching_polys = BTreeMap::new();
+        for (id, poly) in self.na_polygone_neu.iter() {
+            touching_polys.extend(na_poly_clone.iter().filter_map(|(idn, q)| {
+                if idn == id {
+                    return None;
+                }
+                if q.nutzung.is_none() || poly.nutzung.is_none() {
+                    return None;
+                }
+                if q.nutzung != poly.nutzung {
+                    return None;
+                }
+
+                let relate = nas::relate(&poly.poly.get_inner(), &q.poly.get_inner(), 1.0);
+
+                if relate.touches_other_poly_outside() {
+                    let sm = id.max(idn);
+                    let lg = id.min(idn);
+                    Some((sm.clone(), lg.clone()))
+                } else {
+                    None
+                }
+            }));
+        }
+
+        let mut na_poly_neu = self.na_polygone_neu.clone();
+
+        for (a, b) in touching_polys.iter() {
+            let poly_a = match self.na_polygone_neu.get(a) {
+                Some(s) => s,
+                None => continue,
+            };
+            if poly_a.locked {
+                continue;
+            }
+
+            let poly_b = match self.na_polygone_neu.get(b) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let triangle_points_b = translate_to_geo_poly(&poly_b.poly.get_inner())
+                .0
+                .iter()
+                .flat_map(|f| f.earcut_triangles())
+                .map(|i| i.centroid())
+                .map(|p| SvgPoint { x: p.x(), y: p.y() })
+                .collect::<Vec<_>>();
+
+            fn get_nearest_point(a: &SvgPoint, list_b: &[SvgPoint]) -> SvgPoint {
+                let mut dst = f64::MAX;
+                let mut point = a.clone();
+                for b in list_b.iter() {
+                    let dst_new = b.dist(a);
+                    if dst_new < dst {
+                        dst = dst_new;
+                        point = *b;
+                    }
+                }
+                if a.equals(&point) {
+                    point
+                } else {
+                    SvgPoint {
+                        x: a.x + ((point.x - a.x) / 50.0),
+                        y: a.y + ((point.y - a.y) / 50.0),
+                    }
+                }
+            }
+
+            fn mini_correct_line(a: &SvgLine, b: &SvgPolygonInner, list_b: &[SvgPoint]) -> SvgLine {
+                let mut p_final = Vec::new();
+                let p_coords = b.get_all_pointcoords_sorted();
+                for p in a.points.iter() {
+                    let p_test = [
+                        (p.x * 1000.0).round() as usize,
+                        (p.y * 1000.0).round() as usize,
+                    ];
+                    if p_coords.contains(&p_test) {
+                        p_final.push(*p);
+                    } else if nas::point_is_on_any_line(p, b, 1.0) {
+                        p_final.push(get_nearest_point(p, list_b));
+                    } else {
+                        p_final.push(*p);
+                    }
+                }
+
+                SvgLine { points: p_final }
+            }
+
+            let poly_a_poly = poly_a.poly.get_inner();
+            let poly_b_poly = poly_b.poly.get_inner();
+            let or_new = poly_a_poly
+                .outer_rings
+                .iter()
+                .map(|l| mini_correct_line(l, &poly_b_poly, &triangle_points_b))
+                .collect::<Vec<_>>();
+            let ir_new = poly_a_poly
+                .inner_rings
+                .iter()
+                .map(|l| mini_correct_line(l, &poly_b_poly, &triangle_points_b))
+                .collect::<Vec<_>>();
+
+            na_poly_neu.get_mut(a).unwrap().poly = SvgPolygon::Old(SvgPolygonInner {
+                outer_rings: or_new,
+                inner_rings: ir_new,
+            });
+        }
+
+        Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: na_poly_neu,
+        }
+        .round_to_3decimal()
+    }
+
+    pub fn split_locked_unlocked(&self) -> (BTreeMap<String, PolyNeu>, BTreeMap<String, PolyNeu>) {
+        let locked = self
+            .na_polygone_neu
+            .iter()
+            .filter_map(|(id, s)| {
+                if s.locked {
+                    Some((id.clone(), s.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let unlocked = self
+            .na_polygone_neu
+            .iter()
+            .filter_map(|(id, s)| {
+                if s.locked {
+                    None
+                } else {
+                    Some((id.clone(), s.clone()))
+                }
+            })
+            .collect();
+
+        (locked, unlocked)
+    }
+
+    pub fn clean_stage25_internal(&self) -> Aenderungen {
+        log_status("clean_stage25_internal");
+
+        let (locked, unlocked) = self.split_locked_unlocked();
+
+        let aenderungen_by_kuerzel = unlocked
+            .iter()
+            .filter_map(|(_id, k)| {
+                let nutzung = k.nutzung.clone()?;
+                Some((nutzung, k.poly.get_inner()))
+            })
+            .collect::<Vec<(_, _)>>();
+
+        let mut aenderungen_by_kuerzel_map = BTreeMap::new();
+        for (k, v) in aenderungen_by_kuerzel.into_iter() {
+            aenderungen_by_kuerzel_map
+                .entry(k.clone())
+                .or_insert_with(|| Vec::new())
+                .push(v);
+        }
+
+        log_status("clean_stage25_internal 1");
+
+        let joined = aenderungen_by_kuerzel_map
+            .iter()
+            .flat_map(|(kuerzel, v)| {
+                let joined = match join_polys(&v, false, false) {
+                    Some(s) => s,
+                    None => return Vec::new(),
+                };
+
+                joined
+                    .outer_rings
+                    .iter()
+                    .map(|l| {
+                        (
+                            uuid(),
+                            PolyNeu {
+                                poly: SvgPolygon::Old(SvgPolygonInner::from_line(l)),
+                                nutzung: Some(kuerzel.clone()),
+                                locked: false,
+                            },
+                        )
+                    })
+                    .collect()
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        log_status("clean_stage25_internal 2");
+
+        let mut unlocked_alt = unlocked
+            .iter()
+            .filter_map(|(id, v)| {
+                if v.nutzung.is_none() {
+                    Some((id.clone(), v.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        unlocked_alt.extend(joined.into_iter());
+
+        unlocked_alt.extend(locked.into_iter());
+
+        log_status("clean_stage25_internal 3");
+
+        Aenderungen {
+            na_definiert: self.na_definiert.clone(),
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_polygone_neu: unlocked_alt,
+        }
+        .round_to_3decimal()
+    }
+
+    // 2. Naheliegende Punktkoordinaten auf Flurstücks- / Nutzungsartengrenzen ziehen
+    pub fn clean_stage3(
+        &self,
+        split_nas: &SplitNasXml,
+        _log: &mut Vec<String>,
+        maxdst_point: f64,
+        maxdst_line: f64,
+    ) -> Aenderungen {
         let qt = split_nas.create_quadtree();
 
-        // log.push(format!("created split nas quadtree over {} items", qt.items));
-
-        // 2. Naheliegende Punktkoordinaten auf Linien ziehen
+        let mut moved_points = Vec::new();
         let mut changed_mut = self.clone();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            for line in polyneu.poly.outer_rings.iter_mut() {
+            if polyneu.locked {
+                continue;
+            }
+            let mut polyneu_poly = polyneu.poly.get_inner();
+            for line in polyneu_poly.outer_rings.iter_mut() {
                 for p in line.points.iter_mut() {
-                    let overlapping_flst_nutzungen = qt.get_overlapping_flst(&p.get_rect(MAX_DST_POINT * 2.0));
-                    for poly in overlapping_flst_nutzungen.iter() {
-                        Self::correct_point(&poly.poly.outer_rings, p, MAX_DST_POINT * 2.0, MAX_DST_POINT,  log);
-                        Self::correct_point(&poly.poly.inner_rings, p, MAX_DST_POINT * 2.0, MAX_DST_POINT, log);
+                    let p_orig = p.clone();
+                    let overlapping_flst_nutzungen =
+                        qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
+                    let overlapping_flst_nutzungen = overlapping_flst_nutzungen
+                        .into_iter()
+                        .map(|(_id, v)| v.poly)
+                        .collect::<Vec<_>>();
+                    if let Some(newp) = Self::correct_point(
+                        p,
+                        &overlapping_flst_nutzungen,
+                        maxdst_point,
+                        maxdst_line,
+                        true,
+                        &moved_points,
+                    ) {
+                        *p = newp;
+                        moved_points.push((p_orig, newp));
                     }
                 }
             }
+            polyneu.poly = SvgPolygon::Old(polyneu_poly);
         }
 
         changed_mut.round_to_3decimal()
-
     }
 
-    // 3: Punkte einfügen auf Linien, die nahe Original-Linien liegen
-    pub fn clean_stage3(&self, original_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
+    // 3: Punkte einfügen auf Linien, die nahe Flurstücks- / Nutzungsartengrenzen liegen
+    pub fn clean_stage4(
+        &self,
+        original_xml: &NasXMLFile,
+        log: &mut Vec<String>,
+        maxdst_line: f64,
+        maxdst_line2: f64,
+        maxdev_followline: f64,
+    ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
-        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            for line in polyneu.poly.outer_rings.iter_mut() {
-                
+        for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
+            if polyneu.locked {
+                continue;
+            }
+            let mut polyneu_poly = polyneu.poly.get_inner();
+            for line in polyneu_poly.outer_rings.iter_mut() {
                 let mut nextpoint;
                 let mut newpoints = match line.points.get(0) {
                     Some(s) => {
                         nextpoint = s.clone();
                         vec![s.clone()]
-                    },
+                    }
                     None => continue,
                 };
 
                 for p in line.points.iter().skip(1) {
                     let start = nextpoint.clone();
                     let end = p;
-                    newpoints.extend(nas_quadtree.get_line_between_points(&start, end, MAX_DST_POINT, log).into_iter());
+                    newpoints.extend(
+                        nas_quadtree
+                            .get_line_between_points(
+                                &start,
+                                end,
+                                log,
+                                maxdst_line,
+                                maxdst_line2,
+                                maxdev_followline,
+                                Some(id.clone()),
+                            )
+                            .into_iter(),
+                    );
                     newpoints.push(*end);
                     nextpoint = *end;
                 }
@@ -1433,255 +3183,243 @@ impl Aenderungen {
 
                 line.points = newpoints;
             }
+            polyneu.poly = SvgPolygon::Old(polyneu_poly);
         }
 
         changed_mut.round_to_3decimal()
-
     }
 
-    pub fn clean_stage4(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        let mut changed_mut = self.round_to_3decimal();
-
-        // 2. Änderungen mergen und kombinieren nach Typ
-        let mut aenderungen_merged_by_typ = BTreeMap::new();
-        for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            let kuerzel = match polyneu.nutzung.clone() {
-                Some(s) => s,
-                None => continue,
-            };
-            
-            aenderungen_merged_by_typ
-            .entry(kuerzel)
-            .and_modify(|ep: &mut SvgPolygon| { 
-                if let Some(e) = join_polys(&[ep.clone(), polyneu.poly.clone()]) {
-                    *ep = e;
-                }
+    pub fn clean_nas(&self) -> Aenderungen {
+        let (locked, unlocked) = self.split_locked_unlocked();
+        let mut unlocked_neu = unlocked
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    PolyNeu {
+                        nutzung: v.nutzung.clone(),
+                        poly: SvgPolygon::Old(crate::nas::cleanup_poly(&v.poly.get_inner())),
+                        locked: false,
+                    },
+                )
             })
-            .or_insert_with(|| polyneu.poly.clone());
-        }
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-    pub fn clean_stage5(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        web_sys::console::log_1(&format!("STAGE 5").as_str().into());
-        
-        let mut changed_mut = self.round_to_3decimal();
-
-        let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        let aenderungen_merged_by_typ_clone = aenderungen_merged_by_typ.clone();
-        
-        web_sys::console::log_1(&format!("clean stage 5 1!").as_str().into());
-
-        // 3. Alle komplett geänderte Flächen: In Änderungen einfügen
-        for (flst_part_id, neue_nutzung) in changed_mut.na_definiert.iter() {
-            let flst_part = match split_nas.get_flst_part_by_id(&flst_part_id) {
-                Some(s) => s.clone(),
-                None => continue,
-            };
-
-            web_sys::console::log_1(&format!("getting flst part {flst_part_id}!").as_str().into());
-
-            let flst_part_rect = flst_part.get_rect();
-
-            web_sys::console::log_1(&format!("clean stage 5 2!").as_str().into());
-
-            // Teilflächen abziehen vom Flurstück, die von Änderungen überlappt werden
-            let aenderungen_overlaps_polygon = 
-                aenderungen_merged_by_typ_clone.values()
-                .filter(|f| f.get_rect().overlaps_rect(&flst_part_rect))
-                .collect::<Vec<_>>();
-
-            web_sys::console::log_1(&format!("clean stage 5 3!").as_str().into());
-
-            let poly = subtract_from_poly(&flst_part.poly, &aenderungen_overlaps_polygon);
-
-            web_sys::console::log_1(&format!("clean stage 5 4!").as_str().into());
-
-            aenderungen_merged_by_typ
-            .entry(neue_nutzung.clone())
-            .and_modify(|ep: &mut SvgPolygon| { 
-                web_sys::console::log_1(&format!("merging... {flst_part_id}").as_str().into());
-                if let Some(e) = join_polys(&[ep.clone(), poly.clone()]) {
-                    *ep = e;
-                }
-                web_sys::console::log_1(&format!("merged {flst_part_id}!").as_str().into());            
-            })
-            .or_insert_with(|| poly);
-
-            web_sys::console::log_1(&format!("clean stage 5 5!").as_str().into());
-        }
-
-        web_sys::console::log_1(&format!("clean stage 5 done!").as_str().into());
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-
-    pub fn clean_stage6(&self, split_nas: &SplitNasXml, log: &mut Vec<String>) -> Aenderungen {
-
-        let mut changed_mut = self.round_to_3decimal();
-
-        let mut aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        // 4. Änderungen mit sich selber veschneiden nach Typ (z.B. GEWÄSSER > ACKER)
-        let higher_ranked_polys = aenderungen_merged_by_typ.keys()
-        .map(|k| (k.clone(), get_higher_ranked_polys(k, &aenderungen_merged_by_typ)))
-        .collect::<BTreeMap<_, _>>();
-
-        let default = Vec::new();
-        for (kuerzel, megapoly) in aenderungen_merged_by_typ.iter_mut() {
-            let hr = higher_ranked_polys.get(kuerzel).unwrap_or(&default);
-            let hr = hr.iter().collect::<Vec<_>>();
-            *megapoly = subtract_from_poly(&megapoly, &hr);
-        }
-
-        Aenderungen {
-            gebaeude_loeschen: changed_mut.gebaeude_loeschen.clone(),
-            na_definiert: changed_mut.na_definiert.clone(),
-            na_polygone_neu: aenderungen_merged_by_typ.iter().map(|(kuerzel, poly)| {
-                (uuid(), PolyNeu {
-                    nutzung: Some(kuerzel.clone()),
-                    poly: poly.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-
-    pub fn clean_stage7_test(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>) -> Aenderungen {
-
-        let aenderungen = self.clean(split_nas, original_xml, log);
-
-        let intersections = aenderungen.get_aenderungen_intersections();
+            .collect::<BTreeMap<_, _>>();
+        unlocked_neu.extend(locked.into_iter());
 
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: intersections.iter().enumerate().map(|(i, is)| {
-                let id = format!("{i}: {k} :: {n}", k = is.alt, n = is.neu);
-                (id, PolyNeu {
-                    nutzung: Some(is.neu.clone()),
-                    poly: is.poly_cut.clone()
-                })
-            }).collect()
-        }.round_to_3decimal()
-    }
-
-    pub fn clean(&self, split_nas: &SplitNasXml, original_xml: &NasXMLFile, log: &mut Vec<String>) -> AenderungenClean {
-
-        let changed_mut = self.clean_stage1(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage2(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage3(original_xml, log);
-        
-        let changed_mut = changed_mut.clean_stage4(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage5(split_nas, log);
-
-        let changed_mut = changed_mut.clean_stage6(split_nas, log);
-
-        let qt = split_nas.create_quadtree();
-
-        let aenderungen_merged_by_typ = changed_mut.na_polygone_neu.values()
-        .filter_map(|polyneu| Some((polyneu.nutzung.clone()?, polyneu.poly.clone())))
-        .collect::<BTreeMap<_, _>>();
-
-        AenderungenClean {
-            nas_xml_quadtree: qt,
-            map: aenderungen_merged_by_typ,
+            na_polygone_neu: unlocked_neu,
         }
     }
 
-    // NOTIZ: SplitNasXML sollte ALLE Ebenen drin haben
-    pub fn get_texte(&self, split_nas: &SplitNasXml) -> Vec<TextPlacement> {
+    pub fn remerge_lines(&self) -> Aenderungen {
+        let (locked, unlocked) = self.split_locked_unlocked();
 
-        // 5. Für alle Flächen, die halb oder ganz überlappt werden von Änderungen:
-        // - Flurstück auswählen
-        // - alle Teilflächen selektieren
+        // deduplicate and un-merge all lines
+        let mut all_rings = BTreeMap::new();
+        for s in unlocked.iter() {
+            let p = s.1.poly.get_inner();
+            for or in p.outer_rings.iter() {
+                all_rings.insert(or.get_hash(), or.clone());
+            }
+            for ir in p.inner_rings.iter() {
+                all_rings.insert(ir.get_hash(), ir.clone());
+            }
+        }
 
-        // 6. Für alle selektierten Teilflächen:
-        // - ALle Teilflächen mit Änderungen überschneiden 
-        // -> keine Menge: bleibt so
-        // -> hat Differenz: alt / neu beschriften
-
-        self.na_polygone_neu.values().flat_map(|poly| {
-            let nutzung = match poly.nutzung.clone() {
-                Some(s) => s,
-                None => return Vec::new().into_iter(),
-            };
-
-            let old_label_pos = poly.poly.get_label_pos(0.001);
-            let new_label_pos = SvgPoint {
-                x: old_label_pos.x + 10.0,
-                y: old_label_pos.y,
-            };
-
-            if old_label_pos.x == 0.0 || old_label_pos.y == 0.0 {
-                return Vec::new().into_iter(); // TODO: why????
+        // recombine lines based on inside / outside (set nutzung = None for now)
+        let mut recombined = Vec::<Vec<&SvgLine>>::new();
+        'outer: for (_, line) in all_rings.iter() {
+            for r in recombined.iter_mut() {
+                let first_line: SvgLine = match r.first().cloned() {
+                    Some(s) => (*s).clone(),
+                    None => break,
+                };
+                if nas::line_contained_in_line(&first_line, line) {
+                    // line is an inner ring, push to end
+                    r.push(line);
+                    continue 'outer;
+                } else if nas::line_contained_in_line(&line, &first_line) {
+                    // line is an outer ring, push to start
+                    r.push(line);
+                    r.reverse();
+                    continue 'outer;
+                }
             }
 
-            vec![
-                TextPlacement {
-                    kuerzel: nutzung.clone(),
-                    status: TextStatus::Old,
-                    pos: old_label_pos,
-                },
-                TextPlacement {
-                    kuerzel: nutzung.clone(),
-                    status: TextStatus::New,
-                    pos: new_label_pos,
-                },
-            ].into_iter()
-        }).collect()
+            recombined.push(vec![line]);
+        }
+
+        let mut polygons_recombined = recombined
+            .iter()
+            .filter_map(|s| {
+                Some(SvgPolygonInner {
+                    outer_rings: vec![(**s.get(0)?).clone()],
+                    inner_rings: s.iter().skip(1).map(|s| (**s).clone()).collect(),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let mut new_inner_rings_polys = polygons_recombined
+            .iter()
+            .flat_map(|p| p.inner_rings.iter().map(|l| SvgPolygonInner::from_line(l)))
+            .collect::<Vec<_>>();
+
+        polygons_recombined.append(&mut new_inner_rings_polys);
+
+        // TODO: add nutzungen again based on triangle test with original changes
+
+        let mut unlocked_neu = polygons_recombined
+            .into_iter()
+            .map(|p| {
+                (
+                    uuid(),
+                    PolyNeu {
+                        nutzung: None,
+                        poly: SvgPolygon::Old(p),
+                        locked: false,
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        unlocked_neu.extend(locked.into_iter());
+
+        Aenderungen {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: unlocked_neu,
+        }
     }
-}
 
-fn get_higher_ranked_polys(
-    kuerzel: &str, 
-    map: &BTreeMap<String, SvgPolygon>
-) -> Vec<SvgPolygon> {
-    let ranking = get_ranking(kuerzel);
-    map.iter()
-    .filter_map(|(k, v)| {
-        if get_ranking(&k) > ranking { 
-            Some(v.clone()) 
-        } else { None }
-    }).collect()
-}
+    // Subtrahiere Änderungen, die über Änderungen liegen
+    pub fn clean_stage5(&self, _split_nas: &SplitNasXml, _log: &mut Vec<String>) -> Aenderungen {
+        let mut changed_mut = self.clone();
+        let mut geaendert = BTreeMap::new();
 
-fn get_ranking(s: &str) -> usize {
-    match s {
-        "A" => 1,
-        "WALD" => 2,
-        "WAS" | "WAF" => 4,
-        _ => 0,
+        for (pid, pn) in changed_mut.na_polygone_neu.iter() {
+            let pn_poly = pn.poly.get_inner();
+            let pn_rect = pn_poly.get_rect();
+            if pn.locked {
+                continue;
+            }
+            let p_nutzung = match pn.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+            let nak = match TaggedPolygon::get_nutzungsartenkennung(&p_nutzung) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            let higher_order_polys = changed_mut
+                .na_polygone_neu
+                .iter()
+                .filter_map(|(id, v)| {
+                    let nutzung = v.nutzung.clone()?;
+                    Some((nutzung, id.clone(), &v.poly))
+                })
+                .filter_map(|(k, id, s)| {
+                    if TaggedPolygon::get_nutzungsartenkennung(&k)? >= nak {
+                        Some((k, id, s))
+                    } else {
+                        None
+                    }
+                })
+                .filter(|(_, id, _)| id != pid)
+                .filter(|(_k, _id, v)| v.get_rect().overlaps_rect(&pn_rect))
+                .map(|s| s.2.get_inner())
+                .collect::<Vec<_>>();
+
+            if !higher_order_polys.is_empty() {
+                let higher_order_polys = higher_order_polys.iter().collect::<Vec<_>>();
+                let subtracted = subtract_from_poly(&pn_poly, &higher_order_polys);
+                geaendert.insert(
+                    pid.clone(),
+                    PolyNeu {
+                        nutzung: pn.nutzung.clone(),
+                        poly: SvgPolygon::Old(subtracted),
+                        locked: false,
+                    },
+                );
+            }
+        }
+
+        for (id, np) in geaendert.into_iter() {
+            changed_mut.na_polygone_neu.insert(id.to_string(), np);
+        }
+
+        changed_mut.round_to_3decimal().deduplicate()
+    }
+
+    pub fn deduplicate(&self) -> Self {
+        let s = self.round_to_3decimal();
+
+        let mut aenderung_2 = BTreeMap::new();
+
+        let (locked, unlocked) = self.split_locked_unlocked();
+
+        for (k, v) in unlocked.iter() {
+            let a = match serde_json::to_string(&v.poly) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+
+            aenderung_2.insert(a, (k.clone(), v.nutzung.clone()));
+        }
+
+        let mut unlocked_neu = aenderung_2
+            .into_iter()
+            .filter_map(|(k, (v0, v1))| {
+                Some((
+                    v0,
+                    PolyNeu {
+                        nutzung: v1,
+                        poly: serde_json::from_str(&k).ok()?,
+                        locked: false,
+                    },
+                ))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        unlocked_neu.extend(locked.into_iter());
+
+        Self {
+            gebaeude_loeschen: s.gebaeude_loeschen.clone(),
+            na_definiert: s.na_definiert.clone(),
+            na_polygone_neu: unlocked_neu,
+        }
+    }
+
+    pub fn show_splitflaechen(&self, split_nas: &SplitNasXml, csv: &CsvDataType) -> Aenderungen {
+        let intersections = AenderungenClean {
+            nas_xml_quadtree: split_nas.create_quadtree(),
+            aenderungen: self.clone(),
+        }
+        .get_aenderungen_intersections(crate::get_main_gemarkung(csv));
+
+        Aenderungen {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: intersections
+                .0
+                .iter()
+                .enumerate()
+                .map(|(i, is)| {
+                    let id = format!("{i}: {k} :: {n}", k = is.alt, n = is.neu);
+                    (
+                        id,
+                        PolyNeu {
+                            nutzung: Some(is.neu.clone()),
+                            poly: SvgPolygon::Old(is.poly_cut.clone()),
+                            locked: false,
+                        },
+                    )
+                })
+                .collect(),
+        }
+        .round_to_3decimal()
     }
 }
 
@@ -1689,7 +3427,7 @@ pub fn render_main(
     projekt_info: &ProjektInfo,
     risse: &Risse,
     uidata: &UiData,
-    csv: &CsvDataType, 
+    csv: &CsvDataType,
     aenderungen: &Aenderungen,
 ) -> String {
     let map = format!("
@@ -1713,7 +3451,7 @@ pub fn render_main(
         content = if uidata.secondary_content.unwrap_or_default() {
             render_secondary_content(&aenderungen)
         } else {
-            render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default()) 
+            render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default())
         },
     );
     normalize_for_js(map) // TODO
@@ -1723,8 +3461,16 @@ pub fn render_switch_content(uidata: &UiData) -> String {
     if uidata.tab.unwrap_or_default() != 0 {
         return String::new();
     }
-    let sec_active = if uidata.secondary_content.unwrap_or_default() { "active" } else { "" };
-    let prim_active = if !uidata.secondary_content.unwrap_or_default() { "active" } else { "" };
+    let sec_active = if uidata.secondary_content.unwrap_or_default() {
+        "active"
+    } else {
+        ""
+    };
+    let prim_active = if !uidata.secondary_content.unwrap_or_default() {
+        "active"
+    } else {
+        ""
+    };
     format!("
         <div class='project-content-switch {prim_active}' onclick='selectContent(0);'>Flurstücke</div>
         <div class='project-content-switch {sec_active}' onclick='selectContent(1);'>Änderungen</div>
@@ -1732,17 +3478,19 @@ pub fn render_switch_content(uidata: &UiData) -> String {
 }
 
 pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
-
     let mut html = "<div id='aenderungen-container'>".to_string();
-    
+
+    const ICON_LOCK: &[u8] = include_bytes!("./img/icons8-lock-48.png");
+    const ICON_UNLOCK: &[u8] = include_bytes!("./img/icons8-unlock-private-48.png");
+
     html += "<h2>Gebäude löschen</h2>";
     html += "<div id='zu-loeschende-gebaeude'>";
     for (k, gebaeude_id) in aenderungen.gebaeude_loeschen.iter().rev() {
+        let gebaeude_id = &gebaeude_id.gebaeude_id;
         html.push_str(&format!(
             "<div class='__application-aenderung-container' id='gebaeude-loeschen-{gebaeude_id}' data-gebaeude-id='{gebaeude_id}'>
                 <div style='display:flex;'>
-                    <p class='__application-zoom-to' onclick='zoomToGebaeudeLoeschen(event);' data-gebaeude-id='{gebaeude_id}'>[Karte]</p>
-                    <p style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}'>{gebaeude_id}</p>
+                    <p class='__application-zoom-to' style='color: white;font-weight: bold;' data-gebaeude-id='{gebaeude_id}' onclick='zoomToGebaeudeLoeschen(event);'>{gebaeude_id}</p>
                 </div>
                 <p class='__application-secondary-undo' onclick='gebaeudeLoeschenUndo(event);' data-gebaeude-id='{k}'>X</p>
             </div>"
@@ -1753,15 +3501,25 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "<h2><span style='display: flex;flex-direction: row;justify-content: space-between;flex-grow: 1;'>Neue Nutzungen <p style='text-decoration:underline;cursor:pointer;' onclick='nutzungenSaeubern(event);' data-nutzung-id=''>[alle bereinigen]</p></span></h2>";
     html += "<div id='neue-na'>";
     for (new_poly_id, polyneu) in aenderungen.na_polygone_neu.iter().rev() {
-        let select_nutzung = render_select(&polyneu.nutzung, "changeSelectPolyNeu", &new_poly_id, "aendern-poly-neu");
+        let select_nutzung = render_select(
+            &polyneu.nutzung,
+            "changeSelectPolyNeu",
+            &new_poly_id,
+            "aendern-poly-neu",
+        );
         let new_poly_id_first_chars = new_poly_id.split("-").next().unwrap_or("");
-        // let new_poly_id_first_chars = new_poly_id_first_chars.chars().rev().take(6).collect::<String>();
+        let new_poly_id_first_chars = new_poly_id_first_chars.chars().take(10).collect::<String>();
+        let lo_ul = base64_encode(if polyneu.locked {
+            ICON_LOCK
+        } else {
+            ICON_UNLOCK
+        });
         html.push_str(&format!(
             "<div class='na-neu' id='na-neu-{new_poly_id}' data-new-poly-id='{new_poly_id}'>
                 <div style='display:flex;'>
-                    <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' data-poly-neu-id='{new_poly_id}'>[Karte]</p>
-                    <p class='__application-zoom-to' onclick='nutzungenSaeubern(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'>[bereinigen]</p>
-                    <p style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
+                    <img src='data:image/png;base64,{lo_ul}' width='16px' height='16px' class='__application-zoom-to' onclick='lockUnlockPoly(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'></img>
+                    <p class='__application-zoom-to' onclick='nutzungenSaeubern(event);' data-nutzung-id='{new_poly_id}' data-poly-neu-id='{new_poly_id}'>[ber.]</p>
+                    <p class='__application-zoom-to' onclick='zoomToPolyNeu(event);' style='color: white;font-weight: bold;' data-poly-neu-id='{new_poly_id}'>{new_poly_id_first_chars}</p>
                 </div>
                 <div style='display:flex;'>
                     {select_nutzung}
@@ -1773,15 +3531,27 @@ pub fn render_secondary_content(aenderungen: &Aenderungen) -> String {
     html += "</div>";
 
     html += "</div>";
-    html 
+    html
 }
 
 pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_id: &str) -> String {
-    let map: BTreeMap<String, NutzungsArt> = include!(concat!(env!("OUT_DIR"), "/nutzung.rs"));
-    let mut s = format!("<select id='{html_id}-{id}' onchange='{function}(event);' data-id='{id}'>");
-    s.push_str(&format!("<option {selected} value='NOTDEFINED'>nicht defin.</option>", selected = if selected.is_none() { " selected='selected' " } else { "" }));
+    let map = crate::get_nutzungsartenkatalog();
+    let mut s =
+        format!("<select id='{html_id}-{id}' onchange='{function}(event);' data-id='{id}'>");
+    s.push_str(&format!(
+        "<option {selected} value='NOTDEFINED'>nicht defin.</option>",
+        selected = if selected.is_none() {
+            " selected='selected' "
+        } else {
+            ""
+        }
+    ));
     for k in map.keys() {
-        let selected = if selected.as_deref() == Some(k) { " selected='selected' " } else { "" };
+        let selected = if selected.as_deref() == Some(k) {
+            " selected='selected' "
+        } else {
+            ""
+        };
         s.push_str(&format!("<option {selected}>{k}</option>"));
     }
     s += "</select>";
@@ -1789,16 +3559,22 @@ pub fn render_select(selected: &Option<String>, function: &str, id: &str, html_i
 }
 
 pub fn render_project_content(
-    projekt_info: &ProjektInfo, 
-    risse: &Risse, 
-    csv: &CsvDataType, 
-    aenderungen: &Aenderungen, 
-    uidata: &UiData, 
-    split_fs: &SplitNasXml
+    projekt_info: &ProjektInfo,
+    risse: &Risse,
+    csv: &CsvDataType,
+    aenderungen: &Aenderungen,
+    uidata: &UiData,
+    split_fs: &SplitNasXml,
 ) -> String {
     let s = match uidata.tab {
         Some(2) => render_risse_ui(projekt_info, risse, &csv, aenderungen),
-        _ => render_csv_editable(&csv, aenderungen, uidata.render_out.unwrap_or_default(), &uidata.selected_edit_flst, Some(split_fs)),
+        _ => render_csv_editable(
+            &csv,
+            aenderungen,
+            uidata.render_out.unwrap_or_default(),
+            &uidata.selected_edit_flst,
+            Some(split_fs),
+        ),
     };
     normalize_for_js(s)
 }
@@ -1806,8 +3582,8 @@ pub fn render_project_content(
 fn render_risse_ui(
     projekt_info: &ProjektInfo,
     risse: &Risse,
-    csv: &CsvDataType, 
-    aenderungen: &Aenderungen, 
+    _csv: &CsvDataType,
+    _aenderungen: &Aenderungen,
 ) -> String {
     let render_config_field = |(name, value, id): (&str, &str, &str)| {
         format!("<div class='ri-config-field'>
@@ -1826,7 +3602,10 @@ fn render_risse_ui(
                 {beruf_kuerzel}
                 {gemeinde}
                 {gemarkung}
-                {gemarkung_nr}
+                {bearbeitung_beendet_am}
+                {alkis_akt}
+                {ortho_akt}
+                {feldbloecke_vom}
             </div>
             <div id='risse' style='display:flex;flex-direction:column;'>
                 <h2 style='font-size:16px;font-weight:bold;margin-top:20px;'>Risse</h2>
@@ -1841,12 +3620,15 @@ fn render_risse_ui(
         beruf_kuerzel = render_config_field(("Beruf (Kürzel)", &projekt_info.beruf_kuerzel, "beruf_kuerzel")),
         gemeinde = render_config_field(("Gemeinde", &projekt_info.gemeinde, "gemeinde")),
         gemarkung = render_config_field(("Gemarkung", &projekt_info.gemarkung, "gemarkung")),
-        gemarkung_nr = render_config_field(("Gemarkungsnr.", &projekt_info.gemarkung_nr, "gemarkung_nr")),
-        risse = risse.iter().map(|(id, rc)| {
+        bearbeitung_beendet_am = render_config_field(("Bearb. beendet am", &projekt_info.bearbeitung_beendet_am, "bearbeitung_beendet_am")),
+        alkis_akt = render_config_field(("ALKIS Daten vom", &projekt_info.alkis_aktualitaet, "alkis_aktualitaet")),
+        ortho_akt = render_config_field(("Orthofoto vom", &projekt_info.orthofoto_datum, "orthofoto_datum")),
+        feldbloecke_vom = render_config_field(("Feldblöcke vom", &projekt_info.gis_feldbloecke_datum, "gis_feldbloecke_datum")),
+        risse = risse.iter().enumerate().map(|(riss_num, (id, rc))| {
             format!("<div class='riss-ui-wrapper' id='riss-{id}' style='display: flex;margin-bottom: 10px;flex-direction: column;padding: 10px;background: #cccccc;border-radius: 3px;'>
 
                 <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
-                    <p style='font-size: 14px;font-weight: bold;'>Riss ID {id_nice}</p>
+                    <p style='font-size: 14px;font-weight: bold;'>Riss {riss_num}</p>
                     <p class='__application-secondary-undo' style='margin-left: 10px;display: flex;align-items: center;' onclick='rissLoeschen(event);' data-riss-id='{id}'>X</p>
                 </div>
                 <div class='row' style='display: flex;justify-content: space-between;padding: 5px 0px;'>
@@ -1868,6 +3650,8 @@ fn render_risse_ui(
                     <input id='riss-{id}-scale' type='number' value='{scale}' style='display:flex;flex-grow:1;margin-right:0px;' data-riss-id='{id}' data-input-id='scale' oninput='changeRiss(event);' onchange='changeRiss(event);'></input>
                 </div>
 
+                <button id='riss-{id}-rissgebiet-zeichnen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideRissGebiet(event);'>Rissgebiet zeichnen</button>
+
                 <!--
                 <button id='riss-{id}-flm-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' data-input-id='scale' onclick='showHideFlurMarker(event);'>Flurmarker setzen</button>
                 <button id='riss-{id}-np-setzen' style='margin-top:10px;padding: 5px;cursor:pointer;' data-riss-id='{id}' onclick='showHideNordpfeil(event);'>Nordpfeil setzen</button>
@@ -1878,56 +3662,40 @@ fn render_risse_ui(
                 width = rc.width_mm,
                 height = rc.height_mm,
                 scale = rc.scale,
-                id_nice = id.split("-").next().unwrap_or(""),
+                riss_num = riss_num + 1,
             )
         }).collect::<Vec<_>>().join("")
     )
 }
 
 fn render_csv_editable(
-    csv: &CsvDataType, 
+    csv: &CsvDataType,
     aenderungen: &Aenderungen,
-    filter_out_bleibt: bool, 
+    _filter_out_bleibt: bool,
     selected_edit_flst: &str,
     split_fs: Option<&SplitNasXml>,
 ) -> String {
+    let selected_edit_flst = FlstIdParsed::from_str(&selected_edit_flst)
+        .parse_num()
+        .map(|s| s.format_nice());
 
-    let selected_edit_flst = selected_edit_flst.replace("_", "");
-
-    let content = csv.iter()
-    .filter_map(|(k, v)| {
-        if filter_out_bleibt && v.iter().any(|f| f.status == Status::Bleibt) {
-            None
-        } else {
-            Some((k, v))
-        }
-    })
+    let content = csv
+    .get_old_fallback()
+    .iter()
     .filter_map(|(k, v)| {
         let flstidparsed = FlstIdParsed::from_str(k).parse_num()?;
-        let selected = if selected_edit_flst.is_empty() {
-            false 
+        let selected = if let Some(sf) = selected_edit_flst.as_ref() {
+            sf.as_str() == flstidparsed.format_nice().as_str()
         } else {
-            k.starts_with(&selected_edit_flst) 
+            false
         };
         Some(format!("
-        <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background: {background_col};padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
+        <div class='csv-datensatz' id='csv_flst_{flst_id}' style='background:#3e3e58;padding: 10px;margin-bottom: 10px;border-radius: 5px;display: flex;flex-direction: column;{border}' ondblclick='focusFlst(event);' data-id='{flst_id}'>
             <h5 style='font-size: 18px;font-weight: bold;color: white;'  data-id='{flst_id}'>Fl. {flur_formatted} Flst. {flst_id_formatted}</h5>
-            <p style='font-size: 16px;color: white;margin-bottom: 5px;'  data-id='{flst_id}'>{nutzungsart}</p>
             <input type='text' placeholder='Notiz...' value='{notiz_value}' oninput='changeNotiz(event);' onchange='changeNotiz(event);' data-id='{flst_id}' style='font-family: sans-serif;margin-bottom: 10px;width: 100%;padding: 3px;font-size:16px;'></input>
-            <select style='font-size:16px;padding:5px;' onchange='changeStatus(event);' data-id='{flst_id}'>
-                <option value='bleibt' {selected_bleibt}>Bleibt</option>
-                <option value='aenderung-keine-benachrichtigung' {selected_kb}>Änderung (keine Benachrichtigung)</option>
-                <option value='aenderung-mit-benachrichtigung' {selected_mb}>Änderung (mit Benachrichtigung)</option>
-            </select>
             {split_nas}
         </div>",
-        background_col = match v.get(0).map(|f| f.status).unwrap_or(Status::Bleibt) {
-            Status::Bleibt => "#3e3e58",
-            Status::AenderungKeineBenachrichtigung => "#ff9a5a",
-            Status::AenderungMitBenachrichtigung => "#ff4545",
-        },
-        nutzungsart = v.get(0).map(|q| q.nutzung.clone()).unwrap_or_default(),
-        flst_id = k,
+        flst_id = flstidparsed.format_nice().replace("/", "-").replace("-", "_"),
         border = if selected {
             "border:1px solid red;"
         } else {
@@ -1936,9 +3704,6 @@ fn render_csv_editable(
         flur_formatted = flstidparsed.get_flur(),
         flst_id_formatted = flstidparsed.format_str(),
         notiz_value = v.get(0).map(|s| s.notiz.clone()).unwrap_or_default(),
-        selected_bleibt = if v.get(0).map(|s| s.status.clone()) == Some(Status::Bleibt) { "selected='selected'" } else { "" },
-        selected_kb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungKeineBenachrichtigung) { "selected='selected'" } else { "" },
-        selected_mb = if v.get(0).map(|s| s.status.clone()) == Some(Status::AenderungMitBenachrichtigung) { "selected='selected'" } else { "" },
         split_nas = if selected {
             match split_fs.and_then(|sn| sn.flurstuecke_nutzungen.get(&flstidparsed.format_start_str())) {
                 None => String::new(),
@@ -1946,15 +3711,19 @@ fn render_csv_editable(
                     format!(
                         "<div class='nutzung-veraendern'>{}</div>", 
                         s.iter().filter_map(|tp| {
-                            let ax_ebene = tp.attributes.get("AX_Ebene")?;
+                            let ax_ebene = tp.get_ebene()?;
                             let ax_flurstueck = flstidparsed.format_start_str();
                             let cut_obj_id = tp.attributes.get("id")?;
-                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}");
+                            let intersect_id = tp.attributes.get("AX_IntersectionId").map(|w| format!(":{w}")).unwrap_or_default();
+                            let objid_total = format!("{ax_flurstueck}:{ax_ebene}:{cut_obj_id}{intersect_id}");                            
                             let quadratmeter = tp.attributes.get("BerechneteGroesseM2").cloned().unwrap_or("0".to_string());
-                            let auto_kuerzel = tp.get_auto_kuerzel(ax_ebene);
-                            let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(ax_ebene);
+                            if quadratmeter == "0" {
+                                return None;
+                            }
+                            let auto_kuerzel = tp.get_auto_kuerzel();
+                            let auto_kuerzel_str = auto_kuerzel.as_ref().unwrap_or(&ax_ebene);
                             Some(format!(
-                                "<div><p>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
+                                "<div><p style='cursor:pointer;text-decoration:underline;' onmouseup='zoomToFlstPart(event);' data-part-id='{objid_total}'>{quadratmeter}m² {auto_kuerzel_str}</p>{}</div>", 
                                 render_select(&
                                     aenderungen.na_definiert.get(&objid_total).cloned()
                                     .or(auto_kuerzel.clone())
@@ -1970,12 +3739,7 @@ fn render_csv_editable(
     ))
     }).collect::<Vec<_>>().join("");
 
-    format!("
-        <div id='toggle-visible-flst' style='display: flex;flex-direction: row;flex-grow: 1;max-height: 20px;'>
-            <input onchange='toggleRenderOut(event);' type='checkbox'>Filter bearbeitete Flurstücke</input>
-        </div>
-        {content}
-    ")
+    content
 }
 
 pub fn normalize_for_js(s: String) -> String {

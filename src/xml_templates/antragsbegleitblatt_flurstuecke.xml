@@ -1,0 +1,52 @@
+<w:p w:rsidR="00A23CA9" w:rsidRPr="00A23CA9" w:rsidRDefault="00A23CA9" w:rsidP="00A23CA9">
+    <w:pPr>
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:kern w:val="0"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+            <w:lang w:eastAsia="en-US"/>
+        </w:rPr>
+    </w:pPr>
+    <w:r w:rsidRPr="00A23CA9">
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:b/>
+            <w:kern w:val="0"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+            <w:lang w:eastAsia="en-US"/>
+        </w:rPr>
+        <w:t>%%FLUR%%</w:t>
+    </w:r>
+    <w:r w:rsidRPr="00A23CA9">
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:kern w:val="0"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+            <w:lang w:eastAsia="en-US"/>
+        </w:rPr>
+        <w:t xml:space="preserve"></w:t>
+    </w:r>
+    <w:r w:rsidR="00CE5ECD">
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:kern w:val="0"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+            <w:lang w:eastAsia="en-US"/>
+        </w:rPr>
+        <w:t>%%FLURSTUECKE%%</w:t>
+    </w:r>
+    <w:r w:rsidRPr="00A23CA9">
+        <w:rPr>
+            <w:rFonts w:eastAsia="Times New Roman" w:cs="Arial"/>
+            <w:kern w:val="0"/>
+            <w:sz w:val="18"/>
+            <w:szCs w:val="18"/>
+            <w:lang w:eastAsia="en-US"/>
+        </w:rPr>
+        <w:t xml:space="preserve"></w:t>
+    </w:r>
+</w:p>

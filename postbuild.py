@@ -35,6 +35,8 @@ leaflet_draw_css = read_file("./js/leaflet_07/leaflet.draw.css")
 leaflet_snap_js = read_file("./js/leaflet_07/leaflet.snap.js")
 leaflet_geometryutil_js = read_file("./js/leaflet_07/leaflet.geometryutil.js")
 select_map_js = read_file("./js/coordinate-conversion.js")
+nutzungsarten_json = read_file("./nutzung.json");
+nutzungsartenkatalog_js = "        window.nutzungsarten = " + "      ".join(nutzungsarten_json.splitlines(True)) + ";"
 
 # leaflet_js = read_file("./js/leaflet/leaflet.js")
 # leaflet_css = read_file("./js/leaflet/leaflet.css")
@@ -58,7 +60,7 @@ fixup_js = "\r\n".join([
 pkg_viewer_js_fixed = []
 emit_wr = True
 for line in pkg_viewer_js.splitlines():
-    if "async function __wbg_init(input) {" in line:
+    if "async function __wbg_init(" in line:
         emit_wr = False
         for l in fixup_js.splitlines():
             pkg_viewer_js_fixed.append(l)
@@ -104,6 +106,8 @@ for line in index_html.splitlines():
         out_file.append("var MARKER_MIDDLE_WEBP = \"" + icon_marker_middle + "\";")
     elif "// INJECT_SELECT_MAP_JS" in line:
         out_file.append(select_map_js)
+    elif "// INJECT_NUTZUNGSARTEN_KATALOG" in line:
+        out_file.append(nutzungsartenkatalog_js);
     else:
         out_file.append(line)
 

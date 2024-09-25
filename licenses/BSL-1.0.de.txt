@@ -1,0 +1,25 @@
+Hiermit wird jeder Person oder Organisation, die eine Kopie der Software
+Organisation, die eine Kopie der Software und der begleitenden Dokumentation
+Dokumentation (die „Software“) erhält, die Software zu verwenden, die Software
+zu verwenden, zu vervielfältigen, anzuzeigen, zu vertreiben, auszuführen und zu
+übertragen, zu verwenden, anzuzeigen, zu verteilen, auszuführen und zu
+übertragen sowie abgeleitete Werke der Software zu erstellen und Dritten, denen
+die Software zur Verfügung gestellt wird, dies zu gestatten, und zwar unter
+unter den folgenden Bedingungen:
+
+Die Urheberrechtsvermerke in der Software und diese gesamte Erklärung,
+einschließlich der obigen Lizenzgewährung, dieser Einschränkung und des
+folgenden müssen in allen Kopien der Software, ganz oder teilweise, sowie in
+allen oder Teilen der Software und allen abgeleiteten Werken der Software
+enthalten sein, es sei denn, diese Kopien oder abgeleitete Werke sind
+ausschließlich in Form von maschinenausführbarem Objektcode, der von einem
+Quellsprachprozessor Prozessor.
+
+DIE SOFTWARE WIRD OHNE MÄNGELGEWÄHR UND OHNE GARANTIE JEGLICHER ART
+BEREITGESTELLT, AUSDRÜCKLICH ODER STILLSCHWEIGEND, EINSCHLIESSLICH, ABER NICHT
+BESCHRÄNKT AUF DIE MARKTGÄNGIGKEIT, EIGNUNG FÜR EINEN BESTIMMTEN ZWECK, TITEL
+UND NICHT-VERLETZUNG. IN KEINEM FALL SIND DIE URHEBERRECHTSINHABER ODER
+URHEBERRECHTSINHABER ODER DERJENIGE, DER DIE SOFTWARE VERTREIBT, FÜR SCHÄDEN
+ODER HAFTUNG, SEI ES AUS VERTRAG, UNERLAUBTER HANDLUNG ODER ANDERWEITIG, DIE
+AUS AUS ODER IN VERBINDUNG MIT DER SOFTWARE ODER DER NUTZUNG ODER DEM SONSTIGEN
+UMGANG MIT DER SOFTWARE.
