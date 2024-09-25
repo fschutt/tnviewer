@@ -389,7 +389,6 @@ impl TaggedPolygon {
         for (k, v) in extra {
             map.insert(k.to_string(), v.to_string());
         }
-        log_status(&format!("attribute {kuerzel} = {map:?}"));
         map
     }
 
@@ -2926,6 +2925,10 @@ impl Relate {
         } else {
             false
         }
+    }
+
+    pub fn is_equal(&self) -> bool {
+        self.is_1.all_points_are_on_line || self.is_2.all_points_are_on_line
     }
 
     pub fn overlaps(&self) -> bool {

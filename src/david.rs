@@ -14,8 +14,7 @@ use crate::{
     },
     ui::Aenderungen,
     uuid_wasm::{
-        log_status,
-        uuid,
+        log_status, log_status_clear, uuid
     },
 };
 use std::collections::{
@@ -25,17 +24,17 @@ use std::collections::{
 
 pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
     const RING_XML: &str = r#"
-                            <gml:Ring>
-                                <gml:curveMember>
-                                    <gml:Curve gml:id="$$CURVEID$$">
-                                        <gml:segments>
-                                            <gml:LineStringSegment>
-                                                <gml:posList>$$POSLIST$$</gml:posList>
-                                            </gml:LineStringSegment>
-                                        </gml:segments>
-                                    </gml:Curve>
-                                </gml:curveMember>
-                            </gml:Ring>
+                                <gml:Ring>
+                                    <gml:curveMember>
+                                        <gml:Curve gml:id="$$CURVEID$$">
+                                            <gml:segments>
+                                                <gml:LineStringSegment>
+                                                    <gml:posList>$$POSLIST$$</gml:posList>
+                                                </gml:LineStringSegment>
+                                            </gml:segments>
+                                        </gml:Curve>
+                                    </gml:curveMember>
+                                </gml:Ring>
     "#;
 
     RING_XML
@@ -80,9 +79,9 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         outer_rings 
     } else {
         format!("
-                <gml:exterior>
-                {outer_rings}
-                </gml:exterior>
+                                <gml:exterior>
+                                {outer_rings}
+                                </gml:exterior>
         ")
     };
 
@@ -258,6 +257,9 @@ pub fn aenderungen_zu_fa_xml(
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+
+    log_status_clear();
+    
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
     let qt = nas_xml.create_quadtree();
@@ -413,7 +415,11 @@ pub fn aenderungen_zu_fa_xml(
                     })
                     .filter_map(|a| {
                         let relate = nas::relate(&a.poly, &jp, 0.02);
-                        if relate.touches_other_poly_outside() || relate.overlaps() {
+                        if relate.touches_other_poly_outside() 
+                           || relate.overlaps()
+                           || relate.a_contained_in_b() 
+                           || relate.b_contained_in_a() 
+                           || relate.is_equal() {
                             Some(a)
                         } else {
                             None
@@ -467,7 +473,12 @@ pub fn aenderungen_zu_fa_xml(
                 }
             } else {
                 // original polygon did not change: subtractions were likely outside / touching
-                log_status(&format!("{}: original polygon did not change!!!", tp.get_de_id().unwrap_or_default()));
+                log_status(&format!("{}: original polygon did not change!!! original area = {} m2, subtracted area = {} m2 (polys to subtract = {})", 
+                    tp.get_de_id().unwrap_or_default(),
+                    jp_area_m2.round(),
+                    subtracted.area_m2().round(),
+                    polys_to_subtract.len(),
+                ));
             }
         } else {
             // delete original object, replace with all remaining ones
