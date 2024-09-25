@@ -209,7 +209,7 @@ pub fn get_replace_xml_node(
 struct TempOverlapObject {
     neu_kuerzel: String,
     neu_ebene: String,
-    poly: SvgPolygonInner,
+    poly: TaggedPolygon,
     overlaps_objekte: BTreeMap<String, Vec<TaggedPolygon>>,
 }
 
@@ -217,7 +217,7 @@ struct AenderungObject {
     orig_change_id: String,
     neu_kuerzel: String,
     neu_ebene: String,
-    poly: SvgPolygonInner,
+    poly: TaggedPolygon,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -259,7 +259,7 @@ pub fn aenderungen_zu_fa_xml(
 ) -> String {
 
     log_status_clear();
-    
+
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
     let qt = nas_xml.create_quadtree();
@@ -284,7 +284,7 @@ pub fn aenderungen_zu_fa_xml(
                 TempOverlapObject {
                     neu_ebene,
                     neu_kuerzel,
-                    poly: tp.poly.clone(),
+                    poly: tp.clone(),
                     overlaps_objekte: vec![(ebene, vec![tp])].into_iter().collect(),
                 },
             ))
@@ -306,7 +306,10 @@ pub fn aenderungen_zu_fa_xml(
                 TempOverlapObject {
                     neu_ebene,
                     neu_kuerzel,
-                    poly,
+                    poly: TaggedPolygon {
+                        attributes: BTreeMap::new(),
+                        poly,
+                    },
                     overlaps_objekte: map,
                 },
             ))
@@ -363,7 +366,7 @@ pub fn aenderungen_zu_fa_xml(
         let polys_to_add = aenderungen
             .iter()
             .filter_map(|a| {
-                let relate = nas::relate(&a.poly, &tp.poly, 0.02);
+                let relate = nas::relate(&a.poly.poly, &tp.poly, 0.02);
                 if a.neu_kuerzel == alt_kuerzel
                     && (relate.touches_other_poly_outside() || relate.overlaps())
                     && !aenderungen_joined.contains(&a.orig_change_id)
@@ -395,6 +398,7 @@ pub fn aenderungen_zu_fa_xml(
         let final_joined_polys = tp_poly
             .iter()
             .map(|jp| {
+
                 let polys_to_subtract = aenderungen
                     .iter()
                     .filter_map(|a| {
@@ -414,12 +418,13 @@ pub fn aenderungen_zu_fa_xml(
                         }
                     })
                     .filter_map(|a| {
-                        let relate = nas::relate(&a.poly, &jp, 0.02);
+                        let relate = nas::relate(&a.poly.poly, &jp, 0.02);
                         if relate.touches_other_poly_outside() 
                            || relate.overlaps()
                            || relate.a_contained_in_b() 
                            || relate.b_contained_in_a() 
-                           || relate.is_equal() {
+                           || a.poly.get_de_id() == Some(alt_obj_id.clone()) 
+                           || a.poly.poly.get_hash() == jp.get_hash() {
                             Some(a)
                         } else {
                             None
@@ -430,7 +435,7 @@ pub fn aenderungen_zu_fa_xml(
                 let jp_area_m2 = jp.area_m2();
                 let p_subtract = polys_to_subtract
                     .iter()
-                    .map(|p| &p.poly)
+                    .map(|p| &p.poly.poly)
                     .collect::<Vec<_>>();
                 let subtracted = subtract_from_poly(&tp.poly, &p_subtract);
 
@@ -451,7 +456,7 @@ pub fn aenderungen_zu_fa_xml(
                     aenderungen_todo.push(Operation::Insert {
                         ebene: a.neu_ebene.clone(),
                         kuerzel: a.neu_kuerzel.clone(),
-                        poly_neu: a.poly.correct_winding_order_cloned(),
+                        poly_neu: a.poly.poly.correct_winding_order_cloned(),
                     });
                 }
             } else if subtracted.area_m2().round() < *jp_area_m2 {
@@ -468,7 +473,7 @@ pub fn aenderungen_zu_fa_xml(
                     aenderungen_todo.push(Operation::Insert { 
                         ebene: s.neu_ebene.clone(),
                         kuerzel: s.neu_kuerzel.clone(),
-                        poly_neu: s.poly.correct_winding_order_cloned(),
+                        poly_neu: s.poly.poly.correct_winding_order_cloned(),
                     });
                 }
             } else {
