@@ -42,7 +42,7 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
             "$$POSLIST$$",
             &l.points
                 .iter()
-                .map(|s| format!("{} {}", s.x, s.y))
+                .map(|s| format!("{:.3} {:.3}", s.x, s.y))
                 .collect::<Vec<_>>()
                 .join(" "),
         )
@@ -167,6 +167,24 @@ pub fn get_replace_xml_node(
     poly: &SvgPolygonInner,
     poly_id: &str,
 ) -> String {
+
+    let mut attribute = member_object.extra_attribute.iter().map(|(k, v)| {
+        format!("                    <{k}>{v}</{k}>")
+    }).collect::<Vec<_>>();
+
+    let v = &[
+        ("dientZurDarstellungVon", &member_object.dient_zur_darstellung_von),
+        ("istBestandteilVon", &member_object.ist_bestandteil_von),
+        ("hat", &member_object.hat),
+        ("istTeilVon", &member_object.ist_teil_von),
+    ];
+
+    for (k, ov) in v.iter() {
+        if let Some(v) = ov.as_deref() {
+            attribute.push(format!("                    <{k} href=\"{v}\"/>"));
+        }
+    }
+
     const REPLACE_XML: &str = r#"
             <wfs:Replace>
                 <$$EBENE$$ gml:id="$$RESOURCE_ID$$">
@@ -182,6 +200,7 @@ pub fn get_replace_xml_node(
                         </AA_Modellart>
                     </modellart>
                     $$POSITION_NODE$$
+                    $$EXTRA_ATTRIBUTE$$
                 </$$EBENE$$>
                 <fes:Filter>
                     <fes:ResourceId rid="$$RESOURCE_ID$$"/>
@@ -205,6 +224,7 @@ pub fn get_replace_xml_node(
             "$$POSITION_NODE$$",
             &polygon_to_position_node(poly, poly_id),
         )
+        .replace("$$EXTRA_ATTRIBUTE$$", &attribute.join("\r\n"))
 }
 struct TempOverlapObject {
     neu_kuerzel: String,

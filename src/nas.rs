@@ -2930,7 +2930,7 @@ impl Relate {
     pub fn is_equal(&self) -> bool {
         self.is_1.all_points_are_on_line || self.is_2.all_points_are_on_line
     }
-
+    
     pub fn overlaps(&self) -> bool {
         self.is_1.overlaps_other_poly() || self.is_2.overlaps_other_poly()
     }
