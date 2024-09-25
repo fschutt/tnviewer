@@ -353,6 +353,7 @@ pub fn aenderungen_zu_fa_xml(
 
     // depending on neu_ebene, either join (if ebene is same) or subtract (if ebene is different)
     for ((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aenderungen)) in reverse_map {
+        
         let aenderungen_joined = aenderungen_todo
             .iter()
             .filter_map(|s| match s {
@@ -393,8 +394,6 @@ pub fn aenderungen_zu_fa_xml(
             vec![tp.poly.clone()]
         };
 
-        let alt_kuerzel_nak = TaggedPolygon::get_nutzungsartenkennung(&alt_kuerzel);
-
         let final_joined_polys = tp_poly
             .iter()
             .map(|jp| {
@@ -416,8 +415,10 @@ pub fn aenderungen_zu_fa_xml(
                            || relate.b_contained_in_a() 
                            || a.poly.get_de_id() == Some(alt_obj_id.clone()) 
                            || a.poly.poly.get_hash() == jp.get_hash() {
+                            log_status(&format!("filter ! {alt_obj_id} -> {}: passed", a.poly.get_de_id().unwrap_or_default()));
                             Some(a)
                         } else {
+                            log_status(&format!("filter ! {alt_obj_id} -> {}: failed", a.poly.get_de_id().unwrap_or_default()));
                             None
                         }
                     })
