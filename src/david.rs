@@ -22,7 +22,7 @@ use std::collections::{
     BTreeSet,
 };
 
-pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
+pub fn line_to_ring(l: &SvgLine) -> String {
     const RING_XML: &str = r#"
                                         <gml:Ring>
                                             <gml:curveMember>
@@ -48,7 +48,7 @@ pub fn line_to_ring(l: &SvgLine, line_id: &str) -> String {
         )
 }
 
-pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
+pub fn polygon_to_position_node(p: &SvgPolygonInner) -> String {
     const POLY_XML: &str = r#"
                     <position>
                         <gml:Surface>
@@ -62,14 +62,11 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
                     </position>
     "#;
 
-    let mut line_id = 0;
-
     let outer_rings = p
         .outer_rings
         .iter()
         .map(|l| {
-            line_id += 1;
-            line_to_ring(l, &number_to_alphabet_value(line_id))
+            line_to_ring(l)
         })
         .map(|or| {
             format!("
@@ -85,8 +82,7 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner, poly_id: &str) -> String {
         .inner_rings
         .iter()
         .map(|l| {
-            line_id += 1;
-            line_to_ring(l, &number_to_alphabet_value(line_id))
+            line_to_ring(l)
         })
         .map(|ir| {
             format!("
@@ -109,7 +105,6 @@ pub fn get_insert_xml_node(
     attribute: &[(&str, &str)],
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
     poly: &SvgPolygonInner,
-    poly_id: &str,
 ) -> String {
     const INSERT_XML: &str = r#"
             <wfs:Insert>
@@ -144,7 +139,7 @@ pub fn get_insert_xml_node(
         .replace("$$OBJ_ID$$", obj_id)
         .replace(
             "$$POSITION_NODE$$",
-            &polygon_to_position_node(poly, poly_id),
+            &polygon_to_position_node(poly),
         )
         .replace(
             "$$DATUM_JETZT$$",
@@ -157,7 +152,6 @@ pub fn get_replace_xml_node(
     obj_id: &str,
     member_object: &MemberObject,
     poly: &SvgPolygonInner,
-    poly_id: &str,
 ) -> String {
 
     let mut attr = member_object.extra_attribute.clone();
@@ -218,7 +212,7 @@ $$EXTRA_ATTRIBUTE$$
         .replace("$$ORIGINAL_DATE$$", &member_object.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
         .replace(
             "$$POSITION_NODE$$",
-            &polygon_to_position_node(poly, poly_id),
+            &polygon_to_position_node(poly),
         )
         .replace("$$EXTRA_ATTRIBUTE$$", &attribute.join("\r\n"))
 }
@@ -548,6 +542,84 @@ pub fn aenderungen_zu_fa_xml(
 
     let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml);
     
+    log_aenderungen(&aenderungen_todo);
+
+    let aenderungen_todo = merge_aenderungen_with_existing_nas(
+        &aenderungen_todo,
+        &nas_xml,
+    );
+
+    log_status("--------");
+
+    log_aenderungen(&aenderungen_todo);
+
+    log_status("done!");
+
+    let mut final_strings = aenderungen_todo.iter()
+    .enumerate()
+    .filter_map(|(i, s)| {
+        match s {
+        Operation::Delete { obj_id, .. } => {
+            let o = objects.objects.get(obj_id)?;
+            if o.poly.is_none() {
+                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
+            }
+            let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
+            let rid = format!("{obj_id}{beginnt}");
+            let typename = &o.member_type;
+            Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
+        },
+        Operation::Insert { ebene, kuerzel, poly_neu } => {
+            let mut auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
+            auto_attribute.remove("AX_Ebene");
+            let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
+            Some(get_insert_xml_node(
+                ebene,
+                &("DE_001".to_string() + &format!("{i:010}")),  // TODO
+                &auto_attribute,
+                datum_jetzt,
+                poly_neu,
+            ))
+        },
+        Operation::Replace {
+            obj_id,
+            ebene: _,
+            kuerzel: _,
+            poly_alt: _,
+            poly_neu
+        } => {
+            let o = objects.objects.get(obj_id)?;
+            if o.poly.is_none() {
+                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
+            }
+            Some(get_replace_xml_node(
+                obj_id,
+                &o,
+                &poly_neu,
+            ))
+        }
+    }}).collect::<Vec<_>>();
+
+    final_strings.sort();
+    let final_strings = final_strings.join("\r\n");
+
+    let s = format!(
+        include_str!("./antrag.xml"),
+        crs = "ETRS89_UTM33",
+        content = final_strings,
+        profilkennung = "schuettf",
+        antragsnr = "73_0073_".to_string() + &format!("{}", datum_jetzt.format("%Y%m%d")) + "_999",
+    );
+
+    s.lines()
+    .filter_map(|s| if s.trim().is_empty() { None } else { Some(s.to_string()) })
+    .collect::<Vec<_>>()
+    .join("\r\n")
+}
+
+
+fn log_aenderungen(aenderungen_todo: &[Operation]) {
+
     for a in aenderungen_todo.iter() {
         match a {
             Operation::Delete {
@@ -583,113 +655,94 @@ pub fn aenderungen_zu_fa_xml(
             }
         }
     }
-
-    let mut final_strings = aenderungen_todo.iter()
-    .enumerate()
-    .filter_map(|(i, s)| {
-        match s {
-        Operation::Delete { obj_id, .. } => {
-            let o = objects.objects.get(obj_id)?;
-            if o.poly.is_none() {
-                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
-            }
-            let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
-            let rid = format!("{obj_id}{beginnt}");
-            let typename = &o.member_type;
-            Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
-        },
-        Operation::Insert { ebene, kuerzel, poly_neu } => {
-            let mut auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
-            auto_attribute.remove("AX_Ebene");
-            let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
-            Some(get_insert_xml_node(
-                ebene,
-                &("DE_001".to_string() + &format!("{i:010}")),  // TODO
-                &auto_attribute,
-                datum_jetzt,
-                poly_neu,
-                &uuid().replace("-", "").to_ascii_uppercase(), // TODO
-            ))
-        },
-        Operation::Replace {
-            obj_id,
-            ebene: _,
-            kuerzel: _,
-            poly_alt: _,
-            poly_neu
-        } => {
-            let o = objects.objects.get(obj_id)?;
-            if o.poly.is_none() {
-                return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
-            }
-            Some(get_replace_xml_node(
-                obj_id,
-                &o,
-                &poly_neu,
-                &uuid().replace("-", "").to_ascii_uppercase(), // TODO
-            ))
-        }
-    }}).collect::<Vec<_>>();
-
-    final_strings.sort();
-    let final_strings = final_strings.join("\r\n");
-
-    let s = format!(
-        include_str!("./antrag.xml"),
-        crs = "ETRS89_UTM33",
-        content = final_strings,
-        profilkennung = "schuettf",
-        antragsnr = "73_0073_".to_string() + &format!("{}", datum_jetzt.format("%Y%m%d")) + "_999",
-    );
-
-    s.lines()
-    .filter_map(|s| if s.trim().is_empty() { None } else { Some(s.to_string()) })
-    .collect::<Vec<_>>()
-    .join("\r\n")
 }
 
-/// Maps an index number to a value, i.e.:
-///
-/// ```no_run,ignore
-/// 0   -> A
-/// 25  -> Z
-/// 26  -> AA
-/// 27  -> AB
-/// ```
-///
-/// ... and so on
-pub fn number_to_alphabet_value(num: usize) -> String {
-    const ALPHABET_LEN: usize = 26;
-    // usize::MAX is "GKGWBYLWRXTLPP" with a length of 15 characters
-    const MAX_LEN: usize = 15;
+fn merge_aenderungen_with_existing_nas(
+    aenderungen_todo: &[Operation],
+    nas_xml: &NasXMLFile
+) -> Vec<Operation> {
 
-    let mut result = [0; MAX_LEN];
-
-    // How many times does 26 fit in the target number?
-    let mut multiple_of_alphabet = num / ALPHABET_LEN;
-    let mut counter = 0;
-
-    while multiple_of_alphabet != 0 && counter < MAX_LEN {
-        let remainder = (multiple_of_alphabet - 1) % ALPHABET_LEN;
-        result[(MAX_LEN - 1) - counter] = u8_to_char(remainder as u8);
-        counter += 1;
-        multiple_of_alphabet = (multiple_of_alphabet - 1) / ALPHABET_LEN;
+    struct ImAenderung {
+        ebene: String,
+        kuerzel: String,
+        poly_neu: SvgPolygonInner,
     }
 
-    let len = MAX_LEN.saturating_sub(counter);
-    // Reverse the current characters
-    let mut result = result[len..MAX_LEN]
+    let polys = aenderungen_todo.iter().filter_map(|a| match a {
+        Operation::Delete { .. } => None,
+        Operation::Replace { ebene, kuerzel, poly_neu, .. } |
+        Operation::Insert { ebene, kuerzel, poly_neu } => Some(ImAenderung {
+            ebene: ebene.clone(),
+            kuerzel: kuerzel.clone(),
+            poly_neu: poly_neu.clone(),
+        }),
+    }).collect::<Vec<_>>();
+
+    let attached_polys = polys.into_iter().filter_map(|s| {
+        let s_rect = s.poly_neu.get_rect();
+        let touching_polys = nas_xml.ebenen
+        .get(&s.ebene)?
         .iter()
-        .map(|c| *c as char)
-        .collect::<String>();
+        .filter_map(|q| {
+            if !q.get_rect().overlaps_rect(&s_rect) {
+                return None;
+            }
+            if q.get_auto_kuerzel().as_deref() != Some(s.kuerzel.as_str()) {
+                return None;
+            }
+            if !nas::relate(&q.poly, &s.poly_neu, 0.01).touches_other_poly_outside() {
+                return None;
+            }
+            Some(q.clone())
+        }).collect::<Vec<_>>();
 
-    // Push the last character
-    result.push(u8_to_char((num % ALPHABET_LEN) as u8) as char);
+        if touching_polys.is_empty() {
+            None
+        } else {
+            Some((s.poly_neu.get_hash(), (s, touching_polys)))
+        }
+    }).collect::<BTreeMap<_, _>>();
 
-    result
-}
+    if attached_polys.is_empty() {
+        return aenderungen_todo.to_vec();
+    }
 
-#[inline(always)]
-fn u8_to_char(input: u8) -> u8 {
-    'A' as u8 + input
+    let mut aenderungen_clean = aenderungen_todo.iter().filter_map(|a| match a {
+        Operation::Delete { .. } => Some(a.clone()),
+        Operation::Replace { poly_neu, .. } |
+        Operation::Insert { poly_neu, ..} => if attached_polys.contains_key(&poly_neu.get_hash()) { None } else { Some(a.clone()) },
+    }).collect::<Vec<_>>();
+
+    for (_id, (im_aenderung, polys_to_join)) in attached_polys.into_iter() {
+        
+        let ids_to_join = polys_to_join
+        .into_iter()
+        .filter_map(|tp| tp.get_de_id().map(|s| (s, tp.poly)))
+        .collect::<Vec<_>>();
+        
+        let mut polys_to_join = vec![im_aenderung.poly_neu];
+        polys_to_join.extend(ids_to_join.iter().map(|a| a.1.clone()));
+
+        let joined_poly = match join_polys(&polys_to_join, false, false) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        aenderungen_clean.push(Operation::Insert { 
+            ebene: im_aenderung.ebene.clone(), 
+            kuerzel: im_aenderung.kuerzel.clone(), 
+            poly_neu: joined_poly 
+        });
+        
+        for (id, poly) in ids_to_join {
+            aenderungen_clean.push(Operation::Delete { 
+                obj_id: id, 
+                ebene: im_aenderung.ebene.clone(), 
+                kuerzel: im_aenderung.kuerzel.clone(), 
+                poly_alt: poly 
+            });
+        }
+    }
+
+    aenderungen_clean
 }
