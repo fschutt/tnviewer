@@ -113,7 +113,7 @@ pub fn get_insert_xml_node(
 ) -> String {
     const INSERT_XML: &str = r#"
             <wfs:Insert>
-                <$$AX_EBENE$$ gml:id="$$OBJ_ID$$">
+                <$$AX_EBENE$$>
                     <gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
                     <lebenszeitintervall>
                         <AA_Lebenszeitintervall>
@@ -141,7 +141,6 @@ pub fn get_insert_xml_node(
 
     INSERT_XML
         .replace("$$AX_EBENE$$", ax_ebene)
-        .replace("$$OBJ_ID$$", obj_id)
         .replace(
             "$$POSITION_NODE$$",
             &polygon_to_position_node(poly, poly_id),
