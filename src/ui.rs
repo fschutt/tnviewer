@@ -1728,6 +1728,11 @@ impl AenderungenClean {
             }
 
             let areas_to_subtract_joined = areas_to_subtract.values().collect::<Vec<_>>();
+            if flst_part_id.starts_with("12893400300107") {
+                log_status("subtraction:");
+                log_status(&serde_json::to_string(&flst_part.poly).unwrap_or_default());
+                log_status(&serde_json::to_string(&areas_to_subtract_joined).unwrap_or_default());
+            }
             let subtracted = subtract_from_poly(&flst_part.poly, &areas_to_subtract_joined);
 
             let neu_kuerzel = self
