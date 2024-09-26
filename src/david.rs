@@ -178,28 +178,38 @@ fn get_aenderungen_internal(
         .iter()
         .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
         .filter_map(|(k, obj_id, v)| {
+            /*
             let (ebene, tp) = nas_xml.ebenen.iter().find_map(|(ebene, items)| {
                 items
                     .iter()
                     .find(|s| s.get_de_id().as_deref() == Some(obj_id.as_str()))
                     .map(|tp| (ebene.clone(), tp.clone()))
-            })?;
+            })?;*/
 
             let neu_kuerzel = v.to_string();
             let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
 
-            log_status(&format!("1: inserting {} m2 {neu_kuerzel}", k.poly.area_m2()));
+            let overlapping_objekte = qt.get_overlapping_ebenen(&k.poly, &alle_ebenen);
+            let mut map = BTreeMap::new();
+            for (k, v) in overlapping_objekte {
+                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2(), neu_kuerzel));
+                map.entry(k).or_insert_with(|| Vec::new()).push(v);
+            }
 
+            log_status(&format!("1: inserting {} m2 {neu_kuerzel}", k.poly.area_m2()));
+            let extra_attr = vec![
+                ("AX_Ebene", neu_ebene.as_str()),
+            ];
             Some((
                 uuid(),
                 TempOverlapObject {
-                    neu_ebene,
-                    neu_kuerzel,
-                    poly: tp.clone(),
-                    overlaps_objekte: vec![(ebene, vec![TaggedPolygon {
-                        attributes: tp.attributes.clone(),
+                    neu_ebene: neu_ebene.clone(),
+                    neu_kuerzel: neu_kuerzel.clone(),
+                    poly: TaggedPolygon {
+                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&neu_kuerzel, &extra_attr),
                         poly: k.poly.clone(),
-                    }])].into_iter().collect(),
+                    },
+                    overlaps_objekte: map,
                 },
             ))
         })
@@ -216,13 +226,17 @@ fn get_aenderungen_internal(
                 log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2(), neu_kuerzel));
                 map.entry(k).or_insert_with(|| Vec::new()).push(v);
             }
+            let extra_attr = vec![
+                ("AX_Ebene", neu_ebene.as_str()),
+            ];
+
             Some((
                 k.clone(),
                 TempOverlapObject {
-                    neu_ebene,
-                    neu_kuerzel,
+                    neu_ebene: neu_ebene.clone(),
+                    neu_kuerzel: neu_kuerzel.clone(),
                     poly: TaggedPolygon {
-                        attributes: BTreeMap::new(),
+                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&neu_kuerzel, &extra_attr),
                         poly,
                     },
                     overlaps_objekte: map,
