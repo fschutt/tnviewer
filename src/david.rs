@@ -178,13 +178,6 @@ fn get_aenderungen_internal(
         .iter()
         .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
         .filter_map(|(k, obj_id, v)| {
-            /*
-            let (ebene, tp) = nas_xml.ebenen.iter().find_map(|(ebene, items)| {
-                items
-                    .iter()
-                    .find(|s| s.get_de_id().as_deref() == Some(obj_id.as_str()))
-                    .map(|tp| (ebene.clone(), tp.clone()))
-            })?;*/
 
             let neu_kuerzel = v.to_string();
             let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
@@ -192,11 +185,11 @@ fn get_aenderungen_internal(
             let overlapping_objekte = qt.get_overlapping_ebenen(&k.poly, &alle_ebenen);
             let mut map = BTreeMap::new();
             for (k, v) in overlapping_objekte {
-                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2(), neu_kuerzel));
+                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2().round(), v.get_auto_kuerzel().unwrap_or_default()));
                 map.entry(k).or_insert_with(|| Vec::new()).push(v);
             }
 
-            log_status(&format!("1: inserting {} m2 {neu_kuerzel}", k.poly.area_m2()));
+            log_status(&format!("1: inserting {} m2 {neu_kuerzel}", k.poly.area_m2().round()));
             let extra_attr = vec![
                 ("AX_Ebene", neu_ebene.as_str()),
             ];
@@ -223,7 +216,7 @@ fn get_aenderungen_internal(
             let overlapping_objekte = qt.get_overlapping_ebenen(&poly, &alle_ebenen);
             let mut map = BTreeMap::new();
             for (k, v) in overlapping_objekte {
-                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2(), neu_kuerzel));
+                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2().round(), neu_kuerzel));
                 map.entry(k).or_insert_with(|| Vec::new()).push(v);
             }
             let extra_attr = vec![
@@ -248,9 +241,9 @@ fn get_aenderungen_internal(
     log_status("---- 1 ---- start");
     for (k, v) in ids_to_change_nutzungen.iter() {
         let overlaps = v.overlaps_objekte.values()
-        .flat_map(|s| s.iter().map(|q| format!("{} m2 {}", q.poly.area_m2(), q.get_auto_kuerzel().unwrap_or_default())))
+        .flat_map(|s| s.iter().map(|q| format!("{} m2 {}", q.poly.area_m2().round(), q.get_auto_kuerzel().unwrap_or_default())))
         .collect::<Vec<_>>();
-        log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2(), v.neu_kuerzel, overlaps));
+        log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2().round(), v.neu_kuerzel, overlaps));
     }
     log_status("---- 1 ---- end");
 
@@ -290,9 +283,9 @@ fn get_aenderungen_internal(
     log_status("---- 2 ---- reverse_map start");
     for (k, v) in reverse_map.iter() {
         let overlaps = v.1.iter()
-        .map(|s| format!("{} m2 {}", s.poly.poly.area_m2(), s.poly.get_auto_kuerzel().unwrap_or_default()))
+        .map(|s| format!("{} m2 {}", s.poly.poly.area_m2().round(), s.poly.get_auto_kuerzel().unwrap_or_default()))
         .collect::<Vec<_>>();
-        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k.0, v.0.poly.area_m2(), k.2, overlaps));
+        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k.0, v.0.poly.area_m2().round(), k.2, overlaps));
     }
     log_status("---- 2 ---- reverse_map end");
 
@@ -329,7 +322,7 @@ fn get_aenderungen_internal(
         let tp_poly = if !polys_to_add.is_empty() {
             let polys_to_join = vec![tp.poly.clone()];
             if let Some(joined) = join_polys(&polys_to_join, false, false) {
-                if joined.area_m2() == tp.poly.area_m2() {
+                if joined.area_m2().round() == tp.poly.area_m2().round() {
                     vec![tp.poly.clone()]
                 } else {
                     joined.recombine_polys()
@@ -399,7 +392,7 @@ fn get_aenderungen_internal(
                         poly_neu: a.poly.poly.correct_winding_order_cloned(),
                     });
                 }
-            } else if subtracted.area_m2().round() < jp_area_m2 {
+            } else if subtracted.area_m2().round() < jp_area_m2.round() {
                 // original polygon did change, area is now less but not zero: modify obj to be now
                 // subtracted
                 aenderungen_todo.push(Operation::Replace {
@@ -457,6 +450,17 @@ fn get_aenderungen_internal(
 
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
+
+    let op_replace_alt = aenderungen_todo.iter().filter_map(|s| match s {
+        Operation::Replace { kuerzel, poly_alt, .. } => Some((kuerzel, poly_alt.correct_winding_order_cloned().round_to_3dec().get_hash())),
+        _ => None,
+    }).collect::<BTreeSet<_>>();
+
+    let aenderungen_todo = aenderungen_todo.iter().filter_map(|s| match s {
+        Operation::Replace { kuerzel, poly_neu, .. } => if op_replace_alt.contains(&(kuerzel, poly_neu.correct_winding_order_cloned().round_to_3dec().get_hash())) { None } else { Some(s) },
+        _ => Some(s),
+    }).cloned().collect();
+
     aenderungen_todo
 }
 
@@ -563,7 +567,7 @@ fn log_aenderungen(aenderungen_todo: &[Operation]) {
                 kuerzel,
                 poly_alt,
             } => {
-                log_status(&format!("deleting {} m2 {kuerzel} (obj {obj_id})", poly_alt.area_m2()));
+                log_status(&format!("deleting {} m2 {kuerzel} (obj {obj_id})", poly_alt.area_m2().round()));
             }
             Operation::Insert {
                 ebene: _,
