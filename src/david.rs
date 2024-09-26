@@ -1,6 +1,6 @@
 use crate::{
     nas::{
-        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPolygonInner, TaggedPolygon
+        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPoint, SvgPolygonInner, TaggedPolygon
     },
     pdf::{
         join_polys,
@@ -131,6 +131,19 @@ pub fn aenderungen_zu_fa_xml(
             ))
         }
     }}).collect::<Vec<_>>();
+
+    for (id, a) in aenderungen_todo.iter().enumerate() {
+        if let Operation::Insert { ebene, kuerzel, poly_neu } = a {
+            if let Some(symbol) = Signatur::from_kuerzel(
+                kuerzel, 
+                &("DE_001".to_string() + &format!("{id:010}")),
+                poly_neu, 
+                id * 2,
+            ) {
+                final_strings.push(symbol.get_xml());
+            }
+        }
+    }
 
     final_strings.sort();
     let final_strings = final_strings.join("\r\n");
@@ -462,6 +475,189 @@ fn get_aenderungen_internal(
     }).cloned().collect();
 
     aenderungen_todo
+}
+
+pub enum Signatur {
+    Punkt {
+        id: String,
+        fuer: String,
+        pos: SvgPoint,
+        signaturnummer: String,
+        art: String,
+    },
+    Flaeche {
+        id: String,
+        fuer: String,
+        signaturnummer: String,
+        art: String,
+        positionierungsregel: String,
+    }
+}
+
+impl Signatur {
+
+    fn from_kuerzel(kuerzel: &str, obj_id: &str, poly: &SvgPolygonInner, id: usize) -> Option<Self> {
+        match kuerzel {
+            "SUM" => {
+                let pt = poly.get_label_pos()?;
+                Some(Self::Punkt { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    pos: pt, 
+                    signaturnummer: "3478".to_string(), 
+                    art: "Sumpf".to_string()
+                })
+            },
+            "WAS" => {
+                let pt = poly.get_label_pos()?;
+                Some(Self::Punkt { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    pos: pt, 
+                    signaturnummer: "3490".to_string(), 
+                    art: "FKT".to_string()
+                })
+            },
+            "WALD" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3456".to_string(), 
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1104".to_string()
+                })
+            },
+            "LH" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3458".to_string(),
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1104".to_string()
+                })
+            },
+            "NH" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3460".to_string(),
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1104".to_string()
+                })
+            },
+            "LNH" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3462".to_string(),
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1104".to_string()
+                })
+            },
+            "GR" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3413".to_string(),
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1100".to_string()
+                })
+            },
+            "GRÜ" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3413".to_string(),
+                    art: "FKT".to_string(), 
+                    positionierungsregel: "1100".to_string()
+                })
+            },
+            "G" => {
+                Some(Self::Flaeche { 
+                    id: ("DE_001".to_string() + &format!("{id:010}")), 
+                    fuer: obj_id.to_string(), 
+                    signaturnummer: "3421".to_string(),
+                    art: "VEG".to_string(), 
+                    positionierungsregel: "1100".to_string()
+                })
+            },
+            _ => None,
+        }
+    }
+
+    fn get_xml(&self) -> String {
+
+        const PUNKTSIGNATUR: &str = r#"
+        	<wfs:Insert>
+				<AP_PPO gml:id="$$OBJ_ID$$">
+					<gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
+					<lebenszeitintervall>
+						<AA_Lebenszeitintervall>
+							<beginnt>9999-01-01T00:00:00Z</beginnt>
+						</AA_Lebenszeitintervall>
+					</lebenszeitintervall>
+					<modellart>
+						<AA_Modellart>
+							<advStandardModell>DKKM1000</advStandardModell>
+						</AA_Modellart>
+					</modellart>
+					<position>
+						<gml:MultiPoint gml:id="BD">
+							<gml:pointMember>
+								<gml:Point gml:id="BE">
+									<gml:pos>$$POS$$</gml:pos>
+								</gml:Point>
+							</gml:pointMember>
+						</gml:MultiPoint>
+					</position>
+					<signaturnummer>$$SIGNATURNUMMER$$</signaturnummer>
+					<art>$$ART$$</art>
+					<dientZurDarstellungVon xlink:href="urn:adv:oid:$$FUER$$"/>
+				</AP_PPO>
+			</wfs:Insert>
+        "#;
+
+        const FLAECHENSIGNATUR: &str = r#"
+			<wfs:Insert>
+				<AP_Darstellung gml:id="$$OBJ_ID$$">
+					<gml:identifier codeSpace="http://www.adv-online.de/">urn:adv:oid:$$OBJ_ID$$</gml:identifier>
+					<lebenszeitintervall>
+						<AA_Lebenszeitintervall>
+							<beginnt>9999-01-01T00:00:00Z</beginnt>
+						</AA_Lebenszeitintervall>
+					</lebenszeitintervall>
+					<modellart>
+						<AA_Modellart>
+							<advStandardModell>DKKM1000</advStandardModell>
+						</AA_Modellart>
+					</modellart>
+					<signaturnummer>$$SIGNATURNUMMER$$</signaturnummer>
+					<art>$$ART$$</art>
+					<dientZurDarstellungVon xlink:href="urn:adv:oid:$$FUER$$"/>
+					<positionierungsregel>$$POSITIONIERUNGSREGEL$$</positionierungsregel>
+				</AP_Darstellung>
+			</wfs:Insert>
+        "#;
+
+        match self {
+            Signatur::Punkt { id, fuer, pos, signaturnummer, art } => {
+                PUNKTSIGNATUR
+                .replace("$$OBJ_ID$$", id)
+                .replace("$$FUER$$", fuer)
+                .replace("$$POS$$", &format!("{} {}", pos.x, pos.y))
+                .replace("$$ART$$", art)
+                .replace("$$SIGNATURNUMMER$$", signaturnummer)
+            },
+            Signatur::Flaeche { id, fuer, signaturnummer, art, positionierungsregel } => {
+                FLAECHENSIGNATUR
+                .replace("$$OBJ_ID$$", id)
+                .replace("$$FUER$$", fuer)
+                .replace("$$POSITONIERUNGSREGEL$$", positionierungsregel)
+                .replace("$$ART$$", art)
+                .replace("$$SIGNATURNUMMER$$", signaturnummer)
+            },
+        }
+    }
 }
 
 fn merge_aenderungen_with_existing_nas(
