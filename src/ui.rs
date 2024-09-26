@@ -1707,24 +1707,12 @@ impl AenderungenClean {
                 None => continue,
             };
 
-            let jp = join_polys(
-                &areas_to_subtract
-                    .iter()
-                    .map(|(_, s)| s.clone())
-                    .collect::<Vec<_>>(),
-                false,
-                false,
-            );
-            let areas_to_subtract_joined = match jp {
-                Some(s) => s,
-                None => continue,
-            };
-
             let orig_size = flst_part.poly.area_m2();
             let areas_to_subtract_ids = areas_to_subtract
-                .iter()
-                .map(|(id, _)| id.clone())
+                .keys()
+                .cloned()
                 .collect::<BTreeSet<_>>();
+
             let size_of_all_intersections = areas_to_subtract_ids
                 .iter()
                 .map(|s| {
@@ -1734,11 +1722,13 @@ impl AenderungenClean {
                         .unwrap_or(0.0)
                 })
                 .sum::<f64>();
+
             if orig_size - size_of_all_intersections < 1.0 {
                 continue;
             }
 
-            let subtracted = subtract_from_poly(&flst_part.poly, &[&areas_to_subtract_joined]);
+            let areas_to_subtract_joined = areas_to_subtract.values().collect::<Vec<_>>();
+            let subtracted = subtract_from_poly(&flst_part.poly, &areas_to_subtract_joined);
 
             let neu_kuerzel = self
                 .aenderungen
