@@ -2517,7 +2517,7 @@ pub fn subtract_from_poly(
     for i in subtract.iter() {
         let mut fi = first.round_to_3dec();
         let mut i = i.round_to_3dec();
-        i.correct_winding_order();
+        // i.correct_winding_order();
         fi.correct_winding_order();
         if fi.equals(&i) {
             return SvgPolygonInner::default();

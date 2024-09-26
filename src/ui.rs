@@ -1744,28 +1744,20 @@ impl AenderungenClean {
                 .unwrap_or(&alt_kuerzel)
                 .clone();
 
-            for i in subtracted.recombine_polys() {
-                for q in i.recombine_polys() {
-                    if q.area_m2() < 0.0 {
-                        continue;
-                    }
+            let qq = AenderungenIntersection {
+                alt: alt_kuerzel.clone(),
+                neu: neu_kuerzel.clone(),
+                flst_id: flurstueck_id.clone(),
+                flst_id_part: flst_part_id.clone(),
+                poly_cut: subtracted.round_to_3dec(),
+            };
 
-                    let qq = AenderungenIntersection {
-                        alt: alt_kuerzel.clone(),
-                        neu: neu_kuerzel.clone(),
-                        flst_id: flurstueck_id.clone(),
-                        flst_id_part: flst_part_id.clone(),
-                        poly_cut: q.round_to_3dec(),
-                    };
-        
-                    log_status(&format!(
-                        "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
-                        q.area_m2().round()
-                    ));
-        
-                    is.push(qq);
-                }
-            }
+            log_status(&format!(
+                "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
+                subtracted.area_m2().round()
+            ));
+
+            is.push(qq);
         }
 
         let mut is = is
