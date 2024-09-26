@@ -1760,12 +1760,12 @@ impl AenderungenClean {
                     neu: neu_kuerzel.clone(),
                     flst_id: flurstueck_id.clone(),
                     flst_id_part: flst_part_id.clone(),
-                    poly_cut: subtracted.round_to_3dec(),
+                    poly_cut: i.round_to_3dec(),
                 };
     
                 log_status(&format!(
                     "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
-                    subtracted.area_m2().round()
+                    i.area_m2().round()
                 ));
     
                 is.push(qq);
