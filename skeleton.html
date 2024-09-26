@@ -2045,7 +2045,7 @@
           map.setView([53.2467, 13.6045], 10);
           reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          // addProblemGeoJSON(map);
+          addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -2131,10 +2131,10 @@
     function addProblemGeoJSON(map) {
       let j = JSON.parse(get_problem_geojson());
       let geojson1 = JSON.parse(j.geojson1);
-      let geojson2 = JSON.parse(j.geojson2);
+      // let geojson2 = JSON.parse(j.geojson2);
       let bounds = j.bounds;
       console.log(geojson1);
-      console.log(geojson2);
+      // console.log(geojson2);
 
       var ml = null;
       var style = {
@@ -2155,6 +2155,7 @@
       }
       map.addLayer(ml);
 
+      /*
       var ml = null;
       var style = {
         "color": "#0000ff",
@@ -2173,7 +2174,8 @@
         });
       }
       map.addLayer(ml);
-
+      */
+     
       map.fitBounds(bounds);
     }
 

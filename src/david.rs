@@ -2,7 +2,7 @@ use crate::{
     nas::{
         self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPoint, SvgPolygonInner, TaggedPolygon
     },
-    pdf::{
+    ops::{
         join_polys,
         subtract_from_poly,
     },
@@ -353,7 +353,7 @@ fn get_aenderungen_internal(
 
                 let polys_to_subtract = reverse_map
                     .iter()
-                    .flat_map(|(k, a)| {
+                    .flat_map(|(_, a)| {
                         a.1.iter().filter_map(|s| {
                             if s.neu_kuerzel != *alt_kuerzel {
                                 Some(s)

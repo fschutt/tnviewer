@@ -5,11 +5,9 @@ use crate::{
         HeaderCalcConfig,
         PADDING,
     },
+    ops::intersect_polys,
     nas::{
-        intersect_polys,
         reproject_poly,
-        translate_from_geo_poly,
-        translate_to_geo_poly,
         NasXMLFile,
         SplitNasXml,
         SvgLine,
@@ -1450,33 +1448,6 @@ fn reproject_splitnas_into_pdf_space(
     }
 }
 
-#[inline(always)]
-fn reproject_nasxml_into_pdf_space(
-    nas_xml: &NasXMLFile,
-    riss: &RissExtentReprojected,
-    riss_config: &RissConfig,
-    _log: &mut Vec<String>,
-) -> NasXMLFile {
-    NasXMLFile {
-        crs: "pdf".to_string(),
-        ebenen: nas_xml
-            .ebenen
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    v.iter()
-                        .map(|s| TaggedPolygon {
-                            attributes: s.attributes.clone(),
-                            poly: poly_into_pdf_space(&s.poly, &riss, riss_config),
-                        })
-                        .collect(),
-                )
-            })
-            .collect(),
-    }
-}
-
 fn poly_into_pdf_space(
     poly: &SvgPolygonInner,
     riss: &RissExtentReprojected,
@@ -2507,101 +2478,6 @@ pub fn get_flurstuecke(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Flurst
     Flurstuecke { flst }
 }
 
-// only called in stage5 (subtracting overlapping Aenderungen)
-pub fn subtract_from_poly(
-    original: &SvgPolygonInner,
-    subtract: &[&SvgPolygonInner],
-) -> SvgPolygonInner {
-    use geo::BooleanOps;
-    let mut first = original.round_to_3dec();
-    for i in subtract.iter() {
-        let mut fi = first.round_to_3dec();
-        let mut i = i.round_to_3dec();
-        fi.correct_winding_order();
-        if fi.equals(&i) {
-            return SvgPolygonInner::default();
-        }
-        i.correct_almost_touching_points(&fi, 0.05, true);
-        let i = i.round_to_3dec();
-        if i.is_zero_area() {
-            continue;
-        }
-        if fi.is_zero_area() {
-            return SvgPolygonInner::default();
-        }
-        let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&i);
-        let join = a.difference(&b);
-        let s = translate_from_geo_poly(&join);
-        let new = SvgPolygonInner {
-            outer_rings: s
-                .iter()
-                .flat_map(|s| s.outer_rings.clone().into_iter())
-                .collect(),
-            inner_rings: s
-                .iter()
-                .flat_map(|s| s.inner_rings.clone().into_iter())
-                .collect(),
-        };
-        first = new;
-    }
-
-    first.correct_winding_order();
-    first
-}
-
-pub fn join_polys(
-    polys: &[SvgPolygonInner],
-    _autoclean: bool,
-    _debug: bool,
-) -> Option<SvgPolygonInner> {
-    use geo::BooleanOps;
-    let mut first = match polys.get(0) {
-        Some(s) => s.round_to_3dec(),
-        None => return None,
-    };
-    for i in polys.iter().skip(1) {
-        let i = i.round_to_3dec();
-        if first.equals(&i) {
-            continue;
-        }
-        if i.is_empty() {
-            continue;
-        }
-        let mut fi = first.round_to_3dec();
-        fi.correct_winding_order();
-        let a = translate_to_geo_poly(&fi);
-        let b = translate_to_geo_poly(&i);
-        let join = a.union(&b);
-        let s = translate_from_geo_poly(&join);
-        let new = SvgPolygonInner {
-            outer_rings: s
-                .iter()
-                .flat_map(|s| s.outer_rings.clone().into_iter())
-                .collect(),
-            inner_rings: s
-                .iter()
-                .flat_map(|s| s.inner_rings.clone().into_iter())
-                .collect(),
-        };
-        first = new;
-    }
-
-    first.correct_winding_order();
-    Some(first)
-}
-
-fn join_poly_only_touches(a: &SvgPolygonInner, b: &SvgPolygonInner) -> SvgPolygonInner {
-    let mut outer_rings = a.outer_rings.clone();
-    let mut inner_rings = a.inner_rings.clone();
-    outer_rings.extend(b.outer_rings.iter().cloned());
-    inner_rings.extend(b.inner_rings.iter().cloned());
-    SvgPolygonInner {
-        outer_rings,
-        inner_rings,
-    }
-}
-
 pub fn get_gebaeude(xml: &NasXMLFile, riss: &RissExtentReprojected) -> Gebaeude {
     let mut gebaeude = xml.ebenen.get("AX_Gebaeude").cloned().unwrap_or_default();
     gebaeude.retain(|s| {
@@ -2644,7 +2520,7 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
             .flat_map(|(gemarkung_nr, fluren)| {
                 fluren.iter().filter_map(|(flur_nr, s)| {
                     let polys = s.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-                    let mut joined = join_polys(&polys, false, true)?;
+                    let mut joined = crate::ops::join_polys(&polys, false, true)?;
                     joined.inner_rings = Vec::new();
                     Some(TaggedPolygon {
                         attributes: vec![

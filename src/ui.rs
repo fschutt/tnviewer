@@ -4,9 +4,9 @@ use crate::{
         Status,
     },
     geograf::points_to_rect,
+    ops::intersect_polys,
     nas::{
         self,
-        intersect_polys,
         line_contained_in_line,
         translate_to_geo_poly,
         NasXMLFile,
@@ -19,9 +19,8 @@ use crate::{
         SvgPolygonInner,
         TaggedPolygon,
     },
+    ops::{join_polys, subtract_from_poly},
     pdf::{
-        join_polys,
-        subtract_from_poly,
         Konfiguration,
         ProjektInfo,
         Risse,

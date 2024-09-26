@@ -27,10 +27,10 @@ use serde_derive::{
     Deserialize,
     Serialize,
 };
-use std::{collections::{
+use std::collections::{
     BTreeMap,
     BTreeSet,
-}, io::Split};
+};
 use ui::{
     Aenderungen,
     PolyNeu,
@@ -57,6 +57,7 @@ pub mod xlsx;
 pub mod xml;
 pub mod xml_templates;
 pub mod zip;
+pub mod ops;
 
 pub const ARIAL_TTF: &[u8] = include_bytes!("./Arial.ttf");
 
@@ -157,29 +158,34 @@ pub fn get_rissgebiet_geojson(poly: String) -> String {
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
-    let poly_string1 = "{\"outer_rings\":[{\"points\":[{\"x\":429491.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5889303.068},{\"x\":430415.18,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890657.568},{\"x\":430103.68,\"y\":5890535.068},{\"x\":429491.18,\"y\":5890535.068},{\"x\":429491.18,\"y\":5889303.068}]}],\"inner_rings\":[]}";
-    let poly_string2 = "{\"outer_rings\":[{\"points\":[{\"x\":430328.22,\"y\":5890303.658},{\"x\":430244.425,\"y\":5890222.958},{\"x\":429528.201,\"y\":5889670.36},{\"x\":429502.62,\"y\":5889670.776},{\"x\":430002.015,\"y\":5889593.062},{\"x\":430044.428,\"y\":5889573.752},{\"x\":430404.975,\"y\":5890378.925},{\"x\":430328.22,\"y\":5890303.658}]}],\"inner_rings\":[]}";
+    let poly_string1 = include_str!("./test1.txt");
+    let poly_string2 = include_str!("./test2.txt");
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string2.trim()).unwrap_or_default();
+    let subtracted = crate::ops::subtract_from_poly(&s1, &s2.iter().collect::<Vec<_>>());
 
-    let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
-    let s2 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
+    let s1 = crate::pdf::reproject_poly_back_into_latlon(&subtracted, proj).unwrap_or_default();
+    let s2 = s2.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
+
 
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),
         attributes: BTreeMap::new(),
     }];
 
-    let v2 = vec![TaggedPolygon {
-        poly: s2.clone(),
-        attributes: BTreeMap::new(),
-    }];
+    let v2 = s2.iter().map(|e| {
+        TaggedPolygon {
+            poly: e.clone(),
+            attributes: BTreeMap::new(),
+        }
+    }).collect::<Vec<_>>();
 
+    
     serde_json::to_string(&GeoJSONResult {
         geojson1: crate::nas::tagged_polys_to_featurecollection(&v1),
         geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
-        bounds: s2.get_fit_bounds(),
+        bounds: s1.get_fit_bounds(),
     })
     .unwrap_or_default()
 }

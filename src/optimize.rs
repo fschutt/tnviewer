@@ -18,7 +18,6 @@ use crate::{
     },
     uuid_wasm::js_random,
 };
-use ndarray::Axis;
 use std::{
     collections::BTreeMap,
     f64::consts::PI,
@@ -132,16 +131,6 @@ impl OptimizeConfig {
                 .collect(),
         }
     }
-}
-
-fn render_boolmap(map: &ndarray::Array2<bool>) -> Vec<String> {
-    map.axis_iter(Axis(0))
-        .map(|row| {
-            row.iter()
-                .map(|a| if *a { '■' } else { '□' })
-                .collect::<String>()
-        })
-        .collect()
 }
 
 pub fn optimize_labels(

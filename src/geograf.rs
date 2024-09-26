@@ -457,16 +457,6 @@ fn get_fluren_string(splitflaechen: &AenderungenIntersections, main_gemarkung: u
     format_fluren(&fl)
 }
 
-fn get_fluren_string_modified(
-    eigentuemer_map_modified: &BTreeMap<FlstIdParsedNumber, FlstEigentuemer>,
-) -> String {
-    let fl = eigentuemer_map_modified
-        .keys()
-        .map(|f| f.flur.to_string())
-        .collect::<Vec<_>>();
-    format_fluren(&fl)
-}
-
 fn format_fluren(fl: &[String]) -> String {
     if fl.is_empty() {
         String::new()

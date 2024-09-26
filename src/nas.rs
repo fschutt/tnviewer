@@ -9,10 +9,7 @@ use crate::{
         Aenderungen,
         AenderungenIntersection,
     },
-    uuid_wasm::{
-        log_status,
-        uuid,
-    },
+    uuid_wasm::uuid,
     xlsx::FlstIdParsed,
     xml::{
         get_all_nodes_in_subtree,
@@ -24,7 +21,6 @@ use float_cmp::approx_eq;
 use geo::{
     Area,
     Centroid,
-    ConvexHull,
     CoordsIter,
     TriangulateEarcut,
     Within,
@@ -850,7 +846,7 @@ impl SvgPolygonInner {
                 inner_rings: inner_rings
                     .iter()
                     .flat_map(|q| {
-                        if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(q)) {
+                        if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(p)) {
                             q.outer_rings.clone()
                         } else {
                             Vec::new()
@@ -1305,18 +1301,6 @@ impl SvgPolygonInner {
         }
 
         return false;
-    }
-
-    fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
-        let mut a_points = a.points.clone();
-        a_points.dedup_by(|a, b| a.equals(b));
-
-        let mut b_points = b.points.clone();
-        b_points.dedup_by(|a, b| a.equals(b));
-
-        a_points
-            .iter()
-            .all(|a| b_points.iter().any(|p| p.dist(a) < 0.005))
     }
 
     fn any_points_equal(a: &SvgLine, b: &SvgLine) -> bool {
@@ -2538,7 +2522,7 @@ pub fn split_xml_flurstuecke_inner(
             let mut polys = polys
                 .iter()
                 .flat_map(|p| {
-                    let intersection_mp = intersect_polys(&flst.poly, &p.poly);
+                    let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly);
                     intersection_mp
                         .into_iter()
                         .filter(|p| !p.is_zero_area())
@@ -2726,74 +2710,6 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
     }
     newpoints.dedup_by(|a, b| a.equals(&b));
     v.push(SvgLine { points: newpoints });
-}
-
-macro_rules! define_func {
-    ($fn_name:ident, $op:expr) => {
-        pub fn $fn_name(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
-            use geo::BooleanOps;
-
-            let mut a = a.round_to_3dec();
-            let mut b = b.round_to_3dec();
-            a.correct_winding_order();
-            b.correct_winding_order();
-
-            if a.is_zero_area() {
-                return Vec::new();
-            }
-            if b.is_zero_area() {
-                return Vec::new();
-            }
-            if a.equals(&b) {
-                return vec![a];
-            }
-
-            let a = translate_to_geo_poly(&a);
-            let b = translate_to_geo_poly(&b);
-            let intersect = a.boolean_op(&b, $op);
-            let mut s = translate_from_geo_poly(&intersect);
-
-            for q in s.iter_mut() {
-                q.correct_winding_order();
-            }
-
-            s
-        }
-    };
-}
-
-define_func!(intersect_polys, geo::OpType::Intersection);
-define_func!(xor_polys, geo::OpType::Xor);
-
-fn xor_combine(a: &SvgPolygonInner, b: &SvgPolygonInner) -> SvgPolygonInner {
-    let mut aor = a.outer_rings.clone();
-    let mut air = a.inner_rings.clone();
-    aor.extend(b.outer_rings.iter().cloned());
-    air.extend(b.inner_rings.iter().cloned());
-    SvgPolygonInner {
-        outer_rings: aor,
-        inner_rings: air,
-    }
-}
-
-fn union(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
-    let xor = xor_combine(a, b);
-    translate_from_geo_poly(&geo::MultiPolygon(vec![
-        translate_to_geo_poly(&xor).convex_hull()
-    ]))
-}
-
-pub fn convex_hull_polys(a: &SvgPolygonInner, b: &[SvgPolygonInner]) -> SvgPolygonInner {
-    let mut x = a.clone();
-    for b in b.iter() {
-        x = xor_combine(&x, b);
-    }
-    translate_from_geo_poly(&geo::MultiPolygon(vec![
-        translate_to_geo_poly(&x).convex_hull()
-    ]))
-    .get(0)
-    .cloned()
-    .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
