@@ -1307,13 +1307,11 @@ pub fn get_aenderungen_rote_linien(
         .iter()
         .flat_map(|s| {
             let poly_cut = nas::cleanup_poly(&s.poly_cut);
-            let mut lines = poly_cut
-                .outer_rings
-                .iter()
-                .flat_map(l_to_points)
-                .collect::<Vec<_>>();
-            lines.extend(poly_cut.inner_rings.iter().flat_map(l_to_points));
-            lines
+            poly_cut.iter().flat_map(|s| {
+                let mut lines = l_to_points(&s.outer_ring);
+                lines.extend(s.inner_rings.iter().flat_map(l_to_points));
+                lines
+            }).collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
     alle_linien_zu_checken.sort_by(|a, b| a.0.x.total_cmp(&b.0.x));
@@ -1535,25 +1533,31 @@ pub fn get_aenderungen_nutzungsarten_linien(
     for (a, b) in pairs.iter() {
         let a = &splitflaechen[*a];
         let b = &splitflaechen[*b];
-        let mut apoly = nas::cleanup_poly(&a.poly_cut);
-        let mut bpoly = nas::cleanup_poly(&b.poly_cut);
-        apoly.correct_almost_touching_points(&bpoly, 0.1, true);
-        apoly.insert_points_from(&bpoly, 0.1);
-        bpoly.insert_points_from(&apoly, 0.1);
-        let shared_lines = get_shared_lines(&apoly, &bpoly);
-        let mut shared_lines_2 = shared_lines
-            .into_iter()
-            .filter_map(|s| {
-                let first = s.points.first()?;
-                let last = s.points.last()?;
-                if lq.line_overlaps_or_equals(first, last) {
-                    None
-                } else {
-                    Some(s)
-                }
-            })
-            .collect::<Vec<_>>();
-        v.append(&mut shared_lines_2);
+        let apoly = nas::cleanup_poly(&a.poly_cut);
+        let bpoly = nas::cleanup_poly(&b.poly_cut);
+
+        for mut apoly in apoly {
+            for mut bpoly in bpoly.iter().cloned() {
+                apoly.correct_almost_touching_points(&bpoly, 0.1, true);
+                apoly.insert_points_from(&bpoly, 0.1);
+                bpoly.insert_points_from(&apoly, 0.1);
+                let shared_lines = get_shared_lines(&apoly, &bpoly);
+                let mut shared_lines_2 = shared_lines
+                    .into_iter()
+                    .filter_map(|s| {
+                        let first = s.points.first()?;
+                        let last = s.points.last()?;
+                        if lq.line_overlaps_or_equals(first, last) {
+                            None
+                        } else {
+                            Some(s)
+                        }
+                    })
+                    .collect::<Vec<_>>();
+        
+                v.append(&mut shared_lines_2);
+            }
+        }
     }
 
     v
@@ -1591,11 +1595,7 @@ fn get_shared_lines(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgLine> {
 }
 
 fn get_linecoords(p: &SvgPolygonInner) -> BTreeSet<((u64, u64), (u64, u64))> {
-    let mut lines = p
-        .outer_rings
-        .iter()
-        .flat_map(crate::geograf::l_to_points)
-        .collect::<Vec<_>>();
+    let mut lines = crate::geograf::l_to_points(&&p.outer_ring);
     lines.extend(p.inner_rings.iter().flat_map(crate::geograf::l_to_points));
     lines
         .into_iter()

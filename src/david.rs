@@ -93,7 +93,7 @@ pub fn aenderungen_zu_fa_xml(
         match s {
         Operation::Delete { obj_id, .. } => {
             let o = objects.objects.get(obj_id)?;
-            if o.poly.is_none() {
+            if o.poly.is_empty() {
                 return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
             }
             let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
@@ -121,7 +121,7 @@ pub fn aenderungen_zu_fa_xml(
             poly_neu
         } => {
             let o = objects.objects.get(obj_id)?;
-            if o.poly.is_none() {
+            if o.poly.is_empty() {
                 return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
             }
             Some(get_replace_xml_node(
@@ -333,12 +333,14 @@ fn get_aenderungen_internal(
             .collect::<Vec<_>>();
 
         let tp_poly = if !polys_to_add.is_empty() {
-            let polys_to_join = vec![tp.poly.clone()];
-            if let Some(joined) = join_polys(&polys_to_join, false, false) {
-                if joined.area_m2().round() == tp.poly.area_m2().round() {
+            let mut polys_to_join = vec![tp.poly.clone()];
+            polys_to_join.extend(polys_to_add.iter().map(|s| s.poly.poly.clone()));
+            let joined = join_polys(&polys_to_join);
+            if !joined.is_empty() {
+                if joined.iter().map(|s| s.area_m2()).sum::<f64>().round() == tp.poly.area_m2().round() {
                     vec![tp.poly.clone()]
                 } else {
-                    joined.recombine_polys()
+                    joined
                 }
             } else {
                 vec![tp.poly.clone()]
@@ -390,8 +392,9 @@ fn get_aenderungen_internal(
         if final_joined_polys.len() == 1 {
             let (jp, subtracted, polys_to_subtract) = &final_joined_polys[0];
             let jp_area_m2 = jp.area_m2();
+            let subtracted_area = subtracted.iter().map(|s| s.area_m2()).sum::<f64>();
 
-            if subtracted.is_zero_area() {
+            if subtracted.iter().all(|s| s.is_zero_area()) {
                 aenderungen_todo.push(Operation::Delete {
                     obj_id: alt_obj_id.clone(),
                     ebene: alt_ebene.clone(),
@@ -405,16 +408,32 @@ fn get_aenderungen_internal(
                         poly_neu: a.poly.poly.correct_winding_order_cloned(),
                     });
                 }
-            } else if subtracted.area_m2().round() < jp_area_m2.round() {
+            } else if subtracted_area.round() < jp_area_m2.round() {
                 // original polygon did change, area is now less but not zero: modify obj to be now
                 // subtracted
-                aenderungen_todo.push(Operation::Replace {
-                    obj_id: alt_obj_id.clone(),
-                    ebene: alt_ebene.clone(),
-                    kuerzel: alt_kuerzel.clone(),
-                    poly_alt: tp.poly.clone(),
-                    poly_neu: subtracted.correct_winding_order_cloned(),
-                });
+                if subtracted.len() == 1 {
+                    aenderungen_todo.push(Operation::Replace {
+                        obj_id: alt_obj_id.clone(),
+                        ebene: alt_ebene.clone(),
+                        kuerzel: alt_kuerzel.clone(),
+                        poly_alt: tp.poly.clone(),
+                        poly_neu: subtracted.first().unwrap().correct_winding_order_cloned(),
+                    });
+                } else {
+                    aenderungen_todo.push(Operation::Delete {
+                        obj_id: alt_obj_id.clone(),
+                        ebene: alt_ebene.clone(),
+                        kuerzel: alt_kuerzel.clone(),
+                        poly_alt: tp.poly.clone(),
+                    });
+                    for s in subtracted.iter() {
+                        aenderungen_todo.push(Operation::Insert { 
+                            ebene: alt_ebene.clone(),
+                            kuerzel: alt_kuerzel.clone(),
+                            poly_neu: s.correct_winding_order_cloned(),
+                        });
+                    }
+                }
                 for s in polys_to_subtract.iter() {
                     aenderungen_todo.push(Operation::Insert { 
                         ebene: s.neu_ebene.clone(),
@@ -427,7 +446,7 @@ fn get_aenderungen_internal(
                 log_status(&format!("{}: original polygon did not change!!! original area = {} m2, subtracted area = {} m2 (polys to subtract = {})", 
                     tp.get_de_id().unwrap_or_default(),
                     jp_area_m2.round(),
-                    subtracted.area_m2().round(),
+                    subtracted_area.round(),
                     polys_to_subtract.len(),
                 ));
             }
@@ -435,12 +454,14 @@ fn get_aenderungen_internal(
             // delete original object, replace with all remaining ones
             let polys_final = final_joined_polys
                 .iter()
-                .filter_map(|s| {
-                    if s.1.is_zero_area() {
-                        None
-                    } else {
-                        Some(s.1.clone())
-                    }
+                .flat_map(|s| {
+                    s.1.iter().filter_map(|q| {
+                        if q.is_zero_area() {
+                            None
+                        } else {
+                            Some(q.clone())
+                        }
+                    })
                 })
                 .collect::<Vec<_>>();
 
@@ -726,16 +747,15 @@ fn merge_aenderungen_with_existing_nas(
         let mut polys_to_join = vec![im_aenderung.poly_neu];
         polys_to_join.extend(ids_to_join.iter().map(|a| a.1.clone()));
 
-        let joined_poly = match join_polys(&polys_to_join, false, false) {
-            Some(s) => s,
-            None => continue,
-        };
+        let joined_poly = join_polys(&polys_to_join);
 
-        aenderungen_clean.push(Operation::Insert { 
-            ebene: im_aenderung.ebene.clone(), 
-            kuerzel: im_aenderung.kuerzel.clone(), 
-            poly_neu: joined_poly 
-        });
+        for j in joined_poly.into_iter() {
+            aenderungen_clean.push(Operation::Insert { 
+                ebene: im_aenderung.ebene.clone(), 
+                kuerzel: im_aenderung.kuerzel.clone(), 
+                poly_neu: j,
+            });
+        }
         
         for (id, poly) in ids_to_join {
             aenderungen_clean.push(Operation::Delete { 
@@ -832,21 +852,14 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner) -> String {
                     </position>
     "#;
 
-    let outer_rings = p
-        .outer_rings
-        .iter()
-        .map(|l| {
-            line_to_ring(l)
-        })
+    let outer_rings = Some(line_to_ring(&p.outer_ring))
         .map(|or| {
             format!("
             <gml:exterior>
             {or}
             </gml:exterior>
             ")
-        })
-        .collect::<Vec<_>>()
-        .join("\r\n");
+        }).unwrap_or_default();
 
     let inner_rings = p
         .inner_rings

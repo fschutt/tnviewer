@@ -1,11 +1,6 @@
 use crate::{
     nas::{
-        translate_geoline,
-        translate_to_geo_poly,
-        SplitNasXml,
-        SvgLine,
-        SvgPoint,
-        SvgPolygonInner,
+        translate_geoline, translate_to_geo_poly_special_shared, SplitNasXml, SvgLine, SvgPoint, SvgPolygonInner
     },
     pdf::{
         Gebaeude,
@@ -109,11 +104,7 @@ impl OptimizeConfig {
 
     pub fn polygon_to_pixel_space(&self, poly: &SvgPolygonInner) -> SvgPolygonInner {
         SvgPolygonInner {
-            outer_rings: poly
-                .outer_rings
-                .iter()
-                .map(|p| self.line_to_pixel_space(p))
-                .collect(),
+            outer_ring: self.line_to_pixel_space(&poly.outer_ring),
             inner_rings: poly
                 .inner_rings
                 .iter()
@@ -437,18 +428,16 @@ fn render_stage1_overlap_boolmap(
         .ok()?;
 
     for shape in do_not_overlap_areas.iter() {
-        r.rasterize(&translate_to_geo_poly(
-            &config.polygon_to_pixel_space(shape),
+        r.rasterize(&translate_to_geo_poly_special_shared(
+            &[&config.polygon_to_pixel_space(shape)],
         ))
         .ok()?;
     }
 
     for (_k, v) in flurstuecke.flurstuecke_nutzungen.iter() {
         for tp in v.iter() {
-            for line in tp.poly.outer_rings.iter() {
-                r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
-                    .ok()?;
-            }
+            r.rasterize(&translate_geoline(&config.line_to_pixel_space(&tp.poly.outer_ring)))
+                .ok()?;
             for line in tp.poly.inner_rings.iter() {
                 r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
                     .ok()?;
@@ -457,10 +446,8 @@ fn render_stage1_overlap_boolmap(
     }
 
     for flst in splitflaechen.iter() {
-        for line in flst.poly_cut.outer_rings.iter() {
-            r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
-                .ok()?;
-        }
+        r.rasterize(&translate_geoline(&config.line_to_pixel_space(&flst.poly_cut.outer_ring)))
+            .ok()?;
         for line in flst.poly_cut.inner_rings.iter() {
             r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
                 .ok()?;
@@ -468,8 +455,8 @@ fn render_stage1_overlap_boolmap(
     }
 
     for area in gebaeude.gebaeude.iter() {
-        r.rasterize(&translate_to_geo_poly(
-            &config.polygon_to_pixel_space(&area.poly),
+        r.rasterize(&translate_to_geo_poly_special_shared(
+            &[&config.polygon_to_pixel_space(&area.poly)],
         ))
         .ok()?;
     }

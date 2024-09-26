@@ -360,7 +360,7 @@ impl RissExtentReprojected {
     }
     pub fn get_rect_line_poly(&self) -> SvgPolygonInner {
         let mut s = SvgPolygonInner {
-            outer_rings: vec![self.get_rect_line()],
+            outer_ring: self.get_rect_line(),
             inner_rings: Vec::new(),
         };
         s.correct_winding_order();
@@ -413,7 +413,7 @@ impl RissExtentReprojected {
         //
 
         SvgPolygonInner {
-            outer_rings: vec![SvgLine {
+            outer_ring: SvgLine {
                 points: vec![
                     SvgPoint {
                         x: self.min_x,
@@ -444,7 +444,7 @@ impl RissExtentReprojected {
                         y: self.min_y,
                     }, // 1
                 ],
-            }],
+            },
             inner_rings: Vec::new(),
         }
         .round_to_3dec()
@@ -1454,11 +1454,7 @@ fn poly_into_pdf_space(
     riss_config: &RissConfig,
 ) -> SvgPolygonInner {
     SvgPolygonInner {
-        outer_rings: poly
-            .outer_rings
-            .iter()
-            .map(|l| line_into_pdf_space(l, riss, riss_config))
-            .collect(),
+        outer_ring: line_into_pdf_space(&poly.outer_ring, riss, riss_config),
         inner_rings: poly
             .inner_rings
             .iter()
@@ -2518,18 +2514,20 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
         fluren: fluren_map
             .iter()
             .flat_map(|(gemarkung_nr, fluren)| {
-                fluren.iter().filter_map(|(flur_nr, s)| {
+                fluren.iter().flat_map(|(flur_nr, s)| {
                     let polys = s.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-                    let mut joined = crate::ops::join_polys(&polys, false, true)?;
-                    joined.inner_rings = Vec::new();
-                    Some(TaggedPolygon {
-                        attributes: vec![
-                            ("berechneteGemarkung".to_string(), gemarkung_nr.to_string()),
-                            ("AX_Flur".to_string(), flur_nr.to_string()),
-                        ]
-                        .into_iter()
-                        .collect(),
-                        poly: joined,
+                    crate::ops::join_polys(&polys)
+                    .into_iter().map(|mut joined| {
+                        joined.inner_rings = Vec::new();
+                        TaggedPolygon {
+                            attributes: vec![
+                                ("berechneteGemarkung".to_string(), gemarkung_nr.to_string()),
+                                ("AX_Flur".to_string(), flur_nr.to_string()),
+                            ]
+                            .into_iter()
+                            .collect(),
+                            poly: joined,
+                        }
                     })
                 })
             })
@@ -2745,19 +2743,17 @@ fn translate_poly(svg: &SvgPolygonInner, paintmode: PaintMode) -> printpdf::Poly
     printpdf::Polygon {
         rings: {
             let mut r = Vec::new();
-            for outer in svg.outer_rings.iter() {
-                let points = outer.points.clone();
-                r.push(
-                    points
-                        .into_iter()
-                        .map(|p| printpdf::Point {
-                            x: Mm(p.x as f32).into_pt(),
-                            y: Mm(p.y as f32).into_pt(),
-                        })
-                        .map(|p| (p, false))
-                        .collect(),
-                );
-            }
+            let points = svg.outer_ring.points.clone();
+            r.push(
+                points
+                    .into_iter()
+                    .map(|p| printpdf::Point {
+                        x: Mm(p.x as f32).into_pt(),
+                        y: Mm(p.y as f32).into_pt(),
+                    })
+                    .map(|p| (p, false))
+                    .collect(),
+            );
             for inner in svg.inner_rings.iter() {
                 let mut points = inner.points.clone();
                 points.reverse();

@@ -158,16 +158,15 @@ pub fn get_rissgebiet_geojson(poly: String) -> String {
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
-    let poly_string1 = include_str!("./test1.txt");
-    let poly_string2 = include_str!("./test2.txt");
+    let poly_string1 = "";
+    let poly_string2 = "";
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string2.trim()).unwrap_or_default();
     let subtracted = crate::ops::subtract_from_poly(&s1, &s2.iter().collect::<Vec<_>>());
 
-    let s1 = crate::pdf::reproject_poly_back_into_latlon(&subtracted, proj).unwrap_or_default();
-    let s2 = s2.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
-
+    let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
+    let s2 = subtracted.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
 
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),
@@ -600,7 +599,6 @@ pub fn lib_get_aenderungen_clean(
                 konfiguration.merge.stage3_maxdeviation_followline,
             ),
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
-        "63" => aenderungen.clean_nas(),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &csv_data),
         _ => return format!("wrong id {id}"),
     };
@@ -804,7 +802,7 @@ pub fn get_polyline_guides_in_current_bounds(
                 .values()
                 .flat_map(|p| {
                     let mut p_inner = p.poly.get_inner();
-                    let mut v = p_inner.outer_rings;
+                    let mut v = vec![p_inner.outer_ring];
                     v.append(&mut p_inner.inner_rings);
                     v.into_iter()
                 })
@@ -855,12 +853,12 @@ pub fn fixup_polyline(xml: String, split_flurstuecke: String, points: String) ->
         }
 
         Some(SvgPolygonInner {
-            outer_rings: vec![SvgLine {
+            outer_ring: SvgLine {
                 points: points
                     .iter()
                     .map(|p| SvgPoint { x: p.lng, y: p.lat })
                     .collect(),
-            }],
+            },
             inner_rings: Vec::new(),
         })
     }

@@ -2,34 +2,16 @@ use crate::{
     csv::{
         CsvDataType,
         Status,
-    },
-    geograf::points_to_rect,
-    ops::intersect_polys,
-    nas::{
-        self,
-        line_contained_in_line,
-        translate_to_geo_poly,
-        NasXMLFile,
-        NasXmlQuadTree,
-        SplitNasXml,
-        SplitNasXmlQuadTree,
-        SvgLine,
-        SvgPoint,
-        SvgPolygon,
-        SvgPolygonInner,
-        TaggedPolygon,
-    },
-    ops::{join_polys, subtract_from_poly},
-    pdf::{
+    }, geograf::points_to_rect, nas::{
+        self, line_contained_in_line, translate_to_geo_poly_special_shared, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
+    }, ops::{intersect_polys, join_polys, subtract_from_poly}, pdf::{
         Konfiguration,
         ProjektInfo,
         Risse,
-    },
-    uuid_wasm::{
+    }, uuid_wasm::{
         log_status,
         uuid,
-    },
-    xlsx::FlstIdParsed,
+    }, xlsx::FlstIdParsed
 };
 use core::f64;
 use geo::{
@@ -918,22 +900,6 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
 
     // TAB 3
 
-    let export_uebersicht = {
-        format!("
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='tab_functions.export_uebersicht(event)' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_pdf_base64}'>
-                    </div>
-                    <div>
-                        <p>Export</p>
-                        <p>Übersicht</p>
-                    </div>
-                </label>
-            </div>
-        ")
-    };
-
     let export_geograf = {
         format!("
         <div class='__application-ribbon-section-content'>
@@ -976,8 +942,8 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_georg_base64}'>
                     </div>
                     <div>
-                        <p>Export Flst.</p>
-                        <p>nach Georg</p>
+                        <p>Export</p>
+                        <p>Georg</p>
                     </div>
                 </label>
             </div>
@@ -1010,7 +976,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     </div>
                     <div>
                         <p>Fortführung</p>
-                        <p>in NAS-XML</p>
+                        <p>NAS-XML</p>
                     </div>
                 </label>
             </div>
@@ -1187,12 +1153,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {export_alle_flurstuecke}
-                        {export_uebersicht}
-                    </div>
-                </div>
-
-                <div class='__application-ribbon-section 2'>
-                    <div style='display:flex;flex-direction:row;'>
+                        {export_nas_xml}
                         {export_geograf}
                         {export_david}
                     </div>
@@ -1201,7 +1162,6 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
                         {export_log}
-                        {export_nas_xml}
                         {projekt_speichern}
                     </div>
                 </div>
@@ -1414,16 +1374,14 @@ impl AenderungenIntersections {
             for (k1, k) in v.iter_mut() {
                 let k2 = k
                     .iter()
-                    .flat_map(|p| {
-                        p.outer_rings.iter().map(|l| {
-                            let mut q = SvgPolygonInner::from_line(l); // TODO
-                            for i in p.inner_rings.iter() {
-                                if line_contained_in_line(i, l) || line_contained_in_line(l, i) {
-                                    q.inner_rings.push(i.clone());
-                                }
+                    .map(|p| {
+                        let mut q = SvgPolygonInner::from_line(&p.outer_ring); // TODO
+                        for i in p.inner_rings.iter() {
+                            if line_contained_in_line(i, &p.outer_ring) || line_contained_in_line(&p.outer_ring, i) {
+                                q.inner_rings.push(i.clone());
                             }
-                            (q.get_hash(), q)
-                        })
+                        }
+                        (q.get_hash(), q)
                     })
                     .collect::<BTreeMap<_, _>>();
 
@@ -1439,10 +1397,7 @@ impl AenderungenIntersections {
 
                 log_status(&format!("{flst_id} ({k1:?}): joining"));
                 log_status(&serde_json::to_string(&polys_to_join).unwrap_or_default());
-                let joined = match join_polys(&polys_to_join, false, false) {
-                    Some(s) => s.recombine_polys(),
-                    None => continue,
-                };
+                let joined = join_polys(&polys_to_join);
                 log_status(&serde_json::to_string(&joined).unwrap_or_default());
                 log_status(&format!("{flst_id}: joined -----"));
 
@@ -1481,20 +1436,22 @@ impl AenderungenIntersections {
             self.0
                 .iter()
                 .filter(|q| !q.poly_cut.is_zero_area())
-                .map(|q| {
+                .filter_map(|q| {
+                    
                     let filter = |rings: &[SvgLine]| {
                         rings
                             .iter()
-                            .filter(|s| !SvgPolygonInner::from_line(s).is_zero_area())
                             .filter(|s| !SvgPolygonInner::from_line(s).is_zero_area())
                             .map(|w| w.clone())
                             .collect::<Vec<_>>()
                     };
 
+                    if SvgPolygonInner::from_line(&q.poly_cut.outer_ring).is_zero_area() {
+                        return None;
+                    }
                     let mut q = q.clone();
-                    q.poly_cut.outer_rings = filter(&q.poly_cut.outer_rings);
                     q.poly_cut.inner_rings = filter(&q.poly_cut.inner_rings);
-                    q
+                    Some(q)
                 })
                 .filter(|q| !q.poly_cut.is_zero_area())
                 .collect::<Vec<_>>(),
@@ -1529,69 +1486,45 @@ impl AenderungenIntersections {
             })
             .flat_map(|q| {
                 if q.alt == q.neu {
-                    q.poly_cut
-                        .outer_rings
-                        .iter()
-                        .flat_map(|or| {
-                            let p = SvgPolygonInner {
-                                outer_rings: vec![or.clone()],
-                                inner_rings: q.poly_cut.inner_rings.clone(),
-                            };
-                            let lp = match p.get_label_pos() {
-                                Some(s) => s,
-                                None => return Vec::new(),
-                            };
-                            vec![TextPlacement {
-                                kuerzel: q.alt.clone(),
-                                status: TextStatus::StaysAsIs,
-                                pos: lp.clone(),
-                                ref_pos: lp.clone(),
-                                area: p.area_m2().round() as usize,
-                                poly: p.clone(),
-                            }]
-                        })
-                        .collect::<Vec<_>>()
+                    let lp = match q.poly_cut.get_label_pos() {
+                        Some(s) => s,
+                        None => return Vec::new(),
+                    };
+                    vec![TextPlacement {
+                        kuerzel: q.alt.clone(),
+                        status: TextStatus::StaysAsIs,
+                        pos: lp.clone(),
+                        ref_pos: lp.clone(),
+                        area: q.poly_cut.area_m2().round() as usize,
+                        poly: q.poly_cut.clone(),
+                    }]
                 } else {
-                    let polys = q
-                        .poly_cut
-                        .outer_rings
-                        .iter()
-                        .map(|or| SvgPolygonInner {
-                            outer_rings: vec![or.clone()],
-                            inner_rings: q.poly_cut.inner_rings.clone(),
-                        })
-                        .collect::<Vec<_>>();
-                    polys
-                        .iter()
-                        .flat_map(|p| {
-                            let lp = match p.get_label_pos() {
-                                Some(s) => s,
-                                None => return Vec::new(),
-                            };
-                            let sp = match p.get_secondary_label_pos() {
-                                Some(s) => s,
-                                None => lp,
-                            };
-                            vec![
-                                TextPlacement {
-                                    kuerzel: q.alt.clone(),
-                                    status: TextStatus::Old,
-                                    pos: lp.clone(),
-                                    ref_pos: lp.clone(),
-                                    area: p.area_m2().round() as usize,
-                                    poly: p.clone(),
-                                },
-                                TextPlacement {
-                                    kuerzel: q.neu.clone(),
-                                    status: TextStatus::New,
-                                    pos: sp.clone(),
-                                    ref_pos: sp.clone(),
-                                    area: p.area_m2().round() as usize,
-                                    poly: p.clone(),
-                                },
-                            ]
-                        })
-                        .collect()
+                    let lp = match q.poly_cut.get_label_pos() {
+                        Some(s) => s,
+                        None => return Vec::new(),
+                    };
+                    let sp = match q.poly_cut.get_secondary_label_pos() {
+                        Some(s) => s,
+                        None => lp,
+                    };
+                    vec![
+                        TextPlacement {
+                            kuerzel: q.alt.clone(),
+                            status: TextStatus::Old,
+                            pos: lp.clone(),
+                            ref_pos: lp.clone(),
+                            area: q.poly_cut.area_m2().round() as usize,
+                            poly: q.poly_cut.clone(),
+                        },
+                        TextPlacement {
+                            kuerzel: q.neu.clone(),
+                            status: TextStatus::New,
+                            pos: sp.clone(),
+                            ref_pos: sp.clone(),
+                            area: q.poly_cut.area_m2().round() as usize,
+                            poly: q.poly_cut.clone(),
+                        },
+                    ]
                 }
             })
             .collect()
@@ -1727,11 +1660,6 @@ impl AenderungenClean {
             }
 
             let areas_to_subtract_joined = areas_to_subtract.values().collect::<Vec<_>>();
-            if flst_part_id.starts_with("12893400300107") {
-                log_status("subtraction:");
-                log_status(&serde_json::to_string(&flst_part.poly).unwrap_or_default());
-                log_status(&serde_json::to_string(&areas_to_subtract_joined).unwrap_or_default());
-            }
             let subtracted = subtract_from_poly(&flst_part.poly, &areas_to_subtract_joined);
 
             let neu_kuerzel = self
@@ -1748,20 +1676,22 @@ impl AenderungenClean {
                 .unwrap_or(&alt_kuerzel)
                 .clone();
 
-            let qq = AenderungenIntersection {
-                alt: alt_kuerzel.clone(),
-                neu: neu_kuerzel.clone(),
-                flst_id: flurstueck_id.clone(),
-                flst_id_part: flst_part_id.clone(),
-                poly_cut: subtracted.round_to_3dec(),
-            };
-
-            log_status(&format!(
-                "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
-                subtracted.area_m2().round()
-            ));
-
-            is.push(qq);
+            for s in subtracted.iter() {
+                let qq = AenderungenIntersection {
+                    alt: alt_kuerzel.clone(),
+                    neu: neu_kuerzel.clone(),
+                    flst_id: flurstueck_id.clone(),
+                    flst_id_part: flst_part_id.clone(),
+                    poly_cut: s.round_to_3dec(),
+                };
+    
+                log_status(&format!(
+                    "Splitflächen (Stufe 2): {flst_part_id}: {alt_kuerzel} -> {neu_kuerzel} = {} m2",
+                    s.area_m2().round()
+                ));
+    
+                is.push(qq);
+            }
         }
 
         let mut is = is
@@ -2392,14 +2322,14 @@ impl Aenderungen {
         for poly in i.iter() {
             near_points.append(&mut Self::get_points_near_point(
                 p,
-                &poly.outer_rings,
+                &[&poly.outer_ring],
                 maxdst_point,
                 maxdst_line,
                 mode,
             ));
             near_points.append(&mut Self::get_points_near_point(
                 p,
-                &poly.inner_rings,
+                &poly.inner_rings.iter().collect::<Vec<_>>(),
                 maxdst_point,
                 maxdst_line,
                 mode,
@@ -2442,7 +2372,7 @@ impl Aenderungen {
 
     fn get_points_near_point(
         p: &SvgPoint,
-        i: &[SvgLine],
+        i: &[&SvgLine],
         maxdst_point: f64,
         maxdst_line: f64,
         mode: GetNearestPointFilter,
@@ -2536,9 +2466,7 @@ impl Aenderungen {
 
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut p = polyneu.poly.get_inner();
-            for ol in p.outer_rings.iter_mut() {
-                *ol = clean_line(ol, maxdst_point);
-            }
+            p.outer_ring = clean_line(&p.outer_ring, maxdst_point);
             for il in p.inner_rings.iter_mut() {
                 *il = clean_line(il, maxdst_point);
             }
@@ -2622,28 +2550,26 @@ impl Aenderungen {
             }));
 
             let mut polyneu_poly = polyneu.poly.get_inner();
-            for line in polyneu_poly.outer_rings.iter_mut() {
-                for p in line.points.iter_mut() {
-                    let p_orig = p.clone();
-                    let p_rect = p.get_rect(maxdst_point.max(maxdst_line));
-                    let overlap = changes_btree
-                        .get_ids_that_overlap(&p_rect)
-                        .into_iter()
-                        .filter_map(|i| changes_list.get(i.0).cloned())
-                        .collect::<Vec<_>>();
+            for p in polyneu_poly.outer_ring.points.iter_mut() {
+                let p_orig = p.clone();
+                let p_rect = p.get_rect(maxdst_point.max(maxdst_line));
+                let overlap = changes_btree
+                    .get_ids_that_overlap(&p_rect)
+                    .into_iter()
+                    .filter_map(|i| changes_list.get(i.0).cloned())
+                    .collect::<Vec<_>>();
 
-                    if let Some(newp) = Self::correct_point(
-                        p,
-                        &overlap,
-                        maxdst_point,
-                        maxdst_line,
-                        true,
-                        &moved_points,
-                    ) {
-                        *p = newp;
-                        modified = true;
-                        moved_points.push((p_orig, newp));
-                    }
+                if let Some(newp) = Self::correct_point(
+                    p,
+                    &overlap,
+                    maxdst_point,
+                    maxdst_line,
+                    true,
+                    &moved_points,
+                ) {
+                    *p = newp;
+                    modified = true;
+                    moved_points.push((p_orig, newp));
                 }
             }
 
@@ -2683,36 +2609,34 @@ impl Aenderungen {
                 }
 
                 if !polyneu.locked {
-                    for line in polyneu_poly.outer_rings.iter_mut() {
-                        let orig_points_len = line.points.len();
-                        let mut nextpoint;
-                        let mut newpoints = match line.points.get(0) {
-                            Some(s) => {
-                                nextpoint = s.clone();
-                                vec![s.clone()]
-                            }
-                            None => continue,
-                        };
-
-                        for p in line.points.iter().skip(1) {
-                            let start = nextpoint.clone();
-                            let end = p;
-                            newpoints.extend(
-                                aenderungen_quadtree
-                                    .get_line_between_points(
-                                        &start,
-                                        end,
-                                        log,
-                                        maxdst_line,
-                                        maxdst_line2,
-                                        maxdev_followline,
-                                        Some(id.clone()),
-                                    )
-                                    .into_iter(),
-                            );
-                            newpoints.push(*end);
-                            nextpoint = *end;
+                    let orig_points_len = polyneu_poly.outer_ring.points.len();
+                    let mut nextpoint;
+                    let mut newpoints = match polyneu_poly.outer_ring.points.get(0) {
+                        Some(s) => {
+                            nextpoint = s.clone();
+                            vec![s.clone()]
                         }
+                        None => continue,
+                    };
+
+                    for p in polyneu_poly.outer_ring.points.iter().skip(1) {
+                        let start = nextpoint.clone();
+                        let end = *p;
+                        newpoints.extend(
+                            aenderungen_quadtree
+                                .get_line_between_points(
+                                    &start,
+                                    &end,
+                                    log,
+                                    maxdst_line,
+                                    maxdst_line2,
+                                    maxdev_followline,
+                                    Some(id.clone()),
+                                )
+                                .into_iter(),
+                        );
+                        newpoints.push(end);
+                        nextpoint = end;
 
                         newpoints.dedup_by(|a, b| a.equals(b));
 
@@ -2724,9 +2648,10 @@ impl Aenderungen {
                                 newpoints_len.saturating_sub(orig_points_len)
                             ));
                         }
-
-                        line.points = newpoints;
                     }
+
+                    polyneu_poly.outer_ring.points = newpoints;
+
                 }
                 polyneu.poly = SvgPolygon::Old(polyneu_poly);
                 polys_modified += local_modified;
@@ -2746,11 +2671,7 @@ impl Aenderungen {
             .iter()
             .flat_map(|(_k, q)| {
                 let qpoly = q.poly.get_inner();
-                let mut v = qpoly
-                    .outer_rings
-                    .iter()
-                    .flat_map(|p| p.points.clone())
-                    .collect::<Vec<_>>();
+                let mut v = qpoly.outer_ring.points.clone();
                 v.extend(qpoly.inner_rings.iter().flat_map(|p| p.points.clone()));
                 v.into_iter()
             })
@@ -2769,18 +2690,14 @@ impl Aenderungen {
 
         for v in changed_mut.na_polygone_neu.values_mut() {
             let vpoly = v.poly.get_inner();
-            let ol = vpoly
-                .outer_rings
-                .iter()
-                .map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec))
-                .collect::<Vec<_>>();
+            let ol = Self::insert_points(&vpoly.outer_ring, &all_points_btree, &all_points_vec);
             let il = vpoly
                 .inner_rings
                 .iter()
                 .map(|p| Self::insert_points(p, &all_points_btree, &all_points_vec))
                 .collect::<Vec<_>>();
             v.poly = SvgPolygon::Old(SvgPolygonInner {
-                outer_rings: ol,
+                outer_ring: ol,
                 inner_rings: il,
             });
         }
@@ -2903,7 +2820,7 @@ impl Aenderungen {
                 None => continue,
             };
 
-            let triangle_points_b = translate_to_geo_poly(&poly_b.poly.get_inner())
+            let triangle_points_b = translate_to_geo_poly_special_shared(&[&poly_b.poly.get_inner()])
                 .0
                 .iter()
                 .flat_map(|f| f.earcut_triangles())
@@ -2953,11 +2870,7 @@ impl Aenderungen {
 
             let poly_a_poly = poly_a.poly.get_inner();
             let poly_b_poly = poly_b.poly.get_inner();
-            let or_new = poly_a_poly
-                .outer_rings
-                .iter()
-                .map(|l| mini_correct_line(l, &poly_b_poly, &triangle_points_b))
-                .collect::<Vec<_>>();
+            let or_new =  mini_correct_line(&poly_a_poly.outer_ring, &poly_b_poly, &triangle_points_b);
             let ir_new = poly_a_poly
                 .inner_rings
                 .iter()
@@ -2965,7 +2878,7 @@ impl Aenderungen {
                 .collect::<Vec<_>>();
 
             na_poly_neu.get_mut(a).unwrap().poly = SvgPolygon::Old(SvgPolygonInner {
-                outer_rings: or_new,
+                outer_ring: or_new,
                 inner_rings: ir_new,
             });
         }
@@ -3032,25 +2945,19 @@ impl Aenderungen {
         let joined = aenderungen_by_kuerzel_map
             .iter()
             .flat_map(|(kuerzel, v)| {
-                let joined = match join_polys(&v, false, false) {
-                    Some(s) => s,
-                    None => return Vec::new(),
-                };
-
-                joined
-                    .outer_rings
-                    .iter()
-                    .map(|l| {
-                        (
-                            uuid(),
-                            PolyNeu {
-                                poly: SvgPolygon::Old(SvgPolygonInner::from_line(l)),
-                                nutzung: Some(kuerzel.clone()),
-                                locked: false,
-                            },
-                        )
-                    })
-                    .collect()
+                join_polys(&v)
+                .iter()
+                .map(|l| {
+                    (
+                        uuid(),
+                        PolyNeu {
+                            poly: SvgPolygon::Old(l.clone()),
+                            nutzung: Some(kuerzel.clone()),
+                            locked: false,
+                        },
+                    )
+                })
+                .collect::<Vec<_>>()
             })
             .collect::<BTreeMap<_, _>>();
 
@@ -3098,28 +3005,27 @@ impl Aenderungen {
                 continue;
             }
             let mut polyneu_poly = polyneu.poly.get_inner();
-            for line in polyneu_poly.outer_rings.iter_mut() {
-                for p in line.points.iter_mut() {
-                    let p_orig = p.clone();
-                    let overlapping_flst_nutzungen =
-                        qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
-                    let overlapping_flst_nutzungen = overlapping_flst_nutzungen
-                        .into_iter()
-                        .map(|(_id, v)| v.poly)
-                        .collect::<Vec<_>>();
-                    if let Some(newp) = Self::correct_point(
-                        p,
-                        &overlapping_flst_nutzungen,
-                        maxdst_point,
-                        maxdst_line,
-                        true,
-                        &moved_points,
-                    ) {
-                        *p = newp;
-                        moved_points.push((p_orig, newp));
-                    }
+            for p in polyneu_poly.outer_ring.points.iter_mut() {
+                let p_orig = p.clone();
+                let overlapping_flst_nutzungen =
+                    qt.get_overlapping_flst(&p.get_rect(maxdst_line.max(maxdst_point)));
+                let overlapping_flst_nutzungen = overlapping_flst_nutzungen
+                    .into_iter()
+                    .map(|(_id, v)| v.poly)
+                    .collect::<Vec<_>>();
+                if let Some(newp) = Self::correct_point(
+                    p,
+                    &overlapping_flst_nutzungen,
+                    maxdst_point,
+                    maxdst_line,
+                    true,
+                    &moved_points,
+                ) {
+                    *p = newp;
+                    moved_points.push((p_orig, newp));
                 }
             }
+        
             polyneu.poly = SvgPolygon::Old(polyneu_poly);
         }
 
@@ -3142,149 +3048,45 @@ impl Aenderungen {
             if polyneu.locked {
                 continue;
             }
+
             let mut polyneu_poly = polyneu.poly.get_inner();
-            for line in polyneu_poly.outer_rings.iter_mut() {
-                let mut nextpoint;
-                let mut newpoints = match line.points.get(0) {
-                    Some(s) => {
-                        nextpoint = s.clone();
-                        vec![s.clone()]
-                    }
-                    None => continue,
-                };
-
-                for p in line.points.iter().skip(1) {
-                    let start = nextpoint.clone();
-                    let end = p;
-                    newpoints.extend(
-                        nas_quadtree
-                            .get_line_between_points(
-                                &start,
-                                end,
-                                log,
-                                maxdst_line,
-                                maxdst_line2,
-                                maxdev_followline,
-                                Some(id.clone()),
-                            )
-                            .into_iter(),
-                    );
-                    newpoints.push(*end);
-                    nextpoint = *end;
+            let mut nextpoint;
+            let mut newpoints = match polyneu_poly.outer_ring.points.get(0) {
+                Some(s) => {
+                    nextpoint = s.clone();
+                    vec![s.clone()]
                 }
+                None => continue,
+            };
 
-                newpoints.dedup_by(|a, b| a.equals(b));
-
-                line.points = newpoints;
+            for p in polyneu_poly.outer_ring.points.iter().skip(1) {
+                let start = nextpoint.clone();
+                let end = p;
+                newpoints.extend(
+                    nas_quadtree
+                        .get_line_between_points(
+                            &start,
+                            end,
+                            log,
+                            maxdst_line,
+                            maxdst_line2,
+                            maxdev_followline,
+                            Some(id.clone()),
+                        )
+                        .into_iter(),
+                );
+                newpoints.push(*end);
+                nextpoint = *end;
             }
+
+            newpoints.dedup_by(|a, b| a.equals(b));
+
+            polyneu_poly.outer_ring.points = newpoints;
+
             polyneu.poly = SvgPolygon::Old(polyneu_poly);
         }
 
         changed_mut.round_to_3decimal()
-    }
-
-    pub fn clean_nas(&self) -> Aenderungen {
-        let (locked, unlocked) = self.split_locked_unlocked();
-        let mut unlocked_neu = unlocked
-            .iter()
-            .map(|(k, v)| {
-                (
-                    k.clone(),
-                    PolyNeu {
-                        nutzung: v.nutzung.clone(),
-                        poly: SvgPolygon::Old(crate::nas::cleanup_poly(&v.poly.get_inner())),
-                        locked: false,
-                    },
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-        unlocked_neu.extend(locked.into_iter());
-
-        Aenderungen {
-            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
-            na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: unlocked_neu,
-        }
-    }
-
-    pub fn remerge_lines(&self) -> Aenderungen {
-        let (locked, unlocked) = self.split_locked_unlocked();
-
-        // deduplicate and un-merge all lines
-        let mut all_rings = BTreeMap::new();
-        for s in unlocked.iter() {
-            let p = s.1.poly.get_inner();
-            for or in p.outer_rings.iter() {
-                all_rings.insert(or.get_hash(), or.clone());
-            }
-            for ir in p.inner_rings.iter() {
-                all_rings.insert(ir.get_hash(), ir.clone());
-            }
-        }
-
-        // recombine lines based on inside / outside (set nutzung = None for now)
-        let mut recombined = Vec::<Vec<&SvgLine>>::new();
-        'outer: for (_, line) in all_rings.iter() {
-            for r in recombined.iter_mut() {
-                let first_line: SvgLine = match r.first().cloned() {
-                    Some(s) => (*s).clone(),
-                    None => break,
-                };
-                if nas::line_contained_in_line(&first_line, line) {
-                    // line is an inner ring, push to end
-                    r.push(line);
-                    continue 'outer;
-                } else if nas::line_contained_in_line(&line, &first_line) {
-                    // line is an outer ring, push to start
-                    r.push(line);
-                    r.reverse();
-                    continue 'outer;
-                }
-            }
-
-            recombined.push(vec![line]);
-        }
-
-        let mut polygons_recombined = recombined
-            .iter()
-            .filter_map(|s| {
-                Some(SvgPolygonInner {
-                    outer_rings: vec![(**s.get(0)?).clone()],
-                    inner_rings: s.iter().skip(1).map(|s| (**s).clone()).collect(),
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let mut new_inner_rings_polys = polygons_recombined
-            .iter()
-            .flat_map(|p| p.inner_rings.iter().map(|l| SvgPolygonInner::from_line(l)))
-            .collect::<Vec<_>>();
-
-        polygons_recombined.append(&mut new_inner_rings_polys);
-
-        // TODO: add nutzungen again based on triangle test with original changes
-
-        let mut unlocked_neu = polygons_recombined
-            .into_iter()
-            .map(|p| {
-                (
-                    uuid(),
-                    PolyNeu {
-                        nutzung: None,
-                        poly: SvgPolygon::Old(p),
-                        locked: false,
-                    },
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        unlocked_neu.extend(locked.into_iter());
-
-        Aenderungen {
-            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
-            na_definiert: self.na_definiert.clone(),
-            na_polygone_neu: unlocked_neu,
-        }
     }
 
     // Subtrahiere Änderungen, die über Änderungen liegen
@@ -3329,14 +3131,16 @@ impl Aenderungen {
             if !higher_order_polys.is_empty() {
                 let higher_order_polys = higher_order_polys.iter().collect::<Vec<_>>();
                 let subtracted = subtract_from_poly(&pn_poly, &higher_order_polys);
-                geaendert.insert(
-                    pid.clone(),
-                    PolyNeu {
-                        nutzung: pn.nutzung.clone(),
-                        poly: SvgPolygon::Old(subtracted),
-                        locked: false,
-                    },
-                );
+                for s in subtracted.iter() {
+                    geaendert.insert(
+                        pid.clone(),
+                        PolyNeu {
+                            nutzung: pn.nutzung.clone(),
+                            poly: SvgPolygon::Old(s.clone()),
+                            locked: false,
+                        },
+                    );
+                }
             }
         }
 

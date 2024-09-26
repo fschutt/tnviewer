@@ -2045,7 +2045,7 @@
           map.setView([53.2467, 13.6045], 10);
           reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          addProblemGeoJSON(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -2131,10 +2131,10 @@
     function addProblemGeoJSON(map) {
       let j = JSON.parse(get_problem_geojson());
       let geojson1 = JSON.parse(j.geojson1);
-      // let geojson2 = JSON.parse(j.geojson2);
+      let geojson2 = JSON.parse(j.geojson2);
       let bounds = j.bounds;
       console.log(geojson1);
-      // console.log(geojson2);
+      console.log(geojson2);
 
       var ml = null;
       var style = {
@@ -2155,7 +2155,6 @@
       }
       map.addLayer(ml);
 
-      /*
       var ml = null;
       var style = {
         "color": "#0000ff",
@@ -2174,7 +2173,6 @@
         });
       }
       map.addLayer(ml);
-      */
      
       map.fitBounds(bounds);
     }
@@ -2630,8 +2628,14 @@
       if (!window.split_flurstuecke) {
         return;
       }
-      var use_dgm = event.altKey;
-      var use_background = !event.shiftKey;
+      var use_dgm = false;
+      if ((event && event.altKey) || event == "dgm") {
+        use_dgm = true;
+      }
+      var use_background = true;
+      if ((event && event.shiftKey) || event == "no-dop") {
+        use_background = false;
+      }
       var pdf = await export_pdf_overview(
         JSON.stringify(window.configuration),
         JSON.stringify(window.nas_original),
@@ -2643,6 +2647,8 @@
       downloadBlob(pdf, window.info.antragsnr + ".Uebersicht.zip", 'application/octet-stream');
     }
 
+    window.exportUebersicht = exportUebersicht;
+    
     function exportDavid() {
       if (!window.split_flurstuecke_original) {
         alert("Keine Projektdaten geladen!");
