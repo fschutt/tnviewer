@@ -1,6 +1,7 @@
 use crate::nas::translate_from_geo_poly;
 use crate::nas::SvgPolygonInner;
 use crate::nas::translate_to_geo_poly_special;
+use crate::uuid_wasm::log_status;
 
 // only called in stage5 (subtracting overlapping Aenderungen)
 pub fn subtract_from_poly(
@@ -8,6 +9,10 @@ pub fn subtract_from_poly(
     subtract: &[&SvgPolygonInner],
 ) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
+    log_status("subtract from poly...");
+    log_status(&serde_json::to_string(original).unwrap_or_default());
+    log_status(&serde_json::to_string(subtract).unwrap_or_default());
+
     let first = vec![original.round_to_3dec().correct_winding_order_cloned()];
     let to_subtract = subtract.iter().filter_map(|s| {
         let s = s.round_to_3dec().correct_winding_order_cloned();
@@ -21,17 +26,22 @@ pub fn subtract_from_poly(
     let a = translate_to_geo_poly_special(&first);
     let b = translate_to_geo_poly_special(&to_subtract);
     let join = a.difference(&b);
-    translate_from_geo_poly(&join)
+    let s = translate_from_geo_poly(&join)
     .into_iter()
     .filter_map(|s| if s.is_zero_area() { 
         None 
     } else { 
         Some(s.round_to_3dec().correct_winding_order_cloned()) 
     })
-    .collect()
+    .collect();
+
+    log_status("subtract from poly done!");
+    s
 }
 
 pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+    log_status("join polys");
+    log_status(&serde_json::to_string(polys).unwrap_or_default());
     use geo::BooleanOps;
     let first = match polys.get(0) {
         Some(s) => vec![s.round_to_3dec().correct_winding_order_cloned()],
@@ -51,11 +61,17 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     let a = translate_to_geo_poly_special(&first);
     let b = translate_to_geo_poly_special(&other);
     let join = a.union(&b);
-    translate_from_geo_poly(&join)
+    let s = translate_from_geo_poly(&join);
+    log_status("done!");
+    s
 }
 
 pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
+
+    log_status("intersect polys");
+    log_status(&serde_json::to_string(&a).unwrap_or_default());
+    log_status(&serde_json::to_string(&b).unwrap_or_default());
 
     let mut a = a.round_to_3dec();
     let mut b = b.round_to_3dec();
@@ -81,5 +97,6 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
         q.correct_winding_order();
     }
 
+    log_status("intersect polys done");
     s
 }
