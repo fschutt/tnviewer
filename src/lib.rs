@@ -1058,10 +1058,12 @@ struct NasParseError {
 
 #[wasm_bindgen]
 pub fn load_nas_xml(s: String, style: String) -> String {
+    log_status("load_nas_xml 1");
     let konfiguration = match serde_json::from_str::<Konfiguration>(&style) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
+    log_status("konfiguration ok");
     let mut t = konfiguration
         .style
         .ebenen
@@ -1072,7 +1074,7 @@ pub fn load_nas_xml(s: String, style: String) -> String {
     t.dedup();
 
     let mut log = Vec::new();
-    log.push(format!("parsing XML: types = {t:?}"));
+    log_status(&format!("parsing XML: types = {t:?}"));
 
     let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
         Ok(o) => o,
@@ -1084,25 +1086,30 @@ pub fn load_nas_xml(s: String, style: String) -> String {
             .unwrap_or_default()
         }
     };
+    log_status("xml parsed");
     let xml_objects = crate::nas::parse_nas_xml_objects(&xml_parsed);
+    log_status("xml objects parsed");
     let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t) {
         Ok(o) => o,
         Err(e) => {
             return serde_json::to_string(&NasParseError { error: e, log: log }).unwrap_or_default()
         }
     };
+    log_status("nas original ok");
     let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&nas_original, &mut log) {
         Ok(o) => o,
         Err(e) => {
             return serde_json::to_string(&NasParseError { error: e, log: log }).unwrap_or_default()
         }
     };
+    log_status("nas cut ok");
     let nas_projected = match crate::nas::transform_nas_xml_to_lat_lon(&nas_original, &mut log) {
         Ok(o) => o,
         Err(e) => {
             return serde_json::to_string(&NasParseError { error: e, log: log }).unwrap_or_default()
         }
     };
+    log_status("nas projected ok");
     let mut nas_cut_projected =
         match crate::nas::transform_split_nas_xml_to_lat_lon(&nas_cut_original, &mut log) {
             Ok(o) => o,
@@ -1111,7 +1118,9 @@ pub fn load_nas_xml(s: String, style: String) -> String {
                     .unwrap_or_default()
             }
         };
+    log_status("nas cut projected ok");
     crate::nas::fixup_flst_groesse(&nas_cut_original, &mut nas_cut_projected);
+    log_status("NAS XML ok!");
     serde_json::to_string(&LoadNasReturn {
         log,
         xml_parsed,

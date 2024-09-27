@@ -9,7 +9,7 @@ use crate::{
         Aenderungen,
         AenderungenIntersection,
     },
-    uuid_wasm::uuid,
+    uuid_wasm::{log_status, uuid},
     xlsx::FlstIdParsed,
     xml::{
         get_all_nodes_in_subtree,
@@ -2369,12 +2369,14 @@ pub fn split_xml_flurstuecke_inner(
     input: &NasXMLFile,
     _log: &mut Vec<String>,
 ) -> Result<SplitNasXml, String> {
+    log_status("split xml flurstuecke...");
     let mut input = input.clone();
     let mut default = SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),
     };
     let ax_flurstuecke = input.ebenen.remove("AX_Flurstueck").unwrap_or_default();
+    log_status(&format!("splitting {} flurstuecke", ax_flurstuecke.len()));
     let _ = input.ebenen.remove("AX_Gebaeude");
     let _ = input.ebenen.remove("AX_HistorischesFlurstueck");
     if ax_flurstuecke.is_empty() {
@@ -2393,11 +2395,15 @@ pub fn split_xml_flurstuecke_inner(
         }
     }
 
+    log_status(&format!("splitting {itemid} items"));
+
     let nutzungs_qt = QuadTree::new(
         btree_id_to_poly
             .iter()
             .map(|(k, v)| (ItemId(*k), Item::Rect(v.get_rect()))),
     );
+
+    log_status(&format!("nutzungsqt ok!"));
 
     let flurstuecke_nutzungen = ax_flurstuecke
         .iter()
@@ -2417,10 +2423,13 @@ pub fn split_xml_flurstuecke_inner(
 
             let flst_area = flst.poly.area_m2();
 
+            log_status(&format!("intersecting {id}..."));
             let mut polys = polys
                 .iter()
                 .flat_map(|p| {
+                    log_status("intersecting...");
                     let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly);
+                    log_status("intersected!");
                     intersection_mp
                         .into_iter()
                         .filter(|p| !p.is_zero_area())
@@ -2441,7 +2450,6 @@ pub fn split_xml_flurstuecke_inner(
                         })
                 })
                 .collect::<Vec<_>>();
-
             polys.sort_by(|a, b| a.1.cmp(&b.1));
             let mut sum_poly_areas = 0.0;
             let mut final_polys = Vec::new();
@@ -2452,6 +2460,7 @@ pub fn split_xml_flurstuecke_inner(
                     final_polys.push(tp.0.clone());
                 }
             }
+            log_status(&format!("intersecting {id} done (sum = {sum_poly_areas} m2)"));
 
             if final_polys.is_empty() {
                 None
@@ -2461,6 +2470,8 @@ pub fn split_xml_flurstuecke_inner(
         })
         .collect();
 
+    log_status(&format!("split ok!"));
+    
     Ok(SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen,
