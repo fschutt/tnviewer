@@ -673,7 +673,7 @@ impl Signatur {
                 FLAECHENSIGNATUR
                 .replace("$$OBJ_ID$$", id)
                 .replace("$$FUER$$", fuer)
-                .replace("$$POSITONIERUNGSREGEL$$", positionierungsregel)
+                .replace("$$POSITIONIERUNGSREGEL$$", positionierungsregel)
                 .replace("$$ART$$", art)
                 .replace("$$SIGNATURNUMMER$$", signaturnummer)
             },
