@@ -1144,7 +1144,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
             <div class='__application-ribbon-header'>
                 <p onmouseup='selectTab(0);'>START</p>
                 <p onmouseup='selectTab(2);' class='active'>EXPORT</p>
-                <div style='flex-grow:1;'></div>
+                <div style='flex-grow:1;' ondblclick='tab_functions.export_uebersicht(event);'></div>
                 <p id='export-status'></p>
                 <input type='search' placeholder='Nutzungsarten durchsuchen...' style='margin-right:5px;margin-top:5px;min-width:300px;border:1px solid gray;max-height:25px;padding:5px;' oninput='searchNA(event);' onchange='searchNA(event);' onfocusout='closePopOver();'></input>
             </div>
