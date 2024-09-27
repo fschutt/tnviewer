@@ -122,9 +122,6 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
         return vec![a];
     }
 
-    a.insert_points_from(&b, 0.02);
-    b.insert_points_from(&a, 0.02);
-
     let a = translate_to_geo_poly_special(&[a]);
     let b = translate_to_geo_poly_special(&[b]);
     let intersect = a.boolean_op(&b, geo::OpType::Intersection);
@@ -132,7 +129,6 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
 
     for q in s.iter_mut() {
         q.correct_winding_order();
-        *q = q.round_to_3dec();
     }
 
     log_status("intersect polys done");
