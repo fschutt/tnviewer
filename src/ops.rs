@@ -14,7 +14,7 @@ pub fn subtract_from_poly(
     log_status(&serde_json::to_string(original).unwrap_or_default());
     log_status(&serde_json::to_string(subtract).unwrap_or_default());
 
-    let mut first = vec![original.clone()];
+    let mut first = vec![original.round_to_3dec().correct_winding_order_cloned()];
     let mut to_subtract = subtract.iter().filter_map(|s| {
         if s.is_zero_area() {
             None
@@ -29,10 +29,11 @@ pub fn subtract_from_poly(
 
     for s in to_subtract.iter_mut() {
         let mut first_new = Vec::new();
+        *s = s.round_to_3dec().correct_winding_order_cloned();
         for q in first.iter() {
-            s.correct_almost_touching_points(q, 0.02, true);
-            s.insert_points_from(q, 0.02);
-            let mut q = q.clone();
+            let mut q = q.round_to_3dec().correct_winding_order_cloned();
+            s.correct_almost_touching_points(&q, 0.02, true);
+            s.insert_points_from(&q, 0.02);
             q.insert_points_from(&s, 0.02);
             first_new.push(q);
         }
@@ -44,7 +45,7 @@ pub fn subtract_from_poly(
         .filter_map(|s| if s.is_zero_area() { 
             None 
         } else { 
-            Some(s) 
+            Some(s.round_to_3dec().correct_winding_order_cloned()) 
         })
         .collect();
     }
@@ -59,7 +60,7 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     log_status(&serde_json::to_string(polys).unwrap_or_default());
     use geo::BooleanOps;
     let mut first = match polys.get(0) {
-        Some(s) => vec![s.clone()],
+        Some(s) => vec![s.round_to_3dec().correct_winding_order_cloned()],
         None => return Vec::new(),
     };
     let mut other = polys.iter().skip(1).filter_map(|t| {
@@ -75,16 +76,23 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     for s in other.iter_mut() {
         let mut first_new = Vec::new();
         for q in first.iter() {
-            s.correct_almost_touching_points(q, 0.02, true);
-            s.insert_points_from(q, 0.02);
-            let mut q = q.clone();
+            let mut q = q.round_to_3dec().correct_winding_order_cloned();
+            s.correct_almost_touching_points(&q, 0.02, true);
+            s.insert_points_from(&q, 0.02);
             q.insert_points_from(&s, 0.02);
             first_new.push(q);
         }
         let a = translate_to_geo_poly_special(&first_new);
         let b = translate_to_geo_poly_special_shared(&[&s]);
         let join = a.union(&b);
-        first = translate_from_geo_poly(&join);
+        first = translate_from_geo_poly(&join)
+        .into_iter()
+        .filter_map(|s| if s.is_zero_area() { 
+            None 
+        } else { 
+            Some(s.round_to_3dec().correct_winding_order_cloned()) 
+        })
+        .collect();
     }
 
     log_status("done!");
@@ -114,6 +122,9 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
         return vec![a];
     }
 
+    a.insert_points_from(&b, 0.02);
+    b.insert_points_from(&a, 0.02);
+
     let a = translate_to_geo_poly_special(&[a]);
     let b = translate_to_geo_poly_special(&[b]);
     let intersect = a.boolean_op(&b, geo::OpType::Intersection);
@@ -121,6 +132,7 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
 
     for q in s.iter_mut() {
         q.correct_winding_order();
+        *q = q.round_to_3dec();
     }
 
     log_status("intersect polys done");
