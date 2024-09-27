@@ -104,9 +104,6 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolyg
         return Vec::new();
     }
 
-    b.correct_almost_touching_points(&a, 0.05, true);
-    a.correct_almost_touching_points(&b, 0.05, true);
-
     if a.equals(&b) {
         return vec![a];
     }
