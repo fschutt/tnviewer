@@ -163,11 +163,11 @@ pub fn get_problem_geojson() -> String {
     let poly_string2 = "";
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = &serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
-    // let subtracted = crate::ops::intersect_polys(&s1, &s2);
+    let s2 = &serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string2.trim()).unwrap_or_default();
+    let subtracted = crate::ops::subtract_from_poly(&s1, &s2.iter().collect::<Vec<_>>());
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
-    let s2 = vec![s2].iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
+    let s2 = s2.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
 
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),
