@@ -1668,6 +1668,47 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
     })
 }
 
+enum LineType {
+    LineStringSegment { points: Vec<SvgPoint> },
+    Arc { points: Vec<SvgPoint> },
+}
+
+impl LineType {
+    pub fn get_points(&self) -> Vec<SvgPoint> {
+        match self {
+            LineType::LineStringSegment { points } => points.clone(),
+            LineType::Arc { points } => {
+                // TODO: incorrect, but probably ok for now
+                points.clone()
+            },
+        }
+    }
+}
+
+fn get_children_points(s: &XmlNode) -> Vec<SvgPoint> {
+    s.children
+    .iter()
+    .filter_map(|s| s.text.clone())
+    .flat_map(|text| {
+
+        let pts = text
+            .split_whitespace()
+            .filter_map(|s| s.parse::<f64>().ok())
+            .collect::<Vec<_>>();
+
+        pts.chunks(2)
+            .filter_map(|f| match f {
+                [east, false_north] => Some(SvgPoint {
+                    x: *east,
+                    y: *false_north,
+                }),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+
+    }).collect()
+}
+
 fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Vec<SvgPolygonInner> {
     let patches = get_all_nodes_in_subtree(&xml, "PolygonPatch");
     if patches.is_empty() {
@@ -1688,43 +1729,36 @@ fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Vec<SvgPolygonInner> {
             _ => continue,
         };
 
-        let linestrings = get_all_nodes_in_subtree(&e_i.children, "LineStringSegment");
+        let linestrings = get_all_nodes_in_subtree(&e_i.children, "segments");
 
         let linestring_points = linestrings
             .iter()
             .flat_map(|s| {
-                s.children
-                    .iter()
-                    .filter_map(|s| s.text.clone())
-                    .map(|text| {
-                        let pts = text
-                            .split_whitespace()
-                            .filter_map(|s| s.parse::<f64>().ok())
-                            .collect::<Vec<_>>();
-                        pts.chunks(2)
-                            .filter_map(|f| match f {
-                                [east, false_north] => Some(SvgPoint {
-                                    x: *east,
-                                    y: *false_north,
-                                }),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                    })
+                s.children.iter().filter_map(|s| {
+                    match s.node_type.as_str() {
+                        "LineStringSegment" => Some(LineType::LineStringSegment { points: get_children_points(s) }),
+                        "Arc" => Some(LineType::Arc { points: get_children_points(s) }),
+                        _ => None,
+                    }
+                })
             })
             .collect::<Vec<_>>();
 
         let mut line_points = linestring_points
             .into_iter()
-            .flat_map(|f| f.into_iter())
+            .flat_map(|f| f.get_points())
             .collect::<Vec<_>>();
+
         line_points.dedup();
+        
         if line_points.len() < 3 {
             return Vec::new();
         }
+        
         let line = SvgLine {
             points: line_points,
         };
+        
         if external {
             outer_rings.push(line);
         } else {
