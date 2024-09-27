@@ -2045,7 +2045,7 @@
           map.setView([53.2467, 13.6045], 10);
           reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          // addProblemGeoJSON(map);
+          addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -2161,7 +2161,7 @@
         "fillColor": "#000000",
         "weight": 3.0,
         "opacity": 0.8,
-        "fillOpacity": 0.5
+        "fillOpacity": 0.1
       };
       if (L.geoJSON) {
         ml = L.geoJSON(geojson2, {
