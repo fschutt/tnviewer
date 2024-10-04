@@ -296,6 +296,7 @@ impl RissExtent {
                     &source,
                     &target,
                     UseRadians::ForSourceAndTarget,
+                    true,
                 )
             }
         });
@@ -1331,6 +1332,7 @@ pub fn reproject_rissgebiete_into_target_space(
                     &source,
                     &target,
                     UseRadians::ForSourceAndTarget,
+                    true,
                 ))
             }
         }).map(|s| SvgPolygon::Old(s));
@@ -1379,6 +1381,7 @@ pub fn reproject_aenderungen_into_target_space(
                             &latlon_proj,
                             &target_proj,
                             UseRadians::ForSourceAndTarget,
+                            true,
                         )),
                         nutzung: v.nutzung.clone(),
                         locked: v.locked,
@@ -1441,6 +1444,7 @@ pub fn reproject_poly_back_into_latlon(
         &source_proj,
         &latlon_proj,
         UseRadians::None,
+        false,
     ))
 }
 
@@ -1469,6 +1473,7 @@ pub fn reproject_aenderungen_back_into_latlon(
                             &source_proj,
                             &latlon_proj,
                             UseRadians::None,
+                            false,
                         )),
                         nutzung: v.nutzung.clone(),
                         locked: v.locked,

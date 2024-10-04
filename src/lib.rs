@@ -103,10 +103,11 @@ pub fn format_savefile(
     let risse = crate::pdf::reproject_rissgebiete_into_target_space(&risse, &target_crs.clone().unwrap_or(crate::nas::default_etrs33()));
     let csv = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
     let aenderungen =
-        serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default().migrate_new();
+        serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
     let aenderungen = target_crs.clone()
     .and_then(|s| reproject_aenderungen_into_target_space(&aenderungen, &s).ok())
-    .unwrap_or(aenderungen);
+    .unwrap_or(aenderungen)
+    .migrate_new();
     
     let savefile = SaveFile {
         crs: target_crs.clone(),

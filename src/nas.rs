@@ -2016,14 +2016,21 @@ pub fn reproject_poly(
     source_proj: &proj4rs::Proj,
     target_proj: &proj4rs::Proj,
     use_radians: UseRadians,
+    round_3dec: bool,
 ) -> SvgPolygonInner {
-    SvgPolygonInner {
+    let s = SvgPolygonInner {
         outer_ring: reproject_line(&poly.outer_ring, &source_proj, &target_proj, use_radians),
         inner_rings: poly
             .inner_rings
             .iter()
             .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
             .collect(),
+    };
+
+    if round_3dec {
+        s.round_to_3dec()
+    } else {
+        s
     }
 }
 
@@ -2046,7 +2053,13 @@ pub fn transform_nas_xml_to_lat_lon(
                 v.iter()
                     .map(|v| TaggedPolygon {
                         attributes: v.attributes.clone(),
-                        poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
+                        poly: reproject_poly(
+                            &v.poly, 
+                            &source_proj, 
+                            &latlon_proj, 
+                            UseRadians::None, 
+                            false
+                        ),
                     })
                     .collect(),
             )
