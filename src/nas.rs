@@ -1,20 +1,15 @@
 use crate::{
-    csv::CsvDataType,
-    geograf::{
+    csv::CsvDataType, david::log_aenderungen, geograf::{
         points_to_rect,
         LinienQuadTree,
-    },
-    ui::{
+    }, ui::{
         dist_to_segment,
         Aenderungen,
         AenderungenIntersection,
-    },
-    uuid_wasm::{log_status, uuid},
-    xlsx::FlstIdParsed,
-    xml::{
+    }, uuid_wasm::{log_status, log_status_clear, uuid}, xlsx::FlstIdParsed, xml::{
         get_all_nodes_in_subtree,
         XmlNode,
-    },
+    }
 };
 use chrono::DateTime;
 use float_cmp::approx_eq;
@@ -72,70 +67,74 @@ impl NasXMLFile {
             &self,
         );
 
+        log_status_clear();
+        log_status("NasXMLFile::fortfuehren");
+        log_aenderungen(&aenderungen_todo);
+        log_status("----");
+
+        let objs_to_delete = aenderungen_todo.iter().filter_map(|s| {
+            match s {
+                Delete { obj_id, .. } => Some(obj_id.clone()),
+                _ => None,
+            }
+        }).collect::<BTreeSet<_>>();
+
+        let ebenen = self.ebenen.iter().map(|(k, v)| {
+            (k.clone(), v.iter().filter_map(|q| {
+                if let Some(s) = q.attributes.get("id") {
+                    if objs_to_delete.contains(s) { None } else { Some(q) }
+                } else {
+                    Some(q)
+                }
+            }).collect::<Vec<_>>())
+        }).collect::<BTreeMap<_, _>>();
+
+        let objs_to_replace = aenderungen_todo.iter().filter_map(|s| {
+            match s {
+                Replace { obj_id, poly_neu, .. } => Some((obj_id.clone(), poly_neu)),
+                _ => None,
+            }
+        }).collect::<BTreeMap<_, _>>();
+
+        let mut ebenen = ebenen.iter().map(|(k, v)| {
+            (k.clone(), v.iter().filter_map(|q| {
+                if let Some(s) = q.attributes.get("id") {
+                    if let Some(repl) = objs_to_replace.get(s) {
+                        Some(TaggedPolygon { poly: (*repl).clone(), attributes: q.attributes.clone() })
+                    } else { 
+                        Some((*q).clone()) 
+                    }
+                } else {
+                    Some((*q).clone())
+                }
+            }).collect::<Vec<_>>())
+        }).collect::<BTreeMap<_, _>>();
+
+        for (id, a) in aenderungen_todo.iter().enumerate() {
+            match a {
+                Insert { ebene, kuerzel, poly_neu } => {
+                    let id = ("DE_001".to_string() + &format!("{id:010}"));
+                    let extra_attr = vec![
+                        ("AX_Ebene", ebene.as_str()),
+                        ("id", id.as_str()),
+                    ];
+                    let tp = TaggedPolygon {
+                        poly: poly_neu.clone(),
+                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
+                    };
+                    
+                    ebenen
+                    .entry(ebene.clone())
+                    .or_insert_with(|| Vec::new())
+                    .push(tp);
+                },
+                _ => { },
+            }
+        }
+
         Self {
             crs: self.crs.clone(),
-            ebenen: self.ebenen.iter().map(|(k, v)| {
-
-                let aenderungen_to_consider = aenderungen_todo.iter().filter_map(|s| {
-                    match s {
-                        Delete { ebene, .. } |
-                        Replace { ebene, .. } |
-                        Insert { ebene, .. } => if ebene == k { Some(s) } else { None }
-                    }
-                }).collect::<Vec<_>>();
-
-                let mut v = v.iter().flat_map(|s| {
-
-                    let target_obj_id = match s.attributes.get("id") {
-                        Some(s) => s,
-                        None => return Vec::new(),
-                    };
-
-                    let aenderungen = aenderungen_to_consider.iter().filter_map(|s| match s {
-                        Delete { obj_id, .. } |
-                        Replace { obj_id, .. }  => if obj_id == target_obj_id { Some(s) } else { None },
-                        Insert { .. } => None,
-                    }).collect::<Vec<_>>();
-
-                    if aenderungen.is_empty() {
-                        vec![s.clone()]
-                    } else {
-                        let mut target = Vec::new();
-                        for a in aenderungen {
-
-                            let extra_attr = vec![
-                                ("AX_Ebene", k.as_str()),
-                                ("id", target_obj_id.as_str()),
-                            ];
-            
-                            if let Replace { poly_neu, kuerzel, .. } = a {
-                                target.push(TaggedPolygon {
-                                    poly: poly_neu.clone(),
-                                    attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
-                                });
-                            }
-                        }
-                        target
-                    }
-                }).collect::<Vec<_>>();
-
-                v.extend(aenderungen_to_consider.iter().filter_map(|s| match s {
-                    Insert { kuerzel, poly_neu, .. } => {
-                        let uuid = uuid();
-                        let extra_attr = vec![
-                            ("AX_Ebene", k.as_str()),
-                            ("id", uuid.as_str()),
-                        ];
-                        Some(TaggedPolygon {
-                            poly: poly_neu.clone(),
-                            attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
-                        })
-                    },
-                    _ => None,
-                }));
-
-                (k.clone(), v)
-            }).collect(),
+            ebenen: ebenen
         }
     }
 

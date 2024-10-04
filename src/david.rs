@@ -756,7 +756,7 @@ pub fn merge_aenderungen_with_existing_nas(
     aenderungen_clean
 }
 
-fn log_aenderungen(aenderungen_todo: &[Operation]) {
+pub fn log_aenderungen(aenderungen_todo: &[Operation]) {
 
     for a in aenderungen_todo.iter() {
         match a {
@@ -767,7 +767,20 @@ fn log_aenderungen(aenderungen_todo: &[Operation]) {
                 poly_alt,
             } => {
                 log_status(&format!("deleting {} m2 {kuerzel} (obj {obj_id})", poly_alt.area_m2().round()));
-            }
+            },
+            Operation::Replace {
+                obj_id,
+                ebene: _,
+                kuerzel,
+                poly_alt,
+                poly_neu,
+            } => {
+                log_status(&format!(
+                    "replacing {} m2 {kuerzel} with {} m2 {kuerzel} (obj {obj_id})",
+                    poly_alt.area_m2().round(),
+                    poly_neu.area_m2().round()
+                ));
+            },
             Operation::Insert {
                 ebene: _,
                 kuerzel,
@@ -775,19 +788,6 @@ fn log_aenderungen(aenderungen_todo: &[Operation]) {
             } => {
                 log_status(&format!(
                     "inserting {} m2 {kuerzel}",
-                    poly_neu.area_m2().round()
-                ));
-            }
-            Operation::Replace {
-                obj_id: _,
-                ebene: _,
-                kuerzel,
-                poly_alt,
-                poly_neu,
-            } => {
-                log_status(&format!(
-                    "replacing {} m2 {kuerzel} with {} m2 {kuerzel}",
-                    poly_alt.area_m2().round(),
                     poly_neu.area_m2().round()
                 ));
             }
