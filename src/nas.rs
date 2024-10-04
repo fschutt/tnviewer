@@ -76,10 +76,6 @@ impl NasXMLFile {
             crs: self.crs.clone(),
             ebenen: self.ebenen.iter().map(|(k, v)| {
 
-                let extra_attr = vec![
-                    ("AX_Ebene", k.as_str()),
-                ];
-
                 let aenderungen_to_consider = aenderungen_todo.iter().filter_map(|s| {
                     match s {
                         Delete { ebene, .. } |
@@ -106,25 +102,37 @@ impl NasXMLFile {
                     } else {
                         let mut target = Vec::new();
                         for a in aenderungen {
-                            match a {
-                                Delete { .. } => { },
-                                Replace { poly_neu, kuerzel, .. } => {
-                                    target.push(TaggedPolygon {
-                                        poly: poly_neu.clone(),
-                                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
-                                    });
-                                },
-                                Insert { kuerzel, poly_neu, .. } => {
-                                    target.push(TaggedPolygon {
-                                        poly: poly_neu.clone(),
-                                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
-                                    }); 
-                                },
+
+                            let extra_attr = vec![
+                                ("AX_Ebene", k.as_str()),
+                                ("id", target_obj_id.as_str()),
+                            ];
+            
+                            if let Replace { poly_neu, kuerzel, .. } = a {
+                                target.push(TaggedPolygon {
+                                    poly: poly_neu.clone(),
+                                    attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
+                                });
                             }
                         }
                         target
                     }
                 }).collect::<Vec<_>>();
+
+                v.extend(aenderungen_to_consider.iter().filter_map(|s| match s {
+                    Insert { kuerzel, poly_neu, .. } => {
+                        let uuid = uuid();
+                        let extra_attr = vec![
+                            ("AX_Ebene", k.as_str()),
+                            ("id", uuid.as_str()),
+                        ];
+                        Some(TaggedPolygon {
+                            poly: poly_neu.clone(),
+                            attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
+                        })
+                    },
+                    _ => None,
+                }));
 
                 (k.clone(), v)
             }).collect(),
