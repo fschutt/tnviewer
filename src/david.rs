@@ -200,8 +200,8 @@ pub fn get_aenderungen_internal(
     aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
 
     // merge aenderungen same type
-    // aenderungen.clean_stage25();
-    // aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
+    aenderungen.clean_stage25();
+    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
     
     let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
         |(k, polyneu)| {
@@ -285,9 +285,10 @@ pub fn get_aenderungen_internal(
     log_status("---- 2 ---- reverse_map end");
 
     let mut aenderungen_todo = Vec::new();
+    let mut all_polys_to_subtract = BTreeMap::new();
 
     // depending on neu_ebene, either join (if ebene is same) or subtract (if ebene is different)
-    for ((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aenderungen)) in reverse_map.iter() {
+    for ((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aen)) in reverse_map.iter() {
         
         let aenderungen_joined = aenderungen_todo
             .iter()
@@ -299,7 +300,7 @@ pub fn get_aenderungen_internal(
             })
             .collect::<BTreeSet<_>>();
 
-        let polys_to_add = aenderungen
+        let polys_to_add = aen
             .iter()
             .filter_map(|a| {
                 let relate = nas::relate(&a.poly.poly, &tp.poly, 0.02);
@@ -335,25 +336,26 @@ pub fn get_aenderungen_internal(
             .iter()
             .map(|jp| {
 
-                let polys_to_subtract = reverse_map
+                let polys_to_subtract = aenderungen.na_polygone_neu
                     .iter()
-                    .flat_map(|(_, a)| {
-                        a.1.iter().filter_map(|s| {
-                            if s.neu_kuerzel != *alt_kuerzel {
-                                Some(s)
-                            } else {
-                                None
-                            }
-                        }).collect::<Vec<_>>()
+                    .filter_map(|(_, a)| {
+                        if a.nutzung.is_some() && a.nutzung != Some(alt_kuerzel.clone()) {
+                            Some(a)
+                        } else {
+                            None
+                        }
                     })
                     .filter_map(|a| {
-                        let relate = nas::relate(&a.poly.poly, &jp, 0.02);
+
+                        if a.poly.get_inner().get_hash() == jp.get_hash() {
+                            return None;
+                        }
+
+                        let relate = nas::relate(&a.poly.get_inner(), &jp, 0.02);
                         if relate.touches_other_poly_outside() 
                            || relate.overlaps()
                            || relate.a_contained_in_b() 
-                           || relate.b_contained_in_a() 
-                           || a.poly.get_de_id() == Some(alt_obj_id.clone()) 
-                           || a.poly.poly.get_hash() == jp.get_hash() {
+                           || relate.b_contained_in_a() {
                             Some(a)
                         } else {
                             None
@@ -363,8 +365,11 @@ pub fn get_aenderungen_internal(
 
                 let p_subtract = polys_to_subtract
                     .iter()
-                    .map(|p| &p.poly.poly)
+                    .map(|p| p.poly.get_inner())
                     .collect::<Vec<_>>();
+
+                let p_subtract = p_subtract.iter().collect::<Vec<_>>();
+
                 let subtracted = subtract_from_poly(&tp.poly, &p_subtract);
 
                 (jp, subtracted, polys_to_subtract)
@@ -384,11 +389,10 @@ pub fn get_aenderungen_internal(
                     poly_alt: (*jp).clone(),
                 });
                 for a in polys_to_subtract.iter() {
-                    aenderungen_todo.push(Operation::Insert {
-                        ebene: a.neu_ebene.clone(),
-                        kuerzel: a.neu_kuerzel.clone(),
-                        poly_neu: a.poly.poly.correct_winding_order_cloned(),
-                    });
+                    all_polys_to_subtract
+                    .entry(alt_obj_id.clone())
+                    .or_insert_with(|| (alt_ebene, alt_kuerzel, (*jp).clone(), Vec::new()))
+                    .3.push(((*a).clone()));
                 }
             } else if subtracted_area.round() < jp_area_m2.round() {
                 // original polygon did change, area is now less but not zero: modify obj to be now
@@ -409,19 +413,21 @@ pub fn get_aenderungen_internal(
                         poly_alt: tp.poly.clone(),
                     });
                     for s in subtracted.iter() {
-                        aenderungen_todo.push(Operation::Insert { 
-                            ebene: alt_ebene.clone(),
-                            kuerzel: alt_kuerzel.clone(),
-                            poly_neu: s.correct_winding_order_cloned(),
-                        });
+                        all_polys_to_subtract
+                        .entry(alt_obj_id.clone())
+                        .or_insert_with(|| (alt_ebene, alt_kuerzel, tp.poly.clone(), Vec::new()))
+                        .3.push((PolyNeu {
+                            nutzung: Some(alt_kuerzel.clone()),
+                            locked: true,
+                            poly: SvgPolygon::Old(s.correct_winding_order_cloned()),
+                        }));
                     }
                 }
                 for s in polys_to_subtract.iter() {
-                    aenderungen_todo.push(Operation::Insert { 
-                        ebene: s.neu_ebene.clone(),
-                        kuerzel: s.neu_kuerzel.clone(),
-                        poly_neu: s.poly.poly.correct_winding_order_cloned(),
-                    });
+                    all_polys_to_subtract
+                    .entry(alt_obj_id.clone())
+                    .or_insert_with(|| (alt_ebene, alt_kuerzel, (*jp).clone(), Vec::new()))
+                    .3.push(((*s).clone()));
                 }
             } else {
                 // original polygon did not change: subtractions were likely outside / touching
@@ -455,15 +461,38 @@ pub fn get_aenderungen_internal(
             });
 
             for p in polys_final {
-                aenderungen_todo.push(Operation::Insert {
-                    ebene: alt_ebene.clone(),
-                    kuerzel: alt_kuerzel.clone(),
-                    poly_neu: p.correct_winding_order_cloned(),
-                });
+                all_polys_to_subtract
+                .entry(alt_obj_id.clone())
+                .or_insert_with(|| (alt_ebene, alt_kuerzel, tp.poly.clone(), Vec::new()))
+                .3.push((PolyNeu {
+                    nutzung: Some(alt_kuerzel.clone()),
+                    locked: true,
+                    poly: SvgPolygon::Old(p.correct_winding_order_cloned()),
+                }));
             }
+        }
+
+    }
+
+    let mut all_inserts = BTreeMap::new();
+
+    for v in all_polys_to_subtract.values() {
+        for q in v.3.iter() {
+            let kuerzel = match q.nutzung.clone() {
+                Some(s) => s,
+                None => continue,
+            };
+            let ebene = match TaggedPolygon::get_auto_ebene(&kuerzel) {
+                Some(s) => s,
+                None => continue,
+            };
+            let inner = q.poly.get_inner();
+            let hash = inner.get_hash();
+            all_inserts.insert(hash, Operation::Insert { ebene, kuerzel, poly_neu: inner });
         }
     }
 
+    aenderungen_todo.extend(all_inserts.into_values());
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
 
