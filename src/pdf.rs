@@ -505,9 +505,27 @@ impl RissConfig {
         let rg = self
             .rissgebiet
             .as_ref()
-            .and_then(|s| Some(SvgPolygon::Old(reproject_poly_back_into_latlon(&s.get_inner(), source_proj).ok()?)));
+            .and_then(|s| Some(SvgPolygon::Old({
+                let poly_needs_reprojection = s.get_inner().outer_ring.points.iter().any(|s| s.x > 1000.0 || s.y > 1000.0);
+                if poly_needs_reprojection {
+                    reproject_poly_back_into_latlon(&s.get_inner(), source_proj).ok()?
+                } else {
+                    s.get_inner()
+                }
+            })));
+
+        let orig = SvgPoint { x: self.lon, y: self.lat };
+        let latlon = if self.lat > 1000.0 {
+            reproject_point_back_into_latlon(&orig, source_proj).ok().unwrap_or(orig)
+        } else {
+            orig
+        };
+        let lat = latlon.y;
+        let lon = latlon.x;
         Self {
             rissgebiet: rg,
+            lat,
+            lon,
             ..self.clone()
         }
     }

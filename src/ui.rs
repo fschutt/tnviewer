@@ -1259,7 +1259,14 @@ impl Aenderungen {
                         id.clone(),
                         PolyNeu {
                             locked: n.locked,
-                            poly: SvgPolygon::Old(reproject_poly_back_into_latlon(&n.poly.get_inner(), source_proj).ok()?),
+                            poly: SvgPolygon::Old({
+                                let poly_needs_reprojection = n.poly.get_inner().outer_ring.points.iter().any(|s| s.x > 1000.0 || s.y > 1000.0);
+                                if poly_needs_reprojection {
+                                    reproject_poly_back_into_latlon(&n.poly.get_inner(), source_proj).ok()?
+                                } else {
+                                    n.poly.get_inner()
+                                }
+                            }),
                             nutzung: n.nutzung.clone(),
                         },
                     ))
