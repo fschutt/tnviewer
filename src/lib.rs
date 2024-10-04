@@ -3,14 +3,7 @@ use crate::{
     ui::UiData,
 };
 use nas::{
-    parse_nas_xml,
-    NasXMLFile,
-    NasXmlObjects,
-    SplitNasXml,
-    SvgPoint,
-    SvgPolygon,
-    SvgPolygonInner,
-    TaggedPolygon,
+    default_etrs33, parse_nas_xml, NasXMLFile, NasXmlObjects, SplitNasXml, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
 };
 use pdf::{
     reproject_aenderungen_back_into_latlon,
@@ -68,6 +61,8 @@ pub fn get_new_poly_id() -> String {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SaveFile {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    crs: Option<String>,
     info: ProjektInfo,
     risse: Risse,
     csv: CsvDataType,
@@ -80,15 +75,17 @@ pub fn lib_parse_savefile(savefile: String) -> String {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
+    let source_crs = sf.crs.clone().unwrap_or(default_etrs33());
     serde_json::to_string(&SaveFile {
+        crs: sf.crs.clone(),
         info: sf.info,
         csv: sf.csv.clone(),
         risse: sf
             .risse
             .iter()
-            .map(|(k, v)| (k.clone(), v.migrate_old()))
+            .map(|(k, v)| (k.clone(), v.migrate_old(&source_crs)))
             .collect(),
-        aenderungen: sf.aenderungen.migrate_old(),
+        aenderungen: sf.aenderungen.migrate_old(&source_crs),
     })
     .unwrap_or_default()
 }
@@ -99,21 +96,27 @@ pub fn format_savefile(
     risse: Option<String>,
     csv: Option<String>,
     aenderungen: Option<String>,
+    target_crs: Option<String>,
 ) -> String {
     let info = serde_json::from_str::<ProjektInfo>(info.as_str()).unwrap_or_default();
     let risse = serde_json::from_str::<Risse>(&risse.unwrap_or_default()).unwrap_or_default();
+    let risse = crate::pdf::reproject_rissgebiete_into_target_space(&risse, &target_crs.clone().unwrap_or(crate::nas::default_etrs33()));
     let csv = serde_json::from_str::<CsvDataType>(&csv.unwrap_or_default()).unwrap_or_default();
     let aenderungen =
-        serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
-
+        serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default().migrate_new();
+    let aenderungen = target_crs.clone()
+    .and_then(|s| reproject_aenderungen_into_target_space(&aenderungen, &s).ok())
+    .unwrap_or(aenderungen);
+    
     let savefile = SaveFile {
+        crs: target_crs.clone(),
         info,
         risse: risse
             .iter()
             .map(|(k, v)| (k.clone(), v.migrate_new()))
             .collect(),
         csv: csv.migrate_new(),
-        aenderungen: aenderungen.migrate_new(),
+        aenderungen: aenderungen,
     };
 
     serde_json::to_string_pretty(&savefile).unwrap_or_default()
@@ -276,6 +279,7 @@ pub async fn export_pdf_overview(
     konfiguration: Option<String>,
     nas_original: Option<String>,
     split_nas_xml: Option<String>,
+    aenderungen: Option<String>,
     csv: Option<String>,
     use_dgm: bool,
     use_background: bool,
@@ -314,10 +318,13 @@ pub async fn export_pdf_overview(
             CsvDataType::default()
         }
     };
+    let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
+    let aenderungen = reproject_aenderungen_back_into_latlon(&aenderungen, &split_nas_xml.crs).unwrap_or_default();
+    let nas_migrated = nas_original.fortfuehren(&aenderungen, &split_nas_xml);
     log_status("ok overview exporting...");
     crate::pdf::export_overview(
         &konfiguration,
-        &nas_original,
+        &nas_migrated,
         &split_nas_xml,
         &csv_data,
         use_dgm,

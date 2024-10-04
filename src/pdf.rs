@@ -286,12 +286,18 @@ impl RissExtent {
         let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
         let target = proj4rs::Proj::from_proj_string(&target_crs).ok()?;
         let rissgebiet = self.rissgebiet.as_ref().map(|s| {
-            reproject_poly(
-                &s.get_inner(),
-                &source,
-                &target,
-                UseRadians::ForSourceAndTarget,
-            )
+            let i = s.get_inner();
+            let already_reprojected = i.outer_ring.points.iter().any(|s| s.x > 1000.0 || s.y > 1000.0);
+            if already_reprojected {
+                i.clone()
+            } else {
+                reproject_poly(
+                    &s.get_inner(),
+                    &source,
+                    &target,
+                    UseRadians::ForSourceAndTarget,
+                )
+            }
         });
 
         proj4rs::transform::transform(&source, &target, coords.as_mut_slice()).ok()?;
@@ -495,11 +501,11 @@ impl RissConfig {
             ..self.clone()
         }
     }
-    pub fn migrate_old(&self) -> Self {
+    pub fn migrate_old(&self, source_proj: &str) -> Self {
         let rg = self
             .rissgebiet
             .as_ref()
-            .map(|s| SvgPolygon::Old(s.get_inner()));
+            .and_then(|s| Some(SvgPolygon::Old(reproject_poly_back_into_latlon(&s.get_inner(), source_proj).ok()?)));
         Self {
             rissgebiet: rg,
             ..self.clone()
@@ -525,14 +531,21 @@ impl RissConfig {
         let total_map_meter_vert = height * (self.scale as f64 / 1000.0);
         let total_map_meter_horz = width * (self.scale as f64 / 1000.0);
 
-        let utm_result = reproject_point_into_latlon(
-            &SvgPoint {
+        let utm_result = if self.lon > 1000.0 || self.lat > 1000.0 {
+            SvgPoint {
                 x: self.lon,
                 y: self.lat,
-            },
-            utm_crs,
-        )
-        .ok()?;
+            }
+        } else {
+                reproject_point_into_latlon(
+                &SvgPoint {
+                    x: self.lon,
+                    y: self.lat,
+                },
+                utm_crs,
+            )
+            .ok()?
+        };
 
         let north_utm = utm_result.y + (total_map_meter_vert / 2.0);
         let south_utm = utm_result.y - (total_map_meter_vert / 2.0);
@@ -1262,10 +1275,71 @@ pub fn generate_pdf_internal(
     doc.save_to_bytes().unwrap_or_default()
 }
 
+pub fn reproject_rissgebiete_into_target_space(
+    risse: &Risse,
+    target_proj: &str,
+) -> Risse {
+
+    risse.iter().filter_map(|(k, v)| {
+
+        let utm_result = if v.lon > 1000.0 || v.lat > 1000.0 {
+            SvgPoint {
+                x: v.lon,
+                y: v.lat,
+            }
+        } else {
+                reproject_point_into_latlon(
+                &SvgPoint {
+                    x: v.lon,
+                    y: v.lat,
+                },
+                target_proj,
+            )
+            .ok()?
+        };
+
+        let rissgebiet = v.rissgebiet.as_ref().and_then(|s| {
+
+            let source = proj4rs::Proj::from_proj_string(LATLON_STRING).ok()?;
+            let target = proj4rs::Proj::from_proj_string(target_proj).ok()?;
+
+            let i = s.get_inner();
+            let already_reprojected = i.outer_ring.points.iter().any(|s| s.x > 1000.0 || s.y > 1000.0);
+            if already_reprojected {
+                Some(i.clone())
+            } else {
+                Some(reproject_poly(
+                    &s.get_inner(),
+                    &source,
+                    &target,
+                    UseRadians::ForSourceAndTarget,
+                ))
+            }
+        }).map(|s| SvgPolygon::Old(s));
+
+        Some((k.clone(), RissConfig {
+            lat: utm_result.y,
+            lon: utm_result.x,
+            crs: target_proj.to_string(),
+            width_mm: v.width_mm,
+            height_mm: v.height_mm,
+            scale: v.scale,
+            rissgebiet,
+        }))
+    }).collect()
+}
+
 pub fn reproject_aenderungen_into_target_space(
     aenderungen: &Aenderungen,
     target_proj: &str,
 ) -> Result<Aenderungen, String> {
+
+    let already_reprojected = aenderungen.na_polygone_neu.iter().any(|s| s.1.poly.get_inner().outer_ring.points.iter().any(|s| s.x > 1000.0 || s.y > 1000.0));
+    
+    if already_reprojected {
+        return Ok(aenderungen.clone());
+    }
+    
     let target_proj = proj4rs::Proj::from_proj_string(&target_proj)
         .map_err(|e| format!("source_proj_string: {e}: {:?}", target_proj))?;
 

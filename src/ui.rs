@@ -5,9 +5,7 @@ use crate::{
     }, geograf::points_to_rect, nas::{
         self, line_contained_in_line, translate_to_geo_poly_special_shared, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     }, ops::{intersect_polys, join_polys, subtract_from_poly}, pdf::{
-        Konfiguration,
-        ProjektInfo,
-        Risse,
+        reproject_poly_back_into_latlon, Konfiguration, ProjektInfo, Risse
     }, uuid_wasm::{
         log_status,
         uuid,
@@ -671,8 +669,8 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
     static ICON_INFO: &[u8] = include_bytes!("./img/icons8-info-94.png");
     let icon_info_base64 = base64_encode(ICON_INFO);
 
-    static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-94.png");
-    let icon_pdf_base64 = base64_encode(ICON_PDF);
+    // static ICON_PDF: &[u8] = include_bytes!("./img/icons8-pdf-94.png");
+    // let icon_pdf_base64 = base64_encode(ICON_PDF);
 
     static ICON_GRUNDBUCH_OEFFNEN: &[u8] = include_bytes!("./img/icons8-opened-folder-94.png");
     let icon_open_base64 = base64_encode(ICON_GRUNDBUCH_OEFFNEN);
@@ -1249,22 +1247,22 @@ impl Aenderungen {
                 .collect(),
         }
     }
-    pub fn migrate_old(&self) -> Self {
+    pub fn migrate_old(&self, source_proj: &str) -> Self {
         Self {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
             na_definiert: self.na_definiert.clone(),
             na_polygone_neu: self
                 .na_polygone_neu
                 .iter()
-                .map(|(id, n)| {
-                    (
+                .filter_map(|(id, n)| {
+                    Some((
                         id.clone(),
                         PolyNeu {
                             locked: n.locked,
-                            poly: SvgPolygon::Old(n.poly.get_inner()),
+                            poly: SvgPolygon::Old(reproject_poly_back_into_latlon(&n.poly.get_inner(), source_proj).ok()?),
                             nutzung: n.nutzung.clone(),
                         },
-                    )
+                    ))
                 })
                 .collect(),
         }

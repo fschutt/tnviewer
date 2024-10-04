@@ -133,7 +133,7 @@ pub fn aenderungen_zu_fa_xml(
     }}).collect::<Vec<_>>();
 
     for (id, a) in aenderungen_todo.iter().enumerate() {
-        if let Operation::Insert { ebene, kuerzel, poly_neu } = a {
+        if let Operation::Insert { kuerzel, poly_neu, .. } = a {
             if let Some(symbol) = Signatur::from_kuerzel(
                 kuerzel, 
                 &("DE_001".to_string() + &format!("{id:010}")),
@@ -169,14 +169,13 @@ pub fn aenderungen_zu_nas_xml(
     split_nas: &SplitNasXml,
     objects: &NasXmlObjects,
 ) -> String {
-
     log_status_clear();
-    let a_internal = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
-    // process operations in NAS file
+    // let new_nas = nas_xml.fortfuehren(aenderungen, split_nas);
+    // new_nas.to_xml(&nas_xml, &objects);
     format!("TODO!")
 }
 
-fn get_aenderungen_internal(
+pub fn get_aenderungen_internal(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
@@ -190,7 +189,7 @@ fn get_aenderungen_internal(
         .na_definiert
         .iter()
         .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
-        .filter_map(|(k, obj_id, v)| {
+        .filter_map(|(k, _obj_id, v)| {
 
             let neu_kuerzel = v.to_string();
             let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
@@ -681,7 +680,7 @@ impl Signatur {
     }
 }
 
-fn merge_aenderungen_with_existing_nas(
+pub fn merge_aenderungen_with_existing_nas(
     aenderungen_todo: &[Operation],
     nas_xml: &NasXMLFile
 ) -> Vec<Operation> {

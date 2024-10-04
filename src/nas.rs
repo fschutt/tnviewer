@@ -61,6 +61,67 @@ impl Default for NasXMLFile {
 }
 
 impl NasXMLFile {
+    pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml) -> Self {
+
+        use crate::david::Operation::*;
+
+        let aenderungen_todo = crate::david::get_aenderungen_internal(aenderungen, &self, split_nas);
+        
+        let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
+            &aenderungen_todo,
+            &self,
+        );
+
+        Self {
+            crs: self.crs.clone(),
+            ebenen: self.ebenen.iter().map(|(k, v)| {
+
+                let extra_attr = vec![
+                    ("AX_Ebene", k.as_str()),
+                ];
+
+                let aenderungen_to_consider = aenderungen_todo.iter().filter_map(|s| {
+                    match s {
+                        Delete { ebene, .. } |
+                        Replace { ebene, .. } |
+                        Insert { ebene, .. } => if ebene == k { Some(s) } else { None }
+                    }
+                }).collect::<Vec<_>>();
+
+                let mut v = v.iter().filter_map(|s| {
+
+                    let target_obj_id = s.attributes.get("id")?;
+                    let aenderung = aenderungen_to_consider.iter().find_map(|s| match s {
+                        Delete { obj_id, .. } |
+                        Replace { obj_id, .. }  => if obj_id == target_obj_id { Some(s) } else { None },
+                        Insert { .. } => None,
+                    });
+
+                    match aenderung {
+                        Some(Delete { .. }) => None,
+                        Some(Replace { poly_neu, .. }) => {
+                            Some(TaggedPolygon { poly: poly_neu.clone(), attributes: s.attributes.clone() })
+                        }
+                        _ => Some(s.clone()),
+                    }
+                }).collect::<Vec<_>>();
+
+                v.extend(aenderungen_to_consider.iter().filter_map(|s| match s {
+                    Delete { .. } |
+                    Replace { .. }  => None,
+                    Insert { poly_neu, kuerzel, .. } => {
+                        Some(TaggedPolygon {
+                            poly: poly_neu.clone(),
+                            attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
+                        })
+                    }
+                }));
+
+                (k.clone(), v)
+            }).collect(),
+        }
+    }
+
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
         let default = Vec::new();
         let mut alle_linie_split_flurstuecke = self
@@ -2075,7 +2136,7 @@ impl Default for SplitNasXml {
     }
 }
 
-fn default_etrs33() -> String {
+pub fn default_etrs33() -> String {
     "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33".to_string()
 }
 

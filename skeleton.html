@@ -1942,6 +1942,13 @@
       if (!window.csv_data || window.csv_data == null) {
         window.csv_data = {};
       }
+      var target_crs = null;
+      if (window.nas_cut_original) {
+        target_crs = window.nas_cut_original.crs;
+      }
+      if (window.split_flurstuecke_original) {
+        target_crs = window.split_flurstuecke_original.crs;
+      }
       var s = {
         info: window.info,
         risse: window.risse,
@@ -1955,6 +1962,7 @@
           JSON.stringify(window.risse),
           JSON.stringify(window.csv_data),
           JSON.stringify(window.aenderungen),
+          target_crs,
         );
       } catch (error) {
         b = JSON.stringify(s, null, 4);        
