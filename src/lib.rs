@@ -1091,25 +1091,32 @@ pub fn load_nas_xml(s: String, style: String) -> String {
     let mut log = Vec::new();
     log_status(&format!("parsing XML: types = {t:?}"));
 
-    let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
-        Ok(o) => o,
-        Err(e) => {
-            return serde_json::to_string(&NasParseError {
-                error: format!("XML parse error: {e:?}"),
-                log: log,
-            })
-            .unwrap_or_default()
+    let (xml_parsed, xml_objects, nas_original) = match serde_json::from_str::<NasXMLFile>(&s) {
+        Ok(o) => (Vec::new(), NasXmlObjects::default(), o),
+        Err(_) => {
+            let xml_parsed = match crate::xml::parse_xml_string(&s, &mut log) {
+                Ok(o) => o,
+                Err(e) => {
+                    return serde_json::to_string(&NasParseError {
+                        error: format!("XML parse error: {e:?}"),
+                        log: log,
+                    })
+                    .unwrap_or_default()
+                }
+            };
+            log_status("xml parsed");
+            let xml_objects = crate::nas::parse_nas_xml_objects(&xml_parsed);
+            log_status("xml objects parsed");
+            let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t) {
+                Ok(o) => o,
+                Err(e) => {
+                    return serde_json::to_string(&NasParseError { error: e, log: log }).unwrap_or_default()
+                }
+            };
+            (xml_parsed, xml_objects, nas_original)
         }
     };
-    log_status("xml parsed");
-    let xml_objects = crate::nas::parse_nas_xml_objects(&xml_parsed);
-    log_status("xml objects parsed");
-    let nas_original = match crate::nas::parse_nas_xml(xml_parsed.clone(), &t) {
-        Ok(o) => o,
-        Err(e) => {
-            return serde_json::to_string(&NasParseError { error: e, log: log }).unwrap_or_default()
-        }
-    };
+
     log_status("nas original ok");
     let nas_cut_original = match crate::nas::split_xml_flurstuecke_inner(&nas_original, &mut log) {
         Ok(o) => o,

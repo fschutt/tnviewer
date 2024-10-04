@@ -169,10 +169,9 @@ pub fn aenderungen_zu_nas_xml(
     split_nas: &SplitNasXml,
     objects: &NasXmlObjects,
 ) -> String {
-    log_status_clear();
-    // let new_nas = nas_xml.fortfuehren(aenderungen, split_nas);
+    let new_nas = nas_xml.fortfuehren(aenderungen, split_nas);
+    serde_json::to_string_pretty(&new_nas).unwrap_or_default()
     // new_nas.to_xml(&nas_xml, &objects);
-    format!("TODO!")
 }
 
 pub fn get_aenderungen_internal(
