@@ -322,11 +322,17 @@ pub async fn export_pdf_overview(
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
     let aenderungen = reproject_aenderungen_back_into_latlon(&aenderungen, &split_nas_xml.crs).unwrap_or_default();
     let nas_migrated = nas_original.fortfuehren(&aenderungen, &split_nas_xml);
+    let split_nas = if aenderungen != Aenderungen::default() {
+        crate::nas::split_xml_flurstuecke_inner(&nas_migrated, &mut Vec::new()).unwrap_or(split_nas_xml)
+    } else {
+        split_nas_xml
+    };
+
     log_status("ok overview exporting...");
     crate::pdf::export_overview(
         &konfiguration,
         &nas_migrated,
-        &split_nas_xml,
+        &split_nas,
         &csv_data,
         use_dgm,
         use_background,
