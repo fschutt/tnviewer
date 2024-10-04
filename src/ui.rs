@@ -1067,6 +1067,18 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     </div>
                 </label>
             </div>
+
+            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(8)' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>Änderungen</p>
+                        <p>zu DAVID</p>
+                    </div>
+                </label>
+            </div>
         ")
     };
 
@@ -3194,6 +3206,35 @@ impl Aenderungen {
             gebaeude_loeschen: s.gebaeude_loeschen.clone(),
             na_definiert: s.na_definiert.clone(),
             na_polygone_neu: unlocked_neu,
+        }
+    }
+
+    pub fn zu_david(&self, nas_xml: &NasXMLFile, split_nas: &SplitNasXml) -> Aenderungen {
+
+        use crate::david::Operation::*;
+
+        let aenderungen_todo = crate::david::get_aenderungen_internal(self, nas_xml, split_nas);
+        
+        let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
+            &aenderungen_todo,
+            &nas_xml,
+        );
+
+        Aenderungen {
+            gebaeude_loeschen: self.gebaeude_loeschen.clone(),
+            na_definiert: self.na_definiert.clone(),
+            na_polygone_neu: aenderungen_todo.iter().enumerate().map(|(id, s)| {
+                let (name, nutzung, poly) = match s {
+                    Insert { poly_neu, kuerzel, .. } => (format!("{id}: INSERT {kuerzel}"), kuerzel.clone(), poly_neu.clone()),
+                    Replace { kuerzel, poly_neu, .. } => (format!("{id}: REPLACE {kuerzel}"), kuerzel.clone(), poly_neu.clone()),
+                    Delete { kuerzel, poly_alt, .. } => (format!("{id}: DELETE {kuerzel}"), kuerzel.clone(), poly_alt.clone()),
+                };
+                (name, PolyNeu {
+                    poly: SvgPolygon::Old(poly),
+                    nutzung: Some(nutzung),
+                    locked: true,
+                })
+            }).collect()
         }
     }
 

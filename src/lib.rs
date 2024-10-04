@@ -614,6 +614,7 @@ pub fn lib_get_aenderungen_clean(
             ),
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &csv_data),
+        "8" => aenderungen.zu_david(&nas_original, &split_nas_xml),
         _ => return format!("wrong id {id}"),
     };
 
