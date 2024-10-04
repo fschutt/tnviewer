@@ -1,12 +1,12 @@
 use crate::{
     nas::{
-        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPoint, SvgPolygonInner, TaggedPolygon
+        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     },
     ops::{
         join_polys,
         subtract_from_poly,
     },
-    ui::Aenderungen,
+    ui::{Aenderungen, PolyNeu},
     uuid_wasm::{
         log_status, log_status_clear, uuid
     },
@@ -184,43 +184,27 @@ pub fn get_aenderungen_internal(
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
 
     let qt = nas_xml.create_quadtree();
-        
-    let mut ids_to_change_nutzungen = aenderungen
-        .na_definiert
-        .iter()
-        .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
-        .filter_map(|(k, _obj_id, v)| {
-
-            let neu_kuerzel = v.to_string();
-            let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
-
-            let overlapping_objekte = qt.get_overlapping_ebenen(&k.poly, &alle_ebenen);
-            let mut map = BTreeMap::new();
-            for (k, v) in overlapping_objekte {
-                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2().round(), v.get_auto_kuerzel().unwrap_or_default()));
-                map.entry(k).or_insert_with(|| Vec::new()).push(v);
-            }
-
-            log_status(&format!("1: inserting {} m2 {neu_kuerzel}", k.poly.area_m2().round()));
-            let extra_attr = vec![
-                ("AX_Ebene", neu_ebene.as_str()),
-            ];
-            Some((
-                uuid(),
-                TempOverlapObject {
-                    neu_ebene: neu_ebene.clone(),
-                    neu_kuerzel: neu_kuerzel.clone(),
-                    poly: TaggedPolygon {
-                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&neu_kuerzel, &extra_attr),
-                        poly: k.poly.clone(),
-                    },
-                    overlaps_objekte: map,
-                },
-            ))
+    
+    let mut aenderungen = aenderungen.clone();
+    let neu_objekte = aenderungen.na_definiert
+    .iter()
+    .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
+    .map(|(k, _obj_id, v)| {
+        (uuid(), PolyNeu {
+            poly: SvgPolygon::Old(k.poly.clone()),
+            nutzung: Some(v.to_string()),
+            locked: true,
         })
-        .collect::<BTreeMap<_, _>>();
+    })
+    .collect::<BTreeMap<_, _>>();
 
-    ids_to_change_nutzungen.extend(aenderungen.na_polygone_neu.iter().filter_map(
+    aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
+
+    // merge aenderungen same type
+    aenderungen.clean_stage25();
+    aenderungen.clean_stage5(split_nas, &mut Vec::new());
+    
+    let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
         |(k, polyneu)| {
             let neu_kuerzel = polyneu.nutzung.clone()?;
             let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
@@ -248,7 +232,7 @@ pub fn get_aenderungen_internal(
                 },
             ))
         },
-    ));
+    ).collect::<BTreeMap<_, _>>();
 
     log_status("---- 1 ---- start");
     for (k, v) in ids_to_change_nutzungen.iter() {

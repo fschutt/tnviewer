@@ -88,34 +88,43 @@ impl NasXMLFile {
                     }
                 }).collect::<Vec<_>>();
 
-                let mut v = v.iter().filter_map(|s| {
+                let mut v = v.iter().flat_map(|s| {
 
-                    let target_obj_id = s.attributes.get("id")?;
-                    let aenderung = aenderungen_to_consider.iter().find_map(|s| match s {
+                    let target_obj_id = match s.attributes.get("id") {
+                        Some(s) => s,
+                        None => return Vec::new(),
+                    };
+
+                    let aenderungen = aenderungen_to_consider.iter().filter_map(|s| match s {
                         Delete { obj_id, .. } |
                         Replace { obj_id, .. }  => if obj_id == target_obj_id { Some(s) } else { None },
                         Insert { .. } => None,
-                    });
+                    }).collect::<Vec<_>>();
 
-                    match aenderung {
-                        Some(Delete { .. }) => None,
-                        Some(Replace { poly_neu, .. }) => {
-                            Some(TaggedPolygon { poly: poly_neu.clone(), attributes: s.attributes.clone() })
+                    if aenderungen.is_empty() {
+                        vec![s.clone()]
+                    } else {
+                        let mut target = Vec::new();
+                        for a in aenderungen {
+                            match a {
+                                Delete { .. } => { },
+                                Replace { poly_neu, kuerzel, .. } => {
+                                    target.push(TaggedPolygon {
+                                        poly: poly_neu.clone(),
+                                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
+                                    });
+                                },
+                                Insert { kuerzel, poly_neu, .. } => {
+                                    target.push(TaggedPolygon {
+                                        poly: poly_neu.clone(),
+                                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
+                                    }); 
+                                },
+                            }
                         }
-                        _ => Some(s.clone()),
+                        target
                     }
                 }).collect::<Vec<_>>();
-
-                v.extend(aenderungen_to_consider.iter().filter_map(|s| match s {
-                    Delete { .. } |
-                    Replace { .. }  => None,
-                    Insert { poly_neu, kuerzel, .. } => {
-                        Some(TaggedPolygon {
-                            poly: poly_neu.clone(),
-                            attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr)
-                        })
-                    }
-                }));
 
                 (k.clone(), v)
             }).collect(),
@@ -2635,7 +2644,7 @@ pub fn cleanup_poly(s: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
     recombine_polys(&outer_rings, &inner_rings)
 }
 
-fn recombine_polys(outer_rings: &[SvgLine], inner_rings: &[SvgLine]) -> Vec<SvgPolygonInner> {  
+pub fn recombine_polys(outer_rings: &[SvgLine], inner_rings: &[SvgLine]) -> Vec<SvgPolygonInner> {  
     outer_rings
     .iter()
     .map(|p| {

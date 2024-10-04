@@ -3135,7 +3135,9 @@ impl Aenderungen {
 
             if !higher_order_polys.is_empty() {
                 let higher_order_polys = higher_order_polys.iter().collect::<Vec<_>>();
-                let subtracted = subtract_from_poly(&pn_poly, &higher_order_polys);
+                let subtracted = subtract_from_poly(
+                    &pn_poly, &higher_order_polys
+                );
                 for s in subtracted.iter() {
                     geaendert.insert(
                         pid.clone(),
