@@ -202,7 +202,7 @@ pub fn get_aenderungen_internal(
 
     // merge aenderungen same type
     aenderungen.clean_stage25();
-    aenderungen.clean_stage5(split_nas, &mut Vec::new());
+    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
     
     let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
         |(k, polyneu)| {
