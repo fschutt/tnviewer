@@ -201,8 +201,8 @@ pub fn get_aenderungen_internal(
     aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
 
     // merge aenderungen same type
-    aenderungen.clean_stage25();
-    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
+    // aenderungen.clean_stage25();
+    // aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
     
     let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
         |(k, polyneu)| {
