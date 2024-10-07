@@ -48,27 +48,15 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
     log_status("join_polys");
     log_status(&serde_json::to_string(polys).unwrap_or_default());
-    let mut first = match polys.get(0) {
-        Some(s) => vec![s.round_to_3dec()],
+    let first = match polys.get(0) {
+        Some(s) => vec![s.clone()],
         None => return Vec::new(),
     };
-    for i in polys.iter().skip(1) {
-        let i = i.round_to_3dec();
-        if first.iter().all(|s| s.equals(&i)) {
-            continue;
-        }
-        if i.is_empty() {
-            continue;
-        }
-        let fi = first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-        let a = translate_to_geo_poly_special(&fi);
-        let b = translate_to_geo_poly_special_shared(&[&i]);
-        let join = a.union(&b);
-        let s = translate_from_geo_poly(&join);
-        first = s;
-    }
-
-    let s = first.iter().map(|s| s.correct_winding_order_cloned()).collect::<Vec<_>>();
+    let a = translate_to_geo_poly_special(&first);
+    let b = translate_to_geo_poly_special_shared(&polys.iter().skip(1).collect::<Vec<_>>());
+    let join = a.union(&b);
+    let s = translate_from_geo_poly(&join);
+    let s = s.iter().map(|s| s.correct_winding_order_cloned()).collect::<Vec<_>>();
     log_status("join_polys done");
     s
 }

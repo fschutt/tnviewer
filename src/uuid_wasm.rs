@@ -39,8 +39,13 @@ pub fn log_status_clear() {
 }
 
 pub fn log_status(s: &str) {
-    web_sys::console::log_1(&s.into());
-    update_export_status(s.trim().to_string())
+    #[cfg(not(target_arch = "wasm32"))] {
+        println!("{s}");
+    }
+    #[cfg(target_arch = "wasm32")] {
+        web_sys::console::log_1(&s.into());
+        update_export_status(s.trim().to_string())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
