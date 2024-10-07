@@ -1,7 +1,15 @@
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+
 use crate::nas::translate_from_geo_poly;
 use crate::nas::translate_to_geo_poly_special_shared;
+use crate::nas::SvgPoint;
+use crate::nas::SvgPolygon;
 use crate::nas::SvgPolygonInner;
 use crate::nas::translate_to_geo_poly_special;
+use crate::ui::dist_to_segment;
+use crate::ui::Aenderungen;
+use crate::ui::PolyNeu;
 use crate::uuid_wasm::log_status;
 
 // only called in stage5 (subtracting overlapping Aenderungen)
@@ -44,42 +52,121 @@ pub fn subtract_from_poly(
 }
 
 
+fn merge_poly_points(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+    let all_points_btree = s.iter().flat_map(|s| {
+        s.get_all_pointcoords_sorted()
+    }).collect::<BTreeSet<_>>();
+    let ap_quadtree = quadtree_f32::QuadTree::new(all_points_btree.iter().enumerate().map(|(i, s)| {
+        (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: s[0] as f64 / 1000.0, y: s[1] as f64 / 1000.0 }))
+    }));
+
+    const DST: f64 = 0.05;
+
+    let mut s = s.to_vec();
+    for p in s.iter_mut() {
+        for o in p.outer_ring.points.iter_mut() {
+            let qtp = quadtree_f32::Point { x: o.x, y: o.y }; 
+            let mut near_points = ap_quadtree.get_points_contained_by(&o.get_rect(DST));
+            near_points.sort_by(|a, b| a.distance(&qtp).total_cmp(&b.distance(&qtp)));
+            if let Some(first) = near_points.first() {
+                *o = SvgPoint {
+                    x: first.x,
+                    y: first.y,
+                };
+            }
+        }
+    }
+
+    s
+}
+
+fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+    
+    let all_points_btree = s.iter().flat_map(|s| {
+        crate::geograf::get_linecoords(s)
+    }).collect::<BTreeSet<_>>();
+
+    let all_points_btree = all_points_btree.into_iter().enumerate().map(|(i, ((sx, sy), (ex, ey)))| {
+        (i, crate::nas::SvgLine {
+            points: vec![crate::nas::SvgPoint { 
+                x: sx as f64 / 1000.0, 
+                y: sy as f64 / 1000.0, 
+            }, crate::nas::SvgPoint { 
+                x: ex as f64 / 1000.0, 
+                y: ey as f64 / 1000.0, 
+            }]
+        })
+    }).collect::<BTreeMap<_, _>>();
+
+    let ap_quadtree = quadtree_f32::QuadTree::new(all_points_btree.iter().map(|(i, s)| {
+        (quadtree_f32::ItemId(*i), quadtree_f32::Item::Rect(s.get_rect()))
+    }));
+
+    const DST: f64 = 0.05;
+
+    let mut s = s.to_vec();
+    for p in s.iter_mut() {
+        for o in p.outer_ring.points.iter_mut() {
+            let mut near_lines = ap_quadtree.get_ids_that_overlap(&o.get_rect(DST))
+            .into_iter()
+            .filter_map(|q| all_points_btree.get(&q.0))
+            .filter_map(|s| Some(dist_to_segment(*o, s.points.get(0)?.clone(), s.points.get(1)?.clone())))
+            .collect::<Vec<_>>();
+            near_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+            if let Some(first) = near_lines.first() {
+                *o = first.nearest_point;
+            }
+        }
+    }
+
+    s
+}
+
 pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
     log_status("join_polys");
     log_status(&serde_json::to_string(polys).unwrap_or_default());
-    let mut first = match polys.get(0) {
-        Some(s) => vec![s.round_to_3dec()],
+    let polys = merge_poly_lines(&
+        polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+    );
+    let polys = merge_poly_points(&polys);
+
+    let first = match polys.get(0) {
+        Some(s) => vec![s],
         None => return Vec::new(),
     };
+    let a = translate_to_geo_poly_special_shared(&first.into_iter().collect::<Vec<_>>());
+    let b = translate_to_geo_poly_special_shared(&polys.iter().skip(1).collect::<Vec<_>>());
+    let join = a.union(&b);
+    return translate_from_geo_poly(&join);
+/* 
     for i in polys.iter().skip(1) {
         let mut i = i.round_to_3dec();
-        if first.iter().all(|s| s.equals(&i)) {
+        let fi = first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+        if fi.iter().all(|s| s.equals(&i)) {
             continue;
-        }
-        if i.is_empty() {
-            continue;
-        }
-        for f in first.iter() {
-            i.correct_almost_touching_points(&f, 0.05, true);
         }
         if i.is_zero_area() {
             continue;
         }
-        if first.iter().all(|s| s.is_zero_area()) {
+        if fi.iter().all(|s| s.is_zero_area()) {
             return Vec::new();
         }
-        let fi = first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+        for f in fi.iter() {
+            i.correct_almost_touching_points(&f, 0.05, true);
+        }
         let a = translate_to_geo_poly_special(&fi);
         let b = translate_to_geo_poly_special_shared(&[&i]);
         let join = a.union(&b);
-        let s = translate_from_geo_poly(&join).iter().map(|s| s.round_to_3dec()).collect();
+        let s = translate_from_geo_poly(&join);
         first = s;
+        
     }
 
     let s = first.iter().map(|s| s.correct_winding_order_cloned()).collect::<Vec<_>>();
     log_status("join_polys done");
     s
+*/
 }
 
 pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {

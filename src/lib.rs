@@ -484,11 +484,10 @@ pub fn lib_nutzungen_saeubern(
 
     let clean = aenderungen
         .clean_stage1(
-            &mut log,
             konfiguration.merge.stage1_maxdst_point,
             konfiguration.merge.stage1_maxdst_line,
         )
-        .clean_stage2(&mut log, 1.0, 1.0, 10.0)
+        .clean_stage2(1.0, 1.0, 10.0)
         .clean_stage3(
             &split_nas_xml,
             &mut log,
@@ -573,11 +572,10 @@ pub fn lib_get_aenderungen_clean(
 
     let clean = match id.as_str() {
         "1" => aenderungen.clean_stage1(
-            &mut log,
             konfiguration.merge.stage1_maxdst_point,
             konfiguration.merge.stage1_maxdst_line,
         ),
-        "2" => aenderungen.clean_stage2(&mut log, 1.0, 1.0, 10.0),
+        "2" => aenderungen.clean_stage2(1.0, 1.0, 10.0),
         "25" => aenderungen.clean_stage25(),
         "3" => aenderungen.clean_stage3(
             &split_nas_xml,
@@ -594,11 +592,10 @@ pub fn lib_get_aenderungen_clean(
         ),
         "13" => aenderungen
             .clean_stage1(
-                &mut log,
                 konfiguration.merge.stage1_maxdst_point,
                 konfiguration.merge.stage1_maxdst_line,
             )
-            .clean_stage2(&mut log, 1.0, 1.0, 10.0)
+            .clean_stage2(1.0, 1.0, 10.0)
             .clean_stage3(
                 &split_nas_xml,
                 &mut log,

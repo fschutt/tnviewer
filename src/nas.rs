@@ -475,7 +475,6 @@ impl TaggedPolygon {
         l: &SvgLine,
         start: &SvgPoint,
         end: &SvgPoint,
-        _log: &mut Vec<String>,
         dst: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
@@ -689,12 +688,11 @@ impl TaggedPolygon {
         l: &[&SvgLine],
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         dst: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
         for l in l {
-            let v = Self::check_line_for_points(l, start, end, log, dst, maxdev_followline);
+            let v = Self::check_line_for_points(l, start, end, dst, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }
@@ -706,7 +704,6 @@ impl TaggedPolygon {
         &self,
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
@@ -714,7 +711,6 @@ impl TaggedPolygon {
             &[&self.poly.outer_ring],
             start,
             end,
-            log,
             maxdst_line,
             maxdev_followline,
         );
@@ -725,7 +721,6 @@ impl TaggedPolygon {
             &[&self.poly.outer_ring],
             start,
             end,
-            log,
             maxdst_line,
             maxdev_followline,
         );
@@ -2395,7 +2390,6 @@ impl NasXmlQuadTree {
         &self,
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
@@ -2409,7 +2403,7 @@ impl NasXmlQuadTree {
             polys.retain(|r| r.attributes.get("aenderungId").as_deref() != Some(&eid));
         }
         for p in polys {
-            let v = p.get_line_between_points(start, end, log, maxdst_line2, maxdev_followline);
+            let v = p.get_line_between_points(start, end, maxdst_line2, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }

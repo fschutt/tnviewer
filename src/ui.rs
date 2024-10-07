@@ -1360,7 +1360,7 @@ impl AenderungenIntersections {
                     })
                     .collect(),
             }
-            .clean_stage1(&mut Vec::new(), 1.0, 1.0)
+            .clean_stage1(1.0, 1.0)
         } else {
             Aenderungen::default()
         };
@@ -2526,7 +2526,6 @@ impl Aenderungen {
 
     pub fn clean_stage1(
         &self,
-        _log: &mut Vec<String>,
         maxdst_point: f64,
         maxdst_line: f64,
     ) -> Aenderungen {
@@ -2604,13 +2603,11 @@ impl Aenderungen {
     // 2: Punkte einfügen auf Linien, die nahegelegenen Änderungen liegen
     pub fn clean_stage2(
         &self,
-        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
     ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
-        log.push(format!("Änderungen auf Änderungen (maxdst_line = {maxdst_line}, maxdst_line2 = {maxdst_line2}, maxdev_followline = {maxdev_followline})"));
 
         let mut total_cleaned = BTreeSet::new();
 
@@ -2644,7 +2641,6 @@ impl Aenderungen {
                                 .get_line_between_points(
                                     &start,
                                     &end,
-                                    log,
                                     maxdst_line,
                                     maxdst_line2,
                                     maxdev_followline,
@@ -2660,10 +2656,6 @@ impl Aenderungen {
                         let newpoints_len = newpoints.len();
                         if newpoints_len != orig_points_len {
                             local_modified += newpoints_len.saturating_sub(orig_points_len);
-                            log.push(format!(
-                                "{id}: insert {} points",
-                                newpoints_len.saturating_sub(orig_points_len)
-                            ));
                         }
                     }
 
@@ -2771,7 +2763,7 @@ impl Aenderungen {
     // 3: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
     pub fn clean_stage25(&self) -> Aenderungen {
         self.clean_stage25_internal()
-            .clean_stage1(&mut Vec::new(), 0.1, 0.1)
+            .clean_stage1(0.1, 0.1)
             .clean_stage25_internal()
             .move_lines_touching()
             .clean_stage25_internal()
@@ -3084,7 +3076,6 @@ impl Aenderungen {
                         .get_line_between_points(
                             &start,
                             end,
-                            log,
                             maxdst_line,
                             maxdst_line2,
                             maxdev_followline,

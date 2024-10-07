@@ -1594,7 +1594,7 @@ fn get_shared_lines(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgLine> {
         .collect()
 }
 
-fn get_linecoords(p: &SvgPolygonInner) -> BTreeSet<((u64, u64), (u64, u64))> {
+pub fn get_linecoords(p: &SvgPolygonInner) -> BTreeSet<((u64, u64), (u64, u64))> {
     let mut lines = crate::geograf::l_to_points(&&p.outer_ring);
     lines.extend(p.inner_rings.iter().flat_map(crate::geograf::l_to_points));
     lines
