@@ -162,7 +162,7 @@ pub fn get_rissgebiet_geojson(poly: String) -> String {
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
-    let poly_string1: &str = "";
+    let poly_string1: &str = include_str!("./test1.txt");
     let poly_string2: &str = "";
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
@@ -170,7 +170,7 @@ pub fn get_problem_geojson() -> String {
     let joined = crate::ops::join_polys(&s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
-    let s2 = s2.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
+    let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
 
     let v1 = vec![TaggedPolygon {
         poly: s1.clone(),

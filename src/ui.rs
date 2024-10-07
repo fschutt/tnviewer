@@ -1408,7 +1408,13 @@ impl AenderungenIntersections {
                     continue;
                 }
 
-                let polys_to_join = k.iter().cloned().collect::<Vec<_>>();
+                let polys_to_join = if special {
+                    k.iter()
+                    .flat_map(|p: &SvgPolygonInner| crate::nas::cleanup_poly(p))
+                    .collect::<Vec<_>>()
+                } else {
+                    k.iter().cloned().collect::<Vec<_>>()
+                };
 
                 let polys_to_join_len = polys_to_join.len();
 
@@ -1417,7 +1423,11 @@ impl AenderungenIntersections {
                 let joined = join_polys(&polys_to_join);
                 log_status(&serde_json::to_string(&joined).unwrap_or_default());
                 log_status(&format!("{flst_id}: joined -----"));
-
+                let joined = if special {
+                    joined.iter().flat_map(|s| crate::nas::cleanup_poly(s)).collect()
+                } else {
+                    joined
+                };
                 let joined_len = joined.len();
 
                 log_status(&format!("{flst_id}: verbinde {polys_to_join_len} Flächen {k1:?} zu {joined_len} Flächen"));
