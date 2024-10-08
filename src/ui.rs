@@ -9,7 +9,7 @@ use crate::{
     }, uuid_wasm::{
         log_status,
         uuid,
-    }, xlsx::FlstIdParsed
+    }, xlsx::{FlstIdParsed, FlstIdParsedNumber}
 };
 use core::f64;
 use geo::{
@@ -1239,6 +1239,16 @@ pub struct Aenderungen {
 }
 
 impl Aenderungen {
+
+    pub fn get_gebaeude_modified_flst(&self) -> Vec<FlstIdParsedNumber> {
+        let mut s = self.gebaeude_loeschen.values()
+        .flat_map(|s| s.flst_id.iter().filter_map(|q| FlstIdParsed::from_str(q).parse_num()))
+        .collect::<Vec<_>>();
+        s.sort();
+        s.dedup();
+        s
+    }
+
     pub fn migrate_new(&self) -> Self {
         Self {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),
@@ -1417,12 +1427,7 @@ impl AenderungenIntersections {
                 };
 
                 let polys_to_join_len = polys_to_join.len();
-
-                log_status(&format!("{flst_id} ({k1:?}): joining"));
-                log_status(&serde_json::to_string(&polys_to_join).unwrap_or_default());
                 let joined = join_polys(&polys_to_join);
-                log_status(&serde_json::to_string(&joined).unwrap_or_default());
-                log_status(&format!("{flst_id}: joined -----"));
                 let joined = if special {
                     joined.iter().flat_map(|s| crate::nas::cleanup_poly(s)).collect()
                 } else {
@@ -2177,12 +2182,14 @@ impl AenderungenIntersection {
         (alt_weg, neu_dazu, veraendert)
     }
 
-    pub fn get_auto_status(splitflaechen: &[Self], flst_id: &str) -> Status {
+    pub fn get_auto_status(splitflaechen: &[Self], gebaeude_flst: &[FlstIdParsedNumber], flst_id: &str) -> Status {
+        // TODO
         let such_id = match FlstIdParsed::from_str(&flst_id).parse_num() {
             Some(s) => s,
-            None => return Status::Bleibt,
+            None => return Status::Bleibt(false),
         };
 
+        let gebaeude_aenderung = gebaeude_flst.iter().any(|s| *s == such_id);
         let splitflaechen = splitflaechen
             .iter()
             .filter(|sf| {
@@ -2194,7 +2201,7 @@ impl AenderungenIntersection {
         let wurde_veraendert = splitflaechen.iter().any(|s| s.alt != s.neu);
 
         if !wurde_veraendert {
-            return Status::Bleibt;
+            return Status::Bleibt(gebaeude_aenderung);
         }
 
         let alte_wirtschaftsarten = splitflaechen
@@ -2210,9 +2217,9 @@ impl AenderungenIntersection {
             .collect::<BTreeSet<_>>();
 
         if veraendert_2.is_empty() {
-            Status::AenderungKeineBenachrichtigung
+            Status::AenderungKeineBenachrichtigung(gebaeude_aenderung)
         } else {
-            Status::AenderungMitBenachrichtigung
+            Status::AenderungMitBenachrichtigung(gebaeude_aenderung)
         }
     }
 }

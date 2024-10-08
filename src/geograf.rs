@@ -267,6 +267,8 @@ pub async fn export_aenderungen_geograf(
         Err(_e) => return Vec::new(),
     };
 
+    let gebaeude_flst = aenderungen.get_gebaeude_modified_flst();
+
     let mut antragsnr = projekt_info.antragsnr.trim().to_string();
     if antragsnr.is_empty() {
         antragsnr = "Aenderungen".to_string();
@@ -309,9 +311,8 @@ pub async fn export_aenderungen_geograf(
     log_status("Berechne Splitflächen...");
     let splitflaechen = calc_splitflaechen(&aenderungen, split_nas, nas_xml, &csv_data);
     log_status(&format!("OK: {} Splitflächen", splitflaechen.0.len()));
-
     let main_gemarkung = crate::get_main_gemarkung(&csv_data);
-    let eigentuemer_map = splitflaechen_eigentuemer_map(&csv_data, &splitflaechen);
+    let eigentuemer_map = splitflaechen_eigentuemer_map(&csv_data, &splitflaechen, &gebaeude_flst);
     let splitflaechen_xlsx =
         crate::xml_templates::generate_bearbeitungsliste_xlsx(&BearbeitungslisteInfo {
             eigentuemer: eigentuemer_map.clone(),
@@ -330,7 +331,7 @@ pub async fn export_aenderungen_geograf(
     ));
 
     let eigentuemer_map_modified =
-        splitflaechen_eigentuemer_map_modified(&csv_data, &splitflaechen);
+        splitflaechen_eigentuemer_map_modified(&csv_data, &splitflaechen, &gebaeude_flst);
     let modified = get_modified_fluren_flst(&eigentuemer_map_modified, main_gemarkung);
     let antragsbegleitblatt =
         crate::xml_templates::generate_antragsbegleitblatt_docx(&AntragsbegleitblattInfo {
@@ -481,7 +482,7 @@ fn format_fluren(fl: &[String]) -> String {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlstEigentuemer {
     pub nutzung: String,
     pub status: Status,
@@ -490,7 +491,7 @@ pub struct FlstEigentuemer {
     pub auto_notiz: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EigentuemerClean {
     Herr { vorname: String, nachname: String },
     Frau { vorname: String, nachname: String },
@@ -612,20 +613,23 @@ impl EigentuemerClean {
 pub fn splitflaechen_eigentuemer_map(
     datensaetze: &CsvDataType,
     splitflaechen: &AenderungenIntersections,
+    gebaeude_flst: &[FlstIdParsedNumber],
 ) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
-    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, false)
+    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, gebaeude_flst, false)
 }
 
 pub fn splitflaechen_eigentuemer_map_modified(
     datensaetze: &CsvDataType,
     splitflaechen: &AenderungenIntersections,
+    gebaeude_flst: &[FlstIdParsedNumber],
 ) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
-    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, true)
+    splitflaechen_eigentuemer_map_internal(datensaetze, splitflaechen, gebaeude_flst, true)
 }
 
 fn splitflaechen_eigentuemer_map_internal(
     datensaetze: &CsvDataType,
     splitflaechen: &AenderungenIntersections,
+    gebaeude_flst: &[FlstIdParsedNumber],
     filter_only_modified: bool,
 ) -> BTreeMap<FlstIdParsedNumber, FlstEigentuemer> {
     datensaetze
@@ -635,8 +639,8 @@ fn splitflaechen_eigentuemer_map_internal(
             let ds_0 = ds.get(0)?;
             let f = FlstIdParsed::from_str(flst_id).parse_num()?;
             let notiz = AenderungenIntersection::get_auto_notiz(&splitflaechen.0, &flst_id);
-            let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, &flst_id);
-            if filter_only_modified && status != Status::AenderungMitBenachrichtigung {
+            let status = AenderungenIntersection::get_auto_status(&splitflaechen.0, gebaeude_flst, &flst_id);
+            if filter_only_modified && !status.was_modified() {
                 return None;
             }
             let nutzung = ds_0.nutzung.clone();
@@ -668,7 +672,7 @@ pub fn get_modified_fluren_flst(
 ) -> BTreeMap<usize, Vec<FlstIdParsedNumber>> {
     let mut target_map = BTreeMap::new();
     for (e, v) in eigentuemer_map.iter() {
-        if v.status == Status::AenderungMitBenachrichtigung && e.gemarkung == main_gemarkung {
+        if v.status.was_modified() && e.gemarkung == main_gemarkung {
             target_map
                 .entry(e.flur)
                 .or_insert_with(|| Vec::new())
