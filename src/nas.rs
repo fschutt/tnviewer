@@ -62,13 +62,16 @@ impl NasXMLFile {
 
         let aenderungen_todo = crate::david::get_aenderungen_internal(aenderungen, &self, split_nas);
         
-        /*
         let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
             &aenderungen_todo,
             &self,
         );
-        */
-        
+
+        let aenderungen_todo = crate::david::insert_gebaeude_delete(
+            &aenderungen,
+            &aenderungen_todo,
+        );
+
         log_status_clear();
         log_status("NasXMLFile::fortfuehren");
         log_aenderungen(&aenderungen_todo);

@@ -81,6 +81,11 @@ pub fn aenderungen_zu_fa_xml(
         &nas_xml,
     );
 
+    let aenderungen_todo = insert_gebaeude_delete(
+        &aenderungen,  
+        &aenderungen_todo,
+    );
+
     log_status("--------");
 
     log_aenderungen(&aenderungen_todo);
@@ -782,6 +787,22 @@ pub fn merge_aenderungen_with_existing_nas(
     aenderungen_clean.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_clean.dedup();
     aenderungen_clean
+}
+
+pub fn insert_gebaeude_delete(
+    aenderungen: &Aenderungen,
+    aenderungen_todo: &[Operation],
+) -> Vec<Operation> {
+    let mut aenderungen_todo = aenderungen_todo.to_vec();
+    for g in aenderungen.gebaeude_loeschen.values() {
+        aenderungen_todo.push(Operation::Delete { 
+            obj_id: g.gebaeude_id.clone(), 
+            ebene: "AX_Gebaeude".to_string(),
+            kuerzel: String::new(), 
+            poly_alt: SvgPolygonInner::default() 
+        });
+    }
+    aenderungen_todo
 }
 
 pub fn log_aenderungen(aenderungen_todo: &[Operation]) {
