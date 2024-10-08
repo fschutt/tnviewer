@@ -11,18 +11,9 @@ use crate::{
         SvgPoint,
         SvgPolygonInner, TaggedPolygon,
     },
-    optimize::OptimizeConfig,
+    optimize::{OptimizeConfig, OptimizedTextPlacement},
     pdf::{
-        get_fluren,
-        get_flurstuecke,
-        get_gebaeude,
-        get_mini_nas_xml,
-        reproject_aenderungen_into_target_space,
-        HintergrundCache,
-        Konfiguration,
-        ProjektInfo,
-        RissConfig,
-        Risse,
+        get_fluren, get_flurstuecke, get_gebaeude, get_mini_nas_xml, reproject_aenderungen_into_target_space, HintergrundCache, Konfiguration, ProjektInfo, RissConfig, RissExtentReprojected, Risse
     },
     process::{
         AngleDegrees,
@@ -31,7 +22,7 @@ use crate::{
     ui::{
         Aenderungen, AenderungenClean, AenderungenIntersection, AenderungenIntersections, GebaeudeLoeschen, TextPlacement, TextStatus
     },
-    uuid_wasm::log_status,
+    uuid_wasm::{log_status, uuid},
     xlsx::{
         FlstIdParsed,
         FlstIdParsedNumber,
@@ -43,7 +34,7 @@ use crate::{
     },
     zip::write_files_to_zip,
 };
-use dxf::Vector;
+use dxf::{entities::Text, Vector};
 use printpdf::{
     BuiltinFont,
     CustomPdfConformance,
@@ -418,8 +409,9 @@ pub async fn export_aenderungen_geograf(
         }
     }).collect::<Vec<_>>();
 
+    let mut grafbat_map = BTreeMap::new();
     if risse.is_empty() {
-        export_splitflaechen(
+       if let Ok(s) = export_splitflaechen(
             &mut files,
             projekt_info,
             &csv_data,
@@ -435,10 +427,12 @@ pub async fn export_aenderungen_geograf(
             &lq_flurstuecke,
             &lq_flurstuecke_und_nutzungsarten,
             &mut hintergrund_cache,
-        );
+        ) {
+            grafbat_map.insert(1, s);
+        }
     } else {
         for (i, (_, r)) in risse.iter().enumerate() {
-            export_splitflaechen(
+            if let Ok(s) = export_splitflaechen(
                 &mut files,
                 projekt_info,
                 &csv_data,
@@ -454,8 +448,19 @@ pub async fn export_aenderungen_geograf(
                 &lq_flurstuecke,
                 &lq_flurstuecke_und_nutzungsarten,
                 &mut hintergrund_cache,
-            );
+            ) {
+                grafbat_map.insert(i + 1, s);
+            }
         }
+    }
+
+    if let Ok(default_extent) = get_default_riss_extent_2(&splitflaechen.0, &ax_gebaeude, split_nas) {
+        let grafbat = generate_grafbat_out(
+            projekt_info,
+            &default_extent,
+            grafbat_map,
+        );
+        files.push((None, format!("Grafbat.out").into(), grafbat.as_bytes().to_vec()));
     }
 
     write_files_to_zip(files)
@@ -720,6 +725,136 @@ pub fn join_modified_fluren(
         .collect()
 }
 
+/*
+TE1,DEBBAL010007b3my,0: ,1600.1011.4111,33435604.2160,5881491.9490,33435598.5600,5881498.3600,100.000000,0,0,4,0,,0,,,,,,,n,,,
+  TX1: 330
+TE2,DEBBAL010007b3mx,0: ,1600.1011.4111,33435605.7900,5881476.2640,,,100.000000,0,0,4,0,,0,,,,,,,n,,,
+  TX2: 331
+
+...
+
+TE4885: ,1600.49.4140,33438089.6057,5884703.3385,,,100.000000,0,0,4,0,,0,,,,,,,n,,,
+  TX4885: Sportanlage
+TE4886,DEBBAL730001afEr,0: ,1600.1049.4209,33433631.5360,5882037.9510,,,100.000000,0,0,1,0,,0,,,,,,,n,,,
+  TX4886: Sumpf
+MA17930: Menge1,,"",date:08.10.24,depend:1,width:0
+  MR: TE=1045
+  MR: TE=1050
+ME17930:
+*/
+pub fn generate_grafbat_out(
+    info: &ProjektInfo,
+    default_extent: &RissExtentReprojected,
+    map: BTreeMap<usize, GrafbatOutConfig>,
+) -> String {
+    
+    let bbox = format!(
+        "{min_x}.000000,{min_y}.000000,{max_x}.000000,{max_y}.000000", 
+        min_x = default_extent.min_x.floor(),
+        max_x = default_extent.max_x.ceil(),
+        min_y = default_extent.min_y.floor(),
+        max_y = default_extent.max_y.ceil(),
+    );
+
+    let mut header = format!(
+        include_str!("./grafbat_header.txt"),
+        prjname = info.antragsnr,
+        uuid = uuid(),
+        bbox = bbox,
+    )
+    .lines()
+    .map(|s| s.to_string())
+    .collect::<Vec<_>>();
+
+    let default_menge = 17930;
+    let zone = 33;
+
+    let mut txid = 1;
+
+    for (menge_id, outconf) in map.iter() {
+
+        let riss_id = menge_id;
+        let menge_id_text_alt = default_menge + (menge_id * 1);
+        let menge_id_text_neu = default_menge + (menge_id * 2);
+        let menge_id_text_bleibt = default_menge + (menge_id * 3);
+
+        /*
+            TE1,DEBBAL010007b3my,0: ,1600.1011.4111,33435604.2160,5881491.9490,33435598.5600,5881498.3600,100.000000,0,0,4,0,,0,,,,,,,n,,,
+            TX1: 330
+        */
+
+        // export texte
+        let mut txtid_textalt = BTreeSet::new();
+        for alt in outconf.aenderungen_texte_alt.iter() {
+            header.push(format!(
+                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                id = "",
+                xcoord = update_dxf_x(zone, alt.optimized.pos.x),
+                ycoord = alt.optimized.pos.x,
+                xcoord2 = update_dxf_x(zone, alt.optimized.ref_pos.x),
+                ycoord2 = alt.optimized.pos.x,
+                gon = 100.0,
+            ));
+            header.push(format!("TX{txid}: {}", alt.optimized.kuerzel));
+            txid += 1;
+            txtid_textalt.insert(txid);
+        }
+
+        let mut txtid_textneu = BTreeSet::new();
+        for neu in outconf.aenderungen_texte_neu.iter() {
+            header.push(format!(
+                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                id = "",
+                xcoord = update_dxf_x(zone, neu.optimized.pos.x),
+                ycoord = neu.optimized.pos.x,
+                xcoord2 = update_dxf_x(zone, neu.optimized.ref_pos.x),
+                ycoord2 = neu.optimized.pos.x,
+                gon = 100.0,
+            ));
+            header.push(format!("TX{txid}: {}", neu.optimized.kuerzel));
+            txid += 1;
+            txtid_textneu.insert(txid);
+        }
+
+        let mut txtid_textbleibt = BTreeSet::new();
+        for bleibt in outconf.aenderungen_texte_bleibt.iter() {
+            header.push(format!(
+                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                id = "",
+                xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
+                ycoord = bleibt.optimized.pos.x,
+                xcoord2 = update_dxf_x(zone, bleibt.optimized.ref_pos.x),
+                ycoord2 = bleibt.optimized.ref_pos.y,
+                gon = 100.0,
+            ));
+            header.push(format!("TX{txid}: {}", bleibt.optimized.kuerzel));
+            txid += 1;
+            txtid_textbleibt.insert(txid);
+        }
+
+        // Menge
+        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_textalt.iter() {
+            header.push(format!("MR: TE={i}")); 
+        }
+        header.push(format!("MA{menge_id_text_alt}:"));
+
+        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_textalt.iter() {
+            header.push(format!("MR: TE={i}")); 
+        }
+        header.push(format!("MA{menge_id_text_neu}:"));
+        
+        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_textalt.iter() {
+            header.push(format!("MR: TE={i}")); 
+        }
+        header.push(format!("MA{menge_id_text_bleibt}:"));
+    }
+
+    header.join("\r\n")
+}
+
 fn join_flst(v: &Vec<FlstIdParsedNumber>) -> Option<String> {
     let mut v = v.clone();
     v.sort_by(|a, b| a.get_comma_f32().total_cmp(&b.get_comma_f32()));
@@ -874,6 +1009,32 @@ pub fn get_default_riss_extent(
     })
 }
 
+fn get_default_riss_extent_2(
+    splitflaechen: &[AenderungenIntersection],
+    gebaeude: &[TaggedPolygon],
+    split_nas: &SplitNasXml,
+) -> Result<RissExtentReprojected, ()> {
+
+    let default_riss_config = match get_default_riss_extent(splitflaechen, &gebaeude, &split_nas.crs) {
+        Some(s) => s,
+        None => return Err(()),
+    };
+
+    let riss = default_riss_config;
+
+    let riss_extent = match riss.get_extent(&split_nas.crs, 0.0) {
+        Some(s) => s,
+        None => return Err(()),
+    };
+
+    let riss_extent_reprojected = match riss_extent.reproject(&split_nas.crs) {
+        Some(s) => s,
+        None => return Err(()),
+    };
+
+    Ok(riss_extent_reprojected)
+}
+
 pub fn export_splitflaechen(
     files: &mut Vec<(Option<String>, PathBuf, Vec<u8>)>,
     info: &ProjektInfo,
@@ -890,35 +1051,35 @@ pub fn export_splitflaechen(
     lq_flurstuecke: &LinienQuadTree,
     lq_flurstuecke_und_nutzungsarten: &LinienQuadTree,
     hintergrund_cache: &mut HintergrundCache,
-) {
+) -> Result<GrafbatOutConfig, ()> {
     let pdir_name = parent_dir.as_deref().unwrap_or("Aenderungen");
 
     let default_riss_config = match get_default_riss_extent(splitflaechen, &gebaeude, &split_nas.crs) {
         Some(s) => s,
-        None => return,
+        None => return Err(()),
     };
 
     let riss = riss.clone().unwrap_or(default_riss_config);
 
     let riss_extent = match riss.get_extent(&split_nas.crs, 0.0) {
         Some(s) => s,
-        None => return,
+        None => return Err(()),
     };
 
     let riss_extent_with_border = match riss.get_extent(&split_nas.crs, PADDING.into()) {
         Some(s) => s,
-        None => return,
+        None => return Err(()),
     };
 
     let riss_extent_reprojected = match riss_extent.reproject(&split_nas.crs) {
         Some(s) => s,
-        None => return,
+        None => return Err(()),
     };
 
     let riss_extent_with_border_reprojected =
         match riss_extent_with_border.reproject(&split_nas.crs) {
             Some(s) => s,
-            None => return,
+            None => return Err(()),
         };
 
     let riss_extent_cutpoly_noborder = riss_extent_reprojected.get_poly();
@@ -1258,7 +1419,47 @@ pub fn export_splitflaechen(
     log_status(&format!(
         "[{num_riss} / {total_risse}] OK: PDF Vorschau mit Hintergrund generiert."
     ));
+
+
+
+    let aenderungen_texte_neu_2 = aenderungen_texte_optimized
+        .iter()
+        .filter(|s| s.optimized.status == TextStatus::New)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let aenderungen_texte_alt_2 = aenderungen_texte_optimized
+        .iter()
+        .filter(|s| s.optimized.status == TextStatus::Old)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let aenderungen_texte_bleibt_2 = aenderungen_texte_optimized
+        .iter()
+        .filter(|s| s.optimized.status == TextStatus::StaysAsIs)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    Ok(GrafbatOutConfig {
+        aenderungen_rote_linien: aenderungen_rote_linien.clone(),
+        aenderungen_nutzungsarten_linien: aenderungen_nutzungsarten_linien.clone(),
+        aenderungen_texte_neu: aenderungen_texte_neu_2.clone(),
+        aenderungen_texte_alt: aenderungen_texte_alt_2.clone(),
+        aenderungen_texte_bleibt: aenderungen_texte_bleibt_2.clone(),
+        flurstueck_texte: flurstueck_texte.clone(),
+    })
 }
+
+pub struct GrafbatOutConfig {
+    aenderungen_rote_linien: Vec<SvgLine>,
+    aenderungen_nutzungsarten_linien: Vec<SvgLine>,
+    aenderungen_texte_neu: Vec<OptimizedTextPlacement>,
+    aenderungen_texte_alt: Vec<OptimizedTextPlacement>,
+    aenderungen_texte_bleibt: Vec<OptimizedTextPlacement>,
+    flurstueck_texte: Vec<TextPlacement>,
+}
+
+
 
 pub struct LinienQuadTree {
     pub linien: Vec<(SvgPoint, SvgPoint)>,

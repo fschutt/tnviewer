@@ -18,7 +18,7 @@ use std::{
     f64::consts::PI,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
     pub optimized: TextPlacement,
