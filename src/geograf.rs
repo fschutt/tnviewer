@@ -9,7 +9,7 @@ use crate::{
         SplitNasXml,
         SvgLine,
         SvgPoint,
-        SvgPolygonInner,
+        SvgPolygonInner, TaggedPolygon,
     },
     optimize::OptimizeConfig,
     pdf::{
@@ -29,12 +29,7 @@ use crate::{
         PointOnLineConfig,
     },
     ui::{
-        Aenderungen,
-        AenderungenClean,
-        AenderungenIntersection,
-        AenderungenIntersections,
-        TextPlacement,
-        TextStatus,
+        Aenderungen, AenderungenClean, AenderungenIntersection, AenderungenIntersections, GebaeudeLoeschen, TextPlacement, TextStatus
     },
     uuid_wasm::log_status,
     xlsx::{
@@ -407,6 +402,21 @@ pub async fn export_aenderungen_geograf(
     )
     .await;
 
+    let gebaeude_ids = aenderungen.gebaeude_loeschen.values()
+    .map(|s| s.gebaeude_id.clone())
+    .collect::<BTreeSet<_>>();
+
+    let ax_gebaeude = nas_xml.ebenen.get("AX_Gebaeude")
+    .unwrap_or(&Vec::new())
+    .iter().filter_map(|tp| {
+        let obj_id = tp.attributes.get("id")?;
+        if gebaeude_ids.contains(obj_id) {
+            Some(tp.clone())
+        } else {
+            None
+        }
+    }).collect::<Vec<_>>();
+
     if risse.is_empty() {
         export_splitflaechen(
             &mut files,
@@ -415,6 +425,7 @@ pub async fn export_aenderungen_geograf(
             konfiguration,
             None,
             &splitflaechen.0,
+            &ax_gebaeude,
             &split_nas,
             &nas_xml,
             None,
@@ -433,6 +444,7 @@ pub async fn export_aenderungen_geograf(
                 konfiguration,
                 Some(format!("Riss{}", i + 1)),
                 &splitflaechen.0,
+                &ax_gebaeude,
                 &split_nas,
                 &nas_xml,
                 Some(r.clone()),
@@ -820,11 +832,19 @@ pub const SCALE: f64 = 3500.0;
 
 pub fn get_default_riss_extent(
     splitflaechen: &[AenderungenIntersection],
+    gebaeude: &[TaggedPolygon],
     crs: &str,
 ) -> Option<RissConfig> {
-    let mut default_riss_extent_rect = splitflaechen.first()?.poly_cut.get_rect();
+    let s_first = splitflaechen.first().map(|s| s.poly_cut.get_rect());
+    let mut default_riss_extent_rect = match s_first {
+        Some(s) => s,
+        None => gebaeude.first().map(|g| g.poly.get_rect())?,
+    };
     for sf in splitflaechen.iter().skip(1) {
         default_riss_extent_rect = default_riss_extent_rect.union(&sf.poly_cut.get_rect());
+    }
+    for p in gebaeude.iter() {
+        default_riss_extent_rect = default_riss_extent_rect.union(&p.poly.get_rect());
     }
     let utm_center = default_riss_extent_rect.get_center();
     let latlon_center = crate::pdf::reproject_point_back_into_latlon(
@@ -857,6 +877,7 @@ pub fn export_splitflaechen(
     konfiguration: &Konfiguration,
     parent_dir: Option<String>,
     splitflaechen: &[AenderungenIntersection],
+    gebaeude: &[TaggedPolygon],
     split_nas: &SplitNasXml,
     nas_xml: &NasXMLFile,
     riss: Option<RissConfig>,
@@ -868,7 +889,7 @@ pub fn export_splitflaechen(
 ) {
     let pdir_name = parent_dir.as_deref().unwrap_or("Aenderungen");
 
-    let default_riss_config = match get_default_riss_extent(splitflaechen, &split_nas.crs) {
+    let default_riss_config = match get_default_riss_extent(splitflaechen, &gebaeude, &split_nas.crs) {
         Some(s) => s,
         None => return,
     };
@@ -914,14 +935,28 @@ pub fn export_splitflaechen(
         .iter()
         .filter_map(|s| {
             if s.poly_cut.get_rect().overlaps_rect(&riss_rect) {
-                Some(s)
+                if let Some(rg) = riss_extent_reprojected.rissgebiet.as_ref() {
+                    if s.poly_cut.overlaps(&rg) || rg.overlaps(&s.poly_cut) {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(s)
+                }
             } else {
                 None
             }
         })
-        .filter_map(|s| {
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let gebaeude = gebaeude
+    .iter()
+    .filter_map(|s| {
+        if s.poly.get_rect().overlaps_rect(&riss_rect) {
             if let Some(rg) = riss_extent_reprojected.rissgebiet.as_ref() {
-                if s.poly_cut.overlaps(&rg) || rg.overlaps(&s.poly_cut) {
+                if s.poly.overlaps(&rg) || rg.overlaps(&s.poly) {
                     Some(s)
                 } else {
                     None
@@ -929,9 +964,12 @@ pub fn export_splitflaechen(
             } else {
                 Some(s)
             }
-        })
-        .cloned()
-        .collect::<Vec<_>>();
+        } else {
+            None
+        }
+    })
+    .cloned()
+    .collect::<Vec<_>>();
 
     // TODO: accurate?
     let alle_flurstuecke = splitflaechen2
@@ -967,7 +1005,11 @@ pub fn export_splitflaechen(
         Some(riss_extent_reprojected.get_rect()),
     );
     let aenderungen_nutzungsarten_linien =
-        get_aenderungen_nutzungsarten_linien(&na_splitflaechen, lq_flurstuecke);
+        get_aenderungen_nutzungsarten_linien(
+            &gebaeude,
+            &na_splitflaechen, 
+            lq_flurstuecke
+        );
     if !aenderungen_nutzungsarten_linien.is_empty() {
         files.push((
             None,
@@ -1495,10 +1537,12 @@ pub fn get_na_splitflaechen(
 }
 
 pub fn get_aenderungen_nutzungsarten_linien(
+    gebaeude: &[TaggedPolygon],
     splitflaechen: &[AenderungenIntersection],
     lq: &LinienQuadTree,
 ) -> Vec<SvgLine> {
     let mut pairs = BTreeSet::new();
+
     for (id1, s1) in splitflaechen.iter().enumerate() {
         let rect = s1.poly_cut.get_rect();
         let it = splitflaechen.iter().enumerate().filter_map(|(i, p)| {
@@ -1557,6 +1601,13 @@ pub fn get_aenderungen_nutzungsarten_linien(
         
                 v.append(&mut shared_lines_2);
             }
+        }
+    }
+
+    for geb in gebaeude.iter() {
+        v.push(geb.poly.outer_ring.clone());
+        for i in geb.poly.inner_rings.iter() {
+            v.push(i.clone());  
         }
     }
 

@@ -1777,13 +1777,26 @@ impl AenderungenClean {
         // insert gebaeude geänderte flst
         for geb in self.aenderungen.gebaeude_loeschen.values() {
             for flst_id in geb.flst_id.iter() {
-                let default = Vec::new();
+                let flst_id_parsed = match FlstIdParsed::from_str(&flst_id).parse_num() {
+                    Some(s) => s,
+                    None => continue,
+                }.format_nice();
                 for part in self
                     .nas_xml_quadtree
                     .original
                     .flurstuecke_nutzungen
-                    .get(flst_id)
-                    .unwrap_or(&default)
+                    .iter()
+                    .flat_map(|(k, v)| {
+                        let q_flstid = match FlstIdParsed::from_str(k).parse_num() {
+                            Some(s) => s.format_nice(),
+                            None => return Vec::new(),
+                        };
+                        if q_flstid == flst_id_parsed {
+                            v.clone()
+                        } else {
+                            Vec::new()
+                        }
+                    })
                 {
                     let flurstueck_id = match part.attributes.get("AX_Flurstueck") {
                         Some(s) => s.clone(),
@@ -1805,16 +1818,19 @@ impl AenderungenClean {
                         .unwrap_or_default();
 
                     let flst_part_id = format!("{flurstueck_id}:{ebene}:{obj_id}{intersect_id}");
+                    log_status(&format!("stage4 {flst_part_id}"));
                     if na_bereits_definiert
                         .iter()
                         .any(|s| flst_part_id.starts_with(s))
                     {
                         continue;
                     }
+                    log_status(&format!("stage4 2 {flst_part_id}"));
                     let kuerzel = match part.get_auto_kuerzel() {
                         Some(s) => s,
                         None => continue,
                     };
+                    log_status(&format!("stage4 3 {flst_part_id}"));
                     is.push(AenderungenIntersection {
                         alt: kuerzel.clone(),
                         neu: kuerzel.clone(),
@@ -1844,23 +1860,6 @@ impl AenderungenClean {
             .iter()
             .map(|s| s.flst_id.clone())
             .collect::<BTreeSet<_>>();
-        let to_remove_flst = flst_touched
-            .iter()
-            .filter_map(|flst_id| {
-                if is
-                    .iter()
-                    .filter(|s| s.flst_id == *flst_id)
-                    .all(|s| s.alt == s.neu)
-                {
-                    Some(flst_id)
-                } else {
-                    None
-                }
-            })
-            .collect::<BTreeSet<_>>();
-        if !to_remove_flst.is_empty() {
-            is.retain(|s| !to_remove_flst.contains(&s.flst_id));
-        }
 
         let na_bereits_definiert = is
             .iter()
@@ -1928,28 +1927,36 @@ impl AenderungenClean {
             .0;
 
         // Remove Änderungen, wo nichts am Flurstück geändert wurde
-        let alle_flst = is
-            .iter()
-            .map(|s| s.flst_id.clone())
-            .collect::<BTreeSet<_>>();
-        let to_remove = alle_flst
-            .iter()
-            .filter_map(|flst_id| {
-                let all_splitflaechen_fuer_flst = is
-                    .iter()
-                    .filter_map(|s| if s.flst_id == *flst_id { Some(s) } else { None })
-                    .collect::<Vec<_>>();
-                if all_splitflaechen_fuer_flst.iter().all(|s| s.alt == s.neu) {
-                    Some(flst_id)
-                } else {
-                    None
-                }
-            })
-            .collect::<BTreeSet<_>>();
 
-        is.retain(|s| !to_remove.contains(&s.flst_id));
 
-        for a in to_remove.iter() {
+        let to_remove_flst = flst_touched
+        .iter()
+        .filter_map(|flst_id| {
+            let flst_id_parsed = FlstIdParsed::from_str(&flst_id).parse_num()?.format_nice();
+            let belongs_to_gebaeude = self.aenderungen.gebaeude_loeschen
+            .values()
+            .any(|s| s.flst_id.iter().any(|f| {
+                FlstIdParsed::from_str(f).parse_num().map(|s| s.format_nice()).unwrap_or_default() == *flst_id_parsed
+            }));
+            if belongs_to_gebaeude {
+                None // do not remove flst: Gebaeude geloescht
+            } else if is
+                .iter()
+                .filter(|s| s.flst_id == *flst_id)
+                .all(|s| (s.alt == s.neu))
+            {
+                Some(flst_id) // remove flst: no change
+            } else {
+                None
+            }
+        })
+        .collect::<BTreeSet<_>>();
+    
+        if !to_remove_flst.is_empty() {
+            is.retain(|s| !to_remove_flst.contains(&s.flst_id));
+        }
+
+        for a in to_remove_flst.iter() {
             log_status(&format!(
                 "WARN: Lösche Änderung an Flst. {}: keine Änderungen",
                 FlstIdParsed::from_str(&a).to_nice_string()
@@ -1964,6 +1971,7 @@ impl AenderungenClean {
             .iter()
             .map(|s| s.flst_id.clone())
             .collect::<BTreeSet<_>>();
+
         let _ = alle_flst
             .into_iter()
             .filter_map(|flst_id| {

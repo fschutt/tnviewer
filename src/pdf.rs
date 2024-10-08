@@ -883,7 +883,7 @@ pub async fn export_overview(
 
     let sf = split_nas.as_splitflaechen();
 
-    let default_extent = match get_default_riss_extent(&sf, &nas_xml.crs) {
+    let default_extent = match get_default_riss_extent(&sf, &[], &nas_xml.crs) {
         Some(s) => s,
         None => return Vec::new(),
     };

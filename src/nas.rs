@@ -244,7 +244,12 @@ impl NasXMLFile {
                 let flst = ax_flurstuecke_map
                     .iter()
                     .filter(|(_id, r, _poly)| flst_rect.overlaps_rect(r))
-                    .filter(|(_id, _r, poly)| crate::nas::relate(poly, &tp.poly, 1.0).overlaps())
+                    .filter(|(_id, _r, poly)| {
+                        let relate = crate::nas::relate(poly, &tp.poly, 1.0);
+                        relate.overlaps()
+                        || relate.a_contained_in_b()
+                        || relate.b_contained_in_a()
+                    })
                     .map(|(id, _, _)| id.clone())
                     .collect::<Vec<_>>();
 
