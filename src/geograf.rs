@@ -795,7 +795,7 @@ pub fn generate_grafbat_out(
                 ycoord2 = alt.optimized.pos.x,
                 gon = 100.0,
             ));
-            header.push(format!("TX{txid}: {}", alt.optimized.kuerzel));
+            header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
             txid += 1;
             txtid_textalt.insert(txid);
         }
@@ -811,7 +811,7 @@ pub fn generate_grafbat_out(
                 ycoord2 = neu.optimized.pos.x,
                 gon = 100.0,
             ));
-            header.push(format!("TX{txid}: {}", neu.optimized.kuerzel));
+            header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
             txid += 1;
             txtid_textneu.insert(txid);
         }
@@ -827,7 +827,7 @@ pub fn generate_grafbat_out(
                 ycoord2 = bleibt.optimized.ref_pos.y,
                 gon = 100.0,
             ));
-            header.push(format!("TX{txid}: {}", bleibt.optimized.kuerzel));
+            header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
             txid += 1;
             txtid_textbleibt.insert(txid);
         }
@@ -839,14 +839,14 @@ pub fn generate_grafbat_out(
         }
         header.push(format!("MA{menge_id_text_alt}:"));
 
-        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
-        for i in txtid_textalt.iter() {
+        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_textneu.iter() {
             header.push(format!("MR: TE={i}")); 
         }
         header.push(format!("MA{menge_id_text_neu}:"));
         
-        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
-        for i in txtid_textalt.iter() {
+        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_textbleibt.iter() {
             header.push(format!("MR: TE={i}")); 
         }
         header.push(format!("MA{menge_id_text_bleibt}:"));
