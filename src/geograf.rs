@@ -769,7 +769,7 @@ pub fn generate_grafbat_out(
     let default_menge = 17930;
     let zone = 33;
 
-    let mut txid = 1;
+    let mut txid = 1_usize;
 
     for (menge_id, outconf) in map.iter() {
 
@@ -777,11 +777,6 @@ pub fn generate_grafbat_out(
         let menge_id_text_alt = default_menge + (menge_id * 1);
         let menge_id_text_neu = default_menge + (menge_id * 2);
         let menge_id_text_bleibt = default_menge + (menge_id * 3);
-
-        /*
-            TE1,DEBBAL010007b3my,0: ,1600.1011.4111,33435604.2160,5881491.9490,33435598.5600,5881498.3600,100.000000,0,0,4,0,,0,,,,,,,n,,,
-            TX1: 330
-        */
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
