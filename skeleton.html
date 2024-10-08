@@ -1573,7 +1573,7 @@
     }
     var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
     var extent_json = JSON.parse(extent);
-    highlightPolygon(extent_json);
+    highlightPolygon(extent_json.poly);
   }
   
   function gebaeudeLoeschenUndo(event) {
@@ -2425,7 +2425,7 @@
           alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
         }
       } else {
-        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst: flst }; // loeschen
+        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst_id: flst }; // loeschen
       }
       reinitGebaeudeLoeschenLayer();
       replaceProjectContent();
@@ -2458,6 +2458,7 @@
         JSON.stringify(window.aenderungen),
       );
       var gebaeude_geojson = JSON.parse(f);
+      console.log(gebaeude_geojson);
       removeGebaeudeLoeschenLayer();
       var myLayer = null;
       

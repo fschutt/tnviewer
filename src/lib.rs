@@ -987,10 +987,10 @@ pub fn get_geojson_polygon(s: String) -> String {
 
 #[wasm_bindgen]
 pub fn get_fit_bounds(s: String) -> String {
-    let flst = match serde_json::from_str::<SvgPolygonInner>(&s) {
+    let flst = match serde_json::from_str::<SvgPolygon>(&s) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
-    };
+    }.get_inner();
     let bounds = flst.get_fit_bounds();
     serde_json::to_string(&bounds).unwrap_or_default()
 }
