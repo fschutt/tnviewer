@@ -844,12 +844,12 @@ pub fn generate_grafbat_out(
             txtid_flur.insert(txid);
         }
 
-        let mut pid = 100300;
-        let mut lid = 50756;
+        let mut pid = 1;
+        let mut lid = 1;
 
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
             let mut linie_points = Vec::new();
-            for (i, p) in rote_linie.points.iter().enumerate() {
+            for p in rote_linie.points.iter() {
                 pid += 1;
                 header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y));
                 riss_items.insert(format!("PK={pid}"));
