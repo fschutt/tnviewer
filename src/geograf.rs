@@ -20,7 +20,7 @@ use crate::{
         PointOnLineConfig,
     },
     ui::{
-        Aenderungen, AenderungenClean, AenderungenIntersection, AenderungenIntersections, GebaeudeLoeschen, TextPlacement, TextStatus
+        Aenderungen, AenderungenClean, AenderungenIntersection, AenderungenIntersections, TextPlacement, TextStatus
     },
     uuid_wasm::{log_status, uuid},
     xlsx::{
@@ -781,13 +781,14 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
                 ycoord = alt.optimized.pos.y,
-                xcoord2 = if alt.optimized.ref_pos.equals(&alt.optimized.pos) { String::new() } else { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() },
-                ycoord2 = if alt.optimized.ref_pos.equals(&alt.optimized.pos) { String::new() } else { alt.optimized.ref_pos.y.to_string() },
+                xcoord2 = if alt.needs_bezug() { String::new() } else { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() },
+                ycoord2 = if alt.needs_bezug() { String::new() } else { alt.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
             txid += 1;
             txtid_textalt.insert(txid);
+            riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_textneu = BTreeSet::new();
@@ -796,13 +797,14 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
                 ycoord = neu.optimized.pos.y,
-                xcoord2 = if neu.optimized.ref_pos.equals(&neu.optimized.pos) { String::new() } else { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() },
-                ycoord2 = if neu.optimized.ref_pos.equals(&neu.optimized.pos) { String::new() } else { neu.optimized.ref_pos.y.to_string() },
+                xcoord2 = if neu.needs_bezug() { String::new() } else { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() },
+                ycoord2 = if neu.needs_bezug() { String::new() } else { neu.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
             txid += 1;
             txtid_textneu.insert(txid);
+            riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_textbleibt = BTreeSet::new();
@@ -811,13 +813,14 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
                 ycoord = bleibt.optimized.pos.y,
-                xcoord2 = if bleibt.optimized.ref_pos.equals(&bleibt.optimized.pos) { String::new() } else { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() },
-                ycoord2 = if bleibt.optimized.ref_pos.equals(&bleibt.optimized.pos) { String::new() } else { bleibt.optimized.ref_pos.y.to_string() },
+                xcoord2 = if bleibt.needs_bezug() { String::new() } else { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() },
+                ycoord2 = if bleibt.needs_bezug() { String::new() } else { bleibt.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
             txid += 1;
             txtid_textbleibt.insert(txid);
+            riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_flurstuecke = BTreeSet::new();
@@ -827,29 +830,29 @@ pub fn generate_grafbat_out(
                 id = "",
                 xcoord = update_dxf_x(zone, flst.pos.x),
                 ycoord = flst.pos.y,
-                xcoord2 = if flst.ref_pos.equals(&flst.pos) { String::new() } else { update_dxf_x(zone, flst.ref_pos.x).to_string() },
-                ycoord2 = if flst.ref_pos.equals(&flst.pos) { String::new() } else { flst.ref_pos.y.to_string() },
+                xcoord2 = if flst.needs_bezug() { String::new() } else { update_dxf_x(zone, flst.ref_pos.x).to_string() },
+                ycoord2 = if flst.needs_bezug() { String::new() } else { flst.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", flst.kuerzel));
             txid += 1;
             txtid_flurstuecke.insert(txid);
+            riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_flur = BTreeSet::new();
         for fl in outconf.flur_texte.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.9103.4200,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                "TE{txid},{id},0: ,1600.9103.4200,{xcoord},{ycoord},,,{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, fl.pos.x),
                 ycoord = fl.pos.y,
-                xcoord2 = update_dxf_x(zone, fl.ref_pos.x),
-                ycoord2 = fl.ref_pos.y,
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", fl.kuerzel));
             txid += 1;
             txtid_flur.insert(txid);
+            riss_items.insert(format!("TE={txid}"));
         }
 
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
@@ -878,7 +881,7 @@ pub fn generate_grafbat_out(
 
         for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
             pid += 1;
-            let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle));
+            let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle - 90.0));
             header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
             riss_items.insert(format!("PK={pid}"));
         }
@@ -901,31 +904,26 @@ pub fn generate_grafbat_out(
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textalt.iter() {
             header.push(format!("MR: TE={i}"));
-            riss_items.insert(format!("TE={i}"));
         }
 
         header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textneu.iter() {
             header.push(format!("MR: TE={i}"));
-            riss_items.insert(format!("TE={i}"));
         }
 
         header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("MR: TE={i}")); 
-            riss_items.insert(format!("TE={i}"));
         }
 
         header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("MR: TE={i}")); 
-            riss_items.insert(format!("TE={i}"));
         }
 
         header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flur.iter() {
             header.push(format!("MR: TE={i}")); 
-            riss_items.insert(format!("TE={i}"));
         }
 
         header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));

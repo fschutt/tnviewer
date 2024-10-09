@@ -3,7 +3,7 @@ use crate::{
         CsvDataType,
         Status,
     }, geograf::points_to_rect, nas::{
-        self, line_contained_in_line, translate_to_geo_poly_special_shared, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
+        self, line_contained_in_line, point_is_in_polygon, translate_to_geo_poly_special_shared, NasXMLFile, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     }, ops::{intersect_polys, join_polys, subtract_from_poly}, pdf::{
         reproject_poly_back_into_latlon, Konfiguration, ProjektInfo, Risse
     }, uuid_wasm::{
@@ -2233,6 +2233,13 @@ pub struct TextPlacement {
     pub ref_pos: SvgPoint,
     pub area: usize,
     pub poly: SvgPolygonInner,
+}
+
+impl TextPlacement {
+    pub fn needs_bezug(&self) -> bool {
+        !point_is_in_polygon(&self.ref_pos, &self.poly) ||
+        !point_is_in_polygon(&self.pos, &self.poly)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]

@@ -25,6 +25,9 @@ pub struct OptimizedTextPlacement {
 }
 
 impl OptimizedTextPlacement {
+    pub fn needs_bezug(&self) -> bool {
+        self.optimized.needs_bezug()
+    }
     pub fn get_line(&self) -> Option<(SvgPoint, SvgPoint)> {
         if crate::nas::point_is_in_polygon(&self.optimized.pos, &self.optimized.poly) {
             return None;
