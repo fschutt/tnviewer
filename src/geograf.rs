@@ -785,8 +785,8 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
                 ycoord = alt.optimized.pos.y,
-                xcoord2 = if alt.needs_bezug() { String::new() } else { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() },
-                ycoord2 = if alt.needs_bezug() { String::new() } else { alt.optimized.ref_pos.y.to_string() },
+                xcoord2 = if alt.needs_bezug() { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() } else { String::new() },
+                ycoord2 = if alt.needs_bezug() { alt.optimized.ref_pos.y.to_string() } else { String::new() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
@@ -801,8 +801,8 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
                 ycoord = neu.optimized.pos.y,
-                xcoord2 = if neu.needs_bezug() { String::new() } else { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() },
-                ycoord2 = if neu.needs_bezug() { String::new() } else { neu.optimized.ref_pos.y.to_string() },
+                xcoord2 = if neu.needs_bezug() { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() } else { String::new() },
+                ycoord2 = if neu.needs_bezug() { neu.optimized.ref_pos.y.to_string() } else { String::new() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
@@ -817,8 +817,8 @@ pub fn generate_grafbat_out(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
                 ycoord = bleibt.optimized.pos.y,
-                xcoord2 = if bleibt.needs_bezug() { String::new() } else { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() },
-                ycoord2 = if bleibt.needs_bezug() { String::new() } else { bleibt.optimized.ref_pos.y.to_string() },
+                xcoord2 = if bleibt.needs_bezug() { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() } else { String::new() },
+                ycoord2 = if bleibt.needs_bezug() { bleibt.optimized.ref_pos.y.to_string() } else { String::new() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
@@ -834,8 +834,8 @@ pub fn generate_grafbat_out(
                 id = "",
                 xcoord = update_dxf_x(zone, flst.pos.x),
                 ycoord = flst.pos.y,
-                xcoord2 = if flst.needs_bezug() { String::new() } else { update_dxf_x(zone, flst.ref_pos.x).to_string() },
-                ycoord2 = if flst.needs_bezug() { String::new() } else { flst.ref_pos.y.to_string() },
+                xcoord2 = if flst.needs_bezug() { update_dxf_x(zone, flst.ref_pos.x).to_string() } else { String::new() },
+                ycoord2 = if flst.needs_bezug() { flst.ref_pos.y.to_string() } else { String::new() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", flst.kuerzel));
