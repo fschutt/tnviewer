@@ -771,7 +771,11 @@ pub fn generate_grafbat_out(
         mid += 1;
         let menge_id_text_gesamt = mid;
         mid += 1;
-
+        let menge_id_linien_rot = mid;
+        mid += 1;
+        let menge_id_punkte_untergehend = mid;
+        mid += 1;
+        
         let mut riss_items = BTreeSet::new();
 
         // export texte
@@ -855,6 +859,7 @@ pub fn generate_grafbat_out(
             riss_items.insert(format!("TE={txid}"));
         }
 
+        let mut txtid_linien_rot = BTreeSet::new();
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
             for win in rote_linie.points.windows(2) {
                 match &win {
@@ -864,43 +869,34 @@ pub fn generate_grafbat_out(
                         let pid_start_save = pid;
                         header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
                         riss_items.insert(format!("PK={pid}"));
+                        txtid_linien_rot.insert(format!("PK={pid}"));
 
                         pid += 1;
                         let pid_end_save = pid;
                         header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
                         riss_items.insert(format!("PK={pid}"));
+                        txtid_linien_rot.insert(format!("PK={pid}"));
 
                         lid += 1;
                         header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
                         riss_items.insert(format!("LI={lid}"));
+                        txtid_linien_rot.insert(format!("LI={lid}"));
                     },
                     _ => { },
                 }
             }
         }
 
+        let mut punkte_id_untergehend = BTreeSet::new();
         for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
             pid += 1;
             let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle - 90.0));
             header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
             riss_items.insert(format!("PK={pid}"));
+            punkte_id_untergehend.insert(format!("PK={pid}"));
         }
-
-        header.push(
-            format!(
-                "PB{menge_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
-                min_x = update_dxf_x(zone, outconf.extent.min_x), 
-                max_x = update_dxf_x(zone, outconf.extent.max_x),
-                min_y = outconf.extent.min_y, 
-                hoehe = outconf.extent.height_m()
-            )
-        );
-
-        // PB359: RISS1PLOTBOX,1600.873.0,33433100.6499,5883324.6689,33434465.6499,5883324.6689,934.5000,0
-
-        // TODO: Plotboxen
         
-        // Menge
+        // Mengen
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textalt.iter() {
             header.push(format!("MR: TE={i}"));
@@ -926,10 +922,32 @@ pub fn generate_grafbat_out(
             header.push(format!("MR: TE={i}")); 
         }
 
+        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_linien_rot.iter() {
+            header.push(format!("MR: {i}")); 
+        }
+
+        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in punkte_id_untergehend.iter() {
+            header.push(format!("MR: {i}")); 
+        }
+
         header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
         for i in riss_items.iter() {
             header.push(format!("MR: {i}")); 
         }
+
+        // Plotbox
+        header.push(
+            format!(
+                "PB{menge_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
+                min_x = update_dxf_x(zone, outconf.extent.min_x), 
+                max_x = update_dxf_x(zone, outconf.extent.max_x),
+                min_y = outconf.extent.min_y, 
+                hoehe = outconf.extent.height_m()
+            )
+        );
+
     }
 
     header.join("\r\n")

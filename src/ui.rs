@@ -2237,7 +2237,6 @@ pub struct TextPlacement {
 
 impl TextPlacement {
     pub fn needs_bezug(&self) -> bool {
-        !point_is_in_polygon(&self.ref_pos, &self.poly) ||
         !point_is_in_polygon(&self.pos, &self.poly)
     }
 }
