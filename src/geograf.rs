@@ -787,9 +787,9 @@ pub fn generate_grafbat_out(
                 "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
-                ycoord = alt.optimized.pos.x,
+                ycoord = alt.optimized.pos.y,
                 xcoord2 = update_dxf_x(zone, alt.optimized.ref_pos.x),
-                ycoord2 = alt.optimized.pos.x,
+                ycoord2 = alt.optimized.pos.y,
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
@@ -803,9 +803,9 @@ pub fn generate_grafbat_out(
                 "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
-                ycoord = neu.optimized.pos.x,
+                ycoord = neu.optimized.pos.y,
                 xcoord2 = update_dxf_x(zone, neu.optimized.ref_pos.x),
-                ycoord2 = neu.optimized.pos.x,
+                ycoord2 = neu.optimized.pos.y,
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
@@ -819,7 +819,7 @@ pub fn generate_grafbat_out(
                 "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
-                ycoord = bleibt.optimized.pos.x,
+                ycoord = bleibt.optimized.pos.y,
                 xcoord2 = update_dxf_x(zone, bleibt.optimized.ref_pos.x),
                 ycoord2 = bleibt.optimized.ref_pos.y,
                 gon = 100.0,
@@ -835,7 +835,7 @@ pub fn generate_grafbat_out(
                 "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, flst.pos.x),
-                ycoord = flst.pos.x,
+                ycoord = flst.pos.y,
                 xcoord2 = update_dxf_x(zone, flst.ref_pos.x),
                 ycoord2 = flst.ref_pos.y,
                 gon = 100.0,
@@ -851,7 +851,7 @@ pub fn generate_grafbat_out(
                 "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, fl.pos.x),
-                ycoord = fl.pos.x,
+                ycoord = fl.pos.y,
                 xcoord2 = update_dxf_x(zone, fl.ref_pos.x),
                 ycoord2 = fl.ref_pos.y,
                 gon = 100.0,
@@ -868,29 +868,31 @@ pub fn generate_grafbat_out(
         for i in txtid_textalt.iter() {
             header.push(format!("MR: TE={i}")); 
         }
-        header.push(format!("MA{menge_id_text_alt}:"));
+        // header.push(format!("MA{menge_id_text_alt}:"));
 
         header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textneu.iter() {
             header.push(format!("MR: TE={i}")); 
         }
-        header.push(format!("MA{menge_id_text_neu}:"));
-        
+        // header.push(format!("MA{menge_id_text_neu}:"));
+
         header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("MR: TE={i}")); 
         }
-        header.push(format!("MA{menge_id_text_bleibt}:"));
+        // header.push(format!("MA{menge_id_text_bleibt}:"));
+
         header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("MR: TE={i}")); 
         }
-        header.push(format!("MA{menge_id_text_flst}:"));
+        // header.push(format!("MA{menge_id_text_flst}:"));
+
         header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flur.iter() {
             header.push(format!("MR: TE={i}")); 
         }
-        header.push(format!("MA{menge_id_text_flur}:"));
+        // header.push(format!("MA{menge_id_text_flur}:"));
     }
 
     header.join("\r\n")
@@ -1282,7 +1284,7 @@ pub fn export_splitflaechen(
     let flurstueck_texte = flst.get_labels(&Some(riss_extent_reprojected.get_poly()));
     if !flurstueck_texte.is_empty() {
         files.push((
-            None,
+            Some("Texte".to_string()),
             format!("Flurstueck_Texte_{pdir_name}.dxf").into(),
             texte_zu_dxf_datei(&flurstueck_texte),
         ));
