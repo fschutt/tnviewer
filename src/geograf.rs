@@ -784,12 +784,11 @@ pub fn generate_grafbat_out(
         let mut txtid_textalt = BTreeSet::new();
         for alt in outconf.aenderungen_texte_alt.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
-                id = "",
+                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
                 ycoord = alt.optimized.pos.y,
-                xcoord2 = update_dxf_x(zone, alt.optimized.ref_pos.x),
-                ycoord2 = alt.optimized.pos.y,
+                xcoord2 = if alt.optimized.ref_pos.equals(&alt.optimized.pos) { String::new() } else { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() },
+                ycoord2 = if alt.optimized.ref_pos.equals(&alt.optimized.pos) { String::new() } else { alt.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
@@ -800,12 +799,11 @@ pub fn generate_grafbat_out(
         let mut txtid_textneu = BTreeSet::new();
         for neu in outconf.aenderungen_texte_neu.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
-                id = "",
+                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
                 ycoord = neu.optimized.pos.y,
-                xcoord2 = update_dxf_x(zone, neu.optimized.ref_pos.x),
-                ycoord2 = neu.optimized.pos.y,
+                xcoord2 = if neu.optimized.ref_pos.equals(&neu.optimized.pos) { String::new() } else { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() },
+                ycoord2 = if neu.optimized.ref_pos.equals(&neu.optimized.pos) { String::new() } else { neu.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
@@ -816,12 +814,11 @@ pub fn generate_grafbat_out(
         let mut txtid_textbleibt = BTreeSet::new();
         for bleibt in outconf.aenderungen_texte_bleibt.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
-                id = "",
+                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
                 ycoord = bleibt.optimized.pos.y,
-                xcoord2 = update_dxf_x(zone, bleibt.optimized.ref_pos.x),
-                ycoord2 = bleibt.optimized.ref_pos.y,
+                xcoord2 = if bleibt.optimized.ref_pos.equals(&bleibt.optimized.pos) { String::new() } else { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() },
+                ycoord2 = if bleibt.optimized.ref_pos.equals(&bleibt.optimized.pos) { String::new() } else { bleibt.optimized.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
@@ -832,12 +829,12 @@ pub fn generate_grafbat_out(
         let mut txtid_flurstuecke = BTreeSet::new();
         for flst in outconf.flurstueck_texte.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                "TE{txid},{id},0: ,1600.9102.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, flst.pos.x),
                 ycoord = flst.pos.y,
-                xcoord2 = update_dxf_x(zone, flst.ref_pos.x),
-                ycoord2 = flst.ref_pos.y,
+                xcoord2 = if flst.ref_pos.equals(&flst.pos) { String::new() } else { update_dxf_x(zone, flst.ref_pos.x).to_string() },
+                ycoord2 = if flst.ref_pos.equals(&flst.pos) { String::new() } else { flst.ref_pos.y.to_string() },
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", flst.kuerzel));
@@ -848,7 +845,7 @@ pub fn generate_grafbat_out(
         let mut txtid_flur = BTreeSet::new();
         for fl in outconf.flur_texte.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                "TE{txid},{id},0: ,1600.9103.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, fl.pos.x),
                 ycoord = fl.pos.y,
