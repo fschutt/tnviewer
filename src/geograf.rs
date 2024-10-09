@@ -848,18 +848,22 @@ pub fn generate_grafbat_out(
         let mut lid = 1;
 
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
-            let mut linie_points = Vec::new();
-            for p in rote_linie.points.iter() {
-                pid += 1;
-                header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y));
-                riss_items.insert(format!("PK={pid}"));
-                linie_points.push(format!("{pid}"));
-            }
-            for win in linie_points.windows(2) {
+            for win in rote_linie.points.windows(2) {
                 match &win {
                     &[pid_start, pid_end] => {
+
+                        pid += 1;
+                        let pid_start_save = pid;
+                        header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
+                        riss_items.insert(format!("PK={pid}"));
+
+                        pid += 1;
+                        let pid_end_save = pid;
+                        header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
+                        riss_items.insert(format!("PK={pid}"));
+
                         lid += 1;
-                        header.push(format!("LI{lid}: PK={pid_start},PK={pid_end},1600.9104.1,,,,0,0,,,,"));
+                        header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
                         riss_items.insert(format!("LI={lid}"));
                     },
                     _ => { },
