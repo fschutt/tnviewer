@@ -939,7 +939,7 @@ pub fn generate_grafbat_out(
         // Plotbox
         header.push(
             format!(
-                "PB{riss_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
+                "PB{riss_id}: Riss{riss_id},1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
                 min_x = update_dxf_x(zone, outconf.extent.min_x), 
                 max_x = update_dxf_x(zone, outconf.extent.max_x),
                 min_y = outconf.extent.min_y, 
