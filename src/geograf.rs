@@ -778,6 +778,7 @@ pub fn generate_grafbat_out(
         let menge_id_text_neu = default_menge + (menge_id * 2);
         let menge_id_text_bleibt = default_menge + (menge_id * 3);
         let menge_id_text_flst = default_menge + (menge_id * 4);
+        let menge_id_text_flur = default_menge + (menge_id * 5);
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
@@ -844,7 +845,23 @@ pub fn generate_grafbat_out(
             txtid_flurstuecke.insert(txid);
         }
 
-        // TODO: Linien, Plotboxen!
+        let mut txtid_flur = BTreeSet::new();
+        for fl in outconf.flur_texte.iter() {
+            header.push(format!(
+                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                id = "",
+                xcoord = update_dxf_x(zone, fl.pos.x),
+                ycoord = fl.pos.x,
+                xcoord2 = update_dxf_x(zone, fl.ref_pos.x),
+                ycoord2 = fl.ref_pos.y,
+                gon = 100.0,
+            ));
+            header.push(format!("  TX{txid}: {}", fl.kuerzel));
+            txid += 1;
+            txtid_flur.insert(txid);
+        }
+
+        // TODO: rote Linien, rote Punkte, Plotboxen
         
         // Menge
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
@@ -869,6 +886,11 @@ pub fn generate_grafbat_out(
             header.push(format!("MR: TE={i}")); 
         }
         header.push(format!("MA{menge_id_text_flst}:"));
+        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_flur.iter() {
+            header.push(format!("MR: TE={i}")); 
+        }
+        header.push(format!("MA{menge_id_text_flur}:"));
     }
 
     header.join("\r\n")
@@ -1178,10 +1200,10 @@ pub fn export_splitflaechen(
     ));
 
     let header = generate_header_pdf(info, &calc_pdf_final, split_nas, num_riss, total_risse);
-    files.push((None, format!("Blattkopf_{pdir_name}.pdf").into(), header));
+    files.push((Some("Risselemente".to_string()), format!("Blattkopf_{pdir_name}.pdf").into(), header));
 
     let legende = generate_legende_xlsx(&splitflaechen);
-    files.push((None, format!("Legende_{pdir_name}.xlsx").into(), legende));
+    files.push((Some("Risselemente".to_string()), format!("Legende_{pdir_name}.xlsx").into(), legende));
 
     let na_splitflaechen = get_na_splitflaechen(
         &splitflaechen,
@@ -1196,7 +1218,7 @@ pub fn export_splitflaechen(
         );
     if !aenderungen_nutzungsarten_linien.is_empty() {
         files.push((
-            None,
+            Some("Punkte".to_string()),
             format!("Punkte_NAGrenze_Untergehend_{pdir_name}.dxf").into(),
             lines_to_points_dxf(&aenderungen_nutzungsarten_linien),
         ));
@@ -1210,7 +1232,7 @@ pub fn export_splitflaechen(
         get_aenderungen_rote_linien(&splitflaechen, lq_flurstuecke_und_nutzungsarten);
     if !aenderungen_rote_linien.is_empty() {
         files.push((
-            None,
+            Some("Linien".to_string()),
             format!("Linien_Rot_{pdir_name}.dxf").into(),
             lines_to_dxf(&aenderungen_rote_linien),
         ));
@@ -1247,7 +1269,7 @@ pub fn export_splitflaechen(
         .collect::<Vec<_>>();
     if !flur_texte.is_empty() {
         files.push((
-            None,
+            Some("Texte".to_string()),
             format!("Flur_Texte_{pdir_name}.dxf").into(),
             texte_zu_dxf_datei(&flur_texte),
         ));
@@ -1292,7 +1314,7 @@ pub fn export_splitflaechen(
         .collect::<Vec<_>>();
     if !beschriftungen_optimized_linien.is_empty() {
         files.push((
-            None,
+            Some("Texte".to_string()),
             format!("Beschriftung_Linien_{pdir_name}.dxf").into(),
             lines_to_dxf(&beschriftungen_optimized_linien),
         ));
@@ -1309,7 +1331,7 @@ pub fn export_splitflaechen(
         .cloned()
         .collect::<Vec<_>>();
     files.push((
-        None,
+        Some("Texte".to_string()),
         format!("Texte_Bleibt_{pdir_name}.dxf").into(),
         texte_zu_dxf_datei(&aenderungen_texte_bleibt),
     ));
@@ -1325,7 +1347,7 @@ pub fn export_splitflaechen(
         .cloned()
         .collect::<Vec<_>>();
     files.push((
-        None,
+        Some("Texte".to_string()),
         format!("Texte_Alt_{pdir_name}.dxf").into(),
         texte_zu_dxf_datei(&aenderungen_texte_alt),
     ));
@@ -1341,7 +1363,7 @@ pub fn export_splitflaechen(
         .cloned()
         .collect::<Vec<_>>();
     files.push((
-        None,
+        Some("Texte".to_string()),
         format!("Texte_Neu_{pdir_name}.dxf").into(),
         texte_zu_dxf_datei(&aenderungen_texte_neu),
     ));
@@ -1372,7 +1394,7 @@ pub fn export_splitflaechen(
     );
 
     files.push((
-        None,
+        Some("Vorschau".to_string()),
         format!(
             "Vorschau_{}.pdf",
             parent_dir.as_deref().unwrap_or("Aenderungen")
@@ -1427,7 +1449,7 @@ pub fn export_splitflaechen(
     );
 
     files.push((
-        None,
+        Some("Vorschau".to_string()),
         format!(
             "Vorschau_mit_Hintergrund_{}.pdf",
             parent_dir.as_deref().unwrap_or("Aenderungen")
@@ -1466,6 +1488,7 @@ pub fn export_splitflaechen(
         aenderungen_texte_alt: aenderungen_texte_alt_2.clone(),
         aenderungen_texte_bleibt: aenderungen_texte_bleibt_2.clone(),
         flurstueck_texte: flurstueck_texte.clone(),
+        flur_texte: flur_texte.clone(),
     })
 }
 
@@ -1476,6 +1499,7 @@ pub struct GrafbatOutConfig {
     aenderungen_texte_alt: Vec<OptimizedTextPlacement>,
     aenderungen_texte_bleibt: Vec<OptimizedTextPlacement>,
     flurstueck_texte: Vec<TextPlacement>,
+    flur_texte: Vec<TextPlacement>,
 }
 
 
