@@ -759,28 +759,28 @@ pub fn generate_grafbat_out(
     for (riss_id, outconf) in map.iter() {
 
         mid += 1;
-        let menge_id_text_alt = mid;
+        let menge_id_text_alt = mid.to_string();
         mid += 1;
-        let menge_id_text_neu = mid;
+        let menge_id_text_neu = mid.to_string();
         mid += 1;
-        let menge_id_text_bleibt = mid;
+        let menge_id_text_bleibt = mid.to_string();
         mid += 1;
-        let menge_id_text_flst = mid;
+        let menge_id_text_flst = mid.to_string();
         mid += 1;
-        let menge_id_text_flur = mid;
+        let menge_id_text_flur = mid.to_string();
         mid += 1;
-        let menge_id_linien_rot = mid;
+        let menge_id_linien_rot = mid.to_string();
         mid += 1;
-        let menge_id_punkte_untergehend = mid;
+        let menge_id_punkte_untergehend = mid.to_string();
         mid += 1;
-        let menge_id_text_gesamt = mid;
-        mid += 1;
+        let menge_id_gesamt = mid.to_string();
 
         let mut riss_items = BTreeSet::new();
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
         for alt in outconf.aenderungen_texte_alt.iter() {
+            txid += 1;
             header.push(format!(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
@@ -790,13 +790,13 @@ pub fn generate_grafbat_out(
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
-            txid += 1;
             txtid_textalt.insert(txid);
             riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_textneu = BTreeSet::new();
         for neu in outconf.aenderungen_texte_neu.iter() {
+            txid += 1;
             header.push(format!(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
@@ -806,13 +806,13 @@ pub fn generate_grafbat_out(
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
-            txid += 1;
             txtid_textneu.insert(txid);
             riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_textbleibt = BTreeSet::new();
         for bleibt in outconf.aenderungen_texte_bleibt.iter() {
+            txid += 1;
             header.push(format!(
                 "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
@@ -822,13 +822,13 @@ pub fn generate_grafbat_out(
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
-            txid += 1;
             txtid_textbleibt.insert(txid);
             riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_flurstuecke = BTreeSet::new();
         for flst in outconf.flurstueck_texte.iter() {
+            txid += 1;
             header.push(format!(
                 "TE{txid},{id},0: ,1600.9102.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
@@ -839,13 +839,13 @@ pub fn generate_grafbat_out(
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", flst.kuerzel));
-            txid += 1;
             txtid_flurstuecke.insert(txid);
             riss_items.insert(format!("TE={txid}"));
         }
 
         let mut txtid_flur = BTreeSet::new();
         for fl in outconf.flur_texte.iter() {
+            txid += 1;
             header.push(format!(
                 "TE{txid},{id},0: ,1600.9103.4200,{xcoord},{ycoord},,,{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
@@ -854,7 +854,6 @@ pub fn generate_grafbat_out(
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", fl.kuerzel));
-            txid += 1;
             txtid_flur.insert(txid);
             riss_items.insert(format!("TE={txid}"));
         }
@@ -932,7 +931,7 @@ pub fn generate_grafbat_out(
             header.push(format!("MR: {i}")); 
         }
 
-        header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
         for i in riss_items.iter() {
             header.push(format!("MR: {i}")); 
         }
