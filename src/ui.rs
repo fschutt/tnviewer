@@ -973,7 +973,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_xml_base64}'>
                     </div>
                     <div>
-                        <p>Fortführung</p>
+                        <p>Export</p>
                         <p>NAS-XML</p>
                     </div>
                 </label>
@@ -1170,9 +1170,9 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_nas_xml}
                         {export_geograf}
                         {export_david}
+                        {export_nas_xml}
                     </div>
                 </div>
 

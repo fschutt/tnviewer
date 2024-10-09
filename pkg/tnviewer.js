@@ -2036,7 +2036,7 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function(arg0) {
         queueMicrotask(getObject(arg0));
     };
-    imports.wbg.__wbindgen_closure_wrapper8308 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper8315 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 444, __wbg_adapter_32);
         return addHeapObject(ret);
     };

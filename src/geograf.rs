@@ -460,7 +460,7 @@ pub async fn export_aenderungen_geograf(
             &default_extent,
             grafbat_map,
         );
-        files.push((None, format!("Grafbat.out").into(), grafbat.as_bytes().to_vec()));
+        files.push((None, format!("{}.GRAFBAT.out", projekt_info.antragsnr).into(), grafbat.as_bytes().to_vec()));
     }
 
     write_files_to_zip(files)
@@ -896,43 +896,43 @@ pub fn generate_grafbat_out(
         riss_items.sort();
         riss_items.dedup();
         
-        header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in riss_items.iter() {
             header.push(format!("  MR: {i}")); 
         }
 
         // Mengen
-        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textalt.iter() {
             header.push(format!("  MR: TE={i}"));
         }
 
-        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textneu.iter() {
             header.push(format!("  MR: TE={i}"));
         }
 
-        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_flur.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_linien_rot.iter() {
             header.push(format!("  MR: {i}")); 
         }
 
-        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in punkte_id_untergehend.iter() {
             header.push(format!("  MR: {i}")); 
         }
@@ -1285,6 +1285,8 @@ pub fn export_splitflaechen(
         aenderungen_nutzungsarten_linien.len()
     ));
 
+    let aenderungen_nutzungsarten_linien_2 = aenderungen_nutzungsarten_linien.clone();
+
     let aenderungen_rote_linien =
         get_aenderungen_rote_linien(&splitflaechen, lq_flurstuecke_und_nutzungsarten);
     if !aenderungen_rote_linien.is_empty() {
@@ -1298,6 +1300,8 @@ pub fn export_splitflaechen(
         "[{num_riss} / {total_risse}] {} rote Linien generiert.",
         aenderungen_rote_linien.len()
     ));
+
+    let aenderungen_rote_linien_2 = aenderungen_rote_linien.clone();
 
     let aenderungen_texte: Vec<TextPlacement> =
         AenderungenIntersections::get_texte(&splitflaechen, &riss_extent_cutpoly_noborder);
@@ -1540,8 +1544,8 @@ pub fn export_splitflaechen(
 
     Ok((num_riss, GrafbatOutConfig {
         extent: riss_extent_with_border_reprojected,
-        aenderungen_rote_linien: aenderungen_rote_linien.clone(),
-        aenderungen_nutzungsarten_linien: aenderungen_nutzungsarten_linien.clone(),
+        aenderungen_rote_linien: aenderungen_rote_linien_2.clone(),
+        aenderungen_nutzungsarten_linien: aenderungen_nutzungsarten_linien_2.clone(),
         aenderungen_texte_neu: aenderungen_texte_neu_2.clone(),
         aenderungen_texte_alt: aenderungen_texte_alt_2.clone(),
         aenderungen_texte_bleibt: aenderungen_texte_bleibt_2.clone(),
