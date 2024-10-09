@@ -777,6 +777,7 @@ pub fn generate_grafbat_out(
         let menge_id_text_alt = default_menge + (menge_id * 1);
         let menge_id_text_neu = default_menge + (menge_id * 2);
         let menge_id_text_bleibt = default_menge + (menge_id * 3);
+        let menge_id_text_flst = default_menge + (menge_id * 4);
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
@@ -827,6 +828,24 @@ pub fn generate_grafbat_out(
             txtid_textbleibt.insert(txid);
         }
 
+        let mut txtid_flurstuecke = BTreeSet::new();
+        for flst in outconf.flurstueck_texte.iter() {
+            header.push(format!(
+                "TE{txid},{id},0: ,1600.1011.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                id = "",
+                xcoord = update_dxf_x(zone, flst.pos.x),
+                ycoord = flst.pos.x,
+                xcoord2 = update_dxf_x(zone, flst.ref_pos.x),
+                ycoord2 = flst.ref_pos.y,
+                gon = 100.0,
+            ));
+            header.push(format!("  TX{txid}: {}", flst.kuerzel));
+            txid += 1;
+            txtid_flurstuecke.insert(txid);
+        }
+
+        // TODO: Linien, Plotboxen!
+        
         // Menge
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textalt.iter() {
@@ -845,6 +864,11 @@ pub fn generate_grafbat_out(
             header.push(format!("MR: TE={i}")); 
         }
         header.push(format!("MA{menge_id_text_bleibt}:"));
+        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in txtid_flurstuecke.iter() {
+            header.push(format!("MR: TE={i}")); 
+        }
+        header.push(format!("MA{menge_id_text_flst}:"));
     }
 
     header.join("\r\n")
@@ -1365,7 +1389,7 @@ pub fn export_splitflaechen(
     let aenderungen_texte =
         AenderungenIntersections::get_texte(&splitflaechen.0, &riss_extent_cutpoly_noborder);
     let mini_split_nas = get_mini_nas_xml(&split_nas, &riss_extent_reprojected);
-    let aenderungen_texte_optimized = crate::optimize::optimize_labels(
+    let aenderungen_texte_optimized_new = crate::optimize::optimize_labels(
         &mini_split_nas,
         &splitflaechen.0,
         &gebaeude,
@@ -1396,7 +1420,7 @@ pub fn export_splitflaechen(
         // TODO: riss_extent_reprojected_noborder
         &Vec::new(),
         &Vec::new(),
-        &aenderungen_texte_optimized,
+        &aenderungen_texte_optimized_new,
         &fluren,
         &flst,
         &gebaeude,
