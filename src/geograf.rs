@@ -848,19 +848,23 @@ pub fn generate_grafbat_out(
         let mut lid = 50756;
 
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
+            let mut linie_points = Vec::new();
             for (i, p) in rote_linie.points.iter().enumerate() {
-                let cur_pid = pid + i;
-                header.push(format!("PK{cur_pid}: {i},1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y));
-                riss_items.insert(format!("PK={cur_pid}"));
-                if i != 0 {
-                    let pid_start = pid + i - 1;
-                    let pid_end = pid + i;
-                    lid += 1;
-                    header.push(format!("LI{lid}: PK={pid_start},PK={pid_end},1600.9104.1,,,,0,0,,,,"));
-                    riss_items.insert(format!("LI={lid}"));
+                pid += 1;
+                header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y));
+                riss_items.insert(format!("PK={pid}"));
+                linie_points.push(format!("{pid}"));
+            }
+            for win in linie_points.windows(2) {
+                match &win {
+                    &[pid_start, pid_end] => {
+                        lid += 1;
+                        header.push(format!("LI{lid}: PK={pid_start},PK={pid_end},1600.9104.1,,,,0,0,,,,"));
+                        riss_items.insert(format!("LI={lid}"));
+                    },
+                    _ => { },
                 }
             }
-            pid += rote_linie.points.len();
         }
 
         for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
@@ -869,6 +873,16 @@ pub fn generate_grafbat_out(
             header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
             riss_items.insert(format!("PK={pid}"));
         }
+
+        header.push(
+            format!(
+                "PB{menge_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
+                min_x = update_dxf_x(zone, outconf.extent.min_x), 
+                max_x = update_dxf_x(zone, outconf.extent.max_x),
+                min_y = outconf.extent.min_y, 
+                hoehe = outconf.extent.height_m()
+            )
+        );
 
         // PB359: RISS1PLOTBOX,1600.873.0,33433100.6499,5883324.6689,33434465.6499,5883324.6689,934.5000,0
 
@@ -905,7 +919,7 @@ pub fn generate_grafbat_out(
             riss_items.insert(format!("TE={i}"));
         }
 
-        header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
         for i in riss_items.iter() {
             header.push(format!("MR: {i}")); 
         }
@@ -1500,6 +1514,7 @@ pub fn export_splitflaechen(
         .collect::<Vec<_>>();
 
     Ok(GrafbatOutConfig {
+        extent: riss_extent_with_border_reprojected,
         aenderungen_rote_linien: aenderungen_rote_linien.clone(),
         aenderungen_nutzungsarten_linien: aenderungen_nutzungsarten_linien.clone(),
         aenderungen_texte_neu: aenderungen_texte_neu_2.clone(),
@@ -1511,6 +1526,7 @@ pub fn export_splitflaechen(
 }
 
 pub struct GrafbatOutConfig {
+    extent: RissExtentReprojected,
     aenderungen_rote_linien: Vec<SvgLine>,
     aenderungen_nutzungsarten_linien: Vec<SvgLine>,
     aenderungen_texte_neu: Vec<OptimizedTextPlacement>,
