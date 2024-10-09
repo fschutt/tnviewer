@@ -775,7 +775,7 @@ pub fn generate_grafbat_out(
         mid += 1;
         let menge_id_gesamt = mid.to_string();
 
-        let mut riss_items = BTreeSet::new();
+        let mut riss_items = Vec::new();
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
@@ -791,7 +791,7 @@ pub fn generate_grafbat_out(
             ));
             header.push(format!("  TX{txid}: {}", alt.optimized.kuerzel));
             txtid_textalt.insert(txid);
-            riss_items.insert(format!("TE={txid}"));
+            riss_items.push(format!("TE={txid}"));
         }
 
         let mut txtid_textneu = BTreeSet::new();
@@ -807,7 +807,7 @@ pub fn generate_grafbat_out(
             ));
             header.push(format!("  TX{txid}: {}", neu.optimized.kuerzel));
             txtid_textneu.insert(txid);
-            riss_items.insert(format!("TE={txid}"));
+            riss_items.push(format!("TE={txid}"));
         }
 
         let mut txtid_textbleibt = BTreeSet::new();
@@ -823,15 +823,14 @@ pub fn generate_grafbat_out(
             ));
             header.push(format!("  TX{txid}: {}", bleibt.optimized.kuerzel));
             txtid_textbleibt.insert(txid);
-            riss_items.insert(format!("TE={txid}"));
+            riss_items.push(format!("TE={txid}"));
         }
 
         let mut txtid_flurstuecke = BTreeSet::new();
         for flst in outconf.flurstueck_texte.iter() {
             txid += 1;
             header.push(format!(
-                "TE{txid},{id},0: ,1600.9102.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
-                id = "",
+                "TE{txid}, ,0: ,1600.9102.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 xcoord = update_dxf_x(zone, flst.pos.x),
                 ycoord = flst.pos.y,
                 xcoord2 = if flst.needs_bezug() { update_dxf_x(zone, flst.ref_pos.x).to_string() } else { String::new() },
@@ -840,22 +839,21 @@ pub fn generate_grafbat_out(
             ));
             header.push(format!("  TX{txid}: {}", flst.kuerzel));
             txtid_flurstuecke.insert(txid);
-            riss_items.insert(format!("TE={txid}"));
+            riss_items.push(format!("TE={txid}"));
         }
 
         let mut txtid_flur = BTreeSet::new();
         for fl in outconf.flur_texte.iter() {
             txid += 1;
             header.push(format!(
-                "TE{txid},{id},0: ,1600.9103.4200,{xcoord},{ycoord},,,{gon},0,0,4,0,,0,,,,,,,n,,,", 
-                id = "",
+                "TE{txid}, ,0: ,1600.9103.4200,{xcoord},{ycoord},,,{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 xcoord = update_dxf_x(zone, fl.pos.x),
                 ycoord = fl.pos.y,
                 gon = 100.0,
             ));
             header.push(format!("  TX{txid}: {}", fl.kuerzel));
             txtid_flur.insert(txid);
-            riss_items.insert(format!("TE={txid}"));
+            riss_items.push(format!("TE={txid}"));
         }
 
         let mut txtid_linien_rot = BTreeSet::new();
@@ -867,18 +865,18 @@ pub fn generate_grafbat_out(
                         pid += 1;
                         let pid_start_save = pid;
                         header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
-                        riss_items.insert(format!("PK={pid}"));
+                        riss_items.push(format!("PK={pid}"));
                         txtid_linien_rot.insert(format!("PK={pid}"));
 
                         pid += 1;
                         let pid_end_save = pid;
                         header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
-                        riss_items.insert(format!("PK={pid}"));
+                        riss_items.push(format!("PK={pid}"));
                         txtid_linien_rot.insert(format!("PK={pid}"));
 
                         lid += 1;
                         header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
-                        riss_items.insert(format!("LI={lid}"));
+                        riss_items.push(format!("LI={lid}"));
                         txtid_linien_rot.insert(format!("LI={lid}"));
                     },
                     _ => { },
@@ -889,50 +887,53 @@ pub fn generate_grafbat_out(
         let mut punkte_id_untergehend = BTreeSet::new();
         for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
             pid += 1;
-            let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle - 90.0));
+            let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle - 45.0));
             header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
-            riss_items.insert(format!("PK={pid}"));
+            riss_items.push(format!("PK={pid}"));
             punkte_id_untergehend.insert(format!("PK={pid}"));
         }
         
+        riss_items.sort();
+        riss_items.dedup();
+        
+        header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0,1"));
+        for i in riss_items.iter() {
+            header.push(format!("MR: {i}")); 
+        }
+
         // Mengen
-        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textalt.iter() {
             header.push(format!("MR: TE={i}"));
         }
 
-        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textneu.iter() {
             header.push(format!("MR: TE={i}"));
         }
 
-        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_flur.iter() {
             header.push(format!("MR: TE={i}")); 
         }
 
-        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in txtid_linien_rot.iter() {
             header.push(format!("MR: {i}")); 
         }
 
-        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,width:0"));
+        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,width:0,1"));
         for i in punkte_id_untergehend.iter() {
-            header.push(format!("MR: {i}")); 
-        }
-
-        header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
-        for i in riss_items.iter() {
             header.push(format!("MR: {i}")); 
         }
 
