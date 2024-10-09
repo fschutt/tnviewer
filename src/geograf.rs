@@ -731,7 +731,11 @@ pub fn generate_grafbat_out(
     map: BTreeMap<usize, GrafbatOutConfig>,
 ) -> String {
     
-    let default_menge = 17930;
+    let mut mid = 1_usize;
+    let mut pid = 1_usize;
+    let mut lid = 1_usize;
+    let mut txid = 1_usize;
+
     let zone = 33;
 
     let bbox = format!(
@@ -752,17 +756,21 @@ pub fn generate_grafbat_out(
     .map(|s| s.to_string())
     .collect::<Vec<_>>();
 
-    let mut txid = 1_usize;
-
     for (menge_id, outconf) in map.iter() {
 
         let riss_id = menge_id;
-        let menge_id_text_alt = default_menge + (menge_id * 1);
-        let menge_id_text_neu = default_menge + (menge_id * 2);
-        let menge_id_text_bleibt = default_menge + (menge_id * 3);
-        let menge_id_text_flst = default_menge + (menge_id * 4);
-        let menge_id_text_flur = default_menge + (menge_id * 5);
-        let menge_id_text_gesamt = default_menge + (menge_id * 6);
+        let menge_id_text_alt = mid;
+        mid += 1;
+        let menge_id_text_neu = mid;
+        mid += 1;
+        let menge_id_text_bleibt = mid;
+        mid += 1;
+        let menge_id_text_flst = mid;
+        mid += 1;
+        let menge_id_text_flur = mid;
+        mid += 1;
+        let menge_id_text_gesamt = mid;
+        mid += 1;
 
         let mut riss_items = BTreeSet::new();
 
@@ -843,9 +851,6 @@ pub fn generate_grafbat_out(
             txid += 1;
             txtid_flur.insert(txid);
         }
-
-        let mut pid = 1;
-        let mut lid = 1;
 
         for rote_linie in outconf.aenderungen_rote_linien.iter() {
             for win in rote_linie.points.windows(2) {
