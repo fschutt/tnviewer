@@ -857,31 +857,24 @@ pub fn generate_grafbat_out(
         }
 
         let mut txtid_linien_rot = BTreeSet::new();
-        for rote_linie in outconf.aenderungen_rote_linien.iter() {
-            for win in rote_linie.points.windows(2) {
-                match &win {
-                    &[pid_start, pid_end] => {
+        for (pid_start, pid_end) in outconf.aenderungen_rote_linien.iter().flat_map(l_to_points).collect::<Vec<_>>() {
+            
+            pid += 1;
+            let pid_start_save = pid;
+            header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
+            riss_items.push(format!("PK={pid}"));
+            txtid_linien_rot.insert(format!("PK={pid}"));
 
-                        pid += 1;
-                        let pid_start_save = pid;
-                        header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
-                        riss_items.push(format!("PK={pid}"));
-                        txtid_linien_rot.insert(format!("PK={pid}"));
+            pid += 1;
+            let pid_end_save = pid;
+            header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
+            riss_items.push(format!("PK={pid}"));
+            txtid_linien_rot.insert(format!("PK={pid}"));
 
-                        pid += 1;
-                        let pid_end_save = pid;
-                        header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
-                        riss_items.push(format!("PK={pid}"));
-                        txtid_linien_rot.insert(format!("PK={pid}"));
-
-                        lid += 1;
-                        header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
-                        riss_items.push(format!("LI={lid}"));
-                        txtid_linien_rot.insert(format!("LI={lid}"));
-                    },
-                    _ => { },
-                }
-            }
+            lid += 1;
+            header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
+            riss_items.push(format!("LI={lid}"));
+            txtid_linien_rot.insert(format!("LI={lid}"));
         }
 
         let mut punkte_id_untergehend = BTreeSet::new();
@@ -900,42 +893,52 @@ pub fn generate_grafbat_out(
         for i in riss_items.iter() {
             header.push(format!("  MR: {i}")); 
         }
+        header.push(format!("MA{menge_id_gesamt}:"));
 
+        /*
         // Mengen
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textalt.iter() {
             header.push(format!("  MR: TE={i}"));
         }
+        header.push(format!("MA{menge_id_text_alt}:"));
 
         header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textneu.iter() {
             header.push(format!("  MR: TE={i}"));
         }
+        header.push(format!("MA{menge_id_text_neu}:"));
 
         header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
+        header.push(format!("MA{menge_id_text_bleibt}:"));
 
         header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
+        header.push(format!("MA{menge_id_text_flst}:"));
 
         header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_flur.iter() {
             header.push(format!("  MR: TE={i}")); 
         }
+        header.push(format!("MA{menge_id_text_flur}:"));
 
         header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_linien_rot.iter() {
             header.push(format!("  MR: {i}")); 
         }
+        header.push(format!("MA{menge_id_linien_rot}:"));
 
         header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in punkte_id_untergehend.iter() {
             header.push(format!("  MR: {i}")); 
         }
+        header.push(format!("MA{menge_id_punkte_untergehend}:"));
+        */
 
         // Plotbox
         header.push(
