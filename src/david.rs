@@ -397,7 +397,7 @@ pub fn get_aenderungen_internal(
                     all_polys_to_subtract
                     .entry(alt_obj_id.clone())
                     .or_insert_with(|| (alt_ebene, alt_kuerzel, (*jp).clone(), Vec::new()))
-                    .3.push(((*a).clone()));
+                    .3.push((*a).clone());
                 }
             } else if subtracted_area.round() < jp_area_m2.round() {
                 // original polygon did change, area is now less but not zero: modify obj to be now
@@ -469,11 +469,11 @@ pub fn get_aenderungen_internal(
                 all_polys_to_subtract
                 .entry(alt_obj_id.clone())
                 .or_insert_with(|| (alt_ebene, alt_kuerzel, tp.poly.clone(), Vec::new()))
-                .3.push((PolyNeu {
+                .3.push(PolyNeu {
                     nutzung: Some(alt_kuerzel.clone()),
                     locked: true,
                     poly: SvgPolygon::Old(p.correct_winding_order_cloned()),
-                }));
+                });
             }
         }
 

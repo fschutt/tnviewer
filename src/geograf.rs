@@ -411,7 +411,7 @@ pub async fn export_aenderungen_geograf(
 
     let mut grafbat_map = BTreeMap::new();
     if risse.is_empty() {
-       if let Ok(s) = export_splitflaechen(
+       if let Ok((id, s)) = export_splitflaechen(
             &mut files,
             projekt_info,
             &csv_data,
@@ -428,11 +428,11 @@ pub async fn export_aenderungen_geograf(
             &lq_flurstuecke_und_nutzungsarten,
             &mut hintergrund_cache,
         ) {
-            grafbat_map.insert(1, s);
+            grafbat_map.insert(id, s);
         }
     } else {
         for (i, (_, r)) in risse.iter().enumerate() {
-            if let Ok(s) = export_splitflaechen(
+            if let Ok((id, s)) = export_splitflaechen(
                 &mut files,
                 projekt_info,
                 &csv_data,
@@ -449,7 +449,7 @@ pub async fn export_aenderungen_geograf(
                 &lq_flurstuecke_und_nutzungsarten,
                 &mut hintergrund_cache,
             ) {
-                grafbat_map.insert(i + 1, s);
+                grafbat_map.insert(id, s);
             }
         }
     }
@@ -756,9 +756,9 @@ pub fn generate_grafbat_out(
     .map(|s| s.to_string())
     .collect::<Vec<_>>();
 
-    for (menge_id, outconf) in map.iter() {
+    for (riss_id, outconf) in map.iter() {
 
-        let riss_id = menge_id;
+        mid += 1;
         let menge_id_text_alt = mid;
         mid += 1;
         let menge_id_text_neu = mid;
@@ -769,13 +769,13 @@ pub fn generate_grafbat_out(
         mid += 1;
         let menge_id_text_flur = mid;
         mid += 1;
-        let menge_id_text_gesamt = mid;
-        mid += 1;
         let menge_id_linien_rot = mid;
         mid += 1;
         let menge_id_punkte_untergehend = mid;
         mid += 1;
-        
+        let menge_id_text_gesamt = mid;
+        mid += 1;
+
         let mut riss_items = BTreeSet::new();
 
         // export texte
@@ -940,7 +940,7 @@ pub fn generate_grafbat_out(
         // Plotbox
         header.push(
             format!(
-                "PB{menge_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
+                "PB{riss_id}: RISS1PLOTBOX,1600.873.0,{min_x},{min_y},{max_x},{min_y},{hoehe},0", 
                 min_x = update_dxf_x(zone, outconf.extent.min_x), 
                 max_x = update_dxf_x(zone, outconf.extent.max_x),
                 min_y = outconf.extent.min_y, 
@@ -1149,7 +1149,7 @@ pub fn export_splitflaechen(
     lq_flurstuecke: &LinienQuadTree,
     lq_flurstuecke_und_nutzungsarten: &LinienQuadTree,
     hintergrund_cache: &mut HintergrundCache,
-) -> Result<GrafbatOutConfig, ()> {
+) -> Result<(usize, GrafbatOutConfig), ()> {
     let pdir_name = parent_dir.as_deref().unwrap_or("Aenderungen");
 
     let default_riss_config = match get_default_riss_extent(splitflaechen, &gebaeude, &split_nas.crs) {
@@ -1538,7 +1538,7 @@ pub fn export_splitflaechen(
         .cloned()
         .collect::<Vec<_>>();
 
-    Ok(GrafbatOutConfig {
+    Ok((num_riss, GrafbatOutConfig {
         extent: riss_extent_with_border_reprojected,
         aenderungen_rote_linien: aenderungen_rote_linien.clone(),
         aenderungen_nutzungsarten_linien: aenderungen_nutzungsarten_linien.clone(),
@@ -1547,7 +1547,7 @@ pub fn export_splitflaechen(
         aenderungen_texte_bleibt: aenderungen_texte_bleibt_2.clone(),
         flurstueck_texte: flurstueck_texte.clone(),
         flur_texte: flur_texte.clone(),
-    })
+    }))
 }
 
 pub struct GrafbatOutConfig {
