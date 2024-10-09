@@ -725,23 +725,6 @@ pub fn join_modified_fluren(
         .collect()
 }
 
-/*
-TE1,DEBBAL010007b3my,0: ,1600.1011.4111,33435604.2160,5881491.9490,33435598.5600,5881498.3600,100.000000,0,0,4,0,,0,,,,,,,n,,,
-  TX1: 330
-TE2,DEBBAL010007b3mx,0: ,1600.1011.4111,33435605.7900,5881476.2640,,,100.000000,0,0,4,0,,0,,,,,,,n,,,
-  TX2: 331
-
-...
-
-TE4885: ,1600.49.4140,33438089.6057,5884703.3385,,,100.000000,0,0,4,0,,0,,,,,,,n,,,
-  TX4885: Sportanlage
-TE4886,DEBBAL730001afEr,0: ,1600.1049.4209,33433631.5360,5882037.9510,,,100.000000,0,0,1,0,,0,,,,,,,n,,,
-  TX4886: Sumpf
-MA17930: Menge1,,"",date:08.10.24,depend:1,width:0
-  MR: TE=1045
-  MR: TE=1050
-ME17930:
-*/
 pub fn generate_grafbat_out(
     info: &ProjektInfo,
     default_extent: &RissExtentReprojected,
@@ -779,6 +762,9 @@ pub fn generate_grafbat_out(
         let menge_id_text_bleibt = default_menge + (menge_id * 3);
         let menge_id_text_flst = default_menge + (menge_id * 4);
         let menge_id_text_flur = default_menge + (menge_id * 5);
+        let menge_id_text_gesamt = default_menge + (menge_id * 6);
+
+        let mut riss_items = BTreeSet::new();
 
         // export texte
         let mut txtid_textalt = BTreeSet::new();
@@ -845,7 +831,7 @@ pub fn generate_grafbat_out(
         let mut txtid_flur = BTreeSet::new();
         for fl in outconf.flur_texte.iter() {
             header.push(format!(
-                "TE{txid},{id},0: ,1600.9103.4111,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
+                "TE{txid},{id},0: ,1600.9103.4200,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,4,0,,0,,,,,,,n,,,", 
                 id = "",
                 xcoord = update_dxf_x(zone, fl.pos.x),
                 ycoord = fl.pos.y,
@@ -858,38 +844,71 @@ pub fn generate_grafbat_out(
             txtid_flur.insert(txid);
         }
 
-        // TODO: rote Linien, rote Punkte, Plotboxen
+        let mut pid = 100300;
+        let mut lid = 50756;
+
+        for rote_linie in outconf.aenderungen_rote_linien.iter() {
+            for (i, p) in rote_linie.points.iter().enumerate() {
+                let cur_pid = pid + i;
+                header.push(format!("PK{cur_pid}: {i},1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y));
+                riss_items.insert(format!("PK={cur_pid}"));
+                if i != 0 {
+                    let pid_start = pid + i - 1;
+                    let pid_end = pid + i;
+                    lid += 1;
+                    header.push(format!("LI{lid}: PK={pid_start},PK={pid_end},1600.9104.1,,,,0,0,,,,"));
+                    riss_items.insert(format!("LI={lid}"));
+                }
+            }
+            pid += rote_linie.points.len();
+        }
+
+        for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
+            pid += 1;
+            let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle));
+            header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
+            riss_items.insert(format!("PK={pid}"));
+        }
+
+        // PB359: RISS1PLOTBOX,1600.873.0,33433100.6499,5883324.6689,33434465.6499,5883324.6689,934.5000,0
+
+        // TODO: Plotboxen
         
         // Menge
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textalt.iter() {
-            header.push(format!("MR: TE={i}")); 
+            header.push(format!("MR: TE={i}"));
+            riss_items.insert(format!("TE={i}"));
         }
-        // header.push(format!("MA{menge_id_text_alt}:"));
 
         header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textneu.iter() {
-            header.push(format!("MR: TE={i}")); 
+            header.push(format!("MR: TE={i}"));
+            riss_items.insert(format!("TE={i}"));
         }
-        // header.push(format!("MA{menge_id_text_neu}:"));
 
         header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_textbleibt.iter() {
             header.push(format!("MR: TE={i}")); 
+            riss_items.insert(format!("TE={i}"));
         }
-        // header.push(format!("MA{menge_id_text_bleibt}:"));
 
         header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flurstuecke.iter() {
             header.push(format!("MR: TE={i}")); 
+            riss_items.insert(format!("TE={i}"));
         }
-        // header.push(format!("MA{menge_id_text_flst}:"));
 
         header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,width:0"));
         for i in txtid_flur.iter() {
             header.push(format!("MR: TE={i}")); 
+            riss_items.insert(format!("TE={i}"));
         }
-        // header.push(format!("MA{menge_id_text_flur}:"));
+
+        header.push(format!("MA{menge_id_text_gesamt}: RISS{riss_id}-GESAMT,,\"\",date:08.10.24,depend:1,width:0"));
+        for i in riss_items.iter() {
+            header.push(format!("MR: {i}")); 
+        }
     }
 
     header.join("\r\n")

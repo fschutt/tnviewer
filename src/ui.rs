@@ -1115,6 +1115,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
                         {daten_importieren}
+                        {export_alle_flurstuecke}
                     </div>
                 </div>
 
@@ -1128,6 +1129,13 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 <div class='__application-ribbon-section 5'>
                     <div style='display:flex;flex-direction:row;'>
                         {projekt_speichern}
+                    </div>
+                </div>
+
+
+                <div class='__application-ribbon-section 5'>
+                    <div style='display:flex;flex-direction:row;'>
+                        {clean_stage7_test}
                     </div>
                 </div>
 
@@ -1162,7 +1170,6 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_alle_flurstuecke}
                         {export_nas_xml}
                         {export_geograf}
                         {export_david}
@@ -1173,12 +1180,6 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     <div style='display:flex;flex-direction:row;'>
                         {export_log}
                         {projekt_speichern}
-                    </div>
-                </div>
-
-                <div class='__application-ribbon-section 5'>
-                    <div style='display:flex;flex-direction:row;'>
-                        {clean_stage7_test}
                     </div>
                 </div>
 
