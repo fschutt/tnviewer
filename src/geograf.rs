@@ -753,9 +753,9 @@ pub fn generate_grafbat_out(
 
     let bbox = format!(
         "{min_x}.000000,{min_y}.000000,{max_x}.000000,{max_y}.000000", 
-        min_x = default_extent.min_x.floor(),
+        min_x = update_dxf_x(zone, default_extent.min_x.floor()),
         max_x = update_dxf_x(zone, default_extent.max_x.ceil()),
-        min_y = update_dxf_x(zone, default_extent.min_y.floor()),
+        min_y = default_extent.min_y.floor(),
         max_y = default_extent.max_y.ceil(),
     );
 
