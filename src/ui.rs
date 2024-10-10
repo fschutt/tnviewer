@@ -984,74 +984,61 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
     let clean_stage7_test = {
         format!("
 
-            <div class='__application-ribbon-section-content'>
+                <div class='__application-ribbon-section-content __mini_content'>
                 <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>1: Punkte auf</p>
-                        <p>Änd. ziehen</p>
+                        <p>[1] Punkte auf Änd. ziehen</p>
                     </div>
                 </label>
-            </div>
 
-            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(2);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>2: Punkte einf.</p>
-                        <p>von nahen Änder.</p>
+                        <p>[2] Punkte einfüg. von nahen Änd.</p>
                     </div>
                 </label>
-            </div>
 
-            <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(25);' class='__application-ribbon-action-vertical-large'>
-                    <div class='icon-wrapper'>
-                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
-                    </div>
-                    <div>
-                        <p>2.5: Änderungen</p>
-                        <p>mergen nach Typ</p>
-                    </div>
-                </label>
-            </div>
-
-            <div class='__application-ribbon-section-content'>
                 <label onmouseup='cleanStage(3);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>3: Punkte auf</p>
-                        <p>Flst. ziehen</p>
+                        <p>[3] Punkte auf Flst. ziehen</p>
                     </div>
                 </label>
             </div>
 
-            <div class='__application-ribbon-section-content'>
+            <div class='__application-ribbon-section-content __mini_content'>
                 <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>4: Punkte einf.</p>
-                        <p>von nahen Flst.</p>
+                        <p>[4] Punkte einf. von nahen Flst.</p>
                     </div>
                 </label>
-            </div>
 
-            <div class='__application-ribbon-section-content'>
+                <label onmouseup='cleanStage(25);' class='__application-ribbon-action-vertical-large'>
+                    <div class='icon-wrapper'>
+                        <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
+                    </div>
+                    <div>
+                        <p>[5] Änd. verbinden nach Typ</p>
+                    </div>
+                </label>
+                
+
                 <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>5: Überlappende</p>
-                        <p>Änd. subtrahieren</p>
+                        <p>[6] Überlappende Änd. subtrah.</p>
                     </div>
                 </label>
             </div>

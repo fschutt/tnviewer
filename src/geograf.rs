@@ -951,6 +951,8 @@ pub fn generate_grafbat_out(
             )
         );
 
+        // TODO: debug: first Menge wrong
+        break; 
     }
 
     header.join("\r\n")
