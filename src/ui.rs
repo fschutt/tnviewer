@@ -999,7 +999,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
                     <div>
-                        <p>[2] Punkte einfüg. von nahen Änd.</p>
+                        <p>[2] Punkte einf. von nahen Änd.</p>
                     </div>
                 </label>
 
