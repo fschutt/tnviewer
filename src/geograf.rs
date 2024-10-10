@@ -455,16 +455,14 @@ pub async fn export_aenderungen_geograf(
     }
 
     if let Ok(default_extent) = get_default_riss_extent_2(&splitflaechen.0, &ax_gebaeude, split_nas) {
-        let keys = grafbat_map.keys().cloned().collect::<Vec<_>>();
-        for i in keys {
-            let grafbat = generate_grafbat_out(
-                projekt_info,
-                &default_extent,
-                &grafbat_map,
-                i,
-            );
-            files.push((None, format!("{}.Riss{i:03}.GRAFBAT.out", projekt_info.antragsnr).into(), grafbat.as_bytes().to_vec()));
-        }
+        let mut existing_lines = BTreeMap::new();
+        let grafbat = generate_grafbat_out(
+            projekt_info,
+            &default_extent,
+            &grafbat_map,
+            &mut existing_lines,
+        );
+        files.push((None, format!("{}.GRAFBAT.out", projekt_info.antragsnr).into(), grafbat.as_bytes().to_vec()));
     }
 
     write_files_to_zip(files)
@@ -733,7 +731,7 @@ pub fn generate_grafbat_out(
     info: &ProjektInfo,
     default_extent: &RissExtentReprojected,
     map: &BTreeMap<usize, GrafbatOutConfig>,
-    rid: usize,
+    existing_lines_and_points: &mut BTreeMap<String, usize>,
 ) -> String {
     
     let mut mid = 1_usize;
@@ -761,24 +759,8 @@ pub fn generate_grafbat_out(
     .map(|s| s.to_string())
     .collect::<Vec<_>>();
 
-    if let Some(outconf) = map.get(&rid) {
+    for (riss_id, outconf) in map {
 
-        let riss_id = rid;
-
-        mid += 1;
-        let menge_id_text_alt = mid.to_string();
-        mid += 1;
-        let menge_id_text_neu = mid.to_string();
-        mid += 1;
-        let menge_id_text_bleibt = mid.to_string();
-        mid += 1;
-        let menge_id_text_flst = mid.to_string();
-        mid += 1;
-        let menge_id_text_flur = mid.to_string();
-        mid += 1;
-        let menge_id_linien_rot = mid.to_string();
-        mid += 1;
-        let menge_id_punkte_untergehend = mid.to_string();
         mid += 1;
         let menge_id_gesamt = mid.to_string();
 
@@ -789,7 +771,7 @@ pub fn generate_grafbat_out(
         for alt in outconf.aenderungen_texte_alt.iter() {
             txid += 1;
             header.push(format!(
-                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
+                "TE{txid}: ,1600.9104.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,j,,,", 
                 xcoord = update_dxf_x(zone, alt.optimized.pos.x),
                 ycoord = alt.optimized.pos.y,
                 xcoord2 = if alt.needs_bezug() { update_dxf_x(zone, alt.optimized.ref_pos.x).to_string() } else { String::new() },
@@ -805,7 +787,7 @@ pub fn generate_grafbat_out(
         for neu in outconf.aenderungen_texte_neu.iter() {
             txid += 1;
             header.push(format!(
-                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
+                "TE{txid}: ,1600.9104.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,0000ff", 
                 xcoord = update_dxf_x(zone, neu.optimized.pos.x),
                 ycoord = neu.optimized.pos.y,
                 xcoord2 = if neu.needs_bezug() { update_dxf_x(zone, neu.optimized.ref_pos.x).to_string() } else { String::new() },
@@ -821,7 +803,7 @@ pub fn generate_grafbat_out(
         for bleibt in outconf.aenderungen_texte_bleibt.iter() {
             txid += 1;
             header.push(format!(
-                "TE{txid}: ,1600.9101.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
+                "TE{txid}: ,1600.9104.4140,{xcoord},{ycoord},{xcoord2},{ycoord2},{gon},0,0,0,0,,0,,,,,,,n,,,010101", 
                 xcoord = update_dxf_x(zone, bleibt.optimized.pos.x),
                 ycoord = bleibt.optimized.pos.y,
                 xcoord2 = if bleibt.needs_bezug() { update_dxf_x(zone, bleibt.optimized.ref_pos.x).to_string() } else { String::new() },
@@ -868,18 +850,26 @@ pub fn generate_grafbat_out(
             
             pid += 1;
             let pid_start_save = pid;
-            header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x), y = pid_start.y));
+            let pid_start_id = format!("{x},{y}", x = update_dxf_x(zone, pid_start.x), y = pid_start.y);
+            let num_instances = existing_lines_and_points.entry(pid_start_id).or_insert_with(|| 0);
+            let diffadd = (*num_instances) as f64 / 100.0;
+            *num_instances = *num_instances + 1;
+            header.push(format!("PK{pid}: ,1600.9101.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_start.x + diffadd), y = pid_start.y + diffadd));
             riss_items.push(format!("PK={pid}"));
             txtid_linien_rot.insert(format!("PK={pid}"));
 
             pid += 1;
             let pid_end_save = pid;
-            header.push(format!("PK{pid}: ,1600.9104.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x), y = pid_end.y));
+            let pid_end_id = format!("{x},{y}", x = update_dxf_x(zone, pid_end.x), y = pid_end.y);
+            let num_instances = existing_lines_and_points.entry(pid_end_id).or_insert_with(|| 0);
+            let diffadd = (*num_instances) as f64 / 100.0;
+            *num_instances = *num_instances + 1;
+            header.push(format!("PK{pid}: ,1600.9101.0,{x},{y},,,0,0,,,,1005,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, pid_end.x + diffadd), y = pid_end.y + diffadd));
             riss_items.push(format!("PK={pid}"));
             txtid_linien_rot.insert(format!("PK={pid}"));
 
             lid += 1;
-            header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9104.1,,,,0,0,,,,"));
+            header.push(format!("LI{lid}: PK={pid_start_save},PK={pid_end_save},1600.9101.1,,,,0,0,,,,"));
             riss_items.push(format!("LI={lid}"));
             txtid_linien_rot.insert(format!("LI={lid}"));
         }
@@ -888,7 +878,11 @@ pub fn generate_grafbat_out(
         for (p, angle) in lines_to_points(&outconf.aenderungen_nutzungsarten_linien) {
             pid += 1;
             let ang = Into::<angular_units::Gon<f64>>::into(angular_units::Deg(angle - 45.0));
-            header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x), y = p.y, gon = ang.0));
+            let pid_start_id = format!("{x},{y}", x = update_dxf_x(zone, p.x), y = p.y);
+            let num_instances = existing_lines_and_points.entry(pid_start_id).or_insert_with(|| 0);
+            let diffadd = (*num_instances) as f64 / 100.0;
+            *num_instances = *num_instances + 1;
+            header.push(format!("PK{pid}: ,1600.401.20,{x},{y},,{gon},0,0,,,,1007,09.10.24,0,,0,,0,0,,1,0,0,0,,,,,,", x = update_dxf_x(zone, p.x + diffadd), y = p.y + diffadd, gon = ang.0));
             riss_items.push(format!("PK={pid}"));
             punkte_id_untergehend.insert(format!("PK={pid}"));
         }
@@ -902,50 +896,6 @@ pub fn generate_grafbat_out(
             header.push(format!("  MR: {i}")); 
         }
         header.push(format!("MA{menge_id_gesamt}:"));
-
-        /*
-        header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_textalt.iter() {
-            header.push(format!("  MR: TE={i}"));
-        }
-        header.push(format!("MA{menge_id_text_alt}:"));
-
-        header.push(format!("MA{menge_id_text_neu}: Riss{riss_id}-Texte-Neu,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_textneu.iter() {
-            header.push(format!("  MR: TE={i}"));
-        }
-        header.push(format!("MA{menge_id_text_neu}:"));
-
-        header.push(format!("MA{menge_id_text_bleibt}: Riss{riss_id}-Texte-Bleibt,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_textbleibt.iter() {
-            header.push(format!("  MR: TE={i}")); 
-        }
-        header.push(format!("MA{menge_id_text_bleibt}:"));
-
-        header.push(format!("MA{menge_id_text_flst}: Riss{riss_id}-Texte-Flurstuecke,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_flurstuecke.iter() {
-            header.push(format!("  MR: TE={i}")); 
-        }
-        header.push(format!("MA{menge_id_text_flst}:"));
-
-        header.push(format!("MA{menge_id_text_flur}: Riss{riss_id}-Texte-Flur,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_flur.iter() {
-            header.push(format!("  MR: TE={i}")); 
-        }
-        header.push(format!("MA{menge_id_text_flur}:"));
-
-        header.push(format!("MA{menge_id_linien_rot}: Riss{riss_id}-Linien-Rot,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in txtid_linien_rot.iter() {
-            header.push(format!("  MR: {i}")); 
-        }
-        header.push(format!("MA{menge_id_linien_rot}:"));
-
-        header.push(format!("MA{menge_id_punkte_untergehend}: Riss{riss_id}-Punkte-Untergehend,,\"\",date:08.10.24,depend:1,neu:1"));
-        for i in punkte_id_untergehend.iter() {
-            header.push(format!("  MR: {i}")); 
-        }
-        header.push(format!("MA{menge_id_punkte_untergehend}:"));
-        */
 
         // Plotbox
         header.push(
