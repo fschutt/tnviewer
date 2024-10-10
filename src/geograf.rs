@@ -455,12 +455,16 @@ pub async fn export_aenderungen_geograf(
     }
 
     if let Ok(default_extent) = get_default_riss_extent_2(&splitflaechen.0, &ax_gebaeude, split_nas) {
-        let grafbat = generate_grafbat_out(
-            projekt_info,
-            &default_extent,
-            grafbat_map,
-        );
-        files.push((None, format!("{}.GRAFBAT.out", projekt_info.antragsnr).into(), grafbat.as_bytes().to_vec()));
+        let keys = grafbat_map.keys().cloned().collect::<Vec<_>>();
+        for i in keys {
+            let grafbat = generate_grafbat_out(
+                projekt_info,
+                &default_extent,
+                &grafbat_map,
+                i,
+            );
+            files.push((None, format!("{}.Riss{i:03}.GRAFBAT.out", projekt_info.antragsnr).into(), grafbat.as_bytes().to_vec()));
+        }
     }
 
     write_files_to_zip(files)
@@ -728,7 +732,8 @@ pub fn join_modified_fluren(
 pub fn generate_grafbat_out(
     info: &ProjektInfo,
     default_extent: &RissExtentReprojected,
-    map: BTreeMap<usize, GrafbatOutConfig>,
+    map: &BTreeMap<usize, GrafbatOutConfig>,
+    rid: usize,
 ) -> String {
     
     let mut mid = 1_usize;
@@ -756,7 +761,9 @@ pub fn generate_grafbat_out(
     .map(|s| s.to_string())
     .collect::<Vec<_>>();
 
-    for (riss_id, outconf) in map.iter() {
+    if let Some(outconf) = map.get(&rid) {
+
+        let riss_id = rid;
 
         mid += 1;
         let menge_id_text_alt = mid.to_string();
@@ -896,7 +903,6 @@ pub fn generate_grafbat_out(
         }
         header.push(format!("MA{menge_id_gesamt}:"));
 
-        /* 
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textalt.iter() {
             header.push(format!("  MR: TE={i}"));
@@ -949,7 +955,7 @@ pub fn generate_grafbat_out(
                 hoehe = outconf.extent.height_m()
             )
         );
-        */
+
         // TODO: debug: first Menge wrong
         mid += riss_items.len();
         pid += riss_items.len();
