@@ -889,14 +889,13 @@ pub fn generate_grafbat_out(
         riss_items.sort();
         riss_items.dedup();
         
+        // Mengen
         header.push(format!("MA{menge_id_gesamt}: RISS{riss_id:03}-GESAMT,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in riss_items.iter() {
             header.push(format!("  MR: {i}")); 
         }
         header.push(format!("MA{menge_id_gesamt}:"));
 
-        /*
-        // Mengen
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textalt.iter() {
             header.push(format!("  MR: TE={i}"));
@@ -938,7 +937,6 @@ pub fn generate_grafbat_out(
             header.push(format!("  MR: {i}")); 
         }
         header.push(format!("MA{menge_id_punkte_untergehend}:"));
-        */
 
         // Plotbox
         header.push(
@@ -952,7 +950,10 @@ pub fn generate_grafbat_out(
         );
 
         // TODO: debug: first Menge wrong
-        break; 
+        mid += riss_items.len();
+        pid += riss_items.len();
+        lid += riss_items.len();
+        txid += riss_items.len();
     }
 
     header.join("\r\n")
@@ -1450,7 +1451,6 @@ pub fn export_splitflaechen(
         split_nas,
         &riss,
         &riss_extent_reprojected,
-        // TODO: riss_extent_reprojected_noborder
         &aenderungen_rote_linien,
         &aenderungen_nutzungsarten_linien,
         &aenderungen_texte_optimized,
@@ -1505,7 +1505,6 @@ pub fn export_splitflaechen(
         &split_nas,
         &riss,
         &riss_extent_reprojected,
-        // TODO: riss_extent_reprojected_noborder
         &Vec::new(),
         &Vec::new(),
         &aenderungen_texte_optimized_new,

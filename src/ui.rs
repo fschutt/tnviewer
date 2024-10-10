@@ -3310,7 +3310,7 @@ pub fn render_main(
             render_project_content(projekt_info, risse, csv, aenderungen, uidata, &SplitNasXml::default())
         },
     );
-    normalize_for_js(map) // TODO
+    normalize_for_js(map)
 }
 
 pub fn render_switch_content(uidata: &UiData) -> String {

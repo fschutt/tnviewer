@@ -112,7 +112,7 @@ pub fn aenderungen_zu_fa_xml(
             let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
             Some(get_insert_xml_node(
                 ebene,
-                &("DE_001".to_string() + &format!("{i:010}")),  // TODO
+                &("DE_001".to_string() + &format!("{i:010}")),
                 &auto_attribute,
                 datum_jetzt,
                 poly_neu,
@@ -246,8 +246,6 @@ pub fn get_aenderungen_internal(
         log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2().round(), v.neu_kuerzel, overlaps));
     }
     log_status("---- 1 ---- end");
-
-    // TODO: first join TempOverlapObject wenn ebenen gleich sind!
 
     // build reverse map (obj id -> relevant changes per changed obj)
     let mut reverse_map = BTreeMap::new();

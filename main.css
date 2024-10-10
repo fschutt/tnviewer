@@ -111,6 +111,10 @@ input[type="file"] {
     margin-bottom: 0px;
 }
 
+.__application-ribbon-section-content.__mini_content label:first {
+    margin-top: 0px;
+}
+
 .__application-ribbon-section-content.__mini_content label img.icon {
     height: 12px;
     width: 12px;
