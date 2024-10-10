@@ -985,7 +985,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
         format!("
 
                 <div class='__application-ribbon-section-content __mini_content'>
-                <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1014,7 +1014,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content __mini_content'>
-                <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>

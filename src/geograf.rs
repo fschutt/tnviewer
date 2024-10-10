@@ -896,6 +896,7 @@ pub fn generate_grafbat_out(
         }
         header.push(format!("MA{menge_id_gesamt}:"));
 
+        /* 
         header.push(format!("MA{menge_id_text_alt}: Riss{riss_id}-Texte-Alt,,\"\",date:08.10.24,depend:1,neu:1"));
         for i in txtid_textalt.iter() {
             header.push(format!("  MR: TE={i}"));
@@ -948,7 +949,7 @@ pub fn generate_grafbat_out(
                 hoehe = outconf.extent.height_m()
             )
         );
-
+        */
         // TODO: debug: first Menge wrong
         mid += riss_items.len();
         pid += riss_items.len();
