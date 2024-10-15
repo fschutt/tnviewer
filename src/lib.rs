@@ -1196,7 +1196,8 @@ pub fn load_nas_xml(s: String, style: String) -> String {
     log_status("konfiguration ok");
     let mut t = crate::get_nutzungsartenkatalog_ebenen().values().cloned().collect::<BTreeSet<_>>();
     t.insert("AX_BauRaumOderBodenordnungsrecht".to_string());
-
+    t.insert("AX_Flurstueck".to_string());
+    
     let mut log = Vec::new();
     log_status(&format!("parsing XML: types = {t:?}"));
 
