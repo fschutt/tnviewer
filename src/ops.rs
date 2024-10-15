@@ -150,10 +150,10 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     log_status(&serde_json::to_string(polys).unwrap_or_default());
 
     let polys = merge_poly_lines(&
-     polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+        polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-
     let polys = merge_poly_points(&polys);
+    let polys = insert_poly_points_from_near_polys(&polys);
     let mut first = match polys.get(0) {
         Some(s) => vec![s.clone()],
         None => return Vec::new(),
