@@ -1849,11 +1849,6 @@ impl AenderungenClean {
         let default = Vec::new();
 
         // Remove splitflächen für flurstücke die keine Änderung haben
-        let flst_touched = is
-            .iter()
-            .map(|s| s.flst_id.clone())
-            .collect::<BTreeSet<_>>();
-
         let na_bereits_definiert = is
             .iter()
             .map(|s| s.flst_id_part.clone())
@@ -1864,6 +1859,7 @@ impl AenderungenClean {
             .iter()
             .map(|s| s.flst_id.clone())
             .collect::<BTreeSet<_>>();
+
         for flst_id in flst_touched.iter() {
             for part in self
                 .nas_xml_quadtree
@@ -1919,9 +1915,11 @@ impl AenderungenClean {
             .deduplicate()
             .0;
 
+        is.retain(|s| !splitflaeche_overlaps_bauraum_bodenordnung(
+            s, &self.nas_xml_quadtree.original
+        ));
+
         // Remove Änderungen, wo nichts am Flurstück geändert wurde
-
-
         let to_remove_flst = flst_touched
         .iter()
         .filter_map(|flst_id| {
@@ -2009,6 +2007,17 @@ impl AenderungenClean {
 
         AenderungenIntersections(is).merge_to_nearest(false)
     }
+}
+
+fn splitflaeche_overlaps_bauraum_bodenordnung(f: &AenderungenIntersection, qt: &SplitNasXml) -> bool {
+    qt.flurstuecke_nutzungen.iter()
+    .any(|s| {
+        s.1.iter()
+        .filter(|q| q.attributes.get("AX_BauRaumOderBodenordnungsrecht").is_some())
+        .any(|p| {
+            f.poly_cut.overlaps(&p.poly)
+        })
+    })
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Deserialize, Serialize)]

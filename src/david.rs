@@ -76,6 +76,11 @@ pub fn aenderungen_zu_fa_xml(
     
     log_aenderungen(&aenderungen_todo);
 
+    let aenderungen_todo = clean_operations_over_bodenordnungsrecht(
+        &aenderungen_todo, 
+        nas_xml
+    );
+
     let aenderungen_todo = merge_aenderungen_with_existing_nas(
         &aenderungen_todo,
         &nas_xml,
@@ -693,6 +698,46 @@ impl Signatur {
             },
         }
     }
+}
+
+pub fn clean_operations_over_bodenordnungsrecht(
+    op: &[Operation],
+    nas_xml: &NasXMLFile
+) -> Vec<Operation> {
+    op.iter().filter_map(|s| {
+        if operation_overlaps_bodenordnungsrecht(s, nas_xml) {
+            None
+        } else {
+            Some(s.clone())
+        }
+    }).collect()
+}
+
+fn operation_overlaps_bodenordnungsrecht(
+    op: &Operation,
+    nas_xml: &NasXMLFile
+) -> bool {
+
+    let d = Vec::new();
+    let bauraum_bodenordnung = nas_xml.ebenen
+    .get("AX_BauRaumOderBodenordnungsrecht")
+    .unwrap_or(&d);
+
+    if bauraum_bodenordnung.is_empty() {
+        return false;
+    }
+
+    let polys_to_check = match op {
+        Operation::Delete { poly_alt, .. } => vec![poly_alt],
+        Operation::Replace { poly_alt, poly_neu, .. } => vec![poly_alt, poly_neu],
+        Operation::Insert { poly_neu, .. } => vec![poly_neu]
+    };
+
+    bauraum_bodenordnung
+    .iter()
+    .any(|p| {
+        polys_to_check.iter().any(|q| q.overlaps(&p.poly))
+    })
 }
 
 pub fn merge_aenderungen_with_existing_nas(

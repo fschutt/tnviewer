@@ -62,6 +62,11 @@ impl NasXMLFile {
 
         let aenderungen_todo = crate::david::get_aenderungen_internal(aenderungen, &self, split_nas);
         
+        let aenderungen_todo = crate::david::clean_operations_over_bodenordnungsrecht(
+            &aenderungen_todo, 
+            &self
+        );
+
         let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
             &aenderungen_todo,
             &self,
