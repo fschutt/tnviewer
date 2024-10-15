@@ -1554,6 +1554,16 @@ impl AenderungenClean {
         let mut flst_parts_changed = BTreeMap::new();
         let mut intersection_sizes = BTreeMap::new();
 
+        let bauraum_bodenordnung_flst = self.nas_xml_quadtree.original.flurstuecke_nutzungen
+        .values()
+        .flat_map(|s| s.iter().filter_map(|q| {
+            if q.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some("AX_BauRaumOderBodenordnungsrecht") {
+                Some(q)
+            } else {
+                None
+            }
+        })).collect::<Vec<_>>();
+
         for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             let neu_kuerzel = match polyneu.nutzung.clone() {
                 Some(s) => s,
@@ -1911,7 +1921,7 @@ impl AenderungenClean {
             .0;
 
         is.retain(|s| !splitflaeche_overlaps_bauraum_bodenordnung(
-            s, &self.nas_xml_quadtree.original
+            s, &bauraum_bodenordnung_flst
         ));
 
         // Remove Änderungen, wo nichts am Flurstück geändert wurde
@@ -2004,14 +2014,9 @@ impl AenderungenClean {
     }
 }
 
-fn splitflaeche_overlaps_bauraum_bodenordnung(f: &AenderungenIntersection, qt: &SplitNasXml) -> bool {
-    qt.flurstuecke_nutzungen.iter()
-    .any(|s| {
-        s.1.iter()
-        .filter(|q| q.attributes.get("AX_BauRaumOderBodenordnungsrecht").is_some())
-        .any(|p| {
-            f.poly_cut.overlaps(&p.poly)
-        })
+fn splitflaeche_overlaps_bauraum_bodenordnung(f: &AenderungenIntersection, bauraum_bodenordnung_flst: &[&TaggedPolygon]) -> bool {
+    bauraum_bodenordnung_flst.iter().any(|p| {
+        f.poly_cut.overlaps(&p.poly)
     })
 }
 
