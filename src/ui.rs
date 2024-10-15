@@ -1547,22 +1547,18 @@ impl AenderungenIntersections {
 }
 
 impl AenderungenClean {
-    pub fn get_aenderungen_intersections(&self, gemarkung: usize) -> AenderungenIntersections {
+    pub fn get_aenderungen_intersections(&self, gemarkung: usize, original_xml: &NasXMLFile) -> AenderungenIntersections {
         let mut is = Vec::new();
 
         let aenderung_len = self.aenderungen.na_polygone_neu.len();
         let mut flst_parts_changed = BTreeMap::new();
         let mut intersection_sizes = BTreeMap::new();
 
-        let bauraum_bodenordnung_flst = self.nas_xml_quadtree.original.flurstuecke_nutzungen
-        .values()
-        .flat_map(|s| s.iter().filter_map(|q| {
-            if q.attributes.get("AX_Ebene").map(|s| s.as_str()) == Some("AX_BauRaumOderBodenordnungsrecht") {
-                Some(q)
-            } else {
-                None
-            }
-        })).collect::<Vec<_>>();
+        let d = Vec::new();
+        let bauraum_bodenordnung_flst = original_xml.ebenen
+        .get("AX_BauRaumOderBodenordnungsrecht").unwrap_or(&d)
+        .iter()
+        .collect::<Vec<_>>();
 
         for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
             let neu_kuerzel = match polyneu.nutzung.clone() {
@@ -3257,12 +3253,17 @@ impl Aenderungen {
         }
     }
 
-    pub fn show_splitflaechen(&self, split_nas: &SplitNasXml, csv: &CsvDataType) -> Aenderungen {
+    pub fn show_splitflaechen(
+        &self, 
+        split_nas: &SplitNasXml, 
+        original_xml: &NasXMLFile, 
+        csv: &CsvDataType
+    ) -> Aenderungen {
         let intersections = AenderungenClean {
             nas_xml_quadtree: split_nas.create_quadtree(),
             aenderungen: self.clone(),
         }
-        .get_aenderungen_intersections(crate::get_main_gemarkung(csv));
+        .get_aenderungen_intersections(crate::get_main_gemarkung(csv), original_xml);
 
         Aenderungen {
             gebaeude_loeschen: self.gebaeude_loeschen.clone(),

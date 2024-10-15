@@ -1008,7 +1008,7 @@ fn join_fluren(v: &[usize]) -> Option<String> {
 pub fn calc_splitflaechen(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
-    _original_xml: &NasXMLFile,
+    original_xml: &NasXMLFile,
     csv: &CsvDataType,
 ) -> AenderungenIntersections {
     let qt = split_nas.create_quadtree();
@@ -1020,7 +1020,7 @@ pub fn calc_splitflaechen(
 
     log_status(&format!("Verschneide Änderungen.."));
 
-    aenderungen.get_aenderungen_intersections(crate::get_main_gemarkung(csv))
+    aenderungen.get_aenderungen_intersections(crate::get_main_gemarkung(csv), original_xml)
 }
 
 pub const PADDING: f32 = 16.5 * 2.0;
