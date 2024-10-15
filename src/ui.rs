@@ -2012,7 +2012,7 @@ impl AenderungenClean {
 
 fn splitflaeche_overlaps_bauraum_bodenordnung(f: &AenderungenIntersection, bauraum_bodenordnung_flst: &[&TaggedPolygon]) -> bool {
     bauraum_bodenordnung_flst.iter().any(|p| {
-        f.poly_cut.overlaps(&p.poly)
+        f.poly_cut.is_completely_inside_of(&p.poly)
     })
 }
 
