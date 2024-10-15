@@ -1197,7 +1197,12 @@ pub fn load_nas_xml(s: String, style: String) -> String {
     let mut t = crate::get_nutzungsartenkatalog_ebenen().values().cloned().collect::<BTreeSet<_>>();
     t.insert("AX_BauRaumOderBodenordnungsrecht".to_string());
     t.insert("AX_Flurstueck".to_string());
-    
+    t.insert("AX_Gebaeude".to_string());
+    t.insert("AX_Bauteil".to_string());
+    t.insert("AX_BauwerkImVerkehrsbereich".to_string());
+    t.insert("AX_SonstigesBauwerkOderSonstigeEinrichtung".to_string());
+    t.insert("AX_BauwerkOderAnlageFuerIndustrieUndGewerbe".to_string());
+
     let mut log = Vec::new();
     log_status(&format!("parsing XML: types = {t:?}"));
 
