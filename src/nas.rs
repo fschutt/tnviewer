@@ -1677,7 +1677,7 @@ impl Ord for SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
+pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &BTreeSet<String>) -> Result<NasXMLFile, String> {
     // CRS parsen
 
     let mut crs: Option<String> = None;
@@ -1706,7 +1706,6 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
     };
 
     // Objekte parsen
-    let whitelist = std::collections::BTreeSet::from_iter(whitelist.iter().cloned());
     let objekte_nodes = get_all_nodes_in_subtree(&xml, "member");
     let mut objekte = BTreeMap::new();
     for o in objekte_nodes.iter() {

@@ -1194,14 +1194,8 @@ pub fn load_nas_xml(s: String, style: String) -> String {
         Err(e) => return e.to_string(),
     };
     log_status("konfiguration ok");
-    let mut t = konfiguration
-        .style
-        .ebenen
-        .values()
-        .map(|s| s.name.clone())
-        .collect::<Vec<_>>();
-    t.sort();
-    t.dedup();
+    let mut t = crate::get_nutzungsartenkatalog_ebenen().values().cloned().collect::<BTreeSet<_>>();
+    t.insert("AX_BauRaumOderBodenordnungsrecht".to_string());
 
     let mut log = Vec::new();
     log_status(&format!("parsing XML: types = {t:?}"));
@@ -1381,9 +1375,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
         .iter()
         .filter(|n| n.node_type.starts_with("AX_"))
         .map(|n| n.node_type.clone())
-        .collect::<Vec<_>>();
-
-    log.push(format!("alle_ax: {:?}", kuerzel));
+        .collect::<BTreeSet<_>>();
 
     let nas_parsed_complete = match parse_nas_xml(nas_projected, &kuerzel) {
         Ok(s) => s,
@@ -1395,6 +1387,7 @@ pub fn edit_konfiguration_layer_alle(konfiguration: String, xml_nas: String) -> 
         .iter()
         .map(|(k, s)| (k.clone(), s.len()))
         .collect::<BTreeMap<_, _>>();
+
     log.push(format!("tp_count: {:?}", tp_count));
 
     let alle_auto_kuerzel = nas_parsed_complete
