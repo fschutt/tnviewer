@@ -1366,7 +1366,7 @@
         riss_config.lon, 
         riss_config.lat
       );
-      var crs = null;
+      var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
       if (window.split_flurstuecke_original) {
         crs = window.split_flurstuecke_original.crs;
       }
@@ -1393,6 +1393,7 @@
       if (riss_config.rissgebiet) {
         var f = get_rissgebiet_geojson(
           JSON.stringify(riss_config.rissgebiet),
+          crs,
         );
         var rissgebiet = JSON.parse(f);
         var style_active = {
@@ -1507,9 +1508,14 @@
       map.removeLayer(current_edit_layer);
       current_edit_layer = null;
     }
+    var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
+    if (window.split_flurstuecke_original) {
+      window.split_flurstuecke_original.crs;
+    }
     // if (uidata.tool != 'nutzung-einzeichnen') { return; }
     var newlayers = get_geojson_fuer_neue_polygone(
-      JSON.stringify(window.aenderungen)
+      JSON.stringify(window.aenderungen),
+      crs,
     );
     var newlayers = JSON.parse(newlayers);
     for (var k = 0; k < geojson_repaint_layers.length; k++) {
@@ -2301,9 +2307,13 @@
 
     function reinitRissGebietLayer() {
       if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        active_rissgebiet = null;
         return;
       }
       if (active_rissgebiet == null) {
+        if (window.uidata.tool == 'rissgebiet-zeichnen') {
+          window.uidata.tool = null;
+        }
         return;
       }
       if (!window.risse) {
@@ -2359,12 +2369,17 @@
         if (points.length == 0) {
           return;
         }
-        var f = JSON.parse(fixup_polyline(
-          JSON.stringify(window.projectdata), 
-          JSON.stringify(window.split_flurstuecke), 
+        var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
+        if (window.split_flurstuecke_original) {
+          window.split_flurstuecke_original.crs;
+        }
+        var f = JSON.parse(fixup_polyline_rissgebiet(
           JSON.stringify(points),
+          crs,
         ));
-        window.risse[active_rissgebiet].rissgebiet = f.poly;
+        if (f) {
+          window.risse[active_rissgebiet].rissgebiet = f;
+        }
         window.uidata.tool = null;
         rerenderRisse();
       });
@@ -2486,6 +2501,7 @@
 
       var lines = JSON.parse(get_polyline_guides_in_current_bounds(
         JSON.stringify(window.split_flurstuecke),
+        window.nas_original.crs,
         JSON.stringify(aenderungen),
         JSON.stringify(map.getBounds())
       ));
@@ -2552,11 +2568,16 @@
         }
         var newpolyid = "np_" + Date.now();
         var f = JSON.parse(fixup_polyline(
-          JSON.stringify(window.projectdata), 
-          JSON.stringify(window.split_flurstuecke), 
+          JSON.stringify(window.nas_original), 
+          JSON.stringify(window.split_flurstuecke_original), 
           JSON.stringify(points),
+          newpolyid,
+          JSON.stringify(window.aenderungen),
+          JSON.stringify(window.configuration),
         ));
-        window.aenderungen.na_polygone_neu[newpolyid] = f;
+        if (f) {
+          window.aenderungen = f;
+        }
         replaceProjectContent();
         reinitMapDrawnStaticLayers();
       });

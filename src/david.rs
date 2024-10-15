@@ -76,11 +76,6 @@ pub fn aenderungen_zu_fa_xml(
     
     log_aenderungen(&aenderungen_todo);
 
-    let aenderungen_todo = clean_operations_over_bodenordnungsrecht(
-        &aenderungen_todo, 
-        nas_xml
-    );
-
     let aenderungen_todo = merge_aenderungen_with_existing_nas(
         &aenderungen_todo,
         &nas_xml,
@@ -194,6 +189,14 @@ pub fn get_aenderungen_internal(
 
     let qt = nas_xml.create_quadtree();
     
+    let d = Vec::new();
+    let bauraum_bodenordnung = nas_xml.ebenen
+    .get("AX_BauRaumOderBodenordnungsrecht")
+    .unwrap_or(&d)
+    .iter()
+    .map(|p| &p.poly)
+    .collect::<Vec<_>>();
+
     let mut aenderungen = aenderungen.clone();
     let neu_objekte = aenderungen.na_definiert
     .iter()
@@ -376,7 +379,9 @@ pub fn get_aenderungen_internal(
                     .map(|p| p.poly.get_inner())
                     .collect::<Vec<_>>();
 
-                let p_subtract = p_subtract.iter().collect::<Vec<_>>();
+                let mut p_subtract = p_subtract.iter().collect::<Vec<_>>();
+                
+                p_subtract.append(&mut bauraum_bodenordnung.clone());
 
                 let subtracted = subtract_from_poly(&tp.poly, &p_subtract);
 
@@ -700,46 +705,6 @@ impl Signatur {
     }
 }
 
-pub fn clean_operations_over_bodenordnungsrecht(
-    op: &[Operation],
-    nas_xml: &NasXMLFile
-) -> Vec<Operation> {
-    op.iter().filter_map(|s| {
-        if operation_overlaps_bodenordnungsrecht(s, nas_xml) {
-            None
-        } else {
-            Some(s.clone())
-        }
-    }).collect()
-}
-
-fn operation_overlaps_bodenordnungsrecht(
-    op: &Operation,
-    nas_xml: &NasXMLFile
-) -> bool {
-
-    let d = Vec::new();
-    let bauraum_bodenordnung = nas_xml.ebenen
-    .get("AX_BauRaumOderBodenordnungsrecht")
-    .unwrap_or(&d);
-
-    if bauraum_bodenordnung.is_empty() {
-        return false;
-    }
-
-    let polys_to_check = match op {
-        Operation::Delete { poly_alt, .. } => vec![poly_alt],
-        Operation::Replace { poly_alt, poly_neu, .. } => vec![poly_alt, poly_neu],
-        Operation::Insert { poly_neu, .. } => vec![poly_neu]
-    };
-
-    bauraum_bodenordnung
-    .iter()
-    .any(|p| {
-        polys_to_check.iter().any(|q| q.overlaps(&p.poly))
-    })
-}
-
 pub fn merge_aenderungen_with_existing_nas(
     aenderungen_todo: &[Operation],
     nas_xml: &NasXMLFile
@@ -930,9 +895,9 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner) -> String {
     let outer_rings = Some(line_to_ring(&p.outer_ring))
         .map(|or| {
             format!("
-            <gml:exterior>
+                                    <gml:exterior>
             {or}
-            </gml:exterior>
+                                    </gml:exterior>
             ")
         }).unwrap_or_default();
 
@@ -944,9 +909,9 @@ pub fn polygon_to_position_node(p: &SvgPolygonInner) -> String {
         })
         .map(|ir| {
             format!("
-            <gml:interior>
+                                    <gml:interior>
             {ir}
-            </gml:interior>
+                                    </gml:interior>
             ")
         })
         .collect::<Vec<_>>()

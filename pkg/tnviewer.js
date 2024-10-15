@@ -376,24 +376,27 @@ export function format_savefile(info, risse, csv, aenderungen, target_crs) {
 
 /**
 * @param {string} poly
+* @param {string} target_crs
 * @returns {string}
 */
-export function get_rissgebiet_geojson(poly) {
-    let deferred2_0;
-    let deferred2_1;
+export function get_rissgebiet_geojson(poly, target_crs) {
+    let deferred3_0;
+    let deferred3_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(poly, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
-        wasm.get_rissgebiet_geojson(retptr, ptr0, len0);
+        const ptr1 = passStringToWasm0(target_crs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.get_rissgebiet_geojson(retptr, ptr0, len0, ptr1, len1);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred2_0 = r0;
-        deferred2_1 = r1;
+        deferred3_0 = r0;
+        deferred3_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_0(deferred2_0, deferred2_1, 1);
+        wasm.__wbindgen_export_0(deferred3_0, deferred3_1, 1);
     }
 }
 
@@ -742,53 +745,111 @@ export function aenderungen_zu_david(datum, aenderungen, nas_xml, split_nas, xml
 
 /**
 * @param {string} aenderungen
+* @param {string} target_crs
 * @returns {string}
 */
-export function get_geojson_fuer_neue_polygone(aenderungen) {
-    let deferred2_0;
-    let deferred2_1;
+export function get_geojson_fuer_neue_polygone(aenderungen, target_crs) {
+    let deferred3_0;
+    let deferred3_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
-        wasm.get_geojson_fuer_neue_polygone(retptr, ptr0, len0);
+        const ptr1 = passStringToWasm0(target_crs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.get_geojson_fuer_neue_polygone(retptr, ptr0, len0, ptr1, len1);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred2_0 = r0;
-        deferred2_1 = r1;
+        deferred3_0 = r0;
+        deferred3_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_0(deferred2_0, deferred2_1, 1);
+        wasm.__wbindgen_export_0(deferred3_0, deferred3_1, 1);
     }
 }
 
 /**
 * @param {string} split_flurstuecke
+* @param {string | undefined} crs
 * @param {string} aenderungen
 * @param {string} map_bounds
 * @returns {string}
 */
-export function get_polyline_guides_in_current_bounds(split_flurstuecke, aenderungen, map_bounds) {
-    let deferred4_0;
-    let deferred4_1;
+export function get_polyline_guides_in_current_bounds(split_flurstuecke, crs, aenderungen, map_bounds) {
+    let deferred5_0;
+    let deferred5_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(split_flurstuecke, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(map_bounds, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        var ptr1 = isLikeNone(crs) ? 0 : passStringToWasm0(crs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        var len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len2 = WASM_VECTOR_LEN;
-        wasm.get_polyline_guides_in_current_bounds(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        const ptr3 = passStringToWasm0(map_bounds, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len3 = WASM_VECTOR_LEN;
+        wasm.get_polyline_guides_in_current_bounds(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred4_0 = r0;
-        deferred4_1 = r1;
+        deferred5_0 = r0;
+        deferred5_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_0(deferred4_0, deferred4_1, 1);
+        wasm.__wbindgen_export_0(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+* @param {string} points
+* @param {string} crs
+* @returns {string}
+*/
+export function fixup_polyline_rissgebiet(points, crs) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(points, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(crs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.fixup_polyline_rissgebiet(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_0(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+* @param {string} aenderungen
+* @param {string} target_crs
+* @returns {string}
+*/
+export function reproject_aenderungen_for_view(aenderungen, target_crs) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(target_crs, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.reproject_aenderungen_for_view(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_0(deferred3_0, deferred3_1, 1);
     }
 }
 
@@ -796,11 +857,14 @@ export function get_polyline_guides_in_current_bounds(split_flurstuecke, aenderu
 * @param {string} xml
 * @param {string} split_flurstuecke
 * @param {string} points
+* @param {string} id
+* @param {string} aenderungen
+* @param {string} config
 * @returns {string}
 */
-export function fixup_polyline(xml, split_flurstuecke, points) {
-    let deferred4_0;
-    let deferred4_1;
+export function fixup_polyline(xml, split_flurstuecke, points, id, aenderungen, config) {
+    let deferred7_0;
+    let deferred7_1;
     try {
         const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
         const ptr0 = passStringToWasm0(xml, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
@@ -809,15 +873,21 @@ export function fixup_polyline(xml, split_flurstuecke, points) {
         const len1 = WASM_VECTOR_LEN;
         const ptr2 = passStringToWasm0(points, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         const len2 = WASM_VECTOR_LEN;
-        wasm.fixup_polyline(retptr, ptr0, len0, ptr1, len1, ptr2, len2);
+        const ptr3 = passStringToWasm0(id, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len3 = WASM_VECTOR_LEN;
+        const ptr4 = passStringToWasm0(aenderungen, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len4 = WASM_VECTOR_LEN;
+        const ptr5 = passStringToWasm0(config, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len5 = WASM_VECTOR_LEN;
+        wasm.fixup_polyline(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-        deferred4_0 = r0;
-        deferred4_1 = r1;
+        deferred7_0 = r0;
+        deferred7_1 = r1;
         return getStringFromWasm0(r0, r1);
     } finally {
         wasm.__wbindgen_add_to_stack_pointer(16);
-        wasm.__wbindgen_export_0(deferred4_0, deferred4_1, 1);
+        wasm.__wbindgen_export_0(deferred7_0, deferred7_1, 1);
     }
 }
 
@@ -1834,13 +1904,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
         console.log(getObject(arg0));
     };
-    imports.wbg.__wbg_getnak_d42c4edc9d6e4205 = function(arg0) {
-        const ret = get_nak();
-        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
-        const len1 = WASM_VECTOR_LEN;
-        getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
-        getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
-    };
     imports.wbg.__wbg_new_b85e72ed1bfd57f9 = function(arg0, arg1) {
         try {
             var state0 = {a: arg0, b: arg1};
@@ -1858,6 +1921,13 @@ function __wbg_get_imports() {
         } finally {
             state0.a = state0.b = 0;
         }
+    };
+    imports.wbg.__wbg_getnak_d42c4edc9d6e4205 = function(arg0) {
+        const ret = get_nak();
+        const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+        getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
     };
     imports.wbg.__wbg_new_525245e2b9901204 = function() {
         const ret = new Object();
@@ -2037,8 +2107,8 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function(arg0) {
         queueMicrotask(getObject(arg0));
     };
-    imports.wbg.__wbindgen_closure_wrapper8325 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 444, __wbg_adapter_32);
+    imports.wbg.__wbindgen_closure_wrapper8352 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 454, __wbg_adapter_32);
         return addHeapObject(ret);
     };
 
