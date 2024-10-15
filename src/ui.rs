@@ -1561,11 +1561,15 @@ impl AenderungenClean {
         .collect::<Vec<_>>();
 
         for (id, (aenderung_i, polyneu)) in self.aenderungen.na_polygone_neu.iter().enumerate() {
+
+            if splitflaeche_overlaps_bauraum_bodenordnung(&polyneu.poly.get_inner(), &bauraum_bodenordnung_flst) {
+                continue;
+            }
+
             let neu_kuerzel = match polyneu.nutzung.clone() {
                 Some(s) => s,
                 None => continue,
             };
-
             let all_touching_flst_parts = self
                 .nas_xml_quadtree
                 .get_overlapping_flst(&polyneu.poly.get_inner().get_rect());
@@ -1738,6 +1742,10 @@ impl AenderungenClean {
                 Some(s) => s,
                 None => continue,
             };
+
+            if splitflaeche_overlaps_bauraum_bodenordnung(&flst_part.poly, &bauraum_bodenordnung_flst) {
+                continue;
+            }
 
             let kuerzel = match flst_part.get_auto_kuerzel() {
                 Some(s) => s,
@@ -1917,7 +1925,7 @@ impl AenderungenClean {
             .0;
 
         is.retain(|s| !splitflaeche_overlaps_bauraum_bodenordnung(
-            s, &bauraum_bodenordnung_flst
+            &s.poly_cut, &bauraum_bodenordnung_flst
         ));
 
         // Remove Änderungen, wo nichts am Flurstück geändert wurde
@@ -2010,9 +2018,9 @@ impl AenderungenClean {
     }
 }
 
-fn splitflaeche_overlaps_bauraum_bodenordnung(f: &AenderungenIntersection, bauraum_bodenordnung_flst: &[&TaggedPolygon]) -> bool {
+fn splitflaeche_overlaps_bauraum_bodenordnung(poly: &SvgPolygonInner, bauraum_bodenordnung_flst: &[&TaggedPolygon]) -> bool {
     bauraum_bodenordnung_flst.iter().any(|p| {
-        f.poly_cut.is_completely_inside_of(&p.poly)
+        poly.is_completely_inside_of(&p.poly)
     })
 }
 
