@@ -194,7 +194,7 @@ pub fn get_problem_geojson() -> String {
     let poly_string2: &str = "";
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
-    let s2: &Vec<SvgPolygonInner> = &serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
     let joined = crate::ops::join_polys(&s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
@@ -216,7 +216,7 @@ pub fn get_problem_geojson() -> String {
     serde_json::to_string(&GeoJSONResult {
         geojson1: crate::nas::tagged_polys_to_featurecollection(&v1),
         geojson2: crate::nas::tagged_polys_to_featurecollection(&v2),
-        bounds: s1.get_fit_bounds(),
+        bounds: s2.first().map(|q| q.get_fit_bounds()).unwrap_or(s1.get_fit_bounds()),
     })
     .unwrap_or_default()
 }
