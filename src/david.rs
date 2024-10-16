@@ -222,6 +222,15 @@ pub fn get_aenderungen_internal_definiert_only(
 
     let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
 
+
+    let reverse_map = napoly_to_reverse_map(
+    &aenderungen.na_polygone_neu,
+        &nas_xml,
+    );
+        
+    /*
+    
+     
     let ids_to_change_nutzungen = napoly_to_idchange(
         &aenderungen.na_polygone_neu,
         &nas_xml,
@@ -237,6 +246,7 @@ pub fn get_aenderungen_internal_definiert_only(
     log_status("---- 1 ---- end");
 
     let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
+    */
 
     log_status("---- 2 ---- reverse_map start");
     for (k, v) in reverse_map.iter() {
@@ -283,16 +293,81 @@ pub fn get_aenderungen_internal(
     let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
     let aenderungen = aenderungen.deduplicate(force);
 
+    /* 
     let ids_to_change_nutzungen = napoly_to_idchange(
         &aenderungen.na_polygone_neu,
         &nas_xml,
     );
 
     let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
+    */
+
+    let reverse_map = napoly_to_reverse_map(
+    &aenderungen.na_polygone_neu,
+        &nas_xml,
+    );
 
     // Get DE_objid and join with all aenderungen with same kuerzel
 
     reverse_map_to_aenderungen(&reverse_map)
+}
+
+fn napoly_to_reverse_map(
+    napoly: &BTreeMap<String, PolyNeu>,
+    nas_xml: &NasXMLFile,
+) -> BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)> {
+
+    let mut map = BTreeMap::new();
+    let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen()
+    .values().cloned().collect::<BTreeSet<_>>();
+
+    for (ebene_id, tps) in nas_xml.ebenen.iter() {
+        if !alle_ebenen.contains(ebene_id) {
+            continue;
+        }
+
+        for tp in tps.iter() {
+            let de_id = match tp.get_de_id() {
+                Some(s) => s,
+                None => continue,
+            };
+            let old_ebene = match tp.get_ebene() {
+                Some(s) => s,
+                None => continue,
+            };
+            let old_kuerzel = match tp.get_auto_kuerzel() {
+                Some(s) => s,
+                None => continue,
+            };
+            let tp_rect = tp.get_rect();
+
+            let aenderungen = napoly.iter().filter_map(|(k, v)| {
+                if !v.poly.get_rect().overlaps_rect(&tp_rect) {
+                    return None;
+                }
+                let neu_kuerzel = v.nutzung.clone()?;
+                let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
+                Some((k, (neu_kuerzel, neu_ebene, v.poly.get_inner())))
+            }).collect::<Vec<_>>();
+
+            for (k, (neu_kuerzel, neu_ebene, neu_poly)) in aenderungen {
+                map
+                .entry((de_id.clone(), old_ebene.clone(), old_kuerzel.clone()))
+                .or_insert_with(|| (tp.clone(), Vec::new()))
+                .1
+                .push(AenderungObject {
+                    orig_change_id: k.clone(),
+                    neu_kuerzel: neu_kuerzel.clone(),
+                    neu_ebene: neu_ebene,
+                    poly: TaggedPolygon {
+                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&neu_kuerzel, &[]),
+                        poly: neu_poly,
+                    },
+                });
+            }
+        }
+    }
+    map
 }
 
 // ID => TempOverlapObject (which DE_obj are overlapped by this obj)
