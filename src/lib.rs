@@ -195,7 +195,7 @@ pub fn get_problem_geojson() -> String {
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
     let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
-    let joined = s2.clone(); // crate::ops::join_polys(&s2);
+    let joined = s2; // crate::ops::join_polys(&s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
@@ -514,13 +514,15 @@ pub fn lib_nutzungen_saeubern(
         .clean_stage1(
             konfiguration.merge.stage1_maxdst_point,
             konfiguration.merge.stage1_maxdst_line,
+            false,
         )
-        .clean_stage2(1.0, 1.0, 10.0)
+        .clean_stage2(1.0, 1.0, 10.0, false)
         .clean_stage3(
             &split_nas_xml,
             &mut log,
             konfiguration.merge.stage2_maxdst_point,
             konfiguration.merge.stage2_maxdst_line,
+            false,
         )
         .clean_stage4(
             &nas_original,
@@ -528,6 +530,7 @@ pub fn lib_nutzungen_saeubern(
             konfiguration.merge.stage3_maxdst_line,
             konfiguration.merge.stage3_maxdst_line2,
             konfiguration.merge.stage3_maxdeviation_followline,
+            false
         );
 
     log.push(format!(
@@ -598,18 +601,21 @@ pub fn lib_get_aenderungen_clean(
         aenderungen.na_polygone_neu.len()
     ));
 
+    let force = false;
     let clean = match id.as_str() {
         "1" => aenderungen.clean_stage1(
             konfiguration.merge.stage1_maxdst_point,
             konfiguration.merge.stage1_maxdst_line,
+            force,
         ),
-        "2" => aenderungen.clean_stage2(1.0, 1.0, 10.0),
-        "25" => aenderungen.clean_stage25(),
+        "2" => aenderungen.clean_stage2(1.0, 1.0, 10.0, force),
+        "25" => aenderungen.clean_stage25(force),
         "3" => aenderungen.clean_stage3(
             &split_nas_xml,
             &mut log,
             konfiguration.merge.stage2_maxdst_point,
             konfiguration.merge.stage2_maxdst_line,
+            force,
         ),
         "4" => aenderungen.clean_stage4(
             &nas_original,
@@ -617,18 +623,21 @@ pub fn lib_get_aenderungen_clean(
             konfiguration.merge.stage3_maxdst_line,
             konfiguration.merge.stage3_maxdst_line2,
             konfiguration.merge.stage3_maxdeviation_followline,
+            force,
         ),
         "13" => aenderungen
             .clean_stage1(
                 konfiguration.merge.stage1_maxdst_point,
                 konfiguration.merge.stage1_maxdst_line,
+                force,
             )
-            .clean_stage2(1.0, 1.0, 10.0)
+            .clean_stage2(1.0, 1.0, 10.0, force)
             .clean_stage3(
                 &split_nas_xml,
                 &mut log,
                 konfiguration.merge.stage2_maxdst_point,
                 konfiguration.merge.stage2_maxdst_line,
+                force,
             )
             .clean_stage4(
                 &nas_original,
@@ -636,8 +645,9 @@ pub fn lib_get_aenderungen_clean(
                 konfiguration.merge.stage3_maxdst_line,
                 konfiguration.merge.stage3_maxdst_line2,
                 konfiguration.merge.stage3_maxdeviation_followline,
+                force,
             ),
-        "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log),
+        "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log, force),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original, &csv_data),
         "8" => aenderungen.zu_david(&nas_original, &split_nas_xml),
         _ => return format!("wrong id {id}"),
@@ -935,6 +945,7 @@ pub fn fixup_polyline(
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen).unwrap_or_default();
     let konfiguration = serde_json::from_str::<Konfiguration>(&config).unwrap_or_default();
     
+    let force = false;
     if let Some(s) = fixup_polyline_internal(&points).map(|s| project_poly_into_target_crs(s, &split_fs.crs)) {
         
         let mut aenderungen = match reproject_aenderungen_into_target_space(&aenderungen, &split_fs.crs) {
@@ -956,15 +967,17 @@ pub fn fixup_polyline(
         let aenderungen = aenderungen.clean_stage1(
             konfiguration.merge.stage1_maxdst_point,
             konfiguration.merge.stage1_maxdst_line,
+            force,
         );
 
-        let aenderungen = aenderungen.clean_stage2(1.0, 1.0, 10.0);
+        let aenderungen = aenderungen.clean_stage2(1.0, 1.0, 10.0, force);
 
         let aenderungen = aenderungen.clean_stage3(
             &split_fs,
             &mut Vec::new(),
             konfiguration.merge.stage2_maxdst_point,
             konfiguration.merge.stage2_maxdst_line,
+            force,
         );
 
         let aenderungen = aenderungen.clean_stage4(
@@ -973,9 +986,10 @@ pub fn fixup_polyline(
             konfiguration.merge.stage3_maxdst_line,
             konfiguration.merge.stage3_maxdst_line2,
             konfiguration.merge.stage3_maxdeviation_followline,
+            force,
         );
 
-        let aenderungen = aenderungen.deduplicate();
+        let aenderungen = aenderungen.deduplicate(force);
 
         serde_json::to_string(&aenderungen).unwrap_or_default()
     } else {

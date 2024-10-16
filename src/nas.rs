@@ -1006,6 +1006,20 @@ impl SvgPolygonInner {
         HighwayHasher::default().hash64(&bytes)
     }
 
+
+    pub fn get_all_points(&self) -> Vec<SvgPoint> {
+        let mut v = Vec::new();
+        for p in self.outer_ring.points.iter() {
+            v.push(*p);
+        }
+        for l in self.inner_rings.iter() {
+            for p in l.points.iter() {
+                v.push(*p);
+            }
+        }
+        v
+    }
+
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize; 2]> {
         let mut v = BTreeSet::new();
         for p in self.outer_ring.points.iter() {
@@ -1074,7 +1088,7 @@ impl SvgPolygonInner {
             .iter()
             .map(|o| o.insert_points_from(other, maxdst))
             .collect();
-        self.correct_almost_touching_points(other, maxdst, false);
+        self.correct_almost_touching_points(other, maxdst * 2.0, false);
     }
 
     pub fn correct_almost_touching_points(
@@ -1089,6 +1103,7 @@ impl SvgPolygonInner {
         for p in other.outer_ring.points.iter() {
             other_points.push(*p);
         }
+
         if correct_points_on_lines {
             for p in other.outer_ring.points.windows(2) {
                 match p {
@@ -1536,22 +1551,27 @@ impl SvgLine {
                     .filter_map(|(start, end)| {
                         let dst = dist_to_segment(*p, *start, *end);
                         if dst.distance < maxdst {
-                            Some(dst)
+                            Some(dst.nearest_point)
                         } else {
                             None
                         }
                     })
-                    .map(|s| s.nearest_point)
                     .collect::<Vec<_>>();
 
                 nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
 
                 let mut ret = vec![*p];
-                ret.append(&mut nearest_other_line);
+                if let Some(first) = nearest_other_line.first() {
+                    ret.push(*first);
+                }
                 ret
             })
             .collect::<Vec<_>>();
 
+        if let Some(last) = self.points.last() {
+            newpoints.push(*last);
+        }
+        
         newpoints.dedup_by(|a, b| a.equals(b));
 
         SvgLine { points: newpoints }

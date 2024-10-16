@@ -189,6 +189,16 @@ pub fn get_aenderungen_internal(
 
     let qt = nas_xml.create_quadtree();
     
+    let force = true;
+    let aenderungen = aenderungen.clean_stage4(
+        nas_xml, 
+        &mut Vec::new(), 
+        0.2, 
+        2.0, 
+        10.0,
+        force,
+    );
+
     let d = Vec::new();
     let bauraum_bodenordnung = nas_xml.ebenen
         .get("AX_BauRaumOderBodenordnungsrecht")
@@ -212,20 +222,20 @@ pub fn get_aenderungen_internal(
         .collect::<BTreeMap<_, _>>();
 
     // merge aenderungen same type first (merge adjacent flst)
-    aenderungen.deduplicate();
+    aenderungen.deduplicate(force);
     for _ in 0..5 {
-        aenderungen.clean_stage25();
+        aenderungen.clean_stage25(force);
     }
-    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
+    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
 
     // merge aenderungen same type
     aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
-    aenderungen.deduplicate();
+    aenderungen.deduplicate(force);
     for _ in 0..5 {
-        aenderungen.clean_stage25();
+        aenderungen.clean_stage25(force);
     }
-    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
-    aenderungen.deduplicate();
+    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
+    aenderungen.deduplicate(force);
 
     // ID => TempOverlapObject (which DE_obj are overlapped by this obj)
     let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(

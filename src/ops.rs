@@ -58,43 +58,68 @@ fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner]) -> Vec<SvgPolygonIn
     }));
 
     const DST: f64 = 0.05;
-    let mut snew = Vec::new();
-    for q in s.iter() {
+    let mut snew = BTreeMap::new();
+    for (qid, q) in s.iter().enumerate() {
+        log_status(&format!("fixing polygon {qid}:"));
         let mut q = q.clone();
         let q_rect = q.get_rect();
         let near_polys = ap_quadtree.get_ids_that_overlap(&q_rect)
         .iter()
-        .filter_map(|i| s.get(i.0))
+        .filter_map(|i| if i.0 == qid { 
+            None
+        } else { 
+            snew.get(&i.0)
+            .or_else(|| s.get(i.0))
+            .map(|z| (i.0, z)) 
+        })
         .collect::<Vec<_>>();
-        for n in near_polys.iter() {
+        for (id, n) in near_polys.iter() {
+            log_status(&format!("inserting points from polygon {id}"));
+            let before = serde_json::to_string(&[q.clone()]).unwrap_or_default();
             q.insert_points_from(n, DST);
+            let after = serde_json::to_string(&[q.clone()]).unwrap_or_default();
+            log_status(&format!("before:"));
+            log_status(&before);
+            log_status(&format!("after:"));
+            log_status(&after);
         } 
-        snew.push(q);
+        log_status(&format!("done!"));
+
+        snew.insert(qid, q);
     }
-    snew
+    snew.into_values().collect()
 }
 
-fn merge_poly_points(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
-    let all_points_btree = s.iter().flat_map(|s| {
-        s.round_to_3dec().get_all_pointcoords_sorted()
-    }).collect::<BTreeSet<_>>();
-    let ap_quadtree = quadtree_f32::QuadTree::new(all_points_btree.iter().enumerate().map(|(i, s)| {
-        (quadtree_f32::ItemId(i), quadtree_f32::Item::Point(quadtree_f32::Point { x: s[0] as f64 / 1000.0, y: s[1] as f64 / 1000.0 }))
-    }));
+fn merge_poly_points(s: &[SvgPolygonInner], original_pts: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+    
+    const DST: f64 = 0.1;
 
-    const DST: f64 = 0.05;
+    let all_points_vec = original_pts.iter().flat_map(|s| s.get_all_points()).collect::<Vec<_>>();
+
+    let ap_quadtree = quadtree_f32::QuadTree::new(
+        all_points_vec.iter().enumerate().map(|(i, s)| {
+            (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(s.get_rect(DST)))
+        })
+    );
 
     let mut s = s.to_vec();
     for p in s.iter_mut() {
         for o in p.outer_ring.points.iter_mut() {
-            let qtp = quadtree_f32::Point { x: o.x, y: o.y }; 
-            let mut near_points = ap_quadtree.get_points_contained_by(&o.get_rect(DST));
-            near_points.sort_by(|a, b| a.distance(&qtp).total_cmp(&b.distance(&qtp)));
+
+            let mut near_points = ap_quadtree.get_ids_that_overlap(&o.get_rect(DST))
+            .into_iter()
+            .filter_map(|i| all_points_vec.get(i.0))
+            .collect::<Vec<_>>();
+
+            near_points.sort_by(|a, b| a.dist(&o).total_cmp(&b.dist(&o)));
+
             if let Some(first) = near_points.first() {
-                *o = SvgPoint {
-                    x: first.x,
-                    y: first.y,
-                };
+                if first.dist(o) < DST {
+                    *o = SvgPoint {
+                        x: first.x,
+                        y: first.y,
+                    };
+                }
             }
         }
     }
@@ -144,17 +169,21 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     s
 }
 
-pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+pub fn join_polys(polys_orig: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
     log_status("join_polys");
-    log_status(&serde_json::to_string(polys).unwrap_or_default());
+    log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
 
+    let polys = polys_orig.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    let polys = insert_poly_points_from_near_polys(&polys);
+    let polys = merge_poly_points(&polys, &polys_orig);
     let polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-    let polys = merge_poly_points(&polys);
+    let polys = merge_poly_points(&polys, &polys);
     let mut polys = insert_poly_points_from_near_polys(&polys);
+
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
     polys.reverse(); // largest polys first
 
@@ -167,7 +196,7 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
         let mut i = i.clone();
 
         for q in first.iter() {
-            i.insert_points_from(q, 0.05);
+            i.insert_points_from(q, 0.1);
             if i.is_completely_inside_of(q) {
                 continue;
             }
@@ -189,7 +218,7 @@ pub fn join_polys_old(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-    let polys = merge_poly_points(&polys);
+    let polys = merge_poly_points(&polys, &polys);
     let polys = insert_poly_points_from_near_polys(&polys);
     let first = match polys.get(0) {
         Some(s) => vec![s],

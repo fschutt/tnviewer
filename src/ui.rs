@@ -1335,6 +1335,7 @@ impl AenderungenIntersections {
 
         let aenderungen_uuid = self.0.iter().map(|sf| (uuid(), sf)).collect::<Vec<_>>();
 
+        let force = true;
         let aenderungen = if special {
             Aenderungen {
                 gebaeude_loeschen: BTreeMap::new(),
@@ -1353,7 +1354,7 @@ impl AenderungenIntersections {
                     })
                     .collect(),
             }
-            .clean_stage1(1.0, 1.0)
+            .clean_stage1(1.0, 1.0, force)
         } else {
             Aenderungen::default()
         };
@@ -2488,12 +2489,12 @@ impl Aenderungen {
         }
     }
 
-    pub fn clean_stage0(&self, maxdst_point: f64) -> Aenderungen {
+    pub fn clean_stage0(&self, maxdst_point: f64, force: bool) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
 
         log_status(&format!("clean_stage0"));
 
-        let (locked, unlocked) = changed_mut.split_locked_unlocked();
+        let (locked, unlocked) = changed_mut.split_locked_unlocked(force);
 
         // deduplicate aenderungen
         let mut na_polygone_neu = BTreeMap::new();
@@ -2560,8 +2561,9 @@ impl Aenderungen {
         &self,
         maxdst_point: f64,
         maxdst_line: f64,
+        force: bool,
     ) -> Aenderungen {
-        let mut changed_mut = self.clean_stage0(maxdst_point);
+        let mut changed_mut = self.clean_stage0(maxdst_point, force);
 
         let mut modified_tree = changed_mut.na_polygone_neu.clone();
 
@@ -2575,7 +2577,7 @@ impl Aenderungen {
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut modified = false;
 
-            if polyneu.locked {
+            if polyneu.locked && !force {
                 continue;
             }
 
@@ -2638,6 +2640,7 @@ impl Aenderungen {
         maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
+        force: bool,
     ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
 
@@ -2654,7 +2657,7 @@ impl Aenderungen {
                     continue;
                 }
 
-                if !polyneu.locked {
+                if !polyneu.locked && !force {
                     let orig_points_len = polyneu_poly.outer_ring.points.len();
                     let mut nextpoint;
                     let mut newpoints = match polyneu_poly.outer_ring.points.get(0) {
@@ -2793,15 +2796,15 @@ impl Aenderungen {
     }
 
     // 3: Änderungen verbinden nach Typ, wenn sie sich gegenseitig berühren
-    pub fn clean_stage25(&self) -> Aenderungen {
-        self.clean_stage25_internal()
-            .clean_stage1(0.1, 0.1)
-            .clean_stage25_internal()
-            .move_lines_touching()
-            .clean_stage25_internal()
+    pub fn clean_stage25(&self, force: bool) -> Aenderungen {
+        self.clean_stage25_internal(force)
+            .clean_stage1(0.1, 0.1, force)
+            .clean_stage25_internal(force)
+            .move_lines_touching(force)
+            .clean_stage25_internal(force)
     }
 
-    fn move_lines_touching(&self) -> Aenderungen {
+    fn move_lines_touching(&self, force: bool) -> Aenderungen {
         let aenderungen_by_kuerzel = self
             .na_polygone_neu
             .iter()
@@ -2852,7 +2855,8 @@ impl Aenderungen {
                 Some(s) => s,
                 None => continue,
             };
-            if poly_a.locked {
+
+            if poly_a.locked && !force {
                 continue;
             }
 
@@ -2932,12 +2936,15 @@ impl Aenderungen {
         .round_to_3decimal()
     }
 
-    pub fn split_locked_unlocked(&self) -> (BTreeMap<String, PolyNeu>, BTreeMap<String, PolyNeu>) {
+    pub fn split_locked_unlocked(&self, force: bool) 
+    -> (BTreeMap<String, PolyNeu>, BTreeMap<String, PolyNeu>) {
         let locked = self
             .na_polygone_neu
             .iter()
             .filter_map(|(id, s)| {
-                if s.locked {
+                if force {
+                    None
+                } else if s.locked && !force {
                     Some((id.clone(), s.clone()))
                 } else {
                     None
@@ -2949,7 +2956,9 @@ impl Aenderungen {
             .na_polygone_neu
             .iter()
             .filter_map(|(id, s)| {
-                if s.locked {
+                if force {
+                    Some((id.clone(), s.clone()))
+                } else if s.locked {
                     None
                 } else {
                     Some((id.clone(), s.clone()))
@@ -2960,10 +2969,10 @@ impl Aenderungen {
         (locked, unlocked)
     }
 
-    pub fn clean_stage25_internal(&self) -> Aenderungen {
+    pub fn clean_stage25_internal(&self, force: bool) -> Aenderungen {
         log_status("clean_stage25_internal");
 
-        let (locked, unlocked) = self.split_locked_unlocked();
+        let (locked, unlocked) = self.split_locked_unlocked(force);
 
         let aenderungen_by_kuerzel = unlocked
             .iter()
@@ -3036,13 +3045,14 @@ impl Aenderungen {
         _log: &mut Vec<String>,
         maxdst_point: f64,
         maxdst_line: f64,
+        force: bool,
     ) -> Aenderungen {
         let qt = split_nas.create_quadtree();
 
         let mut moved_points = Vec::new();
         let mut changed_mut = self.clone();
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            if polyneu.locked {
+            if polyneu.locked && !force {
                 continue;
             }
             let mut polyneu_poly = polyneu.poly.get_inner();
@@ -3081,12 +3091,13 @@ impl Aenderungen {
         maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
+        force: bool,
     ) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
         let nas_quadtree = original_xml.create_quadtree();
 
         for (id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
-            if polyneu.locked {
+            if polyneu.locked && !force {
                 continue;
             }
 
@@ -3130,14 +3141,14 @@ impl Aenderungen {
     }
 
     // Subtrahiere Änderungen, die über Änderungen liegen
-    pub fn clean_stage5(&self, _split_nas: &SplitNasXml, _log: &mut Vec<String>) -> Aenderungen {
+    pub fn clean_stage5(&self, _split_nas: &SplitNasXml, _log: &mut Vec<String>, force: bool) -> Aenderungen {
         let mut changed_mut = self.clone();
         let mut geaendert = BTreeMap::new();
 
         for (pid, pn) in changed_mut.na_polygone_neu.iter() {
             let pn_poly = pn.poly.get_inner();
             let pn_rect = pn_poly.get_rect();
-            if pn.locked {
+            if pn.locked && !force {
                 continue;
             }
             let p_nutzung = match pn.nutzung.clone() {
@@ -3190,15 +3201,15 @@ impl Aenderungen {
             changed_mut.na_polygone_neu.insert(id.to_string(), np);
         }
 
-        changed_mut.round_to_3decimal().deduplicate()
+        changed_mut.round_to_3decimal().deduplicate(force)
     }
 
-    pub fn deduplicate(&self) -> Self {
+    pub fn deduplicate(&self, force: bool) -> Self {
         let s = self.round_to_3decimal();
 
         let mut aenderung_2 = BTreeMap::new();
 
-        let (locked, unlocked) = self.split_locked_unlocked();
+        let (locked, unlocked) = self.split_locked_unlocked(force);
 
         for (k, v) in unlocked.iter() {
             let a = match serde_json::to_string(&v.poly) {
