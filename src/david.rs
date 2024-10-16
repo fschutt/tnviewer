@@ -213,9 +213,13 @@ pub fn get_aenderungen_internal(
 
     // merge aenderungen same type
     aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
-    aenderungen.clean_stage25();
+    aenderungen.deduplicate();
+    for _ in 0..5 {
+        aenderungen.clean_stage25();
+    }
     aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
-    
+    aenderungen.deduplicate();
+
     // ID => TempOverlapObject (which DE_obj are overlapped by this obj)
     let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
         |(k, polyneu)| {

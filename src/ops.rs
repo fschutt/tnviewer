@@ -153,7 +153,10 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
     let polys = merge_poly_points(&polys);
-    let polys = insert_poly_points_from_near_polys(&polys);
+    let mut polys = insert_poly_points_from_near_polys(&polys);
+    polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.reverse(); // largest polys first
+
     let mut first = match polys.get(0) {
         Some(s) => vec![s.clone()],
         None => return Vec::new(),
@@ -164,6 +167,9 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
 
         for q in first.iter() {
             i.insert_points_from(q, 0.05);
+            if i.is_completely_inside_of(q) {
+                continue;
+            }
         }
 
         let a = translate_to_geo_poly_special(&first);
