@@ -149,6 +149,7 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     log_status("join_polys");
     log_status(&serde_json::to_string(polys).unwrap_or_default());
 
+    let polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
@@ -175,7 +176,7 @@ pub fn join_polys(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
         let a = translate_to_geo_poly_special(&first);
         let b = translate_to_geo_poly_special_shared(&[&i]);
         let join = a.union(&b);
-        first = translate_from_geo_poly(&join);
+        first = translate_from_geo_poly(&join).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
     }
 
     first
