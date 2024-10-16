@@ -18,6 +18,11 @@ pub fn subtract_from_poly(
     original: &SvgPolygonInner,
     subtract: &[&SvgPolygonInner],
 ) -> Vec<SvgPolygonInner> {
+
+    if subtract.is_empty() {
+        return vec![original.clone()];
+    }
+
     use geo::BooleanOps;
     log_status("subtract_from_poly");
     log_status(&serde_json::to_string(original).unwrap_or_default());
@@ -25,7 +30,7 @@ pub fn subtract_from_poly(
     let mut first = vec![original.round_to_3dec()];
     for i in subtract.iter() {
         let fi = first.iter().map(|s| s.round_to_3dec().correct_winding_order_cloned()).collect::<Vec<_>>();
-        let mut i = i.round_to_3dec();
+        let mut i = i.round_to_3dec().correct_winding_order_cloned();
         if fi.iter().all(|s| s.equals(&i)) {
             return Vec::new();
         }
@@ -60,7 +65,6 @@ fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner]) -> Vec<SvgPolygonIn
     const DST: f64 = 0.05;
     let mut snew = BTreeMap::new();
     for (qid, q) in s.iter().enumerate() {
-        log_status(&format!("fixing polygon {qid}:"));
         let mut q = q.clone();
         let q_rect = q.get_rect();
         let near_polys = ap_quadtree.get_ids_that_overlap(&q_rect)
@@ -74,16 +78,8 @@ fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner]) -> Vec<SvgPolygonIn
         })
         .collect::<Vec<_>>();
         for (id, n) in near_polys.iter() {
-            log_status(&format!("inserting points from polygon {id}"));
-            let before = serde_json::to_string(&[q.clone()]).unwrap_or_default();
             q.insert_points_from(n, DST);
-            let after = serde_json::to_string(&[q.clone()]).unwrap_or_default();
-            log_status(&format!("before:"));
-            log_status(&before);
-            log_status(&format!("after:"));
-            log_status(&after);
         } 
-        log_status(&format!("done!"));
 
         snew.insert(qid, q);
     }
@@ -171,6 +167,11 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
 
 pub fn join_polys(polys_orig: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
+
+    if polys_orig.len() < 2 {
+        return polys_orig.to_vec();
+    }
+
     log_status("join_polys");
     log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
 

@@ -1,6 +1,6 @@
 use crate::{
     nas::{
-        self, MemberObject, NasXMLFile, NasXmlObjects, SplitNasXml, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
+        self, MemberObject, NasXMLFile, NasXmlObjects, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     },
     ops::{
         join_polys,
@@ -72,8 +72,9 @@ pub fn aenderungen_zu_fa_xml(
 
     log_status_clear();
 
-    let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
-    
+    // let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
+    let aenderungen_todo = get_aenderungen_internal_definiert_only(aenderungen, nas_xml, split_nas);
+
     log_aenderungen(&aenderungen_todo);
 
     let aenderungen_todo = merge_aenderungen_with_existing_nas(
@@ -179,15 +180,81 @@ pub fn aenderungen_zu_nas_xml(
     // new_nas.to_xml(&nas_xml, &objects);
 }
 
-pub fn get_aenderungen_internal(
+
+fn get_na_definiert_as_na_polyneu(
+    aenderungen: &Aenderungen,
+    split_nas: &SplitNasXml,
+) -> Aenderungen {
+
+    let force = true;
+    let mut aenderungen = aenderungen.clone();
+    let neu_objekte = aenderungen.na_definiert
+        .iter()
+        .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
+        .filter_map(|(k, _obj_id, v)| {
+
+            Some((uuid(), PolyNeu {
+                poly: SvgPolygon::Old(k.poly.clone()),
+                nutzung: Some(v.to_string()),
+                locked: true,
+            }))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    aenderungen.na_definiert = BTreeMap::new();
+    aenderungen.na_polygone_neu = neu_objekte;
+
+    // merge aenderungen same type first (merge adjacent flst)
+    let mut aenderungen = aenderungen.deduplicate(force);
+    for _ in 0..5 {
+        aenderungen = aenderungen.clean_stage25(force);
+    }
+    let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
+    aenderungen
+}
+
+
+pub fn get_aenderungen_internal_definiert_only(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
 ) -> Vec<Operation> {
 
-    let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
+    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
 
-    let qt = nas_xml.create_quadtree();
+    let ids_to_change_nutzungen = napoly_to_idchange(
+        &aenderungen.na_polygone_neu,
+        &nas_xml,
+    );
+
+    log_status("---- 1 ---- start");
+    for (k, v) in ids_to_change_nutzungen.iter() {
+        let overlaps = v.overlaps_objekte.values()
+        .flat_map(|s| s.iter().map(|q| format!("{} m2 {}", q.poly.area_m2().round(), q.get_auto_kuerzel().unwrap_or_default())))
+        .collect::<Vec<_>>();
+        log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2().round(), v.neu_kuerzel, overlaps));
+    }
+    log_status("---- 1 ---- end");
+
+    let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
+
+    log_status("---- 2 ---- reverse_map start");
+    for (k, v) in reverse_map.iter() {
+        let overlaps = v.1.iter()
+        .map(|s| format!("{} m2 {}", s.poly.poly.area_m2().round(), s.poly.get_auto_kuerzel().unwrap_or_default()))
+        .collect::<Vec<_>>();
+        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k.0, v.0.poly.area_m2().round(), k.2, overlaps));
+    }
+    log_status("---- 2 ---- reverse_map end");
+
+    reverse_map_to_aenderungen(&reverse_map)
+}
+
+pub fn get_aenderungen_internal(
+    aenderungen: &Aenderungen,
+    nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
+) -> Vec<Operation> {
     
     let force = true;
     let aenderungen = aenderungen.clean_stage4(
@@ -207,38 +274,35 @@ pub fn get_aenderungen_internal(
         .map(|p| &p.poly)
         .collect::<Vec<_>>();
 
-    let mut aenderungen = aenderungen.clone();
-    let neu_objekte = aenderungen.na_definiert
-        .iter()
-        .filter_map(|(k, v)| Some((split_nas.get_flst_part_by_id(k)?, TaggedPolygon::get_object_id(&k)?, v)))
-        .filter_map(|(k, _obj_id, v)| {
-
-            Some((uuid(), PolyNeu {
-                poly: SvgPolygon::Old(k.poly.clone()),
-                nutzung: Some(v.to_string()),
-                locked: true,
-            }))
-        })
-        .collect::<BTreeMap<_, _>>();
-
-    // merge aenderungen same type first (merge adjacent flst)
-    aenderungen.deduplicate(force);
+    let aenderungen = aenderungen.clone();
+    let mut aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
-        aenderungen.clean_stage25(force);
+        aenderungen = aenderungen.clean_stage25(force);
     }
-    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
+    let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
+    let aenderungen = aenderungen.deduplicate(force);
 
-    // merge aenderungen same type
-    aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
-    aenderungen.deduplicate(force);
-    for _ in 0..5 {
-        aenderungen.clean_stage25(force);
-    }
-    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
-    aenderungen.deduplicate(force);
+    let ids_to_change_nutzungen = napoly_to_idchange(
+        &aenderungen.na_polygone_neu,
+        &nas_xml,
+    );
 
-    // ID => TempOverlapObject (which DE_obj are overlapped by this obj)
-    let ids_to_change_nutzungen = aenderungen.na_polygone_neu.iter().filter_map(
+    let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
+
+    // Get DE_objid and join with all aenderungen with same kuerzel
+
+    reverse_map_to_aenderungen(&reverse_map)
+}
+
+// ID => TempOverlapObject (which DE_obj are overlapped by this obj)
+fn napoly_to_idchange(
+    napoly: &BTreeMap<String, PolyNeu>,
+    nas_xml: &NasXMLFile,
+) -> BTreeMap<String, TempOverlapObject> {
+    let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
+    let qt = nas_xml.create_quadtree();
+
+    napoly.iter().filter_map(
         |(k, polyneu)| {
             let neu_kuerzel = polyneu.nutzung.clone()?;
             let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
@@ -266,18 +330,13 @@ pub fn get_aenderungen_internal(
                 },
             ))
         },
-    ).collect::<BTreeMap<_, _>>();
+    ).collect::<BTreeMap<_, _>>()
+}
 
-    log_status("---- 1 ---- start");
-    for (k, v) in ids_to_change_nutzungen.iter() {
-        let overlaps = v.overlaps_objekte.values()
-        .flat_map(|s| s.iter().map(|q| format!("{} m2 {}", q.poly.area_m2().round(), q.get_auto_kuerzel().unwrap_or_default())))
-        .collect::<Vec<_>>();
-        log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2().round(), v.neu_kuerzel, overlaps));
-    }
-    log_status("---- 1 ---- end");
-
-    // build reverse map (DE_objid -> relevant changes per changed obj)
+// build reverse map (DE_objid -> relevant changes per changed obj)
+fn build_reverse_map(
+    ids_to_change_nutzungen: &BTreeMap<String, TempOverlapObject>,
+) -> BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)> {
     let mut reverse_map = BTreeMap::new();
     for (k, v) in ids_to_change_nutzungen.iter() {
         for (_, k2) in v.overlaps_objekte.iter() {
@@ -307,17 +366,12 @@ pub fn get_aenderungen_internal(
             }
         }
     }
+    reverse_map
+}
 
-    log_status("---- 2 ---- reverse_map start");
-    for (k, v) in reverse_map.iter() {
-        let overlaps = v.1.iter()
-        .map(|s| format!("{} m2 {}", s.poly.poly.area_m2().round(), s.poly.get_auto_kuerzel().unwrap_or_default()))
-        .collect::<Vec<_>>();
-        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k.0, v.0.poly.area_m2().round(), k.2, overlaps));
-    }
-    log_status("---- 2 ---- reverse_map end");
-
-    // Get DE_objid and join with all aenderungen with same kuerzel
+fn reverse_map_to_aenderungen(
+    reverse_map: &BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)>
+) -> Vec<Operation> {
     let mut aenderungen_todo = reverse_map.iter()
     .flat_map(|((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aen))| {
         
@@ -328,6 +382,8 @@ pub fn get_aenderungen_internal(
                 None
             }
         }).collect::<Vec<_>>();
+
+        log_status(&format!("reverse map to aenderungen: adding {} polys to {alt_kuerzel}", aenderungen_with_same_kuerzel.len()));
 
         let mut v = vec![tp.poly.clone()];
         v.extend(aenderungen_with_same_kuerzel.into_iter());
@@ -340,6 +396,8 @@ pub fn get_aenderungen_internal(
                 None
             }
         }).collect::<Vec<_>>();
+
+        log_status(&format!("reverse map to aenderungen: subtracting {} polys from {alt_kuerzel}", polys_to_subtract.len()));
 
         let subtracted = joined.iter().flat_map(|s| {
             subtract_from_poly(s, &polys_to_subtract.iter().map(|s| &s.poly.poly).collect::<Vec<_>>())
@@ -367,6 +425,14 @@ pub fn get_aenderungen_internal(
             });
         }
 
+        for q in polys_to_subtract {
+            v.push(Operation::Insert { 
+                ebene: q.neu_ebene.clone(), 
+                kuerzel: q.neu_kuerzel.clone(), 
+                poly_neu: q.poly.poly.clone(), 
+            });
+        }
+
         // Insert all other objs that overlapped (will be deduplicated later)
         /*
         for q in polys_to_subtract {
@@ -391,13 +457,10 @@ pub fn get_aenderungen_internal(
        v
     }).collect::<Vec<_>>();
 
-    // TODO: merge unnecessary (delete / insert) pairs into new (replace)
-
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
     aenderungen_todo
 }
-
 pub enum Signatur {
     Punkt {
         id: String,

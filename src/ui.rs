@@ -2492,8 +2492,6 @@ impl Aenderungen {
     pub fn clean_stage0(&self, maxdst_point: f64, force: bool) -> Aenderungen {
         let mut changed_mut = self.round_to_3decimal();
 
-        log_status(&format!("clean_stage0"));
-
         let (locked, unlocked) = changed_mut.split_locked_unlocked(force);
 
         // deduplicate aenderungen
@@ -2512,8 +2510,6 @@ impl Aenderungen {
 
         // join sequential points if
 
-        log_status(&format!("clean_stage0 1"));
-
         for (_id, polyneu) in changed_mut.na_polygone_neu.iter_mut() {
             let mut p = polyneu.poly.get_inner();
             p.outer_ring = clean_line(&p.outer_ring, maxdst_point);
@@ -2522,8 +2518,6 @@ impl Aenderungen {
             }
             polyneu.poly = SvgPolygon::Old(p);
         }
-
-        log_status(&format!("clean_stage0 2"));
 
         fn clean_line(l: &SvgLine, dst: f64) -> SvgLine {
             let mut first_point = match l.points.get(0) {
@@ -2566,10 +2560,6 @@ impl Aenderungen {
         let mut changed_mut = self.clean_stage0(maxdst_point, force);
 
         let mut modified_tree = changed_mut.na_polygone_neu.clone();
-
-        log_status(&format!(
-            "cleaning stage1 points, maxdst_point = {maxdst_point}, maxdst_line = {maxdst_line}"
-        ));
 
         let mut moved_points = Vec::new();
 
@@ -2630,7 +2620,6 @@ impl Aenderungen {
             }
         }
 
-        log_status(&format!("moved {} points", moved_points.len()));
         changed_mut.round_to_3decimal()
     }
 
@@ -2970,7 +2959,6 @@ impl Aenderungen {
     }
 
     pub fn clean_stage25_internal(&self, force: bool) -> Aenderungen {
-        log_status("clean_stage25_internal");
 
         let (locked, unlocked) = self.split_locked_unlocked(force);
 
@@ -2989,8 +2977,6 @@ impl Aenderungen {
                 .or_insert_with(|| Vec::new())
                 .push(v);
         }
-
-        log_status("clean_stage25_internal 1");
 
         let joined = aenderungen_by_kuerzel_map
             .iter()
@@ -3011,8 +2997,6 @@ impl Aenderungen {
             })
             .collect::<BTreeMap<_, _>>();
 
-        log_status("clean_stage25_internal 2");
-
         let mut unlocked_alt = unlocked
             .iter()
             .filter_map(|(id, v)| {
@@ -3028,7 +3012,6 @@ impl Aenderungen {
 
         unlocked_alt.extend(locked.into_iter());
 
-        log_status("clean_stage25_internal 3");
 
         Aenderungen {
             na_definiert: self.na_definiert.clone(),
