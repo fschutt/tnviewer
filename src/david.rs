@@ -211,6 +211,13 @@ pub fn get_aenderungen_internal(
         })
         .collect::<BTreeMap<_, _>>();
 
+    // merge aenderungen same type first (merge adjacent flst)
+    aenderungen.deduplicate();
+    for _ in 0..5 {
+        aenderungen.clean_stage25();
+    }
+    aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1);
+
     // merge aenderungen same type
     aenderungen.na_polygone_neu.extend(neu_objekte.into_iter());
     aenderungen.deduplicate();
