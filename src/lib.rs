@@ -1128,6 +1128,22 @@ pub fn get_fit_bounds(s: String) -> String {
     serde_json::to_string(&bounds).unwrap_or_default()
 }
 
+pub fn search_for_id(nas_xml: String, id: String) -> String {
+    let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let tp = nas_xml.ebenen.iter().find_map(|(_, v)| {
+        v.iter().find_map(|tp| if tp.get_de_id()? == id { Some(tp.poly.clone()) } else { None })
+    });
+
+    match tp {
+        Some(s) => serde_json::to_string(&s).unwrap_or_default(),
+        None => String::new(),
+    }
+}
+
 #[wasm_bindgen]
 pub fn search_for_polyneu(aenderungen: String, poly_id: String) -> String {
     let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen) {

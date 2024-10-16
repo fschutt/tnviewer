@@ -1630,6 +1630,14 @@
     highlightPolygon(extent_json);
   }
   
+  function zoomToId(id) {
+    var extent = search_for_id(JSON.stringify(window.nas_original), id);
+    var extent_json = JSON.parse(extent);
+    highlightPolygon(extent_json);
+  }
+
+  window.zoomToId = zoomToId;
+  
   function polyNeuUndo(event) {
     var id = event.target.dataset.polyNeuId;
     if (!window.aenderungen || window.aenderungen == null) {

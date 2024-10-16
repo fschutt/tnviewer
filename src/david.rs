@@ -77,11 +77,13 @@ pub fn aenderungen_zu_fa_xml(
 
     log_aenderungen(&aenderungen_todo);
 
+    /*
     let aenderungen_todo = merge_aenderungen_with_existing_nas(
         &aenderungen_todo,
         &nas_xml,
     );
-
+    */
+    
     let aenderungen_todo = insert_gebaeude_delete(
         &aenderungen,  
         &aenderungen_todo,
@@ -350,6 +352,10 @@ fn napoly_to_reverse_map(
                     None
                 }
             }).collect::<Vec<_>>();
+
+            if aenderungen.is_empty() {
+                continue;
+            }
 
             log_status(&format!("inserting napoly_to_reverse_map: {de_id} {old_ebene} {old_kuerzel}: {:?}", 
                 aenderungen.iter().map(|s| format!("{} m2 {}", s.1.2.area_m2(), s.1.0)).collect::<Vec<_>>()
