@@ -2677,6 +2677,9 @@ pub fn cleanup_poly(s: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
         .collect::<Vec<_>>();
 
     recombine_polys(&outer_rings, &inner_rings)
+    .into_iter()
+    .filter_map(|q| if q.is_zero_area() { None } else { Some(q) })
+    .collect()
 }
 
 pub fn recombine_polys(outer_rings: &[SvgLine], inner_rings: &[SvgLine]) -> Vec<SvgPolygonInner> {  

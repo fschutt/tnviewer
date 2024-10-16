@@ -205,11 +205,11 @@ fn get_na_definiert_as_na_polyneu(
     aenderungen.na_polygone_neu = neu_objekte;
 
     // merge aenderungen same type first (merge adjacent flst)
-    let mut aenderungen = aenderungen.deduplicate(force);
+    aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
         aenderungen = aenderungen.clean_stage25(force);
     }
-    let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
+    
     aenderungen
 }
 
@@ -274,6 +274,7 @@ pub fn get_aenderungen_internal(
         .map(|p| &p.poly)
         .collect::<Vec<_>>();
 
+    
     let aenderungen = aenderungen.clone();
     let mut aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
@@ -387,7 +388,7 @@ fn reverse_map_to_aenderungen(
 
         let mut v = vec![tp.poly.clone()];
         v.extend(aenderungen_with_same_kuerzel.into_iter());
-        let joined = join_polys(&v);
+        let joined = join_polys(&v).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
 
         let polys_to_subtract = aen.iter().filter_map(|s| {
             if s.neu_kuerzel != *alt_kuerzel {
@@ -401,7 +402,11 @@ fn reverse_map_to_aenderungen(
 
         let subtracted = joined.iter().flat_map(|s| {
             subtract_from_poly(s, &polys_to_subtract.iter().map(|s| &s.poly.poly).collect::<Vec<_>>())
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>()
+        .iter()
+        .flat_map(crate::nas::cleanup_poly)
+        .collect::<Vec<_>>();
 
         // DELETE alt_obj_id
         // INSERT (joined) => same kuerzel
@@ -418,11 +423,13 @@ fn reverse_map_to_aenderungen(
             if s.is_zero_area() {
                 continue;
             }
-            v.push(Operation::Insert { 
-                ebene: alt_ebene.clone(), 
-                kuerzel: alt_kuerzel.clone(), 
-                poly_neu: s.clone(), 
-            });
+            for q in crate::nas::cleanup_poly(&s) {
+                v.push(Operation::Insert { 
+                    ebene: alt_ebene.clone(), 
+                    kuerzel: alt_kuerzel.clone(), 
+                    poly_neu: q.clone(), 
+                });
+            }
         }
 
         for q in polys_to_subtract {

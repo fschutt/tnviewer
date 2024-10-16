@@ -191,11 +191,12 @@ pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
     let poly_string1: &str = include_str!("./test1.txt");
-    let poly_string2: &str = "";
+    let poly_string2: &str = include_str!("./test2.txt");
 
     let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
-    let joined = s2; // crate::ops::join_polys(&s2);
+    let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
+    let s2 = crate::nas::cleanup_poly(&s2).first().cloned().unwrap();
+    let joined = crate::ops::intersect_polys(&s1, &s2);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
     let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();

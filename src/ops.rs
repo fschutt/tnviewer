@@ -212,53 +212,6 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     first
 }
 
-pub fn join_polys_old(polys: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
-    use geo::BooleanOps;
-    log_status("join_polys");
-    log_status(&serde_json::to_string(polys).unwrap_or_default());
-    let polys = merge_poly_lines(&
-        polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
-    ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-    let polys = merge_poly_points(&polys, &polys);
-    let polys = insert_poly_points_from_near_polys(&polys);
-    let first = match polys.get(0) {
-        Some(s) => vec![s],
-        None => return Vec::new(),
-    };
-    let a = translate_to_geo_poly_special_shared(&first.into_iter().collect::<Vec<_>>());
-    let b = translate_to_geo_poly_special_shared(&polys.iter().skip(1).collect::<Vec<_>>());
-    let join = a.union(&b);
-    return translate_from_geo_poly(&join);
-/* 
-    for i in polys.iter().skip(1) {
-        let mut i = i.round_to_3dec();
-        let fi = first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-        if fi.iter().all(|s| s.equals(&i)) {
-            continue;
-        }
-        if i.is_zero_area() {
-            continue;
-        }
-        if fi.iter().all(|s| s.is_zero_area()) {
-            return Vec::new();
-        }
-        for f in fi.iter() {
-            i.correct_almost_touching_points(&f, 0.05, true);
-        }
-        let a = translate_to_geo_poly_special(&fi);
-        let b = translate_to_geo_poly_special_shared(&[&i]);
-        let join = a.union(&b);
-        let s = translate_from_geo_poly(&join);
-        first = s;
-        
-    }
-
-    let s = first.iter().map(|s| s.correct_winding_order_cloned()).collect::<Vec<_>>();
-    log_status("join_polys done");
-    s
-*/
-}
-
 pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
 
