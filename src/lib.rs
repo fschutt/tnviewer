@@ -1128,6 +1128,7 @@ pub fn get_fit_bounds(s: String) -> String {
     serde_json::to_string(&bounds).unwrap_or_default()
 }
 
+#[wasm_bindgen]
 pub fn search_for_id(nas_xml: String, id: String) -> String {
     let nas_xml = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
         Ok(o) => o,
