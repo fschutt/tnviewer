@@ -250,10 +250,10 @@ pub fn get_aenderungen_internal_definiert_only(
 
     log_status("---- 2 ---- reverse_map start");
     for (k, v) in reverse_map.iter() {
-        let overlaps = v.1.iter()
+        let overlaps = v.3.iter()
         .map(|s| format!("{} m2 {}", s.poly.poly.area_m2().round(), s.poly.get_auto_kuerzel().unwrap_or_default()))
         .collect::<Vec<_>>();
-        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k.0, v.0.poly.area_m2().round(), k.2, overlaps));
+        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k, v.2.poly.area_m2().round(), v.1, overlaps));
     }
     log_status("---- 2 ---- reverse_map end");
 
@@ -315,7 +315,7 @@ pub fn get_aenderungen_internal(
 fn napoly_to_reverse_map(
     napoly: &BTreeMap<String, PolyNeu>,
     nas_xml: &NasXMLFile,
-) -> BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)> {
+) -> BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)> {
 
     let mut map = BTreeMap::new();
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen()
@@ -342,19 +342,24 @@ fn napoly_to_reverse_map(
             let tp_rect = tp.get_rect();
 
             let aenderungen = napoly.iter().filter_map(|(k, v)| {
-                if !v.poly.get_rect().overlaps_rect(&tp_rect) {
-                    return None;
+                if v.poly.get_rect().overlaps_rect(&tp_rect) {
+                    let neu_kuerzel = v.nutzung.clone()?;
+                    let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
+                    Some((k, (neu_kuerzel, neu_ebene, v.poly.get_inner())))
+                } else {
+                    None
                 }
-                let neu_kuerzel = v.nutzung.clone()?;
-                let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
-                Some((k, (neu_kuerzel, neu_ebene, v.poly.get_inner())))
             }).collect::<Vec<_>>();
+
+            log_status(&format!("inserting napoly_to_reverse_map: {de_id} {old_ebene} {old_kuerzel}: {:?}", 
+                aenderungen.iter().map(|s| format!("{} m2 {}", s.1.2.area_m2(), s.1.0)).collect::<Vec<_>>()
+            ));
 
             for (k, (neu_kuerzel, neu_ebene, neu_poly)) in aenderungen {
                 map
-                .entry((de_id.clone(), old_ebene.clone(), old_kuerzel.clone()))
-                .or_insert_with(|| (tp.clone(), Vec::new()))
-                .1
+                .entry(de_id.clone())
+                .or_insert_with(|| ((old_ebene.clone(), old_kuerzel.clone(), tp.clone(), Vec::new())))
+                .3
                 .push(AenderungObject {
                     orig_change_id: k.clone(),
                     neu_kuerzel: neu_kuerzel.clone(),
@@ -370,86 +375,11 @@ fn napoly_to_reverse_map(
     map
 }
 
-// ID => TempOverlapObject (which DE_obj are overlapped by this obj)
-fn napoly_to_idchange(
-    napoly: &BTreeMap<String, PolyNeu>,
-    nas_xml: &NasXMLFile,
-) -> BTreeMap<String, TempOverlapObject> {
-    let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen();
-    let qt = nas_xml.create_quadtree();
-
-    napoly.iter().filter_map(
-        |(k, polyneu)| {
-            let neu_kuerzel = polyneu.nutzung.clone()?;
-            let neu_ebene = TaggedPolygon::get_auto_ebene(&neu_kuerzel)?;
-            let poly = polyneu.poly.get_inner();
-            let overlapping_objekte = qt.get_overlapping_ebenen(&poly, &alle_ebenen);
-            let mut map = BTreeMap::new();
-            for (k, v) in overlapping_objekte {
-                log_status(&format!("2: inserting {} m2 {}", v.poly.area_m2().round(), neu_kuerzel));
-                map.entry(k).or_insert_with(|| Vec::new()).push(v);
-            }
-            let extra_attr = vec![
-                ("AX_Ebene", neu_ebene.as_str()),
-            ];
-
-            Some((
-                k.clone(),
-                TempOverlapObject {
-                    neu_ebene: neu_ebene.clone(),
-                    neu_kuerzel: neu_kuerzel.clone(),
-                    poly: TaggedPolygon {
-                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&neu_kuerzel, &extra_attr),
-                        poly,
-                    },
-                    overlaps_objekte: map,
-                },
-            ))
-        },
-    ).collect::<BTreeMap<_, _>>()
-}
-
-// build reverse map (DE_objid -> relevant changes per changed obj)
-fn build_reverse_map(
-    ids_to_change_nutzungen: &BTreeMap<String, TempOverlapObject>,
-) -> BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)> {
-    let mut reverse_map = BTreeMap::new();
-    for (k, v) in ids_to_change_nutzungen.iter() {
-        for (_, k2) in v.overlaps_objekte.iter() {
-            for tp in k2.iter() {
-                let de_id = match tp.get_de_id() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let old_ebene = match tp.get_ebene() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let old_kuerzel = match tp.get_auto_kuerzel() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                reverse_map
-                    .entry((de_id, old_ebene, old_kuerzel))
-                    .or_insert_with(|| (tp.clone(), Vec::new()))
-                    .1
-                    .push(AenderungObject {
-                        orig_change_id: k.clone(),
-                        neu_kuerzel: v.neu_kuerzel.clone(),
-                        neu_ebene: v.neu_ebene.clone(),
-                        poly: v.poly.clone(),
-                    });
-            }
-        }
-    }
-    reverse_map
-}
-
 fn reverse_map_to_aenderungen(
-    reverse_map: &BTreeMap<(String, String, String), (TaggedPolygon, Vec<AenderungObject>)>
+    reverse_map: &BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)>
 ) -> Vec<Operation> {
     let mut aenderungen_todo = reverse_map.iter()
-    .flat_map(|((alt_obj_id, alt_ebene, alt_kuerzel), (tp, aen))| {
+    .flat_map(|(alt_obj_id, (alt_ebene, alt_kuerzel, tp, aen))| {
         
         let aenderungen_with_same_kuerzel = aen.iter().filter_map(|s| {
             if s.neu_kuerzel == *alt_kuerzel {
