@@ -1,5 +1,5 @@
 use crate::{
-    csv::CsvDataType, david::log_aenderungen, geograf::{
+    csv::CsvDataType, david::{log_aenderungen, Operation}, geograf::{
         points_to_rect,
         LinienQuadTree,
     }, ui::{
@@ -77,33 +77,39 @@ impl NasXMLFile {
 
     pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml) -> Self {
 
-        use crate::david::Operation::*;
+        let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas);
+        let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
+        let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm);
+        let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
-        // join na_definiert and na_poly_neu
-        // let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, self, split_nas);
-        let aenderungen = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas);
-
-        // build reverse map
-        let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &self);
-        // build operations (insert / delete)
-        let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm);
-
-        /*
-        let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
-            &aenderungen_todo,
-            &self,
-        );
-        */
-
-        let aenderungen_todo = crate::david::insert_gebaeude_delete(
-            &aenderungen,
-            &aenderungen_todo,
-        );
-
-        log_status_clear();
         log_status("NasXMLFile::fortfuehren");
-        log_aenderungen(&aenderungen_todo);
+        log_aenderungen(&aenderungen_todo_1);
         log_status("----");
+
+        let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas);
+        let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
+        let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm);
+        let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
+
+        log_status("NasXMLFile::fortfuehren");
+        log_aenderungen(&aenderungen_todo_1);
+        log_status("----");
+
+        fortgefuehrt_2
+        
+        /* 
+            let mut aenderungen_gesamt = Vec::new();
+            aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
+            aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
+            crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
+            aenderungen_gesamt
+        */
+    }
+
+
+    pub fn fortfuehren_internal(&self, aenderungen_todo: &[Operation]) -> Self {
+
+        use crate::david::Operation::*;
 
         let objs_to_delete = aenderungen_todo.iter().filter_map(|s| {
             match s {
@@ -2632,7 +2638,7 @@ pub fn split_xml_flurstuecke_inner(
                     final_polys.push(tp.0.clone());
                 }
             }
-            log_status(&format!("intersecting {id} done (sum = {sum_poly_areas} m2)"));
+            // log_status(&format!("intersecting {id} done (sum = {sum_poly_areas} m2)"));
 
             if final_polys.is_empty() {
                 None
