@@ -224,7 +224,6 @@ pub fn get_aenderungen_internal_definiert_only(
 
     let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
 
-
     let reverse_map = napoly_to_reverse_map(
     &aenderungen.na_polygone_neu,
         &nas_xml,
@@ -381,6 +380,7 @@ fn napoly_to_reverse_map(
     map
 }
 
+// map {DE_ID alt Objekt =?> (ebene, kürzel, taggedpolygon Aenderungen { })}
 fn reverse_map_to_aenderungen(
     reverse_map: &BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)>
 ) -> Vec<Operation> {
@@ -389,6 +389,7 @@ fn reverse_map_to_aenderungen(
         
         let aenderungen_with_same_kuerzel = aen.iter().filter_map(|s| {
             if s.neu_kuerzel == *alt_kuerzel {
+                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): ADDING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2(), s.neu_kuerzel));
                 Some(s.poly.poly.clone())
             } else {
                 None
@@ -403,6 +404,7 @@ fn reverse_map_to_aenderungen(
 
         let polys_to_subtract = aen.iter().filter_map(|s| {
             if s.neu_kuerzel != *alt_kuerzel {
+                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): SUBTRACTING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2(), s.neu_kuerzel));
                 Some(s)
             } else {
                 None
