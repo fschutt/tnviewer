@@ -228,26 +228,6 @@ pub fn get_aenderungen_internal_definiert_only(
     &aenderungen.na_polygone_neu,
         &nas_xml,
     );
-        
-    /*
-    
-     
-    let ids_to_change_nutzungen = napoly_to_idchange(
-        &aenderungen.na_polygone_neu,
-        &nas_xml,
-    );
-
-    log_status("---- 1 ---- start");
-    for (k, v) in ids_to_change_nutzungen.iter() {
-        let overlaps = v.overlaps_objekte.values()
-        .flat_map(|s| s.iter().map(|q| format!("{} m2 {}", q.poly.area_m2().round(), q.get_auto_kuerzel().unwrap_or_default())))
-        .collect::<Vec<_>>();
-        log_status(&format!("{k}: {} m2 {}: overlaps / touches {:?}", v.poly.poly.area_m2().round(), v.neu_kuerzel, overlaps));
-    }
-    log_status("---- 1 ---- end");
-
-    let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
-    */
 
     log_status("---- 2 ---- reverse_map start");
     for (k, v) in reverse_map.iter() {
@@ -357,7 +337,7 @@ fn napoly_to_reverse_map(
             }
 
             log_status(&format!("inserting napoly_to_reverse_map: {de_id} {old_ebene} {old_kuerzel}: {:?}", 
-                aenderungen.iter().map(|s| format!("{} m2 {}", s.1.2.area_m2(), s.1.0)).collect::<Vec<_>>()
+                aenderungen.iter().map(|s| format!("{} m2 {}", s.1.2.area_m2().round(), s.1.0)).collect::<Vec<_>>()
             ));
 
             for (k, (neu_kuerzel, neu_ebene, neu_poly)) in aenderungen {
@@ -389,7 +369,7 @@ fn reverse_map_to_aenderungen(
         
         let aenderungen_with_same_kuerzel = aen.iter().filter_map(|s| {
             if s.neu_kuerzel == *alt_kuerzel {
-                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): ADDING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2(), s.neu_kuerzel));
+                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): ADDING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2().round(), s.neu_kuerzel));
                 Some(s.poly.poly.clone())
             } else {
                 None
@@ -404,7 +384,7 @@ fn reverse_map_to_aenderungen(
 
         let polys_to_subtract = aen.iter().filter_map(|s| {
             if s.neu_kuerzel != *alt_kuerzel {
-                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): SUBTRACTING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2(), s.neu_kuerzel));
+                log_status(&format!("alt obj id {alt_obj_id} ({alt_kuerzel}): SUBTRACTING poly {} ({} m2 {})", s.orig_change_id, s.poly.poly.area_m2().round(), s.neu_kuerzel));
                 Some(s)
             } else {
                 None
