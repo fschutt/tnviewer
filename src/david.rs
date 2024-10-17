@@ -69,8 +69,6 @@ pub fn aenderungen_zu_fa_xml(
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
 
-    log_status_clear();
-
     // let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
     let aenderungen_todo = get_aenderungen_internal_definiert_only(aenderungen, nas_xml, split_nas);
 
@@ -181,6 +179,49 @@ pub fn aenderungen_zu_nas_xml(
     // new_nas.to_xml(&nas_xml, &objects);
 }
 
+pub fn join_inserts(
+    aenderungen_todo: &[Operation]
+) -> Vec<Operation> {
+
+    let mut non_insert_ops = aenderungen_todo
+    .iter()
+    .filter_map(|s| match s {
+        Operation::Insert { .. } => None,
+        _ => Some(s.clone()),
+    }).collect::<Vec<_>>();
+
+    let mut inserts_sorted_by_kuerzel = BTreeMap::new();
+    for i in aenderungen_todo.iter() {
+        match i {
+            Operation::Insert { ebene, kuerzel, poly_neu  } => {
+                inserts_sorted_by_kuerzel.entry(kuerzel.clone())
+                .or_insert_with(|| (ebene.clone(), Vec::new()))
+                .1.push(poly_neu.clone());
+            },
+            _ => { },
+        }
+    }
+
+    for (k, (e, v)) in inserts_sorted_by_kuerzel.iter_mut() {
+        let joined = join_polys(&v)
+        .iter()
+        .flat_map(crate::nas::cleanup_poly)
+        .collect::<Vec<_>>();
+        *v = joined;
+    }
+
+    for (kuerzel, (ebene, polys)) in inserts_sorted_by_kuerzel.iter() {
+        for p in polys.iter() {
+            non_insert_ops.push(Operation::Insert { 
+                ebene: ebene.clone(), 
+                kuerzel: kuerzel.clone(), 
+                poly_neu:  p.clone(),
+            });
+        }
+    }
+
+    non_insert_ops
+}
 
 fn get_na_definiert_as_na_polyneu(
     aenderungen: &Aenderungen,
@@ -460,6 +501,9 @@ fn reverse_map_to_aenderungen(
 
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
+    log_status("JOIN INSERTS");
+    join_inserts(&aenderungen_todo);
+    log_status("JOIN INSERTS DONE");
     aenderungen_todo
 }
 pub enum Signatur {

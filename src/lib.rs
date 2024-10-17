@@ -718,6 +718,7 @@ pub fn aenderungen_zu_nas_xml(
     split_nas: String,
     xml_objects: String,
 ) -> String {
+    log_status_clear();
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
@@ -749,6 +750,7 @@ pub fn aenderungen_zu_david(
     split_nas: String,
     xml_objects: String,
 ) -> String {
+    log_status_clear();
     let datum = match chrono::DateTime::parse_from_rfc3339(&datum) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
