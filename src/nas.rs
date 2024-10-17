@@ -2596,13 +2596,10 @@ pub fn split_xml_flurstuecke_inner(
 
             let flst_area = flst.poly.area_m2();
 
-            log_status(&format!("intersecting {id}..."));
             let mut polys = polys
                 .iter()
                 .flat_map(|p| {
-                    log_status("intersecting...");
                     let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly);
-                    log_status("intersected!");
                     intersection_mp
                         .into_iter()
                         .filter(|p| !p.is_zero_area())

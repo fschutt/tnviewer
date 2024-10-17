@@ -502,7 +502,7 @@ fn reverse_map_to_aenderungen(
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
     log_status("JOIN INSERTS");
-    join_inserts(&aenderungen_todo);
+    aenderungen_todo = join_inserts(&aenderungen_todo);
     log_status("JOIN INSERTS DONE");
     aenderungen_todo
 }
