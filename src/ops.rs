@@ -58,7 +58,7 @@ pub fn subtract_from_poly(
 }
 
 
-fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner], insert_all_points: bool) -> Vec<SvgPolygonInner> {
     let ap_quadtree = quadtree_f32::QuadTree::new(s.iter().enumerate().map(|(i, s)| {
         (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(s.get_rect()))
     }));
@@ -79,7 +79,7 @@ fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner]) -> Vec<SvgPolygonIn
         })
         .collect::<Vec<_>>();
         for (id, n) in near_polys.iter() {
-            q.insert_points_from(n, DST);
+            q.insert_points_from(n, DST, insert_all_points);
         } 
 
         snew.insert(qid, q);
@@ -166,7 +166,7 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     s
 }
 
-pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygonInner> {
+pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
 
     if polys_orig.len() < 2 {
@@ -179,14 +179,14 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygon
     }
 
     let polys = polys_orig.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
-    let polys = insert_poly_points_from_near_polys(&polys);
+    let polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
     let polys = merge_poly_points(&polys, &polys_orig);
     let polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
     let polys = merge_poly_points(&polys, &polys);
-    let mut polys = insert_poly_points_from_near_polys(&polys);
+    let mut polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
 
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
     polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
@@ -201,8 +201,8 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygon
         let mut i = i.clone();
 
         for q in first.iter_mut() {
-            i.insert_points_from(q, 0.1);
-            q.insert_points_from(&i, 0.1);
+            i.insert_points_from(q, 0.1, insert_all_points);
+            q.insert_points_from(&i, 0.1, insert_all_points);
             if i.is_completely_inside_of(q) {
                 continue;
             }

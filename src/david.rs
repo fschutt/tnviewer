@@ -66,7 +66,7 @@ pub fn aenderungen_zu_fa_xml(
     // build reverse map
     let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
     // build operations (insert / delete)
-    let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm);
+    let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm, false);
     // let aenderungen_todo = merge_aenderungen_with_existing_nas(&aenderungen_todo, &nas_xml);
     let aenderungen_todo = insert_gebaeude_delete(&aenderungen, &aenderungen_todo);
     // build XML file
@@ -168,7 +168,8 @@ pub fn aenderungen_zu_nas_xml(
 }
 
 pub fn join_inserts(
-    aenderungen_todo: &[Operation]
+    aenderungen_todo: &[Operation],
+    insert_all_points: bool,
 ) -> Vec<Operation> {
 
     let mut non_insert_ops = aenderungen_todo
@@ -191,7 +192,7 @@ pub fn join_inserts(
     }
 
     for (k, (e, v)) in inserts_sorted_by_kuerzel.iter_mut() {
-        let joined = join_polys(&v, true)
+        let joined = join_polys(&v, true, insert_all_points)
         .iter()
         .flat_map(crate::nas::cleanup_poly)
         .collect::<Vec<_>>();
@@ -381,7 +382,8 @@ pub fn napoly_to_reverse_map(
 
 // map {DE_ID alt Objekt =?> (ebene, kürzel, taggedpolygon Aenderungen { })}
 pub fn reverse_map_to_aenderungen(
-    reverse_map: &ReverseMap
+    reverse_map: &ReverseMap,
+    insert_all_points: bool,
 ) -> Vec<Operation> {
     let mut aenderungen_todo = reverse_map.iter()
     .flat_map(|(alt_obj_id, (alt_ebene, alt_kuerzel, tp, aen))| {
@@ -399,7 +401,7 @@ pub fn reverse_map_to_aenderungen(
 
         let mut v = vec![tp.poly.clone()];
         v.extend(aenderungen_with_same_kuerzel.into_iter());
-        let joined = join_polys(&v, false).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+        let joined = join_polys(&v, false, insert_all_points).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
 
         let polys_to_subtract = aen.iter().filter_map(|s| {
             if s.neu_kuerzel != *alt_kuerzel {
@@ -481,7 +483,7 @@ pub fn reverse_map_to_aenderungen(
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
     log_status("JOIN INSERTS");
-    aenderungen_todo = join_inserts(&aenderungen_todo);
+    aenderungen_todo = join_inserts(&aenderungen_todo, insert_all_points);
     log_status("JOIN INSERTS DONE");
     aenderungen_todo
 }
@@ -670,7 +672,8 @@ impl Signatur {
 
 pub fn merge_aenderungen_with_existing_nas(
     aenderungen_todo: &[Operation],
-    nas_xml: &NasXMLFile
+    nas_xml: &NasXMLFile,
+    insert_all_points: bool,
 ) -> Vec<Operation> {
 
     struct ImAenderung {
@@ -734,7 +737,7 @@ pub fn merge_aenderungen_with_existing_nas(
         let mut polys_to_join = vec![im_aenderung.poly_neu];
         polys_to_join.extend(ids_to_join.iter().map(|a| a.1.clone()));
 
-        let joined_poly = join_polys(&polys_to_join, false);
+        let joined_poly = join_polys(&polys_to_join, false, insert_all_points);
 
         for j in joined_poly.into_iter() {
             aenderungen_clean.push(Operation::Insert { 

@@ -1411,7 +1411,7 @@ impl AenderungenIntersections {
                 };
 
                 let polys_to_join_len = polys_to_join.len();
-                let joined = join_polys(&polys_to_join, false);
+                let joined = join_polys(&polys_to_join, false, false);
                 let joined = if special {
                     joined.iter().flat_map(|s| crate::nas::cleanup_poly(s)).collect()
                 } else {
@@ -2981,7 +2981,7 @@ impl Aenderungen {
         let joined = aenderungen_by_kuerzel_map
             .iter()
             .flat_map(|(kuerzel, v)| {
-                join_polys(&v, false)
+                join_polys(&v, false, false)
                 .iter()
                 .map(|l| {
                     (
@@ -3237,11 +3237,12 @@ impl Aenderungen {
         // build reverse map
         let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
         // build operations (insert / delete)
-        let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm);
+        let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm, false);
         
         let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
             &aenderungen_todo,
             &nas_xml,
+            false,
         );
 
         Aenderungen {

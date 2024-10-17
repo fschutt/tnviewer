@@ -98,7 +98,7 @@ impl NasXMLFile {
         }).collect::<Vec<_>>();
         log_status(&format!("alle flst: {}", alle_flst.len()));
 
-        let jp = join_polys(&alle_flst, false)
+        let jp = join_polys(&alle_flst, false, false)
         .iter()
         .flat_map(crate::nas::cleanup_poly)
         .collect::<Vec<_>>();
@@ -120,8 +120,8 @@ impl NasXMLFile {
 
         let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
-        let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm);
-        let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self);
+        let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
+        let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
         let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
         log_status("NasXMLFile::fortfuehren");
@@ -130,8 +130,8 @@ impl NasXMLFile {
 
         let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
-        let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm);
-        let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1);
+        let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
+        let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
         let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
 
         log_status("NasXMLFile::fortfuehren");
@@ -1158,12 +1158,12 @@ impl SvgPolygonInner {
         [[min_y, min_x], [max_y, max_x]]
     }
 
-    pub fn insert_points_from(&mut self, other: &Self, maxdst: f64) {
-        self.outer_ring = self.outer_ring.insert_points_from(other, maxdst);
+    pub fn insert_points_from(&mut self, other: &Self, maxdst: f64, insert_all_points: bool) {
+        self.outer_ring = self.outer_ring.insert_points_from(other, maxdst, insert_all_points);
         self.inner_rings = self
             .inner_rings
             .iter()
-            .map(|o| o.insert_points_from(other, maxdst))
+            .map(|o| o.insert_points_from(other, maxdst, insert_all_points))
             .collect();
         self.correct_almost_touching_points(other, maxdst * 2.0, false);
     }
@@ -1614,7 +1614,8 @@ impl SvgLine {
         }
     }
 
-    pub fn insert_points_from(&self, other: &SvgPolygonInner, maxdst: f64) -> SvgLine {
+    // insert_all_points = false, except for last join_polys
+    pub fn insert_points_from(&self, other: &SvgPolygonInner, maxdst: f64, insert_all_points: bool) -> SvgLine {
         use crate::geograf::l_to_points;
         let mut other_lines = l_to_points(&other.outer_ring);
         other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
@@ -1638,10 +1639,15 @@ impl SvgLine {
                 nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
 
                 let mut ret = vec![*p];
-                // ret.extend(nearest_other_line.iter().cloned());
-                if let Some(first) = nearest_other_line.first() {
-                    ret.push(*first);
+
+                if insert_all_points {
+                    ret.extend(nearest_other_line.iter().cloned());
+                } else {
+                    if let Some(first) = nearest_other_line.first() {
+                        ret.push(*first);
+                    }
                 }
+
                 ret
             })
             .collect::<Vec<_>>();

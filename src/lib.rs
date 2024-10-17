@@ -197,7 +197,7 @@ pub fn get_problem_geojson() -> String {
     let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
     let mut together = s1.clone();
     together.push(s2.clone());
-    let joined = crate::ops::join_polys(&together, true);
+    let joined = crate::ops::join_polys(&together, true, true);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
     let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();

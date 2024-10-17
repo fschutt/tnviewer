@@ -1851,8 +1851,8 @@ pub fn get_aenderungen_nutzungsarten_linien(
         for mut apoly in apoly {
             for mut bpoly in bpoly.iter().cloned() {
                 apoly.correct_almost_touching_points(&bpoly, 0.1, true);
-                apoly.insert_points_from(&bpoly, 0.1);
-                bpoly.insert_points_from(&apoly, 0.1);
+                apoly.insert_points_from(&bpoly, 0.1, false);
+                bpoly.insert_points_from(&apoly, 0.1, false);
                 let shared_lines = get_shared_lines(&apoly, &bpoly);
                 let mut shared_lines_2 = shared_lines
                     .into_iter()
