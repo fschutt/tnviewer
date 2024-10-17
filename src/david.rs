@@ -3,8 +3,7 @@ use crate::{
         self, MemberObject, NasXMLFile, NasXmlObjects, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     },
     ops::{
-        join_polys,
-        subtract_from_poly,
+        intersect_polys, join_polys, subtract_from_poly
     },
     ui::{Aenderungen, PolyNeu},
     uuid_wasm::{
@@ -426,11 +425,13 @@ fn reverse_map_to_aenderungen(
         }
 
         for q in polys_to_subtract {
-            v.push(Operation::Insert { 
-                ebene: q.neu_ebene.clone(), 
-                kuerzel: q.neu_kuerzel.clone(), 
-                poly_neu: q.poly.poly.clone(), 
-            });
+            for is in intersect_polys(&tp.poly, &q.poly.poly) {
+                v.push(Operation::Insert { 
+                    ebene: q.neu_ebene.clone(), 
+                    kuerzel: q.neu_kuerzel.clone(), 
+                    poly_neu: is.clone(), 
+                });
+            }
         }
 
         // Insert all other objs that overlapped (will be deduplicated later)
