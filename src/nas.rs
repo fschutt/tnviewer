@@ -1640,13 +1640,13 @@ impl SvgLine {
 
                 let mut ret = vec![*p];
 
-                if insert_all_points {
-                    ret.extend(nearest_other_line.iter().cloned());
-                } else {
+                // if insert_all_points {
+                //    ret.extend(nearest_other_line.iter().cloned());
+                // } else {
                     if let Some(first) = nearest_other_line.first() {
                         ret.push(*first);
                     }
-                }
+                // }
 
                 ret
             })

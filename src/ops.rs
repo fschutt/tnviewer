@@ -209,9 +209,9 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
         }
 
         if debug {
-            log_status("joining first:");
+            log_status(&format!("joining first (insert_all_points: {insert_all_points:?}):"));
             log_status(&serde_json::to_string(&first).unwrap_or_default());
-            log_status("joining second:");
+            log_status(&format!("joining second (insert_all_points: {insert_all_points:?}):"));
             log_status(&serde_json::to_string(&i).unwrap_or_default());
         }
 
