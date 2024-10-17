@@ -62,7 +62,8 @@ pub fn aenderungen_zu_fa_xml(
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
     // join na_definiert and na_poly_neu
-    let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, nas_xml, split_nas);
+    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
+    // let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, nas_xml, split_nas);
     // build reverse map
     let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
     // build operations (insert / delete)
@@ -211,7 +212,7 @@ pub fn join_inserts(
 }
 
 // Get the na_definiert as na_polyneu
-fn get_na_definiert_as_na_polyneu(
+pub fn get_na_definiert_as_na_polyneu(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
 ) -> Aenderungen {
@@ -249,18 +250,8 @@ pub fn get_aenderungen_prepared(
     split_nas: &SplitNasXml,
 ) -> Aenderungen {
 
-    let d = Vec::new();
-    let bauraum_bodenordnung = nas_xml.ebenen
-        .get("AX_BauRaumOderBodenordnungsrecht")
-        .unwrap_or(&d)
-        .iter()
-        .map(|p| &p.poly)
-        .collect::<Vec<_>>();
-
-    let mut aenderungen_polys = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
-
     let force = true;
-    let mut aenderungen = aenderungen.clean_stage4(
+    let aenderungen = aenderungen.clean_stage4(
         nas_xml, 
         &mut Vec::new(), 
         0.2, 
@@ -269,9 +260,6 @@ pub fn get_aenderungen_prepared(
         force,
     );
 
-    aenderungen.na_polygone_neu.append(&mut aenderungen_polys.na_polygone_neu);
-
-    let aenderungen = aenderungen.clone();
     let mut aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
         aenderungen = aenderungen.clean_stage25(force);

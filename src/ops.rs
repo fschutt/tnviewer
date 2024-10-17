@@ -189,6 +189,7 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygon
     let mut polys = insert_poly_points_from_near_polys(&polys);
 
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
     polys.reverse(); // largest polys first
 
     let mut first = match polys.get(0) {
@@ -204,6 +205,13 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygon
             if i.is_completely_inside_of(q) {
                 continue;
             }
+        }
+
+        if debug {
+            log_status("joining first:");
+            log_status(&serde_json::to_string(&first).unwrap_or_default());
+            log_status("joining second:");
+            log_status(&serde_json::to_string(&i).unwrap_or_default());
         }
 
         let a = translate_to_geo_poly_special(&first);

@@ -3231,7 +3231,8 @@ impl Aenderungen {
         use crate::david::Operation::*;
         
         // join na_definiert and na_poly_neu
-        let aenderungen = crate::david::get_aenderungen_prepared(self, nas_xml, split_nas);
+        // let aenderungen = crate::david::get_aenderungen_prepared(self, nas_xml, split_nas);
+        let aenderungen = crate::david::get_na_definiert_as_na_polyneu(self, split_nas);
         // build reverse map
         let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
         // build operations (insert / delete)
