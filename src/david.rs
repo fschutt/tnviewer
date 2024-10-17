@@ -255,20 +255,18 @@ pub fn filter_aenderungen_gemarkung(
     .iter()
     .flat_map(|(k, v)| {
         let v_inner = v.poly.get_inner();
-        let s = if fluren.iter().any(|s| s.contains_polygon(&v_inner)) {
-            vec![v_inner]
-        } else {
-            fluren
-            .iter()
-            .flat_map(|s| intersect_polys(s, &v_inner))
-            .collect::<Vec<_>>()
-        };
-
-        s.iter()
+        fluren
+        .iter()
+        .flat_map(|s| intersect_polys(s, &v_inner))
+        .collect::<Vec<_>>()
+        .iter()
         .flat_map(crate::nas::cleanup_poly)
         .map(|q| (uuid(), PolyNeu { nutzung: v.nutzung.clone(), poly: SvgPolygon::Old(q.clone()), locked: v.locked }))
         .collect::<Vec<_>>()
     }).collect::<BTreeMap<_, _>>();
+    for (_, v) in newmap.iter() {
+        log_status(&format!("newmap: {} m2 {}", v.poly.get_inner().area_m2().round(), v.nutzung.clone().unwrap_or_default()));
+    }
     aenderungen.na_polygone_neu = newmap;
     aenderungen
 }
@@ -302,10 +300,23 @@ pub fn get_aenderungen_prepared(
     aenderungen
 }
 
+pub type ReverseMap = BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)>;
+
+/* 
+pub fn filter_reverse_map(
+    rm: &ReverseMap,
+    fluren: &[SvgPolygonInner],
+) -> ReverseMap {
+    rm.into_iter().flat_map(|(de_id, (ebene, kuerzel, de_obj, aenderungen))| {
+        let intersect = ;
+
+    })
+}*/
+
 pub fn napoly_to_reverse_map(
     napoly: &BTreeMap<String, PolyNeu>,
     nas_xml: &NasXMLFile,
-) -> BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)> {
+) -> ReverseMap {
 
     let mut map = BTreeMap::new();
     let alle_ebenen = crate::get_nutzungsartenkatalog_ebenen()
@@ -330,7 +341,6 @@ pub fn napoly_to_reverse_map(
                 None => continue,
             };
             let tp_rect = tp.get_rect();
-
             let aenderungen = napoly.iter().filter_map(|(k, v)| {
                 if v.poly.get_rect().overlaps_rect(&tp_rect) {
                     let neu_kuerzel = v.nutzung.clone()?;
@@ -371,7 +381,7 @@ pub fn napoly_to_reverse_map(
 
 // map {DE_ID alt Objekt =?> (ebene, kürzel, taggedpolygon Aenderungen { })}
 pub fn reverse_map_to_aenderungen(
-    reverse_map: &BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)>
+    reverse_map: &ReverseMap
 ) -> Vec<Operation> {
     let mut aenderungen_todo = reverse_map.iter()
     .flat_map(|(alt_obj_id, (alt_ebene, alt_kuerzel, tp, aen))| {

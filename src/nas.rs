@@ -103,6 +103,9 @@ impl NasXMLFile {
 
         log_status("joining gemarkung...");
         let fluren = self.get_fluren(csv);
+        for f in fluren.iter() {
+            log_status(&format!("flur: {} m2", f.area_m2().round()));
+        }
         log_status("Gemarkung joined!");
 
         let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
