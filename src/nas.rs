@@ -81,8 +81,10 @@ impl NasXMLFile {
         .keys()
         .filter_map(|s| FlstIdParsed::from_str(s).parse_num())
         .collect::<Vec<_>>();
-
+        
         let flurstuecke_nums = flurstuecke.iter().cloned().collect::<BTreeSet<_>>();
+        log_status(&format!("{} flurstuecke für fluren", flurstuecke_nums.len()));
+
         let alle_flst = self.ebenen.get("AX_Flurstueck")
         .unwrap_or(&Vec::new())
         .iter()
@@ -94,15 +96,23 @@ impl NasXMLFile {
                 None
             }
         }).collect::<Vec<_>>();
+        log_status(&format!("alle flst: {}", alle_flst.len()));
 
-        join_polys(&alle_flst, false)
-        .iter().flat_map(crate::nas::cleanup_poly).collect()
+        let jp = join_polys(&alle_flst, false)
+        .iter()
+        .flat_map(crate::nas::cleanup_poly)
+        .collect::<Vec<_>>();
+        
+        log_status(&format!("jp len: {}", jp.len()));
+
+        jp
     }
 
     pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml, csv: &CsvDataType) -> Self {
 
         log_status("joining gemarkung...");
         let fluren = self.get_fluren(csv);
+        log_status(&format!("fluren len {}", fluren.len()));
         for f in fluren.iter() {
             log_status(&format!("flur: {} m2", f.area_m2().round()));
         }
