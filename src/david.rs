@@ -1,14 +1,11 @@
 use crate::{
-    nas::{
+    csv::CsvDataType, nas::{
         self, MemberObject, NasXMLFile, NasXmlObjects, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
-    },
-    ops::{
+    }, ops::{
         intersect_polys, join_polys, subtract_from_poly
-    },
-    ui::{Aenderungen, PolyNeu},
-    uuid_wasm::{
+    }, ui::{Aenderungen, PolyNeu}, uuid_wasm::{
         log_status, log_status_clear, uuid
-    },
+    }
 };
 use std::collections::{
     BTreeMap,
@@ -58,11 +55,13 @@ pub fn aenderungen_zu_fa_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
+    csv: &CsvDataType,
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+    let fluren = nas_xml.get_fluren(csv);
     // join na_definiert and na_poly_neu
-    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
+    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     // let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, nas_xml, split_nas);
     // build reverse map
     let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
@@ -160,9 +159,10 @@ pub fn aenderungen_zu_nas_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
+    csv_data: &CsvDataType,
     objects: &NasXmlObjects,
 ) -> String {
-    let new_nas = nas_xml.fortfuehren(aenderungen, split_nas);
+    let new_nas = nas_xml.fortfuehren(aenderungen, split_nas, csv_data);
     serde_json::to_string_pretty(&new_nas).unwrap_or_default()
     // new_nas.to_xml(&nas_xml, &objects);
 }
@@ -215,6 +215,7 @@ pub fn join_inserts(
 pub fn get_na_definiert_as_na_polyneu(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
+    fluren: &Vec<SvgPolygonInner>,
 ) -> Aenderungen {
 
     let force = true;
@@ -241,6 +242,34 @@ pub fn get_na_definiert_as_na_polyneu(
         aenderungen = aenderungen.clean_stage25(force);
     }
     
+    aenderungen = filter_aenderungen_gemarkung(&aenderungen, fluren);
+    aenderungen
+}
+
+pub fn filter_aenderungen_gemarkung(
+    aenderungen: &Aenderungen,
+    fluren: &[SvgPolygonInner]
+) -> Aenderungen {
+    let mut aenderungen = aenderungen.clone();
+    let newmap = aenderungen.na_polygone_neu
+    .iter()
+    .flat_map(|(k, v)| {
+        let v_inner = v.poly.get_inner();
+        let s = if fluren.iter().any(|s| s.contains_polygon(&v_inner)) {
+            vec![v_inner]
+        } else {
+            fluren
+            .iter()
+            .flat_map(|s| intersect_polys(s, &v_inner))
+            .collect::<Vec<_>>()
+        };
+
+        s.iter()
+        .flat_map(crate::nas::cleanup_poly)
+        .map(|q| (uuid(), PolyNeu { nutzung: v.nutzung.clone(), poly: SvgPolygon::Old(q.clone()), locked: v.locked }))
+        .collect::<Vec<_>>()
+    }).collect::<BTreeMap<_, _>>();
+    aenderungen.na_polygone_neu = newmap;
     aenderungen
 }
 
@@ -248,6 +277,7 @@ pub fn get_aenderungen_prepared(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
+    fluren: &Vec<SvgPolygonInner>,
 ) -> Aenderungen {
 
     let force = true;
@@ -265,8 +295,9 @@ pub fn get_aenderungen_prepared(
         aenderungen = aenderungen.clean_stage25(force);
     }
     let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
-    let aenderungen = aenderungen.deduplicate(force);
+    let mut aenderungen = aenderungen.deduplicate(force);
 
+    aenderungen = filter_aenderungen_gemarkung(&aenderungen, fluren);
     // aenderungen_remove_objs_bauraum_bodenordnung(&bauraum_bodenordnung);
     aenderungen
 }

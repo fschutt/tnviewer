@@ -2,11 +2,11 @@ use crate::{
     csv::CsvDataType, david::{log_aenderungen, Operation}, geograf::{
         points_to_rect,
         LinienQuadTree,
-    }, ui::{
+    }, ops::join_polys, pdf::Fluren, ui::{
         dist_to_segment,
         Aenderungen,
         AenderungenIntersection,
-    }, uuid_wasm::{log_status, log_status_clear, uuid}, xlsx::FlstIdParsed, xml::{
+    }, uuid_wasm::{log_status, log_status_clear, uuid}, xlsx::{FlstIdParsed, FlstIdParsedNumber}, xml::{
         get_all_nodes_in_subtree,
         XmlNode,
     }
@@ -75,24 +75,54 @@ impl NasXMLFile {
         }).collect()
     }
 
-    pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml) -> Self {
+    pub fn get_fluren(&self, csv: &CsvDataType) -> Vec<SvgPolygonInner> {
 
-        let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas);
+        let flurstuecke = csv.get_old_fallback()
+        .keys()
+        .filter_map(|s| FlstIdParsed::from_str(s).parse_num())
+        .collect::<Vec<_>>();
+
+        let flurstuecke_nums = flurstuecke.iter().cloned().collect::<BTreeSet<_>>();
+        let alle_flst = self.ebenen.get("AX_Flurstueck")
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|flst| {
+            let num = FlstIdParsed::from_str(&flst.get_flurstueck_id()?).parse_num()?;
+            if flurstuecke_nums.contains(&num) {
+                Some(flst.poly.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>();
+
+        join_polys(&alle_flst, false)
+        .iter().flat_map(crate::nas::cleanup_poly).collect()
+    }
+
+    pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml, csv: &CsvDataType) -> Self {
+
+        log_status("joining gemarkung...");
+        let fluren = self.get_fluren(csv);
+        log_status("Gemarkung joined!");
+
+        let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
         let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm);
+        let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self);
         let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
         log_status("NasXMLFile::fortfuehren");
         log_aenderungen(&aenderungen_todo_1);
         log_status("----");
 
-        let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas);
+        let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
         let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm);
+        let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1);
         let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
 
         log_status("NasXMLFile::fortfuehren");
-        log_aenderungen(&aenderungen_todo_1);
+        log_aenderungen(&aenderungen_todo_2);
         log_status("----");
 
         fortgefuehrt_2

@@ -2079,7 +2079,7 @@
           map.setView([53.2467, 13.6045], 10);
           reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          // addProblemGeoJSON(map);
+          addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -2712,6 +2712,7 @@
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.xml_objects),
+        JSON.stringify(window.csv_data)
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
@@ -2725,6 +2726,7 @@
         JSON.stringify(window.aenderungen), 
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.csv_data),
         JSON.stringify(window.xml_objects),
       );
       downloadBlob(xml, window.info.antragsnr + ".Fortgefuehrt.NAS.xml", 'text/xml');

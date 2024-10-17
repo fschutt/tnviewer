@@ -3226,13 +3226,14 @@ impl Aenderungen {
         }
     }
 
-    pub fn zu_david(&self, nas_xml: &NasXMLFile, split_nas: &SplitNasXml) -> Aenderungen {
+    pub fn zu_david(&self, nas_xml: &NasXMLFile, split_nas: &SplitNasXml, csv: &CsvDataType) -> Aenderungen {
 
         use crate::david::Operation::*;
         
         // join na_definiert and na_poly_neu
         // let aenderungen = crate::david::get_aenderungen_prepared(self, nas_xml, split_nas);
-        let aenderungen = crate::david::get_na_definiert_as_na_polyneu(self, split_nas);
+        let fluren = nas_xml.get_fluren(csv);
+        let aenderungen = crate::david::get_na_definiert_as_na_polyneu(self, split_nas, &fluren);
         // build reverse map
         let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
         // build operations (insert / delete)

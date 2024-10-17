@@ -190,14 +190,16 @@ fn reproject_poly_back_into_latlon(rissgebiet: SvgPolygonInner, crs: &str) -> Sv
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
-    let poly_string1: &str = include_str!("./test2.txt");
-    let poly_string2: &str = include_str!("./test1.txt");
+    let poly_string1: &str = include_str!("./test1.txt");
+    let poly_string2: &str = include_str!("./test2.txt");
 
-    let s1 = serde_json::from_str::<SvgPolygonInner>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string2.trim()).unwrap_or_default();
-    let joined = s2; // crate::ops::join_polys(&s2, true);
+    let s1 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
+    let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
+    let mut together = s1.clone();
+    together.push(s2.clone());
+    let joined = together; // crate::ops::join_polys(&together, true);
 
-    let s1 = crate::pdf::reproject_poly_back_into_latlon(&s1, proj).unwrap_or_default();
+    let s1 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
     let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();
 
     let v1 = vec![TaggedPolygon {
@@ -349,7 +351,7 @@ pub async fn export_pdf_overview(
     };
     let aenderungen = serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()).unwrap_or_default();
     let aenderungen = reproject_aenderungen_back_into_latlon(&aenderungen, &split_nas_xml.crs).unwrap_or_default();
-    let nas_migrated = nas_original.fortfuehren(&aenderungen, &split_nas_xml);
+    let nas_migrated = nas_original.fortfuehren(&aenderungen, &split_nas_xml, &csv_data);
     let split_nas = if aenderungen != Aenderungen::default() {
         crate::nas::split_xml_flurstuecke_inner(&nas_migrated, &mut Vec::new()).unwrap_or(split_nas_xml)
     } else {
@@ -649,7 +651,7 @@ pub fn lib_get_aenderungen_clean(
             ),
         "5" => aenderungen.clean_stage5(&split_nas_xml, &mut log, force),
         "7" => aenderungen.show_splitflaechen(&split_nas_xml, &nas_original, &csv_data),
-        "8" => aenderungen.zu_david(&nas_original, &split_nas_xml),
+        "8" => aenderungen.zu_david(&nas_original, &split_nas_xml, &csv_data),
         _ => return format!("wrong id {id}"),
     };
 
@@ -716,6 +718,7 @@ pub fn aenderungen_zu_nas_xml(
     nas_xml: String,
     split_nas: String,
     xml_objects: String,
+    csv_data: String,
 ) -> String {
     log_status_clear();
     let aenderungen = match serde_json::from_str::<Aenderungen>(aenderungen.as_str()) {
@@ -738,7 +741,11 @@ pub fn aenderungen_zu_nas_xml(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_nas_xml(&aenderungen, &nas_xml, &split_nas, &xml_objects)
+    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::david::aenderungen_zu_nas_xml(&aenderungen, &nas_xml, &split_nas, &csv_data, &xml_objects)
 }
 
 #[wasm_bindgen]
@@ -748,6 +755,7 @@ pub fn aenderungen_zu_david(
     nas_xml: String,
     split_nas: String,
     xml_objects: String,
+    csv_data: String,
 ) -> String {
     log_status_clear();
     let datum = match chrono::DateTime::parse_from_rfc3339(&datum) {
@@ -774,7 +782,11 @@ pub fn aenderungen_zu_david(
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
-    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &split_nas, &xml_objects, &datum)
+    let csv_data = match serde_json::from_str::<CsvDataType>(&csv_data) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+    crate::david::aenderungen_zu_fa_xml(&aenderungen, &nas_xml, &split_nas, &csv_data, &xml_objects, &datum)
 }
 
 #[wasm_bindgen]
