@@ -820,6 +820,39 @@ pub fn get_geojson_fuer_neue_polygone(aenderungen: String, target_crs: String) -
     serde_json::to_string(&[nutzung_definiert, nutzung_nicht_definiert]).unwrap_or_default()
 }
 
+#[allow(non_snake_case)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+struct MapBounds {
+    _northEast: crate::LatLng,
+    _southWest: crate::LatLng,
+}
+
+#[wasm_bindgen]
+pub fn get_flurstuecke_in_extent(
+    map_bounds: String,
+    nas_xml: String,
+) -> String {
+
+    let crs = default_etrs33();
+    let nas = match serde_json::from_str::<NasXMLFile>(&nas_xml) {
+        Ok(o) => o,
+        Err(e) => return e.to_string(),
+    };
+
+    let s = match serde_json::from_str::<MapBounds>(&map_bounds) {
+        Ok(MapBounds { _northEast,_southWest }) => {
+            quadtree_f32::Rect {
+                min_x: _southWest.lng,
+                min_y: _southWest.lat,
+                max_x: _northEast.lng,
+                max_y: _northEast.lat,
+            }
+        },
+        Err(e) => return e.to_string(),
+    };
+
+    serde_json::to_string(&nas.get_de_id_in_rect(&s)).unwrap_or_default()
+}
 #[wasm_bindgen]
 pub fn get_polyline_guides_in_current_bounds(
     split_flurstuecke: String,
@@ -827,13 +860,6 @@ pub fn get_polyline_guides_in_current_bounds(
     aenderungen: String,
     map_bounds: String,
 ) -> String {
-    #[allow(non_snake_case)]
-    #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
-    struct MapBounds {
-        _northEast: crate::LatLng,
-        _southWest: crate::LatLng,
-    }
-
     let crs = crs.unwrap_or_else(|| default_etrs33());
     let mut pl = Vec::new();
     let split_fs = serde_json::from_str::<SplitNasXml>(&split_flurstuecke).unwrap_or_default();

@@ -1638,6 +1638,17 @@
 
   window.zoomToId = zoomToId;
 
+  function getObjIdsInExtent() {
+    var flst = get_flurstuecke_in_extent(
+      JSON.stringify(map.getBounds()),
+      JSON.stringify(window.projectdata),
+    );
+    console.log(JSON.parse(flst));
+  }
+
+  window.getObjIdsInExtent = getObjIdsInExtent;
+
+  window.zoomToId = zoomToId;
   function polyNeuUndo(event) {
     var id = event.target.dataset.polyNeuId;
     if (!window.aenderungen || window.aenderungen == null) {

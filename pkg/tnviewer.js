@@ -770,6 +770,32 @@ export function get_geojson_fuer_neue_polygone(aenderungen, target_crs) {
 }
 
 /**
+* @param {string} map_bounds
+* @param {string} nas_xml
+* @returns {string}
+*/
+export function get_flurstuecke_in_extent(map_bounds, nas_xml) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+        const ptr0 = passStringToWasm0(map_bounds, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(nas_xml, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.get_flurstuecke_in_extent(retptr, ptr0, len0, ptr1, len1);
+        var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+        var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+        deferred3_0 = r0;
+        deferred3_1 = r1;
+        return getStringFromWasm0(r0, r1);
+    } finally {
+        wasm.__wbindgen_add_to_stack_pointer(16);
+        wasm.__wbindgen_export_0(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
 * @param {string} split_flurstuecke
 * @param {string | undefined} crs
 * @param {string} aenderungen
@@ -2133,7 +2159,7 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function(arg0) {
         queueMicrotask(getObject(arg0));
     };
-    imports.wbg.__wbindgen_closure_wrapper8298 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper8306 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 455, __wbg_adapter_32);
         return addHeapObject(ret);
     };

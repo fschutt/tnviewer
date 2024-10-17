@@ -56,6 +56,25 @@ impl Default for NasXMLFile {
 }
 
 impl NasXMLFile {
+
+    pub fn get_de_id_in_rect(&self, r: &quadtree_f32::Rect) -> Vec<String> {
+        let ebenen = crate::get_nutzungsartenkatalog_ebenen().into_values().collect::<BTreeSet<_>>();
+        self.ebenen.iter().flat_map(|s| {
+            if !ebenen.contains(s.0) {
+                return Vec::new();
+            }
+            s.1.iter().filter_map(|q| {
+                if q.poly.get_rect().overlaps_rect(r) {
+                    let kuerzel = q.get_auto_kuerzel()?;
+                    let m2 = q.poly.area_m2().round();
+                    q.attributes.get("id").cloned().map(|s| { format!("{m2} m2 {kuerzel} ({s})")})
+                } else {
+                    None
+                }
+            }).collect()
+        }).collect()
+    }
+
     pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml) -> Self {
 
         use crate::david::Operation::*;
