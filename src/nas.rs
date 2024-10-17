@@ -90,7 +90,7 @@ impl NasXMLFile {
         .iter()
         .filter_map(|flst| {
             log_status(&format!("get num for flst {:?}", flst.attributes));
-            let num = FlstIdParsed::from_str(&flst.get_flurstueck_id()?).parse_num()?;
+            let num = FlstIdParsed::from_str(&flst.attributes.get("flurstueckskennzeichen")?).parse_num()?;
             log_status(&format!("OK NUM {:?}", num.format_nice()));
             if flurstuecke_nums.contains(&num) {
                 Some(flst.poly.clone())
