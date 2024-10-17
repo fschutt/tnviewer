@@ -258,7 +258,7 @@ pub fn filter_aenderungen_gemarkung(
         let v_inner = v.poly.get_inner();
         fluren
         .iter()
-        .flat_map(|s| intersect_polys(s, &v_inner))
+        .flat_map(|s| intersect_polys(s, &v_inner, true))
         .collect::<Vec<_>>()
         .iter()
         .flat_map(crate::nas::cleanup_poly)
@@ -447,7 +447,7 @@ pub fn reverse_map_to_aenderungen(
         }
 
         for q in polys_to_subtract {
-            for is in intersect_polys(&tp.poly, &q.poly.poly) {
+            for is in intersect_polys(&tp.poly, &q.poly.poly, true) {
                 v.push(Operation::Insert { 
                     ebene: q.neu_ebene.clone(), 
                     kuerzel: q.neu_kuerzel.clone(), 

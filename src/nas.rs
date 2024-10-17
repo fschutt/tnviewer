@@ -1640,13 +1640,13 @@ impl SvgLine {
 
                 let mut ret = vec![*p];
 
-                // if insert_all_points {
-                //    ret.extend(nearest_other_line.iter().cloned());
-                // } else {
+                if insert_all_points {
+                    ret.extend(nearest_other_line.iter().cloned());
+                } else {
                     if let Some(first) = nearest_other_line.first() {
                         ret.push(*first);
                     }
-                // }
+                }
 
                 ret
             })
@@ -2657,7 +2657,7 @@ pub fn split_xml_flurstuecke_inner(
             let mut polys = polys
                 .iter()
                 .flat_map(|p| {
-                    let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly);
+                    let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly, false);
                     intersection_mp
                         .into_iter()
                         .filter(|p| !p.is_zero_area())

@@ -643,7 +643,7 @@ impl Fluren {
             .iter()
             .filter_map(|flst| {
                 let poly = match rect {
-                    Some(s) => intersect_polys(s, &flst.poly)
+                    Some(s) => intersect_polys(s, &flst.poly, false)
                         .get(0)
                         .unwrap_or_else(|| &flst.poly)
                         .clone(),
@@ -699,7 +699,7 @@ impl Flurstuecke {
             .iter()
             .filter_map(|flst| {
                 let poly = match rect {
-                    Some(s) => intersect_polys(s, &flst.poly)
+                    Some(s) => intersect_polys(s, &flst.poly, false)
                         .get(0)
                         .unwrap_or_else(|| &flst.poly)
                         .clone(),

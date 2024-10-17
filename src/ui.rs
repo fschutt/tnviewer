@@ -1489,7 +1489,7 @@ impl AenderungenIntersections {
                 }
             })
             .flat_map(|s| {
-                intersect_polys(&riss_visible_area, &s.poly_cut)
+                intersect_polys(&riss_visible_area, &s.poly_cut, false)
                     .into_iter()
                     .filter_map(|s| if s.is_zero_area() { None } else { Some(s) })
                     .map(|ip| AenderungenIntersection {
@@ -1604,7 +1604,7 @@ impl AenderungenClean {
                 let anew = potentially_intersecting.poly.round_to_3dec();
                 let bnew = polyneu.poly.get_inner().round_to_3dec();
 
-                let is_polys = intersect_polys(&anew, &bnew);
+                let is_polys = intersect_polys(&anew, &bnew, false);
                 let mut is_size = 0.0;
                 let flst_id_part =
                     format!("{potentially_touching_id}:{ebene}:{obj_id}{intersect_id}");
