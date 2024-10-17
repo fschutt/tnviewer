@@ -200,8 +200,9 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygon
     for i in polys.iter().skip(1) {
         let mut i = i.clone();
 
-        for q in first.iter() {
+        for q in first.iter_mut() {
             i.insert_points_from(q, 0.1);
+            q.insert_points_from(&i, 0.1);
             if i.is_completely_inside_of(q) {
                 continue;
             }

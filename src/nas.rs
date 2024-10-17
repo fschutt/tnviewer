@@ -89,13 +89,10 @@ impl NasXMLFile {
         .unwrap_or(&Vec::new())
         .iter()
         .filter_map(|flst| {
-            log_status(&format!("get num for flst {:?}", flst.attributes));
             let num = FlstIdParsed::from_str(&flst.attributes.get("flurstueckskennzeichen")?).parse_num()?;
-            log_status(&format!("OK NUM {:?}", num.format_nice()));
             if flurstuecke_nums.contains(&num) {
                 Some(flst.poly.clone())
             } else {
-                log_status(&format!("NOT IN GEMARKUNG! {:?}", num.format_nice()));
                 None
             }
         }).collect::<Vec<_>>();
@@ -1641,9 +1638,10 @@ impl SvgLine {
                 nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
 
                 let mut ret = vec![*p];
-                if let Some(first) = nearest_other_line.first() {
-                    ret.push(*first);
-                }
+                ret.extend(nearest_other_line.iter().cloned());
+                // if let Some(first) = nearest_other_line.first() {
+                //    ret.push(*first);
+                // }
                 ret
             })
             .collect::<Vec<_>>();
