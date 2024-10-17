@@ -10,6 +10,7 @@ use crate::nas::translate_to_geo_poly_special;
 use crate::ui::dist_to_segment;
 use crate::ui::Aenderungen;
 use crate::ui::PolyNeu;
+use crate::uuid_wasm::log_status;
 // use crate::uuid_wasm::log_status;
 
 // only called in stage5 (subtracting overlapping Aenderungen)
@@ -165,15 +166,17 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     s
 }
 
-pub fn join_polys(polys_orig: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
+pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
 
     if polys_orig.len() < 2 {
         return polys_orig.to_vec();
     }
 
-    // log_status("join_polys");
-    // log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
+    if debug {
+        log_status("join_polys");
+        log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
+    }
 
     let polys = polys_orig.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
     let polys = insert_poly_points_from_near_polys(&polys);

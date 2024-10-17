@@ -190,7 +190,7 @@ pub fn join_inserts(
     }
 
     for (k, (e, v)) in inserts_sorted_by_kuerzel.iter_mut() {
-        let joined = join_polys(&v)
+        let joined = join_polys(&v, true)
         .iter()
         .flat_map(crate::nas::cleanup_poly)
         .collect::<Vec<_>>();
@@ -370,7 +370,7 @@ pub fn reverse_map_to_aenderungen(
 
         let mut v = vec![tp.poly.clone()];
         v.extend(aenderungen_with_same_kuerzel.into_iter());
-        let joined = join_polys(&v).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+        let joined = join_polys(&v, false).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
 
         let polys_to_subtract = aen.iter().filter_map(|s| {
             if s.neu_kuerzel != *alt_kuerzel {
@@ -705,7 +705,7 @@ pub fn merge_aenderungen_with_existing_nas(
         let mut polys_to_join = vec![im_aenderung.poly_neu];
         polys_to_join.extend(ids_to_join.iter().map(|a| a.1.clone()));
 
-        let joined_poly = join_polys(&polys_to_join);
+        let joined_poly = join_polys(&polys_to_join, false);
 
         for j in joined_poly.into_iter() {
             aenderungen_clean.push(Operation::Insert { 

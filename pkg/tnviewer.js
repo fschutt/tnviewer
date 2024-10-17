@@ -296,7 +296,6 @@ export function add_nadgrid(key, view) {
     }
 }
 
-function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
 /**
 * @returns {string}
 */
@@ -1520,6 +1519,8 @@ export function edit_konfiguration_move_layer(konfiguration, layer_type, ebene_i
     }
 }
 
+function notDefined(what) { return () => { throw new Error(`${what} is not defined`); }; }
+
 const PointFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_point_free(ptr >>> 0, 1));
@@ -1952,6 +1953,24 @@ function __wbg_get_imports() {
         getObject(arg0).abort();
     };
     imports.wbg.__wbg_exportstatusclear_696b2edfbc03c672 = typeof export_status_clear == 'function' ? export_status_clear : notDefined('export_status_clear');
+    imports.wbg.__wbg_new_b85e72ed1bfd57f9 = function(arg0, arg1) {
+        try {
+            var state0 = {a: arg0, b: arg1};
+            var cb0 = (arg0, arg1) => {
+                const a = state0.a;
+                state0.a = 0;
+                try {
+                    return __wbg_adapter_105(a, state0.b, arg0, arg1);
+                } finally {
+                    state0.a = a;
+                }
+            };
+            const ret = new Promise(cb0);
+            return addHeapObject(ret);
+        } finally {
+            state0.a = state0.b = 0;
+        }
+    };
     imports.wbg.__wbg_log_b103404cc5920657 = function(arg0) {
         console.log(getObject(arg0));
     };
@@ -2085,24 +2104,6 @@ function __wbg_get_imports() {
             wasm.__wbindgen_export_0(deferred0_0, deferred0_1, 1);
         }
     };
-    imports.wbg.__wbg_new_b85e72ed1bfd57f9 = function(arg0, arg1) {
-        try {
-            var state0 = {a: arg0, b: arg1};
-            var cb0 = (arg0, arg1) => {
-                const a = state0.a;
-                state0.a = 0;
-                try {
-                    return __wbg_adapter_105(a, state0.b, arg0, arg1);
-                } finally {
-                    state0.a = a;
-                }
-            };
-            const ret = new Promise(cb0);
-            return addHeapObject(ret);
-        } finally {
-            state0.a = state0.b = 0;
-        }
-    };
     imports.wbg.__wbg_getnak_d42c4edc9d6e4205 = function(arg0) {
         const ret = get_nak();
         const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
@@ -2158,7 +2159,7 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function(arg0) {
         queueMicrotask(getObject(arg0));
     };
-    imports.wbg.__wbindgen_closure_wrapper8301 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper8298 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 455, __wbg_adapter_32);
         return addHeapObject(ret);
     };

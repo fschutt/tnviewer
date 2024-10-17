@@ -2613,7 +2613,7 @@ pub fn get_fluren(xml: &NasXMLFile, rect: &Option<quadtree_f32::Rect>) -> Fluren
             .flat_map(|(gemarkung_nr, fluren)| {
                 fluren.iter().flat_map(|(flur_nr, s)| {
                     let polys = s.iter().map(|s| s.poly.clone()).collect::<Vec<_>>();
-                    crate::ops::join_polys(&polys)
+                    crate::ops::join_polys(&polys, false)
                     .into_iter().map(|mut joined| {
                         joined.inner_rings = Vec::new();
                         TaggedPolygon {

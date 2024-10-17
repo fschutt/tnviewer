@@ -1411,7 +1411,7 @@ impl AenderungenIntersections {
                 };
 
                 let polys_to_join_len = polys_to_join.len();
-                let joined = join_polys(&polys_to_join);
+                let joined = join_polys(&polys_to_join, false);
                 let joined = if special {
                     joined.iter().flat_map(|s| crate::nas::cleanup_poly(s)).collect()
                 } else {
@@ -2981,7 +2981,7 @@ impl Aenderungen {
         let joined = aenderungen_by_kuerzel_map
             .iter()
             .flat_map(|(kuerzel, v)| {
-                join_polys(&v)
+                join_polys(&v, false)
                 .iter()
                 .map(|l| {
                     (
