@@ -15,14 +15,7 @@ use std::collections::{
     BTreeSet,
 };
 
-struct TempOverlapObject {
-    neu_kuerzel: String,
-    neu_ebene: String,
-    poly: TaggedPolygon,
-    overlaps_objekte: BTreeMap<String, Vec<TaggedPolygon>>,
-}
-
-struct AenderungObject {
+pub struct AenderungObject {
     orig_change_id: String,
     neu_kuerzel: String,
     neu_ebene: String,
@@ -68,29 +61,24 @@ pub fn aenderungen_zu_fa_xml(
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+    // join na_definiert and na_poly_neu
+    let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, nas_xml, split_nas);
+    // build reverse map
+    let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
+    // build operations (insert / delete)
+    let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm);
+    // let aenderungen_todo = merge_aenderungen_with_existing_nas(&aenderungen_todo, &nas_xml);
+    let aenderungen_todo = insert_gebaeude_delete(&aenderungen, &aenderungen_todo);
+    // build XML file
+    operations_to_xml_file(&aenderungen_todo, objects, datum_jetzt)
+}
 
-    // let aenderungen_todo = get_aenderungen_internal(aenderungen, nas_xml, split_nas);
-    let aenderungen_todo = get_aenderungen_internal_definiert_only(aenderungen, nas_xml, split_nas);
 
-    log_aenderungen(&aenderungen_todo);
-
-    /*
-    let aenderungen_todo = merge_aenderungen_with_existing_nas(
-        &aenderungen_todo,
-        &nas_xml,
-    );
-    */
-    
-    let aenderungen_todo = insert_gebaeude_delete(
-        &aenderungen,  
-        &aenderungen_todo,
-    );
-
-    log_status("--------");
-
-    log_aenderungen(&aenderungen_todo);
-
-    log_status("done!");
+pub fn operations_to_xml_file(
+    aenderungen_todo: &[Operation], 
+    objects: &NasXmlObjects, 
+    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>
+) -> String {
 
     let mut final_strings = aenderungen_todo.iter()
     .enumerate()
@@ -167,7 +155,6 @@ pub fn aenderungen_zu_fa_xml(
     .join("\r\n")
 }
 
-
 pub fn aenderungen_zu_nas_xml(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
@@ -223,6 +210,7 @@ pub fn join_inserts(
     non_insert_ops
 }
 
+// Get the na_definiert as na_polyneu
 fn get_na_definiert_as_na_polyneu(
     aenderungen: &Aenderungen,
     split_nas: &SplitNasXml,
@@ -255,47 +243,11 @@ fn get_na_definiert_as_na_polyneu(
     aenderungen
 }
 
-
-pub fn get_aenderungen_internal_definiert_only(
+pub fn get_aenderungen_prepared(
     aenderungen: &Aenderungen,
     nas_xml: &NasXMLFile,
     split_nas: &SplitNasXml,
-) -> Vec<Operation> {
-
-    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
-
-    let reverse_map = napoly_to_reverse_map(
-    &aenderungen.na_polygone_neu,
-        &nas_xml,
-    );
-
-    log_status("---- 2 ---- reverse_map start");
-    for (k, v) in reverse_map.iter() {
-        let overlaps = v.3.iter()
-        .map(|s| format!("{} m2 {}", s.poly.poly.area_m2().round(), s.poly.get_auto_kuerzel().unwrap_or_default()))
-        .collect::<Vec<_>>();
-        log_status(&format!("{} ({} m2 {}): intersect or join with: {:?}", k, v.2.poly.area_m2().round(), v.1, overlaps));
-    }
-    log_status("---- 2 ---- reverse_map end");
-
-    reverse_map_to_aenderungen(&reverse_map)
-}
-
-pub fn get_aenderungen_internal(
-    aenderungen: &Aenderungen,
-    nas_xml: &NasXMLFile,
-    split_nas: &SplitNasXml,
-) -> Vec<Operation> {
-    
-    let force = true;
-    let aenderungen = aenderungen.clean_stage4(
-        nas_xml, 
-        &mut Vec::new(), 
-        0.2, 
-        2.0, 
-        10.0,
-        force,
-    );
+) -> Aenderungen {
 
     let d = Vec::new();
     let bauraum_bodenordnung = nas_xml.ebenen
@@ -305,7 +257,20 @@ pub fn get_aenderungen_internal(
         .map(|p| &p.poly)
         .collect::<Vec<_>>();
 
-    
+    let mut aenderungen_polys = get_na_definiert_as_na_polyneu(aenderungen, split_nas);
+
+    let force = true;
+    let mut aenderungen = aenderungen.clean_stage4(
+        nas_xml, 
+        &mut Vec::new(), 
+        0.2, 
+        2.0, 
+        10.0,
+        force,
+    );
+
+    aenderungen.na_polygone_neu.append(&mut aenderungen_polys.na_polygone_neu);
+
     let aenderungen = aenderungen.clone();
     let mut aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
@@ -314,26 +279,11 @@ pub fn get_aenderungen_internal(
     let aenderungen = aenderungen.clean_stage3(&split_nas,&mut Vec::new(), 0.1, 0.1, force);
     let aenderungen = aenderungen.deduplicate(force);
 
-    /* 
-    let ids_to_change_nutzungen = napoly_to_idchange(
-        &aenderungen.na_polygone_neu,
-        &nas_xml,
-    );
-
-    let reverse_map = build_reverse_map(&ids_to_change_nutzungen);
-    */
-
-    let reverse_map = napoly_to_reverse_map(
-    &aenderungen.na_polygone_neu,
-        &nas_xml,
-    );
-
-    // Get DE_objid and join with all aenderungen with same kuerzel
-
-    reverse_map_to_aenderungen(&reverse_map)
+    // aenderungen_remove_objs_bauraum_bodenordnung(&bauraum_bodenordnung);
+    aenderungen
 }
 
-fn napoly_to_reverse_map(
+pub fn napoly_to_reverse_map(
     napoly: &BTreeMap<String, PolyNeu>,
     nas_xml: &NasXMLFile,
 ) -> BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)> {
@@ -401,7 +351,7 @@ fn napoly_to_reverse_map(
 }
 
 // map {DE_ID alt Objekt =?> (ebene, kürzel, taggedpolygon Aenderungen { })}
-fn reverse_map_to_aenderungen(
+pub fn reverse_map_to_aenderungen(
     reverse_map: &BTreeMap<String, (String, String, TaggedPolygon, Vec<AenderungObject>)>
 ) -> Vec<Operation> {
     let mut aenderungen_todo = reverse_map.iter()

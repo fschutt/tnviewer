@@ -79,12 +79,12 @@ impl NasXMLFile {
 
         use crate::david::Operation::*;
 
-        // let aenderungen_todo = crate::david::get_aenderungen_internal(aenderungen, &self, split_nas);
-        let aenderungen_todo = crate::david::get_aenderungen_internal_definiert_only(
-            aenderungen, 
-            &self, 
-            split_nas
-        );
+        // join na_definiert and na_poly_neu
+        let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, self, split_nas);
+        // build reverse map
+        let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &self);
+        // build operations (insert / delete)
+        let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm);
 
         /*
         let aenderungen_todo = crate::david::merge_aenderungen_with_existing_nas(
