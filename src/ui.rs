@@ -1686,7 +1686,7 @@ impl AenderungenClean {
             }
 
             let areas_to_subtract_joined = areas_to_subtract.values().collect::<Vec<_>>();
-            let subtracted = subtract_from_poly(&flst_part.poly, &areas_to_subtract_joined);
+            let subtracted = subtract_from_poly(&flst_part.poly, &areas_to_subtract_joined, false);
 
             let neu_kuerzel = self
                 .aenderungen
@@ -3165,7 +3165,7 @@ impl Aenderungen {
             if !higher_order_polys.is_empty() {
                 let higher_order_polys = higher_order_polys.iter().collect::<Vec<_>>();
                 let subtracted = subtract_from_poly(
-                    &pn_poly, &higher_order_polys
+                    &pn_poly, &higher_order_polys, false
                 );
                 for s in subtracted.iter() {
                     geaendert.insert(

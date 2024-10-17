@@ -415,7 +415,7 @@ pub fn reverse_map_to_aenderungen(
         log_status(&format!("reverse map to aenderungen: subtracting {} polys from {alt_kuerzel}", polys_to_subtract.len()));
 
         let subtracted = joined.iter().flat_map(|s| {
-            subtract_from_poly(s, &polys_to_subtract.iter().map(|s| &s.poly.poly).collect::<Vec<_>>())
+            subtract_from_poly(s, &polys_to_subtract.iter().map(|s| &s.poly.poly).collect::<Vec<_>>(), true)
         })
         .collect::<Vec<_>>()
         .iter()

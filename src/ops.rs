@@ -18,6 +18,7 @@ use crate::uuid_wasm::log_status;
 pub fn subtract_from_poly(
     original: &SvgPolygonInner,
     subtract: &[&SvgPolygonInner],
+    debug: bool,
 ) -> Vec<SvgPolygonInner> {
 
     if subtract.is_empty() {
@@ -25,9 +26,12 @@ pub fn subtract_from_poly(
     }
 
     use geo::BooleanOps;
-    // log_status("subtract_from_poly");
-    // log_status(&serde_json::to_string(original).unwrap_or_default());
-    // log_status(&serde_json::to_string(subtract).unwrap_or_default());
+    if debug {
+        log_status("subtract_from_poly");
+        log_status(&serde_json::to_string(original).unwrap_or_default());
+        log_status(&serde_json::to_string(subtract).unwrap_or_default());
+    }
+
     let mut first = vec![original.round_to_3dec()];
     for i in subtract.iter() {
         let fi = first.iter().map(|s| s.round_to_3dec().correct_winding_order_cloned()).collect::<Vec<_>>();
@@ -53,7 +57,7 @@ pub fn subtract_from_poly(
     }
 
     let s = first.iter().map(|s| s.correct_winding_order_cloned()).collect::<Vec<_>>();
-    // log_status("subtract_from_poly done");
+    log_status("subtract_from_poly done");
     s
 }
 
@@ -268,9 +272,6 @@ pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner, debug: bool) ->
     let mut b = b.round_to_3dec();
     a.correct_winding_order();
     b.correct_winding_order();
-
-    a.insert_points_from(&b, 0.1, true);
-    b.insert_points_from(&a, 0.1, true);
 
     if a.is_zero_area() {
         return Vec::new();
