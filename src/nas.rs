@@ -1638,10 +1638,10 @@ impl SvgLine {
                 nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
 
                 let mut ret = vec![*p];
-                ret.extend(nearest_other_line.iter().cloned());
-                // if let Some(first) = nearest_other_line.first() {
-                //    ret.push(*first);
-                // }
+                // ret.extend(nearest_other_line.iter().cloned());
+                if let Some(first) = nearest_other_line.first() {
+                    ret.push(*first);
+                }
                 ret
             })
             .collect::<Vec<_>>();
