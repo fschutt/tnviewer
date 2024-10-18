@@ -139,14 +139,6 @@ impl NasXMLFile {
         log_status("----");
 
         fortgefuehrt_2
-        
-        /* 
-            let mut aenderungen_gesamt = Vec::new();
-            aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
-            aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
-            crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
-            aenderungen_gesamt
-        */
     }
 
 

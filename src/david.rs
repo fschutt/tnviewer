@@ -59,27 +59,67 @@ pub fn aenderungen_zu_fa_xml(
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+
+    
+    log_status("joining gemarkung...");
     let fluren = nas_xml.get_fluren(csv);
-    // join na_definiert and na_poly_neu
-    let aenderungen = get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
-    // let aenderungen = crate::david::get_aenderungen_prepared(aenderungen, nas_xml, split_nas);
-    // build reverse map
-    let rm = crate::david::napoly_to_reverse_map(&aenderungen.na_polygone_neu, &nas_xml);
-    // build operations (insert / delete)
-    let aenderungen_todo = crate::david::reverse_map_to_aenderungen(&rm, false);
-    // let aenderungen_todo = merge_aenderungen_with_existing_nas(&aenderungen_todo, &nas_xml);
-    let aenderungen_todo = insert_gebaeude_delete(&aenderungen, &aenderungen_todo);
+    log_status(&format!("fluren len {}", fluren.len()));
+    for f in fluren.iter() {
+        log_status(&format!("flur: {} m2", f.area_m2().round()));
+    }
+    log_status("Gemarkung joined!");
+
+    let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
+    let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
+    let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
+    let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, &nas_xml, false);
+    let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
+
+    log_status("aenderungen_zu_fa_xml (schritt 1)");
+    log_aenderungen(&aenderungen_todo_1);
+    log_status("----");
+
+    let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
+    let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
+    let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
+    let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+
+    log_status("aenderungen_zu_fa_xml (schritt 2)");
+    log_aenderungen(&aenderungen_todo_2);
+    log_status("----");
+    
+
+    let mut aenderungen_gesamt = Vec::new();
+    aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
+    aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
+    crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
+    
     // build XML file
-    operations_to_xml_file(&aenderungen_todo, objects, datum_jetzt)
+    operations_to_xml_file(&aenderungen_gesamt, objects, datum_jetzt)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum OpPrereq {
+    Insert { id: String },
+    Replace { id: String },
+    Delete { id: String }
+}
 
-pub fn operations_to_xml_file(
+impl OpPrereq {
+    pub fn get_id(&self) -> String {
+        match self {
+            OpPrereq::Insert { id } => id.clone(),
+            OpPrereq::Replace { id } => id.clone(),
+            OpPrereq::Delete { id } => id.clone(),
+        }
+    }
+}
+
+pub fn operations_to_xml_file_internal(
     aenderungen_todo: &[Operation], 
     objects: &NasXmlObjects, 
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>
-) -> String {
-
+) -> Vec<(String, OpPrereq)> {
     let mut final_strings = aenderungen_todo.iter()
     .enumerate()
     .filter_map(|(i, s)| {
@@ -92,18 +132,24 @@ pub fn operations_to_xml_file(
             let beginnt = o.beginnt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true).replace("-", "").replace(":", "");
             let rid = format!("{obj_id}{beginnt}");
             let typename = &o.member_type;
-            Some(format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"))
+            Some((
+                format!("            <wfs:Delete typeName=\"{typename}\"><fes:Filter><fes:ResourceId rid=\"{rid}\" /></fes:Filter></wfs:Delete>"),
+                OpPrereq::Delete { id: obj_id.clone() }
+            ))
         },
         Operation::Insert { ebene, kuerzel, poly_neu } => {
             let mut auto_attribute = TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &[]);
             auto_attribute.remove("AX_Ebene");
             let auto_attribute = auto_attribute.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>();
-            Some(get_insert_xml_node(
-                ebene,
-                &("DE_001".to_string() + &format!("{i:010}")),
-                &auto_attribute,
-                datum_jetzt,
-                poly_neu,
+            let obj_id = "DE_001".to_string() + &format!("{i:010}");
+            Some((get_insert_xml_node(
+                    ebene,
+                    &obj_id,
+                    &auto_attribute,
+                    datum_jetzt,
+                    poly_neu,
+                ),
+                OpPrereq::Insert { id: obj_id.clone() }
             ))
         },
         Operation::Replace {
@@ -117,28 +163,64 @@ pub fn operations_to_xml_file(
             if o.poly.is_empty() {
                 return None; // TODO: Delete non-polygon objects (attributes, AP_PTO, etc.)
             }
-            Some(get_replace_xml_node(
-                obj_id,
-                &o,
-                &poly_neu,
+            Some((
+                (get_replace_xml_node(
+                    obj_id,
+                    &o,
+                    &poly_neu,
+                )),
+                OpPrereq::Replace { id: obj_id.clone() }
             ))
         }
     }}).collect::<Vec<_>>();
 
     for (id, a) in aenderungen_todo.iter().enumerate() {
         if let Operation::Insert { kuerzel, poly_neu, .. } = a {
+            let obj_id_new = "DE_001".to_string() + &format!("{id:010}");
             if let Some(symbol) = Signatur::from_kuerzel(
                 kuerzel, 
-                &("DE_001".to_string() + &format!("{id:010}")),
+                &obj_id_new,
                 poly_neu, 
                 id * 2,
             ) {
-                final_strings.push(symbol.get_xml());
+                final_strings.push((symbol.get_xml(), OpPrereq::Insert { id: obj_id_new.clone() }));
             }
         }
     }
 
+    final_strings    
+}
+
+pub fn process_final_strings(
+    input: &[(String, OpPrereq)]
+) -> Vec<(String, OpPrereq)> {
+    let deletes = input.iter().filter_map(|s| match &s.1 {
+        OpPrereq::Insert { id } => None,
+        OpPrereq::Replace { id } => None,
+        OpPrereq::Delete { id } => Some(id.clone()),
+    }).collect::<BTreeSet<_>>();
+
+    let inserts = input.iter().filter_map(|s| match &s.1 {
+        OpPrereq::Delete { id } => None,
+        OpPrereq::Replace { id } => None,
+        OpPrereq::Insert { id } => Some(id.clone()),
+    }).collect::<BTreeSet<_>>();
+
+    let intersection = inserts.intersection(&deletes).cloned().collect::<BTreeSet<_>>();
+    input.iter().filter_map(|s| if intersection.contains(&s.1.get_id()) { None } else { Some(s.clone() )}).collect()
+}
+
+pub fn operations_to_xml_file(
+    aenderungen_todo: &[Operation], 
+    objects: &NasXmlObjects, 
+    datum_jetzt: &chrono::DateTime<chrono::FixedOffset>
+) -> String {
+
+    let mut final_strings = operations_to_xml_file_internal(aenderungen_todo, objects, datum_jetzt);
+    let mut final_strings = process_final_strings(&final_strings);
+    let mut final_strings = final_strings.iter().map(|s| s.0.clone()).collect::<Vec<_>>();
     final_strings.sort();
+
     let final_strings = final_strings.join("\r\n");
 
     let s = format!(
