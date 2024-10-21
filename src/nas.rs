@@ -132,13 +132,21 @@ impl NasXMLFile {
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
         let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
         let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
-        let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
+        // let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
 
         log_status("NasXMLFile::fortfuehren");
         log_aenderungen(&aenderungen_todo_2);
         log_status("----");
 
-        fortgefuehrt_2
+        let mut aenderungen_gesamt = Vec::new();
+        aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
+        aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
+    
+        log_status("merging inserts...");
+        let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
+        log_status("inserts merged!");
+
+        self.fortfuehren_internal(&aenderungen_gesamt)
     }
 
 
