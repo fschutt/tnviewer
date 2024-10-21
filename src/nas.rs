@@ -121,8 +121,9 @@ impl NasXMLFile {
         let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
         let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
         let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-        log_status("merge_aenderungen_with_existing_nas...");
+        log_status("merge_and_intersect_inserts...");
         // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
+        let aenderungen_todo_1 = crate::david::merge_and_intersect_inserts(&aenderungen_todo_1);
         log_status("fortfuehren_internal...");
         let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
