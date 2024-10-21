@@ -339,13 +339,24 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
 pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
 
-    if polys.len() < 2 {
-        return polys.to_vec();
-    }
-
     if debug {
         log_status("join_polys");
         log_status(&serde_json::to_string(polys).unwrap_or_default());
+    }
+
+    let mut polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
+    let polys = merge_poly_lines(&
+        polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+    ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+    let polys = merge_poly_points(&polys, &polys);
+    let mut polys = polys;
+    polys.reverse(); // largest polys first
+    polys.retain(|s| !s.is_zero_area());
+
+    if polys.len() < 2 {
+        return polys.to_vec();
     }
 
     let mut first = match polys.get(0) {
@@ -362,13 +373,6 @@ pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points
             if i.is_completely_inside_of(q) {
                 continue;
             }
-        }
-
-        if debug {
-            log_status(&format!("joining first (insert_all_points: {insert_all_points:?}):"));
-            log_status(&serde_json::to_string(&first).unwrap_or_default());
-            log_status(&format!("joining second (insert_all_points: {insert_all_points:?}):"));
-            log_status(&serde_json::to_string(&i).unwrap_or_default());
         }
 
         if i.is_zero_area() {
