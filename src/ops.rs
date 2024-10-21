@@ -335,6 +335,56 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
     first
 }
 
+
+pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
+    use geo::BooleanOps;
+
+    if polys.len() < 2 {
+        return polys.to_vec();
+    }
+
+    if debug {
+        log_status("join_polys");
+        log_status(&serde_json::to_string(polys).unwrap_or_default());
+    }
+
+    let mut first = match polys.get(0) {
+        Some(s) => vec![s.clone()],
+        None => return Vec::new(),
+    };
+
+    for i in polys.iter().skip(1) {
+        let mut i = i.clone();
+
+        for q in first.iter_mut() {
+            i.insert_points_from(q, 0.1, insert_all_points);
+            q.insert_points_from(&i, 0.1, insert_all_points);
+            if i.is_completely_inside_of(q) {
+                continue;
+            }
+        }
+
+        if debug {
+            log_status(&format!("joining first (insert_all_points: {insert_all_points:?}):"));
+            log_status(&serde_json::to_string(&first).unwrap_or_default());
+            log_status(&format!("joining second (insert_all_points: {insert_all_points:?}):"));
+            log_status(&serde_json::to_string(&i).unwrap_or_default());
+        }
+
+        if i.is_zero_area() {
+            continue;
+        }
+
+        let a = translate_to_geo_poly_special(&first);
+        let b = translate_to_geo_poly_special_shared(&[&i]);
+        let join = a.union(&b);
+        first = translate_from_geo_poly(&join);
+    }
+
+    first
+}
+
+
 pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner, debug: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
 

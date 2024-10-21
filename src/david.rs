@@ -873,7 +873,7 @@ pub fn merge_and_intersect_inserts(
     insert_map
     .values_mut()
     .for_each(|polys| {
-        *polys = join_polys(&polys, true, true);
+        *polys = crate::ops::join_polys_fast(&polys, true, true);
     });
     log_status("joining.... 2");
 
