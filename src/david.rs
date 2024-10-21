@@ -59,8 +59,18 @@ pub fn aenderungen_zu_fa_xml(
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+    let aenderungen_gesamt = build_operations(aenderungen, nas_xml, split_nas, csv);
+    crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
+    operations_to_xml_file(&aenderungen_gesamt, objects, datum_jetzt)
+}
 
-    
+pub fn build_operations(
+    aenderungen: &Aenderungen,
+    nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
+    csv: &CsvDataType,
+) -> Vec<Operation> {
+
     log_status("joining gemarkung...");
     let fluren = nas_xml.get_fluren(csv);
     log_status(&format!("fluren len {}", fluren.len()));
@@ -72,10 +82,13 @@ pub fn aenderungen_zu_fa_xml(
     let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-    // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, &nas_xml, false);
+    log_status("merge_and_intersect_inserts...");
+    // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
+    let aenderungen_todo_1 = crate::david::merge_and_intersect_inserts(&aenderungen_todo_1);
+    log_status("fortfuehren_internal...");
     let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
-    log_status("aenderungen_zu_fa_xml (schritt 1)");
+    log_status("NasXMLFile::fortfuehren");
     log_aenderungen(&aenderungen_todo_1);
     log_status("----");
 
@@ -83,21 +96,21 @@ pub fn aenderungen_zu_fa_xml(
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
     let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
     // let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+    // let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
 
-    log_status("aenderungen_zu_fa_xml (schritt 2)");
+    log_status("NasXMLFile::fortfuehren");
     log_aenderungen(&aenderungen_todo_2);
     log_status("----");
-    
 
     let mut aenderungen_gesamt = Vec::new();
     aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
 
-    crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
-    crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
-    
-    // build XML file
-    operations_to_xml_file(&aenderungen_gesamt, objects, datum_jetzt)
+    log_status("merging inserts...");
+    let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
+    log_status("inserts merged!");
+
+    aenderungen_gesamt
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
