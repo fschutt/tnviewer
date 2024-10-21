@@ -857,12 +857,14 @@ pub fn merge_and_intersect_inserts(
         }
     }
 
+    log_status("joining.... 1");
     insert_map
     .values_mut()
     .for_each(|polys| {
-        let joined = join_polys(&polys, false, true);
+        let joined = join_polys(&polys, true, true);
         *polys = joined.iter().flat_map(crate::nas::cleanup_poly).collect();
     });
+    log_status("joining.... 2");
 
     // subtract higher-order polys
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
@@ -892,12 +894,14 @@ pub fn merge_and_intersect_inserts(
     .iter_mut()
     .for_each(|(k, polys)| {
         if let Some(tosubtract) = to_subtract_polys.get(k) {
-            let mut newpolys = polys.iter()
+            log_status("subtracting...");
+            let newpolys = polys.iter()
             .flat_map(|s| {
-                subtract_from_poly(s, &tosubtract.iter().collect::<Vec<_>>(), false)
+                subtract_from_poly(s, &tosubtract.iter().collect::<Vec<_>>(), true)
             })
             .filter_map(|p| if p.is_zero_area() { None } else { Some(p) })
             .collect::<Vec<_>>();
+            log_status("subtracted!");
             *polys = newpolys;
         }
     });
