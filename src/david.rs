@@ -84,7 +84,6 @@ pub fn build_operations(
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
     log_status("merge_and_intersect_inserts...");
     // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
-    let aenderungen_todo_1 = crate::david::merge_and_intersect_inserts(&aenderungen_todo_1);
     log_status("fortfuehren_internal...");
     let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
