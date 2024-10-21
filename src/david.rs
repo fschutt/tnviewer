@@ -72,7 +72,7 @@ pub fn aenderungen_zu_fa_xml(
     let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-    let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, &nas_xml, false);
+    // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, &nas_xml, false);
     let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
     log_status("aenderungen_zu_fa_xml (schritt 1)");
@@ -82,7 +82,7 @@ pub fn aenderungen_zu_fa_xml(
     let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
     let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
-    let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+    // let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
 
     log_status("aenderungen_zu_fa_xml (schritt 2)");
     log_aenderungen(&aenderungen_todo_2);
