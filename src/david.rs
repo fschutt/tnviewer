@@ -874,11 +874,11 @@ pub fn merge_and_intersect_inserts(
     insert_map
     .values_mut()
     .for_each(|polys| {
-        let joined = join_polys(&polys, true, true);
-        *polys = joined.iter().flat_map(crate::nas::cleanup_poly).collect();
+        *polys = join_polys(&polys, true, true);
     });
     log_status("joining.... 2");
 
+    /*
     // subtract higher-order polys
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
         
@@ -918,7 +918,8 @@ pub fn merge_and_intersect_inserts(
             *polys = newpolys;
         }
     });
-
+    */
+    
     deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
         let kuerz = kuerz.clone();
         polys.into_iter().filter_map(move |p| {
