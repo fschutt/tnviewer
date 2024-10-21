@@ -50,7 +50,8 @@
                 "za",
                 "zb",
                 "zc",
-                "zd"
+                "zd",
+                "ze"
               ],
               "ebenen":{
                 "b":{
@@ -1366,7 +1367,7 @@
         riss_config.lon, 
         riss_config.lat
       );
-      var crs = null;
+      var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
       if (window.split_flurstuecke_original) {
         crs = window.split_flurstuecke_original.crs;
       }
@@ -1393,6 +1394,7 @@
       if (riss_config.rissgebiet) {
         var f = get_rissgebiet_geojson(
           JSON.stringify(riss_config.rissgebiet),
+          crs,
         );
         var rissgebiet = JSON.parse(f);
         var style_active = {
@@ -1507,9 +1509,14 @@
       map.removeLayer(current_edit_layer);
       current_edit_layer = null;
     }
+    var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
+    if (window.split_flurstuecke_original) {
+      window.split_flurstuecke_original.crs;
+    }
     // if (uidata.tool != 'nutzung-einzeichnen') { return; }
     var newlayers = get_geojson_fuer_neue_polygone(
-      JSON.stringify(window.aenderungen)
+      JSON.stringify(window.aenderungen),
+      crs,
     );
     var newlayers = JSON.parse(newlayers);
     for (var k = 0; k < geojson_repaint_layers.length; k++) {
@@ -1573,7 +1580,7 @@
     }
     var extent = search_for_gebauede(JSON.stringify(window.projectdata), gebaeude_id);
     var extent_json = JSON.parse(extent);
-    highlightPolygon(extent_json);
+    highlightPolygon(extent_json.poly);
   }
   
   function gebaeudeLoeschenUndo(event) {
@@ -1623,6 +1630,25 @@
     highlightPolygon(extent_json);
   }
   
+  function zoomToId(id) {
+    var extent = search_for_id(JSON.stringify(window.projectdata), id);
+    var extent_json = JSON.parse(extent);
+    highlightPolygon(extent_json);
+  }
+
+  window.zoomToId = zoomToId;
+
+  function getObjIdsInExtent() {
+    var flst = get_flurstuecke_in_extent(
+      JSON.stringify(map.getBounds()),
+      JSON.stringify(window.projectdata),
+    );
+    console.log(JSON.parse(flst));
+  }
+
+  window.getObjIdsInExtent = getObjIdsInExtent;
+
+  window.zoomToId = zoomToId;
   function polyNeuUndo(event) {
     var id = event.target.dataset.polyNeuId;
     if (!window.aenderungen || window.aenderungen == null) {
@@ -1942,6 +1968,13 @@
       if (!window.csv_data || window.csv_data == null) {
         window.csv_data = {};
       }
+      var target_crs = null;
+      if (window.nas_cut_original) {
+        target_crs = window.nas_cut_original.crs;
+      }
+      if (window.split_flurstuecke_original) {
+        target_crs = window.split_flurstuecke_original.crs;
+      }
       var s = {
         info: window.info,
         risse: window.risse,
@@ -1955,6 +1988,7 @@
           JSON.stringify(window.risse),
           JSON.stringify(window.csv_data),
           JSON.stringify(window.aenderungen),
+          target_crs,
         );
       } catch (error) {
         b = JSON.stringify(s, null, 4);        
@@ -2161,7 +2195,7 @@
         "fillColor": "#000000",
         "weight": 3.0,
         "opacity": 0.8,
-        "fillOpacity": 0.5
+        "fillOpacity": 0.1
       };
       if (L.geoJSON) {
         ml = L.geoJSON(geojson2, {
@@ -2173,7 +2207,7 @@
         });
       }
       map.addLayer(ml);
-
+     
       map.fitBounds(bounds);
     }
 
@@ -2293,9 +2327,13 @@
 
     function reinitRissGebietLayer() {
       if (window.uidata.tool != 'rissgebiet-zeichnen') {
+        active_rissgebiet = null;
         return;
       }
       if (active_rissgebiet == null) {
+        if (window.uidata.tool == 'rissgebiet-zeichnen') {
+          window.uidata.tool = null;
+        }
         return;
       }
       if (!window.risse) {
@@ -2351,12 +2389,17 @@
         if (points.length == 0) {
           return;
         }
-        var f = JSON.parse(fixup_polyline(
-          JSON.stringify(window.projectdata), 
-          JSON.stringify(window.split_flurstuecke), 
+        var crs = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
+        if (window.split_flurstuecke_original) {
+          window.split_flurstuecke_original.crs;
+        }
+        var f = JSON.parse(fixup_polyline_rissgebiet(
           JSON.stringify(points),
+          crs,
         ));
-        window.risse[active_rissgebiet].rissgebiet = f.poly;
+        if (f) {
+          window.risse[active_rissgebiet].rissgebiet = f;
+        }
         window.uidata.tool = null;
         rerenderRisse();
       });
@@ -2417,7 +2460,7 @@
           alert("Bitte zuerst das Tool 'Gebäude löschen' einschalten.");
         }
       } else {
-        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst: flst }; // loeschen
+        window.aenderungen.gebaeude_loeschen["g_" + Date.now()] = { gebaeude_id: gebaeude_id, flst_id: flst }; // loeschen
       }
       reinitGebaeudeLoeschenLayer();
       replaceProjectContent();
@@ -2450,6 +2493,7 @@
         JSON.stringify(window.aenderungen),
       );
       var gebaeude_geojson = JSON.parse(f);
+      console.log(gebaeude_geojson);
       removeGebaeudeLoeschenLayer();
       var myLayer = null;
       
@@ -2477,6 +2521,7 @@
 
       var lines = JSON.parse(get_polyline_guides_in_current_bounds(
         JSON.stringify(window.split_flurstuecke),
+        window.nas_original.crs,
         JSON.stringify(aenderungen),
         JSON.stringify(map.getBounds())
       ));
@@ -2543,11 +2588,16 @@
         }
         var newpolyid = "np_" + Date.now();
         var f = JSON.parse(fixup_polyline(
-          JSON.stringify(window.projectdata), 
-          JSON.stringify(window.split_flurstuecke), 
+          JSON.stringify(window.nas_original), 
+          JSON.stringify(window.split_flurstuecke_original), 
           JSON.stringify(points),
+          newpolyid,
+          JSON.stringify(window.aenderungen),
+          JSON.stringify(window.configuration),
         ));
-        window.aenderungen.na_polygone_neu[newpolyid] = f;
+        if (f) {
+          window.aenderungen = f;
+        }
         replaceProjectContent();
         reinitMapDrawnStaticLayers();
       });
@@ -2628,12 +2678,19 @@
       if (!window.split_flurstuecke) {
         return;
       }
-      var use_dgm = event.altKey;
-      var use_background = !event.shiftKey;
+      var use_background = false;
+      var use_dgm = false;
+      if (window.confirm("PDF mit Hintergrundbilder exportieren?")) {
+        use_background = true;
+        if (window.confirm("DGM statt DOP benutzen?")) {
+          use_dgm = true;
+        }
+      }
       var pdf = await export_pdf_overview(
         JSON.stringify(window.configuration),
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
+        JSON.stringify(window.aenderungen),
         JSON.stringify(window.csv_data),
         use_dgm,
         use_background,
@@ -2641,6 +2698,8 @@
       downloadBlob(pdf, window.info.antragsnr + ".Uebersicht.zip", 'application/octet-stream');
     }
 
+    window.exportUebersicht = exportUebersicht;
+    
     function exportDavid() {
       if (!window.split_flurstuecke_original) {
         alert("Keine Projektdaten geladen!");
@@ -2653,6 +2712,7 @@
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.xml_objects),
+        JSON.stringify(window.csv_data)
       );
       downloadBlob(xml, window.info.antragsnr + ".DAVID.FA.xml", 'text/xml');
     }
@@ -2667,15 +2727,22 @@
         JSON.stringify(window.nas_original),
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.xml_objects),
+        JSON.stringify(window.csv_data),
       );
-      downloadBlob(xml, window.info.antragsnr + ".Fortgefuehr.NAS.xml", 'text/xml');
+      downloadBlob(xml, window.info.antragsnr + ".Fortgefuehrt.NAS.xml", 'text/xml');
     }
 
     async function exportGeoGraf(event) {
       
-      var render_dgm = event.altKey;
-      var render_hintergrund_vorschau = render_dgm || event.shiftKey;
-
+      var render_hintergrund_vorschau = false;
+      var render_dgm = false;
+      if (window.confirm("Hintergrundbilder in PDF exportieren?")) {
+        render_hintergrund_vorschau = true;
+        if (window.confirm("DGM statt DOP verwenden?")) {
+          render_dgm = true;
+        }
+      }
+      
       var zip = await aenderungen_zu_geograf(
         JSON.stringify(window.split_flurstuecke_original),
         JSON.stringify(window.nas_original),

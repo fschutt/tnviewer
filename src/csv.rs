@@ -107,14 +107,47 @@ pub struct CsvDataFlstInternal {
     pub notiz: String,
 }
 
+// bool: mit / ohne Gebäude-Änderung
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Status {
-    #[serde(rename = "bleibt")]
-    Bleibt,
-    #[serde(rename = "aenderung-keine-benachrichtigung")]
-    AenderungKeineBenachrichtigung,
-    #[serde(rename = "aenderung-mit-benachrichtigung")]
-    AenderungMitBenachrichtigung,
+    Bleibt(bool),
+    AenderungKeineBenachrichtigung(bool),
+    AenderungMitBenachrichtigung(bool),
+}
+
+impl Status {
+    pub fn was_modified(&self) -> bool {
+        match self {
+            Status::Bleibt(b) => *b,
+            Status::AenderungKeineBenachrichtigung(b) => *b,
+            Status::AenderungMitBenachrichtigung(_) => true,
+        }
+    }
+    pub fn get_notiz(&self, auto_notiz: &str) -> String {
+        match self {
+            Status::Bleibt(geb) => {
+                if *geb {
+                    "bleibt, Geb. gelöscht".to_string()
+                } else {
+                    "bleibt".to_string()
+                }
+            },
+            Status::AenderungKeineBenachrichtigung(geb) => {
+                if *geb {
+                    auto_notiz.to_string() + ", Geb. gelöscht"
+                } else {
+                    auto_notiz.to_string()
+                }
+            },
+            Status::AenderungMitBenachrichtigung(geb) => {
+                if *geb {
+                    auto_notiz.to_string() + ", Geb. gelöscht"
+                } else {
+                    auto_notiz.to_string()
+                }
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

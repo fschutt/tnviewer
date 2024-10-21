@@ -1,30 +1,21 @@
 use crate::{
-    csv::CsvDataType,
-    geograf::{
+    csv::CsvDataType, david::{log_aenderungen, Operation}, geograf::{
         points_to_rect,
         LinienQuadTree,
-    },
-    ui::{
+    }, ops::join_polys, pdf::Fluren, ui::{
         dist_to_segment,
         Aenderungen,
         AenderungenIntersection,
-    },
-    uuid_wasm::{
-        log_status,
-        uuid,
-    },
-    xlsx::FlstIdParsed,
-    xml::{
+    }, uuid_wasm::{log_status, log_status_clear, uuid}, xlsx::{FlstIdParsed, FlstIdParsedNumber}, xml::{
         get_all_nodes_in_subtree,
         XmlNode,
-    },
+    }
 };
 use chrono::DateTime;
 use float_cmp::approx_eq;
 use geo::{
     Area,
     Centroid,
-    ConvexHull,
     CoordsIter,
     TriangulateEarcut,
     Within,
@@ -40,6 +31,7 @@ use serde_derive::{
     Deserialize,
     Serialize,
 };
+use serde::{Deserialize, Deserializer};
 use std::collections::{
     BTreeMap,
     BTreeSet,
@@ -64,6 +56,162 @@ impl Default for NasXMLFile {
 }
 
 impl NasXMLFile {
+
+    pub fn get_de_id_in_rect(&self, r: &quadtree_f32::Rect) -> Vec<String> {
+        let ebenen = crate::get_nutzungsartenkatalog_ebenen().into_values().collect::<BTreeSet<_>>();
+        self.ebenen.iter().flat_map(|s| {
+            if !ebenen.contains(s.0) {
+                return Vec::new();
+            }
+            s.1.iter().filter_map(|q| {
+                if q.poly.get_rect().overlaps_rect(r) {
+                    let kuerzel = q.get_auto_kuerzel()?;
+                    let m2 = q.poly.area_m2().round();
+                    q.attributes.get("id").cloned().map(|s| { format!("{m2} m2 {kuerzel} ({s})")})
+                } else {
+                    None
+                }
+            }).collect()
+        }).collect()
+    }
+
+    pub fn get_fluren(&self, csv: &CsvDataType) -> Vec<SvgPolygonInner> {
+
+        let flurstuecke = csv.get_old_fallback()
+        .keys()
+        .filter_map(|s| FlstIdParsed::from_str(s).parse_num())
+        .collect::<Vec<_>>();
+        
+        let flurstuecke_nums = flurstuecke.iter().cloned().collect::<BTreeSet<_>>();
+        log_status(&format!("{} flurstuecke für fluren", flurstuecke_nums.len()));
+
+        let alle_flst = self.ebenen.get("AX_Flurstueck")
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|flst| {
+            let num = FlstIdParsed::from_str(&flst.attributes.get("flurstueckskennzeichen")?).parse_num()?;
+            if flurstuecke_nums.contains(&num) {
+                Some(flst.poly.clone())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>();
+        log_status(&format!("alle flst: {}", alle_flst.len()));
+
+        let jp = join_polys(&alle_flst, false, false)
+        .iter()
+        .flat_map(crate::nas::cleanup_poly)
+        .collect::<Vec<_>>();
+        
+        log_status(&format!("jp len: {}", jp.len()));
+
+        jp
+    }
+
+    pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml, csv: &CsvDataType) -> Self {
+
+        log_status("joining gemarkung...");
+        let fluren = self.get_fluren(csv);
+        log_status(&format!("fluren len {}", fluren.len()));
+        for f in fluren.iter() {
+            log_status(&format!("flur: {} m2", f.area_m2().round()));
+        }
+        log_status("Gemarkung joined!");
+
+        let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
+        let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
+        let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
+        let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
+        let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
+
+        log_status("NasXMLFile::fortfuehren");
+        log_aenderungen(&aenderungen_todo_1);
+        log_status("----");
+
+        let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
+        let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
+        let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
+        let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+        let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
+
+        log_status("NasXMLFile::fortfuehren");
+        log_aenderungen(&aenderungen_todo_2);
+        log_status("----");
+
+        fortgefuehrt_2
+    }
+
+
+    pub fn fortfuehren_internal(&self, aenderungen_todo: &[Operation]) -> Self {
+
+        use crate::david::Operation::*;
+
+        let objs_to_delete = aenderungen_todo.iter().filter_map(|s| {
+            match s {
+                Delete { obj_id, .. } => Some(obj_id.clone()),
+                _ => None,
+            }
+        }).collect::<BTreeSet<_>>();
+
+        let ebenen = self.ebenen.iter().map(|(k, v)| {
+            (k.clone(), v.iter().filter_map(|q| {
+                if let Some(s) = q.attributes.get("id") {
+                    if objs_to_delete.contains(s) { None } else { Some(q) }
+                } else {
+                    Some(q)
+                }
+            }).collect::<Vec<_>>())
+        }).collect::<BTreeMap<_, _>>();
+
+        let objs_to_replace = aenderungen_todo.iter().filter_map(|s| {
+            match s {
+                Replace { obj_id, poly_neu, .. } => Some((obj_id.clone(), poly_neu)),
+                _ => None,
+            }
+        }).collect::<BTreeMap<_, _>>();
+
+        let mut ebenen = ebenen.iter().map(|(k, v)| {
+            (k.clone(), v.iter().filter_map(|q| {
+                if let Some(s) = q.attributes.get("id") {
+                    if let Some(repl) = objs_to_replace.get(s) {
+                        Some(TaggedPolygon { poly: (*repl).clone(), attributes: q.attributes.clone() })
+                    } else { 
+                        Some((*q).clone()) 
+                    }
+                } else {
+                    Some((*q).clone())
+                }
+            }).collect::<Vec<_>>())
+        }).collect::<BTreeMap<_, _>>();
+
+        for (id, a) in aenderungen_todo.iter().enumerate() {
+            match a {
+                Insert { ebene, kuerzel, poly_neu } => {
+                    let id = ("DE_001".to_string() + &format!("{id:010}"));
+                    let extra_attr = vec![
+                        ("AX_Ebene", ebene.as_str()),
+                        ("id", id.as_str()),
+                    ];
+                    let tp = TaggedPolygon {
+                        poly: poly_neu.clone(),
+                        attributes: TaggedPolygon::get_auto_attributes_for_kuerzel(&kuerzel, &extra_attr),
+                    };
+                    
+                    ebenen
+                    .entry(ebene.clone())
+                    .or_insert_with(|| Vec::new())
+                    .push(tp);
+                },
+                _ => { },
+            }
+        }
+
+        Self {
+            crs: self.crs.clone(),
+            ebenen: ebenen
+        }
+    }
+
     pub fn get_linien_quadtree(&self) -> LinienQuadTree {
         let default = Vec::new();
         let mut alle_linie_split_flurstuecke = self
@@ -72,12 +220,7 @@ impl NasXMLFile {
             .unwrap_or(&default)
             .iter()
             .flat_map(|q| {
-                let mut lines = q
-                    .poly
-                    .outer_rings
-                    .iter()
-                    .flat_map(crate::geograf::l_to_points)
-                    .collect::<Vec<_>>();
+                let mut lines = crate::geograf::l_to_points(&q.poly.outer_ring);
                 lines.extend(
                     q.poly
                         .inner_rings
@@ -173,7 +316,12 @@ impl NasXMLFile {
                 let flst = ax_flurstuecke_map
                     .iter()
                     .filter(|(_id, r, _poly)| flst_rect.overlaps_rect(r))
-                    .filter(|(_id, _r, poly)| crate::nas::relate(poly, &tp.poly, 1.0).overlaps())
+                    .filter(|(_id, _r, poly)| {
+                        let relate = crate::nas::relate(poly, &tp.poly, 1.0);
+                        relate.overlaps()
+                        || relate.a_contained_in_b()
+                        || relate.b_contained_in_a()
+                    })
                     .map(|(id, _, _)| id.clone())
                     .collect::<Vec<_>>();
 
@@ -192,7 +340,7 @@ impl NasXMLFile {
             })
             .collect::<BTreeMap<_, _>>();
 
-        let geom = gebaeude_avail.iter().filter_map(|(_k, v)| {
+        let geom = gebaeude_avail.iter().map(|(_k, v)| {
 
             let holes = v.poly.poly.inner_rings.iter()
             .map(convert_svgline_to_string)
@@ -209,17 +357,8 @@ impl NasXMLFile {
             .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
             .collect::<Vec<_>>().join(",");
 
-            if v.poly.poly.outer_rings.len() > 1 {
-                let polygons = v.poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-            } else if let Some(p) = v.poly.poly.outer_rings.iter().next() {
-                let poly = convert_poly_to_string(p, &holes);
-                Some(format!(
-                    "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
-            } else {
-                None
-            }
+            let poly = convert_poly_to_string(&v.poly.poly.outer_ring, &holes);
+            format!("{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}")
         }).collect::<Vec<_>>().join(",");
 
         format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
@@ -277,7 +416,7 @@ impl NasXMLFile {
 }
 
 pub fn tagged_polys_to_featurecollection(objekte: &[TaggedPolygon]) -> String {
-    let geom = objekte.iter().filter_map(|poly| {
+    let geom = objekte.iter().map(|poly| {
 
         let holes = poly.poly.inner_rings.iter()
         .map(convert_svgline_to_string)
@@ -288,17 +427,8 @@ pub fn tagged_polys_to_featurecollection(objekte: &[TaggedPolygon]) -> String {
         .iter().map(|(k, v)| format!("{k:?}: {v:?}"))
         .collect::<Vec<_>>().join(",");
 
-        if poly.poly.outer_rings.len() > 1 {
-            let polygons = poly.poly.outer_rings.iter().map(|p| convert_poly_to_string(&p, &holes)).collect::<Vec<_>>().join(",");
-            Some(format!(
-                "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"MultiPolygon\", \"coordinates\": [{polygons}] }} }}"))
-        } else if let Some(p) = poly.poly.outer_rings.iter().next() {
-            let poly = convert_poly_to_string(p, &holes);
-            Some(format!(
-                "{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}"))
-        } else {
-            None
-        }
+        let poly = convert_poly_to_string(&poly.poly.outer_ring, &holes);
+        format!("{{ \"type\": \"Feature\", \"properties\": {{ {feature_map} }}, \"geometry\": {{ \"type\": \"Polygon\", \"coordinates\": {poly} }} }}")
     }).collect::<Vec<_>>().join(",");
 
     format!("{{ \"type\": \"FeatureCollection\", \"features\": [{geom}] }}")
@@ -422,7 +552,6 @@ impl TaggedPolygon {
         l: &SvgLine,
         start: &SvgPoint,
         end: &SvgPoint,
-        _log: &mut Vec<String>,
         dst: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
@@ -633,15 +762,14 @@ impl TaggedPolygon {
     }
 
     fn check_lines_for_points(
-        l: &[SvgLine],
+        l: &[&SvgLine],
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         dst: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
         for l in l {
-            let v = Self::check_line_for_points(l, start, end, log, dst, maxdev_followline);
+            let v = Self::check_line_for_points(l, start, end, dst, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }
@@ -653,15 +781,13 @@ impl TaggedPolygon {
         &self,
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdev_followline: f64,
     ) -> Vec<SvgPoint> {
         let v = Self::check_lines_for_points(
-            &self.poly.outer_rings,
+            &[&self.poly.outer_ring],
             start,
             end,
-            log,
             maxdst_line,
             maxdev_followline,
         );
@@ -669,10 +795,9 @@ impl TaggedPolygon {
             return v;
         }
         let v = Self::check_lines_for_points(
-            &self.poly.outer_rings,
+            &[&self.poly.outer_ring],
             start,
             end,
-            log,
             maxdst_line,
             maxdev_followline,
         );
@@ -683,7 +808,7 @@ impl TaggedPolygon {
     }
 
     pub fn get_groesse(&self) -> f64 {
-        translate_to_geo_poly(&self.poly)
+        translate_to_geo_poly_special_shared(&[&self.poly])
             .0
             .iter()
             .map(|p| p.signed_area())
@@ -747,14 +872,46 @@ impl SvgPolygon {
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPolygonInner {
-    pub outer_rings: Vec<SvgLine>,
+    #[serde(alias = "outer_rings", deserialize_with = "linevec_deserialize")]
+    pub outer_ring: SvgLine,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub inner_rings: Vec<SvgLine>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum SvgLineOrVec {
+    Old(Vec<SvgLine>),
+    New(SvgLine),
+}
+
+fn linevec_deserialize<'de, D: Deserializer<'de>>(f: D) -> Result<SvgLine, D::Error> {
+    let s = SvgLineOrVec::deserialize(f)?;
+    match s {
+        SvgLineOrVec::Old(o) => Ok(o.get(0).cloned().unwrap_or_default()),
+        SvgLineOrVec::New(o) => Ok(o),
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum SvgLineOrVecString {
+    Old(Vec<String>),
+    New(String),
+}
+
+fn linevec_deserialize_string<'de, D: Deserializer<'de>>(f: D) -> Result<String, D::Error> {
+    let s = SvgLineOrVecString::deserialize(f)?;
+    match s {
+        SvgLineOrVecString::Old(o) => Ok(o.get(0).cloned().unwrap_or_default()),
+        SvgLineOrVecString::New(o) => Ok(o),
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SvgPolygonSerialize {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub or: Vec<String>,
+    #[serde(deserialize_with = "linevec_deserialize_string")]
+    pub or: String,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub ir: Vec<String>,
 }
@@ -762,12 +919,7 @@ pub struct SvgPolygonSerialize {
 impl SvgPolygonSerialize {
     pub fn get_old(&self) -> SvgPolygonInner {
         SvgPolygonInner {
-            outer_rings: self
-                .or
-                .iter()
-                .map(|s| s.trim())
-                .map(|q| Self::line_from(q))
-                .collect(),
+            outer_ring: Self::line_from(&self.or.trim()),
             inner_rings: self
                 .ir
                 .iter()
@@ -796,11 +948,7 @@ impl SvgPolygonSerialize {
 impl SvgPolygonInner {
     fn ser(&self) -> SvgPolygonSerialize {
         SvgPolygonSerialize {
-            or: self
-                .outer_rings
-                .iter()
-                .map(|s| Self::serialize_line(s))
-                .collect::<Vec<_>>(),
+            or: Self::serialize_line(&self.outer_ring),
             ir: self
                 .inner_rings
                 .iter()
@@ -830,36 +978,6 @@ pub enum EqualsAnyRingStatus {
 }
 
 impl SvgPolygonInner {
-    pub fn recombine_polys(&self) -> Vec<Self> {
-        let outer_rings = self
-            .outer_rings
-            .iter()
-            .map(|l| Self::from_line(l))
-            .collect::<Vec<_>>();
-
-        let inner_rings = self
-            .inner_rings
-            .iter()
-            .map(|l| Self::from_line(l))
-            .collect::<Vec<_>>();
-
-        outer_rings
-            .iter()
-            .map(|p| Self {
-                outer_rings: p.outer_rings.clone(),
-                inner_rings: inner_rings
-                    .iter()
-                    .flat_map(|q| {
-                        if translate_to_geo_poly(q).is_within(&translate_to_geo_poly(q)) {
-                            q.outer_rings.clone()
-                        } else {
-                            Vec::new()
-                        }
-                    })
-                    .collect(),
-            })
-            .collect()
-    }
 
     pub fn overlaps(&self, other: &Self) -> bool {
         let self_rect = self.get_rect();
@@ -868,15 +986,13 @@ impl SvgPolygonInner {
             return false;
         }
 
-        for l in self.outer_rings.iter() {
-            for p in l.points.iter() {
-                if point_is_in_polygon(p, other) {
-                    return true;
-                }
+        for p in self.outer_ring.points.iter() {
+            if point_is_in_polygon(p, other) {
+                return true;
             }
         }
 
-        let triangle_points = translate_to_geo_poly(&self)
+        let triangle_points = translate_to_geo_poly_special_shared(&[self])
             .0
             .iter()
             .flat_map(|f| f.earcut_triangles())
@@ -890,7 +1006,7 @@ impl SvgPolygonInner {
     }
 
     pub fn get_triangle_points(&self) -> Vec<SvgPoint> {
-        translate_to_geo_poly(&self)
+        translate_to_geo_poly_special_shared(&[self])
             .0
             .iter()
             .flat_map(|f| f.earcut_triangles())
@@ -906,31 +1022,29 @@ impl SvgPolygonInner {
     }
 
     pub fn is_completely_inside_of(&self, other: &Self) -> bool {
-        let triangle_points = translate_to_geo_poly(&self)
+        let triangle_points = translate_to_geo_poly_special_shared(&[self])
             .0
             .iter()
             .flat_map(|f| f.earcut_triangles())
             .map(|i| i.centroid())
             .collect::<Vec<_>>();
 
-        let other = translate_to_geo_poly(other);
+        let other = translate_to_geo_poly_special_shared(&[other]);
 
         triangle_points.iter().all(|p| p.is_within(&other))
     }
 
     pub fn from_line(l: &SvgLine) -> Self {
         Self {
-            outer_rings: vec![l.clone()],
+            outer_ring: l.clone(),
             inner_rings: Vec::new(),
         }
     }
 
     pub fn contains_polygon(&self, other: &Self) -> bool {
-        for l in other.outer_rings.iter() {
-            for p in l.points.iter() {
-                if !point_is_in_polygon(p, self) {
-                    return false;
-                }
+        for p in other.outer_ring.points.iter() {
+            if !point_is_in_polygon(p, self) {
+                return false;
             }
         }
         for l in other.inner_rings.iter() {
@@ -961,15 +1075,27 @@ impl SvgPolygonInner {
         HighwayHasher::default().hash64(&bytes)
     }
 
+
+    pub fn get_all_points(&self) -> Vec<SvgPoint> {
+        let mut v = Vec::new();
+        for p in self.outer_ring.points.iter() {
+            v.push(*p);
+        }
+        for l in self.inner_rings.iter() {
+            for p in l.points.iter() {
+                v.push(*p);
+            }
+        }
+        v
+    }
+
     pub fn get_all_pointcoords_sorted(&self) -> Vec<[usize; 2]> {
         let mut v = BTreeSet::new();
-        for l in self.outer_rings.iter() {
-            for p in l.points.iter() {
-                v.insert([
-                    (p.x * 1000.0).round() as usize,
-                    (p.y * 1000.0).round() as usize,
-                ]);
-            }
+        for p in self.outer_ring.points.iter() {
+            v.insert([
+                (p.x * 1000.0).round() as usize,
+                (p.y * 1000.0).round() as usize,
+            ]);
         }
         for l in self.inner_rings.iter() {
             for p in l.points.iter() {
@@ -993,62 +1119,45 @@ impl SvgPolygonInner {
     }
 
     pub fn get_fit_bounds(&self) -> [[f64; 2]; 2] {
-        let mut min_x = self
-            .outer_rings
-            .get(0)
-            .and_then(|s| s.points.get(0))
+        let mut min_x = self.outer_ring.points.get(0)
             .map(|p| p.x)
             .unwrap_or(0.0);
-        let mut max_x = self
-            .outer_rings
-            .get(0)
-            .and_then(|s| s.points.get(0))
+        let mut max_x = self.outer_ring.points.get(0)
             .map(|p| p.x)
             .unwrap_or(0.0);
-        let mut min_y = self
-            .outer_rings
-            .get(0)
-            .and_then(|s| s.points.get(0))
+        let mut min_y = self.outer_ring.points.get(0)
             .map(|p| p.y)
             .unwrap_or(0.0);
-        let mut max_y = self
-            .outer_rings
-            .get(0)
-            .and_then(|s| s.points.get(0))
+        let mut max_y = self.outer_ring.points.get(0)
             .map(|p| p.y)
             .unwrap_or(0.0);
-        for l in self.outer_rings.iter() {
-            for p in l.points.iter() {
-                if p.x > max_x {
-                    max_x = p.x;
-                }
-                if p.y > max_y {
-                    max_y = p.y;
-                }
-                if p.x < min_x {
-                    min_x = p.x;
-                }
-                if p.y < min_y {
-                    min_y = p.y;
-                }
+
+        for p in self.outer_ring.points.iter() {
+            if p.x > max_x {
+                max_x = p.x;
+            }
+            if p.y > max_y {
+                max_y = p.y;
+            }
+            if p.x < min_x {
+                min_x = p.x;
+            }
+            if p.y < min_y {
+                min_y = p.y;
             }
         }
 
         [[min_y, min_x], [max_y, max_x]]
     }
 
-    pub fn insert_points_from(&mut self, other: &Self, maxdst: f64) {
-        self.outer_rings = self
-            .outer_rings
-            .iter()
-            .map(|o| o.insert_points_from(other, maxdst))
-            .collect();
+    pub fn insert_points_from(&mut self, other: &Self, maxdst: f64, insert_all_points: bool) {
+        self.outer_ring = self.outer_ring.insert_points_from(other, maxdst, insert_all_points);
         self.inner_rings = self
             .inner_rings
             .iter()
-            .map(|o| o.insert_points_from(other, maxdst))
+            .map(|o| o.insert_points_from(other, maxdst, insert_all_points))
             .collect();
-        self.correct_almost_touching_points(other, maxdst, false);
+        self.correct_almost_touching_points(other, maxdst * 2.0, false);
     }
 
     pub fn correct_almost_touching_points(
@@ -1060,16 +1169,15 @@ impl SvgPolygonInner {
         let mut other_points = Vec::new();
         let mut other_lines = Vec::new();
 
-        for l in other.outer_rings.iter() {
-            for p in l.points.iter() {
-                other_points.push(*p);
-            }
-            if correct_points_on_lines {
-                for p in l.points.windows(2) {
-                    match p {
-                        &[a, b] => other_lines.push((a, b)),
-                        _ => {}
-                    }
+        for p in other.outer_ring.points.iter() {
+            other_points.push(*p);
+        }
+
+        if correct_points_on_lines {
+            for p in other.outer_ring.points.windows(2) {
+                match p {
+                    &[a, b] => other_lines.push((a, b)),
+                    _ => {}
                 }
             }
         }
@@ -1101,19 +1209,17 @@ impl SvgPolygonInner {
             max_items_points,
         );
 
-        for l in self.outer_rings.iter_mut() {
-            for p in l.points.iter_mut() {
-                let mut closest_other_point = qt_points
-                    .get_points_contained_by(&p.get_rect(maxdst))
-                    .into_iter()
-                    .map(|p| SvgPoint { x: p.x, y: p.y })
-                    .filter(|s| s.dist(&p) < maxdst)
-                    .collect::<Vec<_>>();
-                closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
-                if let Some(first) = closest_other_point.first() {
-                    *p = *first;
-                } else {
-                }
+        for p in self.outer_ring.points.iter_mut() {
+            let mut closest_other_point = qt_points
+                .get_points_contained_by(&p.get_rect(maxdst))
+                .into_iter()
+                .map(|p| SvgPoint { x: p.x, y: p.y })
+                .filter(|s| s.dist(&p) < maxdst)
+                .collect::<Vec<_>>();
+            closest_other_point.sort_by(|a, b| a.dist(&p).total_cmp(&b.dist(&p)));
+            if let Some(first) = closest_other_point.first() {
+                *p = *first;
+            } else {
             }
         }
 
@@ -1144,19 +1250,17 @@ impl SvgPolygonInner {
             max_items_lines,
         );
 
-        for l in self.outer_rings.iter_mut() {
-            for p in l.points.iter_mut() {
-                let mut closest_other_lines = qt_lines
-                    .get_ids_that_overlap(&p.get_rect(maxdst))
-                    .into_iter()
-                    .filter_map(|i| other_lines.get(i.0))
-                    .map(|q| dist_to_segment(*p, q.0, q.1))
-                    .filter(|s| s.distance < maxdst)
-                    .collect::<Vec<_>>();
-                closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
-                if let Some(first) = closest_other_lines.first() {
-                    *p = first.nearest_point;
-                }
+        for p in self.outer_ring.points.iter_mut() {
+            let mut closest_other_lines = qt_lines
+                .get_ids_that_overlap(&p.get_rect(maxdst))
+                .into_iter()
+                .filter_map(|i| other_lines.get(i.0))
+                .map(|q| dist_to_segment(*p, q.0, q.1))
+                .filter(|s| s.distance < maxdst)
+                .collect::<Vec<_>>();
+            closest_other_lines.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+            if let Some(first) = closest_other_lines.first() {
+                *p = first.nearest_point;
             }
         }
 
@@ -1179,11 +1283,7 @@ impl SvgPolygonInner {
 
     pub fn inverse_point_order(&self) -> Self {
         Self {
-            outer_rings: self
-                .outer_rings
-                .iter()
-                .map(|s| s.inverse_point_order())
-                .collect(),
+            outer_ring: self.outer_ring.inverse_point_order(),
             inner_rings: self
                 .inner_rings
                 .iter()
@@ -1210,16 +1310,13 @@ impl SvgPolygonInner {
     }
 
     pub fn is_zero_area(&self) -> bool {
-        if self.outer_rings.is_empty() {
-            return true;
-        }
         let area_m2 = self.area_m2();
         let reverse = self.inverse_point_order().area_m2();
         area_m2 < 1.0 && reverse < 1.0
     }
 
     pub fn area_m2(&self) -> f64 {
-        crate::nas::translate_to_geo_poly(&self)
+        crate::nas::translate_to_geo_poly_special_shared(&[self])
             .0
             .iter()
             .map(|p| p.signed_area())
@@ -1227,42 +1324,36 @@ impl SvgPolygonInner {
     }
 
     pub fn equals_any_ring(&self, other: &Self) -> EqualsAnyRingStatus {
-        if self.outer_rings.len() != 1 {
-            return EqualsAnyRingStatus::NotEqualToAnyRing;
-        }
-        let first_ring = &self.outer_rings[0];
+        let first_ring = &self.outer_ring;
+        let or = &other.outer_ring;
 
-        for (i, or) in other.outer_rings.iter().enumerate() {
-            if or.equals(first_ring) {
-                return EqualsAnyRingStatus::EqualToRing(i);
-            }
-
-            let points_outside = Self::is_center_inside(first_ring, or);
-            let points_inside = Self::is_center_inside(first_ring, or);
-            let any_points_on_line = Self::any_points_equal(first_ring, or);
-
-            if any_points_on_line {
-                match (points_outside, points_inside) {
-                    (true, false) => return EqualsAnyRingStatus::TouchesOutside,
-                    (false, true) => return EqualsAnyRingStatus::TouchesInside,
-                    (true, true) => return EqualsAnyRingStatus::OverlapsAndTouches,
-                    (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
-                }
-            } else {
-                match (points_outside, points_inside) {
-                    (true, false) => return EqualsAnyRingStatus::DistinctOutside,
-                    (false, true) => return EqualsAnyRingStatus::ContainedInside,
-                    (true, true) => return EqualsAnyRingStatus::OverlapsWithoutTouching,
-                    (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
-                }
-            }
+        if or.equals(first_ring) {
+            return EqualsAnyRingStatus::EqualToRing(0);
         }
 
-        EqualsAnyRingStatus::NotEqualToAnyRing
+        let points_outside = Self::is_center_inside(first_ring, or);
+        let points_inside = Self::is_center_inside(first_ring, or);
+        let any_points_on_line = Self::any_points_equal(first_ring, or);
+
+        if any_points_on_line {
+            match (points_outside, points_inside) {
+                (true, false) => return EqualsAnyRingStatus::TouchesOutside,
+                (false, true) => return EqualsAnyRingStatus::TouchesInside,
+                (true, true) => return EqualsAnyRingStatus::OverlapsAndTouches,
+                (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
+            }
+        } else {
+            match (points_outside, points_inside) {
+                (true, false) => return EqualsAnyRingStatus::DistinctOutside,
+                (false, true) => return EqualsAnyRingStatus::ContainedInside,
+                (true, true) => return EqualsAnyRingStatus::OverlapsWithoutTouching,
+                (false, false) => return EqualsAnyRingStatus::NotEqualToAnyRing,
+            }
+        }
     }
 
     pub fn any_point_outside(a: &SvgLine, b: &SvgLine) -> bool {
-        let tr = translate_to_geo_poly(&SvgPolygonInner::from_line(a));
+        let tr = translate_to_geo_poly_special_shared(&[&SvgPolygonInner::from_line(a)]);
         let a_poly = match tr.0.get(0) {
             Some(s) => s,
             None => return false,
@@ -1286,7 +1377,7 @@ impl SvgPolygonInner {
     }
 
     pub fn is_center_inside(a: &SvgLine, b: &SvgLine) -> bool {
-        let tr = translate_to_geo_poly(&SvgPolygonInner::from_line(a));
+        let tr = translate_to_geo_poly_special_shared(&[&SvgPolygonInner::from_line(a)]);
         let a_poly = match tr.0.get(0) {
             Some(s) => s,
             None => return false,
@@ -1307,18 +1398,6 @@ impl SvgPolygonInner {
         return false;
     }
 
-    fn equals_ring_dst(a: &SvgLine, b: &SvgLine) -> bool {
-        let mut a_points = a.points.clone();
-        a_points.dedup_by(|a, b| a.equals(b));
-
-        let mut b_points = b.points.clone();
-        b_points.dedup_by(|a, b| a.equals(b));
-
-        a_points
-            .iter()
-            .all(|a| b_points.iter().any(|p| p.dist(a) < 0.005))
-    }
-
     fn any_points_equal(a: &SvgLine, b: &SvgLine) -> bool {
         let mut a_points = a.points.clone();
         a_points.dedup_by(|a, b| a.equals(b));
@@ -1333,20 +1412,16 @@ impl SvgPolygonInner {
 
     pub fn translate_y(&self, newy: f64) -> Self {
         Self {
-            outer_rings: self
-                .outer_rings
-                .iter()
-                .map(|s| SvgLine {
-                    points: s
-                        .points
-                        .iter()
-                        .map(|p| SvgPoint {
-                            x: p.x,
-                            y: p.y + newy,
-                        })
-                        .collect(),
-                })
-                .collect(),
+            outer_ring: SvgLine {
+                points: self.outer_ring
+                    .points
+                    .iter()
+                    .map(|p| SvgPoint {
+                        x: p.x,
+                        y: p.y + newy,
+                    })
+                    .collect(),
+            },
             inner_rings: self
                 .inner_rings
                 .iter()
@@ -1365,22 +1440,17 @@ impl SvgPolygonInner {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.outer_rings.is_empty() && self.inner_rings.is_empty()
+        self.outer_ring.points.is_empty() && self.inner_rings.is_empty()
     }
 
     pub fn equals(&self, other: &Self) -> bool {
-        self.outer_rings.len() == other.outer_rings.len()
-            && self.inner_rings.len() == other.inner_rings.len()
-            && self
-                .outer_rings
-                .iter()
-                .zip(other.outer_rings.iter())
-                .all(|(a, b)| a.equals(b))
-            && self
-                .inner_rings
-                .iter()
-                .zip(other.inner_rings.iter())
-                .all(|(a, b)| a.equals(b))
+        self.outer_ring.equals(&other.outer_ring)
+        && self.inner_rings.len() == other.inner_rings.len()
+        && self
+            .inner_rings
+            .iter()
+            .zip(other.inner_rings.iter())
+            .all(|(a, b)| a.equals(b))
     }
 
     fn round_line(s: &SvgLine) -> SvgLine {
@@ -1391,7 +1461,7 @@ impl SvgPolygonInner {
 
     pub fn round_to_3dec(&self) -> Self {
         Self {
-            outer_rings: self.outer_rings.iter().map(Self::round_line).collect(),
+            outer_ring: Self::round_line(&self.outer_ring),
             inner_rings: self.inner_rings.iter().map(Self::round_line).collect(),
         }
     }
@@ -1401,7 +1471,7 @@ impl SvgPolygonInner {
             return None;
         }
 
-        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = translate_to_geo_poly_special_shared(&[self]).0;
         let first_poly = first_poly.first()?;
 
         let mut triangles = first_poly.earcut_triangles();
@@ -1426,7 +1496,7 @@ impl SvgPolygonInner {
             return None;
         }
 
-        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = translate_to_geo_poly_special_shared(&[self]).0;
         let first_poly = first_poly.first()?;
 
         let mut triangles = first_poly.earcut_triangles();
@@ -1471,7 +1541,7 @@ impl SvgPolygonInner {
             return Some(center);
         }
 
-        let first_poly = translate_to_geo_poly(self).0;
+        let first_poly = translate_to_geo_poly_special_shared(&[self]).0;
         let first_poly = first_poly.first()?;
 
         let triangles = first_poly.earcut_triangles();
@@ -1536,13 +1606,10 @@ impl SvgLine {
         }
     }
 
-    pub fn insert_points_from(&self, other: &SvgPolygonInner, maxdst: f64) -> SvgLine {
+    // insert_all_points = false, except for last join_polys
+    pub fn insert_points_from(&self, other: &SvgPolygonInner, maxdst: f64, insert_all_points: bool) -> SvgLine {
         use crate::geograf::l_to_points;
-        let mut other_lines = other
-            .outer_rings
-            .iter()
-            .flat_map(|ol| l_to_points(ol))
-            .collect::<Vec<_>>();
+        let mut other_lines = l_to_points(&other.outer_ring);
         other_lines.extend(other.inner_rings.iter().flat_map(|ol| l_to_points(ol)));
 
         let mut newpoints = self
@@ -1554,22 +1621,33 @@ impl SvgLine {
                     .filter_map(|(start, end)| {
                         let dst = dist_to_segment(*p, *start, *end);
                         if dst.distance < maxdst {
-                            Some(dst)
+                            Some(dst.nearest_point)
                         } else {
                             None
                         }
                     })
-                    .map(|s| s.nearest_point)
                     .collect::<Vec<_>>();
 
                 nearest_other_line.sort_by(|a, b| a.dist(p).total_cmp(&b.dist(p)));
 
                 let mut ret = vec![*p];
-                ret.append(&mut nearest_other_line);
+
+                if insert_all_points {
+                    ret.extend(nearest_other_line.iter().cloned());
+                } else {
+                    if let Some(first) = nearest_other_line.first() {
+                        ret.push(*first);
+                    }
+                }
+
                 ret
             })
             .collect::<Vec<_>>();
 
+        if let Some(last) = self.points.last() {
+            newpoints.push(*last);
+        }
+        
         newpoints.dedup_by(|a, b| a.equals(b));
 
         SvgLine { points: newpoints }
@@ -1619,7 +1697,7 @@ impl SvgLine {
 
     pub fn get_rect(&self) -> quadtree_f32::Rect {
         SvgPolygonInner {
-            outer_rings: vec![self.clone()],
+            outer_ring: self.clone(),
             inner_rings: Vec::new(),
         }
         .get_rect()
@@ -1695,7 +1773,7 @@ impl Ord for SvgPoint {
 }
 
 /// Parse the XML, returns [AX_Gebauede => (Polygon)]
-pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFile, String> {
+pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &BTreeSet<String>) -> Result<NasXMLFile, String> {
     // CRS parsen
 
     let mut crs: Option<String> = None;
@@ -1724,7 +1802,6 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
     };
 
     // Objekte parsen
-    let whitelist = std::collections::BTreeSet::from_iter(whitelist.iter().cloned());
     let objekte_nodes = get_all_nodes_in_subtree(&xml, "member");
     let mut objekte = BTreeMap::new();
     for o in objekte_nodes.iter() {
@@ -1740,9 +1817,9 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
             continue;
         }
         let key = o_node.node_type.clone();
-        let poly = match xml_select_svg_polygon(&o_node.children) {
-            Some(s) => s,
-            None => continue,
+        let poly = xml_select_svg_polygon(&o_node.children);
+        if poly.is_empty() {
+            continue;
         };
 
         let mut attributes = o_node
@@ -1756,9 +1833,10 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
         attributes.extend(o_node.attributes.clone().into_iter());
         attributes.insert("AX_Ebene".to_string(), key.clone());
 
-        let tp = TaggedPolygon { poly, attributes };
-
-        objekte.entry(key).or_insert_with(|| Vec::new()).push(tp);
+        for s in poly {
+            let tp = TaggedPolygon { poly: s, attributes: attributes.clone() };
+            objekte.entry(key.clone()).or_insert_with(|| Vec::new()).push(tp);
+        }
     }
 
     Ok(NasXMLFile {
@@ -1767,10 +1845,51 @@ pub fn parse_nas_xml(xml: Vec<XmlNode>, whitelist: &[String]) -> Result<NasXMLFi
     })
 }
 
-fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
+enum LineType {
+    LineStringSegment { points: Vec<SvgPoint> },
+    Arc { points: Vec<SvgPoint> },
+}
+
+impl LineType {
+    pub fn get_points(&self) -> Vec<SvgPoint> {
+        match self {
+            LineType::LineStringSegment { points } => points.clone(),
+            LineType::Arc { points } => {
+                // TODO: incorrect, but probably ok for now
+                points.clone()
+            },
+        }
+    }
+}
+
+fn get_children_points(s: &XmlNode) -> Vec<SvgPoint> {
+    s.children
+    .iter()
+    .filter_map(|s| s.text.clone())
+    .flat_map(|text| {
+
+        let pts = text
+            .split_whitespace()
+            .filter_map(|s| s.parse::<f64>().ok())
+            .collect::<Vec<_>>();
+
+        pts.chunks(2)
+            .filter_map(|f| match f {
+                [east, false_north] => Some(SvgPoint {
+                    x: *east,
+                    y: *false_north,
+                }),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+
+    }).collect()
+}
+
+fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Vec<SvgPolygonInner> {
     let patches = get_all_nodes_in_subtree(&xml, "PolygonPatch");
     if patches.is_empty() {
-        return None;
+        return Vec::new();
     }
 
     let mut outer_rings = Vec::new();
@@ -1787,43 +1906,36 @@ fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
             _ => continue,
         };
 
-        let linestrings = get_all_nodes_in_subtree(&e_i.children, "LineStringSegment");
+        let linestrings = get_all_nodes_in_subtree(&e_i.children, "segments");
 
         let linestring_points = linestrings
             .iter()
             .flat_map(|s| {
-                s.children
-                    .iter()
-                    .filter_map(|s| s.text.clone())
-                    .map(|text| {
-                        let pts = text
-                            .split_whitespace()
-                            .filter_map(|s| s.parse::<f64>().ok())
-                            .collect::<Vec<_>>();
-                        pts.chunks(2)
-                            .filter_map(|f| match f {
-                                [east, false_north] => Some(SvgPoint {
-                                    x: *east,
-                                    y: *false_north,
-                                }),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                    })
+                s.children.iter().filter_map(|s| {
+                    match s.node_type.as_str() {
+                        "LineStringSegment" => Some(LineType::LineStringSegment { points: get_children_points(s) }),
+                        "Arc" => Some(LineType::Arc { points: get_children_points(s) }),
+                        _ => None,
+                    }
+                })
             })
             .collect::<Vec<_>>();
 
         let mut line_points = linestring_points
             .into_iter()
-            .flat_map(|f| f.into_iter())
+            .flat_map(|f| f.get_points())
             .collect::<Vec<_>>();
+
         line_points.dedup();
+        
         if line_points.len() < 3 {
-            return None;
+            return Vec::new();
         }
+        
         let line = SvgLine {
             points: line_points,
         };
+        
         if external {
             outer_rings.push(line);
         } else {
@@ -1832,13 +1944,10 @@ fn xml_select_svg_polygon(xml: &Vec<XmlNode>) -> Option<SvgPolygonInner> {
     }
 
     if outer_rings.is_empty() && inner_rings.is_empty() {
-        return None;
+        return Vec::new();
     }
 
-    Some(SvgPolygonInner {
-        outer_rings: outer_rings,
-        inner_rings: inner_rings,
-    })
+    recombine_polys(&outer_rings, &inner_rings)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1851,7 +1960,7 @@ pub struct MemberObject {
     pub hat: Option<String>,
     pub ist_teil_von: Option<String>,
     pub extra_attribute: BTreeMap<String, String>,
-    pub poly: Option<SvgPolygonInner>,
+    pub poly: Vec<SvgPolygonInner>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -2023,18 +2132,21 @@ pub fn reproject_poly(
     source_proj: &proj4rs::Proj,
     target_proj: &proj4rs::Proj,
     use_radians: UseRadians,
+    round_3dec: bool,
 ) -> SvgPolygonInner {
-    SvgPolygonInner {
-        outer_rings: poly
-            .outer_rings
-            .iter()
-            .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
-            .collect(),
+    let s = SvgPolygonInner {
+        outer_ring: reproject_line(&poly.outer_ring, &source_proj, &target_proj, use_radians),
         inner_rings: poly
             .inner_rings
             .iter()
             .map(|l| reproject_line(l, &source_proj, &target_proj, use_radians))
             .collect(),
+    };
+
+    if round_3dec {
+        s.round_to_3dec()
+    } else {
+        s
     }
 }
 
@@ -2057,7 +2169,13 @@ pub fn transform_nas_xml_to_lat_lon(
                 v.iter()
                     .map(|v| TaggedPolygon {
                         attributes: v.attributes.clone(),
-                        poly: reproject_poly(&v.poly, &source_proj, &latlon_proj, UseRadians::None),
+                        poly: reproject_poly(
+                            &v.poly, 
+                            &source_proj, 
+                            &latlon_proj, 
+                            UseRadians::None, 
+                            false
+                        ),
                     })
                     .collect(),
             )
@@ -2090,14 +2208,7 @@ pub fn transform_split_nas_xml_to_lat_lon(
                     .map(|v| TaggedPolygon {
                         attributes: v.attributes.clone(),
                         poly: SvgPolygonInner {
-                            outer_rings: v
-                                .poly
-                                .outer_rings
-                                .iter()
-                                .map(|l| {
-                                    reproject_line(l, &source_proj, &latlon_proj, UseRadians::None)
-                                })
-                                .collect(),
+                            outer_ring: reproject_line(&v.poly.outer_ring, &source_proj, &latlon_proj, UseRadians::None),
                             inner_rings: v
                                 .poly
                                 .inner_rings
@@ -2154,7 +2265,7 @@ impl Default for SplitNasXml {
     }
 }
 
-fn default_etrs33() -> String {
+pub fn default_etrs33() -> String {
     "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33".to_string()
 }
 
@@ -2239,12 +2350,7 @@ impl SplitNasXml {
             .iter()
             .flat_map(|(_, s)| {
                 s.iter().flat_map(|q| {
-                    let mut lines = q
-                        .poly
-                        .outer_rings
-                        .iter()
-                        .flat_map(crate::geograf::l_to_points)
-                        .collect::<Vec<_>>();
+                    let mut lines = crate::geograf::l_to_points(&q.poly.outer_ring);
                     lines.extend(
                         q.poly
                             .inner_rings
@@ -2387,7 +2493,6 @@ impl NasXmlQuadTree {
         &self,
         start: &SvgPoint,
         end: &SvgPoint,
-        log: &mut Vec<String>,
         maxdst_line: f64,
         maxdst_line2: f64,
         maxdev_followline: f64,
@@ -2401,7 +2506,7 @@ impl NasXmlQuadTree {
             polys.retain(|r| r.attributes.get("aenderungId").as_deref() != Some(&eid));
         }
         for p in polys {
-            let v = p.get_line_between_points(start, end, log, maxdst_line2, maxdev_followline);
+            let v = p.get_line_between_points(start, end, maxdst_line2, maxdev_followline);
             if !v.is_empty() {
                 return v;
             }
@@ -2431,7 +2536,7 @@ impl SplitNasXml {
                     min_y: min_y,
                 };
                 if bounds.overlaps_rect(&search_bounds) {
-                    b.extend(poly.poly.outer_rings.iter().cloned());
+                    b.push(poly.poly.outer_ring.clone());
                     b.extend(poly.poly.inner_rings.iter().cloned());
                 }
             }
@@ -2487,12 +2592,14 @@ pub fn split_xml_flurstuecke_inner(
     input: &NasXMLFile,
     _log: &mut Vec<String>,
 ) -> Result<SplitNasXml, String> {
+    log_status("split xml flurstuecke...");
     let mut input = input.clone();
     let mut default = SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen: BTreeMap::new(),
     };
     let ax_flurstuecke = input.ebenen.remove("AX_Flurstueck").unwrap_or_default();
+    log_status(&format!("splitting {} flurstuecke", ax_flurstuecke.len()));
     let _ = input.ebenen.remove("AX_Gebaeude");
     let _ = input.ebenen.remove("AX_HistorischesFlurstueck");
     if ax_flurstuecke.is_empty() {
@@ -2511,11 +2618,15 @@ pub fn split_xml_flurstuecke_inner(
         }
     }
 
+    log_status(&format!("splitting {itemid} items"));
+
     let nutzungs_qt = QuadTree::new(
         btree_id_to_poly
             .iter()
             .map(|(k, v)| (ItemId(*k), Item::Rect(v.get_rect()))),
     );
+
+    log_status(&format!("nutzungsqt ok!"));
 
     let flurstuecke_nutzungen = ax_flurstuecke
         .iter()
@@ -2538,7 +2649,7 @@ pub fn split_xml_flurstuecke_inner(
             let mut polys = polys
                 .iter()
                 .flat_map(|p| {
-                    let intersection_mp = intersect_polys(&flst.poly, &p.poly);
+                    let intersection_mp = crate::ops::intersect_polys(&flst.poly, &p.poly, false);
                     intersection_mp
                         .into_iter()
                         .filter(|p| !p.is_zero_area())
@@ -2559,7 +2670,6 @@ pub fn split_xml_flurstuecke_inner(
                         })
                 })
                 .collect::<Vec<_>>();
-
             polys.sort_by(|a, b| a.1.cmp(&b.1));
             let mut sum_poly_areas = 0.0;
             let mut final_polys = Vec::new();
@@ -2570,6 +2680,7 @@ pub fn split_xml_flurstuecke_inner(
                     final_polys.push(tp.0.clone());
                 }
             }
+            // log_status(&format!("intersecting {id} done (sum = {sum_poly_areas} m2)"));
 
             if final_polys.is_empty() {
                 None
@@ -2579,15 +2690,17 @@ pub fn split_xml_flurstuecke_inner(
         })
         .collect();
 
+    log_status(&format!("split ok!"));
+    
     Ok(SplitNasXml {
         crs: input.crs.clone(),
         flurstuecke_nutzungen,
     })
 }
 
-pub fn cleanup_poly(s: &SvgPolygonInner) -> SvgPolygonInner {
-    let outer_rings = s
-        .outer_rings
+pub fn cleanup_poly(s: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
+
+    let outer_rings = vec![s.outer_ring.clone()]
         .iter()
         .filter_map(|l| {
             if SvgPolygonInner::from_line(l).is_zero_area() {
@@ -2602,11 +2715,11 @@ pub fn cleanup_poly(s: &SvgPolygonInner) -> SvgPolygonInner {
             if s.is_zero_area() {
                 None
             } else {
-                s.outer_rings.get(0).cloned()
+                Some(s.outer_ring.clone())
             }
         })
         .flat_map(|r| clean_ring_2(&r))
-        .collect();
+        .collect::<Vec<_>>();
 
     let inner_rings = s
         .inner_rings
@@ -2624,17 +2737,39 @@ pub fn cleanup_poly(s: &SvgPolygonInner) -> SvgPolygonInner {
             if s.is_zero_area() {
                 None
             } else {
-                s.outer_rings.get(0).cloned()
+                Some(s.outer_ring.clone())
             }
         })
         .flat_map(|r| clean_ring_2(&r))
         .map(|l| l.reverse())
-        .collect();
+        .collect::<Vec<_>>();
 
-    SvgPolygonInner {
-        outer_rings,
-        inner_rings,
-    }
+    recombine_polys(&outer_rings, &inner_rings)
+    .into_iter()
+    .filter_map(|q| if q.is_zero_area() { None } else { Some(q) })
+    .collect()
+}
+
+pub fn recombine_polys(outer_rings: &[SvgLine], inner_rings: &[SvgLine]) -> Vec<SvgPolygonInner> {  
+    outer_rings
+    .iter()
+    .map(|p| {
+        let tr_p = translate_to_geo_poly_special_shared(&[&SvgPolygonInner::from_line(p)]);
+        SvgPolygonInner {
+            outer_ring: p.clone(),
+            inner_rings: inner_rings
+            .iter()
+            .filter_map(|q| {
+                if translate_to_geo_poly_special_shared(&[&SvgPolygonInner::from_line(q)]).is_within(&tr_p) {
+                    Some(q.clone())
+                } else {
+                    None
+                }
+            })
+            .collect(),
+        }
+    })
+    .collect()
 }
 
 fn clean_ring_2(r: &SvgLine) -> Vec<SvgLine> {
@@ -2728,74 +2863,6 @@ fn clean_ring_selfintersection(line: &SvgLine, v: &mut Vec<SvgLine>) {
     v.push(SvgLine { points: newpoints });
 }
 
-macro_rules! define_func {
-    ($fn_name:ident, $op:expr) => {
-        pub fn $fn_name(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
-            use geo::BooleanOps;
-
-            let mut a = a.round_to_3dec();
-            let mut b = b.round_to_3dec();
-            a.correct_winding_order();
-            b.correct_winding_order();
-
-            if a.is_zero_area() {
-                return Vec::new();
-            }
-            if b.is_zero_area() {
-                return Vec::new();
-            }
-            if a.equals(&b) {
-                return vec![a];
-            }
-
-            let a = translate_to_geo_poly(&a);
-            let b = translate_to_geo_poly(&b);
-            let intersect = a.boolean_op(&b, $op);
-            let mut s = translate_from_geo_poly(&intersect);
-
-            for q in s.iter_mut() {
-                q.correct_winding_order();
-            }
-
-            s
-        }
-    };
-}
-
-define_func!(intersect_polys, geo::OpType::Intersection);
-define_func!(xor_polys, geo::OpType::Xor);
-
-fn xor_combine(a: &SvgPolygonInner, b: &SvgPolygonInner) -> SvgPolygonInner {
-    let mut aor = a.outer_rings.clone();
-    let mut air = a.inner_rings.clone();
-    aor.extend(b.outer_rings.iter().cloned());
-    air.extend(b.inner_rings.iter().cloned());
-    SvgPolygonInner {
-        outer_rings: aor,
-        inner_rings: air,
-    }
-}
-
-fn union(a: &SvgPolygonInner, b: &SvgPolygonInner) -> Vec<SvgPolygonInner> {
-    let xor = xor_combine(a, b);
-    translate_from_geo_poly(&geo::MultiPolygon(vec![
-        translate_to_geo_poly(&xor).convex_hull()
-    ]))
-}
-
-pub fn convex_hull_polys(a: &SvgPolygonInner, b: &[SvgPolygonInner]) -> SvgPolygonInner {
-    let mut x = a.clone();
-    for b in b.iter() {
-        x = xor_combine(&x, b);
-    }
-    translate_from_geo_poly(&geo::MultiPolygon(vec![
-        translate_to_geo_poly(&x).convex_hull()
-    ]))
-    .get(0)
-    .cloned()
-    .unwrap_or_default()
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SvgPolyInternalResult {
     pub num_points: usize,
@@ -2882,11 +2949,8 @@ fn ray_intersects_segment(p: &SvgPoint, (mut a, mut b): (&SvgPoint, &SvgPoint)) 
 
 pub fn point_is_in_polygon(p: &SvgPoint, poly: &SvgPolygonInner) -> bool {
     let mut c_in_outer = false;
-    for o in poly.outer_rings.iter() {
-        if point_in_line(p, o) {
-            c_in_outer = true;
-            break;
-        }
+    if point_in_line(p, &poly.outer_ring) {
+        c_in_outer = true;
     }
 
     if c_in_outer {
@@ -2965,11 +3029,8 @@ pub fn only_touches_internal(
     b: &SvgPolygonInner,
     dst: f64,
 ) -> SvgPolyInternalResult {
-    let points_a = a
-        .outer_rings
-        .iter()
-        .flat_map(|l| l.points.iter())
-        .collect::<Vec<_>>();
+    let points_a = a.outer_ring.points.clone();
+
     // let b_geo = translate_to_geo_poly(b);
 
     let mut points_touching_lines = 0;
@@ -2995,16 +3056,14 @@ pub fn only_touches_internal(
 }
 
 pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygonInner, dst: f64) -> bool {
-    for line in poly.outer_rings.iter() {
-        for q in line.points.windows(2) {
-            match &q {
-                &[sa, eb] => {
-                    if dist_to_segment(*p, *sa, *eb).distance < dst {
-                        return true;
-                    }
+    for q in poly.outer_ring.points.windows(2) {
+        match &q {
+            &[sa, eb] => {
+                if dist_to_segment(*p, *sa, *eb).distance < dst {
+                    return true;
                 }
-                _ => {}
             }
+            _ => {}
         }
     }
 
@@ -3024,20 +3083,22 @@ pub fn point_is_on_any_line(p: &SvgPoint, poly: &SvgPolygonInner, dst: f64) -> b
     false
 }
 
-pub fn translate_to_geo_poly(a: &SvgPolygonInner) -> geo::MultiPolygon<f64> {
+pub fn translate_to_geo_poly_special(a: &[SvgPolygonInner]) -> geo::MultiPolygon<f64> {
+    translate_to_geo_poly_special_shared(&a.iter().collect::<Vec<_>>())
+}
+
+pub fn translate_to_geo_poly_special_shared(a: &[&SvgPolygonInner]) -> geo::MultiPolygon<f64> {
     geo::MultiPolygon(
-        a.outer_rings
+        a.iter()
+        .filter_map(|s| {
+            let outer = translate_geoline(&s.outer_ring);
+            let inner = s
+            .inner_rings
             .iter()
-            .map(|outer| {
-                let outer = translate_geoline(outer);
-                let inner = a
-                    .inner_rings
-                    .iter()
-                    .map(translate_geoline)
-                    .collect::<Vec<_>>();
-                geo::Polygon::new(outer, inner)
-            })
-            .collect(),
+            .map(translate_geoline)
+            .collect::<Vec<_>>();
+            Some(geo::Polygon::new(outer, inner))
+        }).collect()
     )
 }
 
@@ -3056,7 +3117,7 @@ pub fn translate_geoline(a: &SvgLine) -> geo::LineString<f64> {
 pub fn translate_from_geo_poly(a: &geo::MultiPolygon<f64>) -> Vec<SvgPolygonInner> {
     a.0.iter()
         .map(|s| SvgPolygonInner {
-            outer_rings: vec![translate_ring(s.exterior())],
+            outer_ring: translate_ring(s.exterior()),
             inner_rings: s.interiors().iter().map(translate_ring).collect(),
         })
         .collect()

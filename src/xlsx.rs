@@ -116,7 +116,7 @@ impl FlstIdParsedNumber {
         } = self;
         // 12-1180-003-00001-0000/00
         let n = flst_nenner.unwrap_or(0);
-        format!("{land:02}-{gemarkung:04}-{flur:03}-{flst_zaehler:05}/{n:05}")
+        format!("{land:02}-{gemarkung:04}-{flur:03}-{flst_zaehler:05}/{n:04}")
     }
 
     pub fn get_flur(&self) -> String {

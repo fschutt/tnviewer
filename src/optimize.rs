@@ -1,11 +1,6 @@
 use crate::{
     nas::{
-        translate_geoline,
-        translate_to_geo_poly,
-        SplitNasXml,
-        SvgLine,
-        SvgPoint,
-        SvgPolygonInner,
+        translate_geoline, translate_to_geo_poly_special_shared, SplitNasXml, SvgLine, SvgPoint, SvgPolygonInner
     },
     pdf::{
         Gebaeude,
@@ -18,19 +13,21 @@ use crate::{
     },
     uuid_wasm::js_random,
 };
-use ndarray::Axis;
 use std::{
     collections::BTreeMap,
     f64::consts::PI,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OptimizedTextPlacement {
     pub original: TextPlacement,
     pub optimized: TextPlacement,
 }
 
 impl OptimizedTextPlacement {
+    pub fn needs_bezug(&self) -> bool {
+        self.optimized.needs_bezug()
+    }
     pub fn get_line(&self) -> Option<(SvgPoint, SvgPoint)> {
         if crate::nas::point_is_in_polygon(&self.optimized.pos, &self.optimized.poly) {
             return None;
@@ -110,11 +107,7 @@ impl OptimizeConfig {
 
     pub fn polygon_to_pixel_space(&self, poly: &SvgPolygonInner) -> SvgPolygonInner {
         SvgPolygonInner {
-            outer_rings: poly
-                .outer_rings
-                .iter()
-                .map(|p| self.line_to_pixel_space(p))
-                .collect(),
+            outer_ring: self.line_to_pixel_space(&poly.outer_ring),
             inner_rings: poly
                 .inner_rings
                 .iter()
@@ -132,16 +125,6 @@ impl OptimizeConfig {
                 .collect(),
         }
     }
-}
-
-fn render_boolmap(map: &ndarray::Array2<bool>) -> Vec<String> {
-    map.axis_iter(Axis(0))
-        .map(|row| {
-            row.iter()
-                .map(|a| if *a { '■' } else { '□' })
-                .collect::<String>()
-        })
-        .collect()
 }
 
 pub fn optimize_labels(
@@ -448,18 +431,16 @@ fn render_stage1_overlap_boolmap(
         .ok()?;
 
     for shape in do_not_overlap_areas.iter() {
-        r.rasterize(&translate_to_geo_poly(
-            &config.polygon_to_pixel_space(shape),
+        r.rasterize(&translate_to_geo_poly_special_shared(
+            &[&config.polygon_to_pixel_space(shape)],
         ))
         .ok()?;
     }
 
     for (_k, v) in flurstuecke.flurstuecke_nutzungen.iter() {
         for tp in v.iter() {
-            for line in tp.poly.outer_rings.iter() {
-                r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
-                    .ok()?;
-            }
+            r.rasterize(&translate_geoline(&config.line_to_pixel_space(&tp.poly.outer_ring)))
+                .ok()?;
             for line in tp.poly.inner_rings.iter() {
                 r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
                     .ok()?;
@@ -468,10 +449,8 @@ fn render_stage1_overlap_boolmap(
     }
 
     for flst in splitflaechen.iter() {
-        for line in flst.poly_cut.outer_rings.iter() {
-            r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
-                .ok()?;
-        }
+        r.rasterize(&translate_geoline(&config.line_to_pixel_space(&flst.poly_cut.outer_ring)))
+            .ok()?;
         for line in flst.poly_cut.inner_rings.iter() {
             r.rasterize(&translate_geoline(&config.line_to_pixel_space(line)))
                 .ok()?;
@@ -479,8 +458,8 @@ fn render_stage1_overlap_boolmap(
     }
 
     for area in gebaeude.gebaeude.iter() {
-        r.rasterize(&translate_to_geo_poly(
-            &config.polygon_to_pixel_space(&area.poly),
+        r.rasterize(&translate_to_geo_poly_special_shared(
+            &[&config.polygon_to_pixel_space(&area.poly)],
         ))
         .ok()?;
     }

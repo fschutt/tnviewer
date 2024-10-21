@@ -97,6 +97,31 @@ input[type="file"] {
     flex-grow: 1;
 }
 
+.__application-ribbon-section-content.__mini_content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.__application-ribbon-section-content.__mini_content label {
+    flex-direction: row;
+    width: 200px;
+    border: 1px solid lightgrey;
+    background: aliceblue;
+    cursor: pointer;
+    margin-bottom: 0px;
+}
+
+.__application-ribbon-section-content.__mini_content label:first {
+    margin-top: 0px;
+}
+
+.__application-ribbon-section-content.__mini_content label img.icon {
+    height: 12px;
+    width: 12px;
+    padding: 0px;
+    margin: 0px;
+}
+
 .__application-ribbon-section-name {
     font-size: 11px;
     color: #444444;

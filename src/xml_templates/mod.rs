@@ -260,11 +260,7 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
         let row_strings = vec![
             flst_id.format_nice(),
             v.nutzung.to_string(),
-            match v.status {
-                crate::csv::Status::Bleibt => "bleibt".to_string(),
-                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone(),
-                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone(),
-            },
+            v.status.get_notiz(&v.auto_notiz),
             eig.to_string(),
             v.notiz.clone(),
         ];
@@ -302,19 +298,15 @@ pub fn generate_bearbeitungsliste_xlsx(info: &BearbeitungslisteInfo) -> Vec<u8> 
             .collect::<Vec<_>>()
             .join("; ");
         let (has_custom_format, row_style) = match v.status {
-            crate::csv::Status::Bleibt => (false, "s=\"13\" t=\"s\""),
-            crate::csv::Status::AenderungKeineBenachrichtigung => (true, "s=\"17\" t=\"s\""),
-            crate::csv::Status::AenderungMitBenachrichtigung => (true, "s=\"14\" t=\"s\""),
+            crate::csv::Status::Bleibt(false) => (false, "s=\"13\" t=\"s\""),
+            crate::csv::Status::AenderungKeineBenachrichtigung(false) => (true, "s=\"17\" t=\"s\""),
+            _ => (true, "s=\"14\" t=\"s\""),
         };
 
         let row_strings = vec![
             flst_id.format_nice(),
             v.nutzung.to_string(),
-            match v.status {
-                crate::csv::Status::Bleibt => "bleibt".to_string(),
-                crate::csv::Status::AenderungKeineBenachrichtigung => v.auto_notiz.clone(),
-                crate::csv::Status::AenderungMitBenachrichtigung => v.auto_notiz.clone(),
-            },
+            v.status.get_notiz(&v.auto_notiz),
             eig.to_string(),
             v.notiz.clone(),
         ];
