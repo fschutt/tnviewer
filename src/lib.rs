@@ -190,14 +190,14 @@ fn reproject_poly_back_into_latlon(rissgebiet: SvgPolygonInner, crs: &str) -> Sv
 pub fn get_problem_geojson() -> String {
     let proj = "+proj=utm +ellps=GRS80 +units=m +no_defs +zone=33";
 
-    let poly_string1: &str = "";
-    let poly_string2: &str = "";
+    let poly_string1: &str = include_str!("./test1.txt");
+    let poly_string2: &str = include_str!("./test2.txt");
 
-    let s1 = serde_json::from_str::<Vec<SvgPolygonInner>>(&poly_string1.trim()).unwrap_or_default();
-    let s2 = serde_json::from_str::<SvgPolygonInner>(&poly_string2.trim()).unwrap_or_default();
-    // let mut together = s1.clone();
-    // together.push(s2.clone());
-    let joined = crate::ops::join_polys_special(&s1, &s2, true, true);
+    let s1 = serde_json::from_str::<Vec<SvgPolygon>>(&poly_string1.trim()).unwrap_or_default().into_iter().map(|s| s.get_inner()).collect::<Vec<_>>();
+    let s2 = serde_json::from_str::<SvgPolygon>(&poly_string2.trim()).unwrap_or_default().get_inner();
+    let mut together = s1.clone();
+    together.push(s2.clone());
+    let joined = crate::ops::join_polys(&together, true, true);
 
     let s1 = crate::pdf::reproject_poly_back_into_latlon(&s2, proj).unwrap_or_default();
     let s2 = joined.iter().filter_map(|q| crate::pdf::reproject_poly_back_into_latlon(&q, proj).ok()).collect::<Vec<_>>();

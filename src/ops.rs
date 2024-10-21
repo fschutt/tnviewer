@@ -226,6 +226,7 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
     polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
     polys.reverse(); // largest polys first
+    polys.retain(|s| !s.is_zero_area());
 
     let mut first = match polys.get(0) {
         Some(s) => vec![s.clone()],
@@ -248,6 +249,10 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
             log_status(&serde_json::to_string(&first).unwrap_or_default());
             log_status(&format!("joining second (insert_all_points: {insert_all_points:?}):"));
             log_status(&serde_json::to_string(&i).unwrap_or_default());
+        }
+
+        if i.is_zero_area() {
+            continue;
         }
 
         let a = translate_to_geo_poly_special(&first);

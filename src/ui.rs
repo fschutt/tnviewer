@@ -1157,9 +1157,9 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
 
                 <div class='__application-ribbon-section 2'>
                     <div style='display:flex;flex-direction:row;'>
-                        {export_geograf}
                         {export_david}
                         {export_nas_xml}
+                        {export_geograf}
                     </div>
                 </div>
 
