@@ -249,20 +249,57 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
         log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
     }
 
+    let mut polys = polys_orig.to_vec();
+    polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
+
+
+    if debug {
+        log_status("2.5");
+    }
+
     let polys = polys_orig.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    if debug {
+        log_status("3.5");
+    }
     let polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("4.5");
+    }
     let polys = merge_poly_points(&polys, &polys_orig);
+    if debug {
+        log_status("5.5");
+    }
     let polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    if debug {
+        log_status("6.5");
+    }
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-    let polys = merge_poly_points(&polys, &polys);
-    let mut polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("7.5");
+    }
+    let mut polys = merge_poly_points(&polys, &polys);
+    if debug {
+        log_status("8.5");
+    }
+    // let mut polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("9.5");
+    }
+    if debug {
+        log_status("2");
+    }
 
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
     polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
     polys.reverse(); // largest polys first
     polys.retain(|s| !s.is_zero_area());
+
+    if debug {
+        log_status("3");
+    }
 
     let mut first = match polys.get(0) {
         Some(s) => vec![s.clone()],
