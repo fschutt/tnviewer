@@ -366,7 +366,9 @@ pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points
 
     for i in polys.iter().skip(1) {
         let mut i = i.clone();
+        log_status(&serde_json::to_string(&i).unwrap_or_default());
 
+        log_status("1");
         for q in first.iter_mut() {
             i.insert_points_from(q, 0.1, insert_all_points);
             q.insert_points_from(&i, 0.1, insert_all_points);
@@ -375,20 +377,28 @@ pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points
             }
         }
 
+        log_status("2");
+
         if i.is_zero_area() {
             continue;
         }
 
+        log_status("3");
+
         let a = translate_to_geo_poly_special(&first);
         let b = translate_to_geo_poly_special_shared(&[&i]);
         let join = a.union(&b);
+        log_status("joined!");
         first = translate_from_geo_poly(&join);
+        log_status("merging lines...");
         first = merge_poly_lines(&
             first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
         ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+        log_status("merging points...");
         first = merge_poly_points(&first, &first);
+        log_status("next poly!");
     }
-
+    log_status("done!");
     first
 }
 

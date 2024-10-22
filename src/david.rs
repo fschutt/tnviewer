@@ -875,7 +875,9 @@ pub fn merge_and_intersect_inserts(
     insert_map
     .values_mut()
     .for_each(|polys| {
+        log_status("joining polys 1 start...");
         *polys = crate::ops::join_polys_fast(&polys, true, true);
+        log_status("joining polys 1 end...");
     });
     log_status("joining.... 2");
 
