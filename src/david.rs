@@ -942,11 +942,10 @@ pub fn merge_and_intersect_inserts(
 
     // subtract defined polys from aenderungen
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
-        let orig_nak = crate::search::get_nak_ranking(k);
 
         let polys_higher_order = aenderungen_to_subtract.values().filter_map(|v| {
-            let nak = crate::search::get_nak_ranking(v.nutzung.as_deref()?);
-            if nak > orig_nak {
+            let kuerzel = v.nutzung.as_deref()?;
+            if kuerzel != k {
                 Some(v.poly.get_inner())
             } else {
                 None
