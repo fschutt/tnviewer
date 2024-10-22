@@ -82,7 +82,7 @@ pub fn build_operations(
     let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-    log_status("merge_and_intersect_inserts...");
+    // log_status("merge_and_intersect_inserts...");
     // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
     log_status("fortfuehren_internal...");
     let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
@@ -106,7 +106,7 @@ pub fn build_operations(
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
 
     log_status("merging inserts...");
-    let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
+    // let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
     log_status("inserts merged!");
 
     aenderungen_gesamt
