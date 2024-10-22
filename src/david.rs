@@ -114,9 +114,14 @@ pub fn build_operations(
     aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
     
+    let mut aenderungen_3 = Aenderungen::default();
+    aenderungen_3.na_polygone_neu.append(&mut aenderungen_1.na_polygone_neu.clone());
+    aenderungen_3.na_polygone_neu.append(&mut aenderungen_2.na_polygone_neu.clone());
+
     log_status("merging inserts...");
     let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(
-        &aenderungen_gesamt
+        &aenderungen_gesamt,
+        &aenderungen_3.na_polygone_neu,
     );
     log_status("inserts merged!");
 
@@ -907,6 +912,7 @@ pub fn merge_aenderungen_with_existing_nas(
 
 pub fn merge_and_intersect_inserts(
     aenderungen_todo: &[Operation],
+    aenderungen_to_subtract: &BTreeMap<String, PolyNeu>,
 ) -> Vec<Operation> {
 
     let mut deletes = aenderungen_todo.iter().filter_map(|op| match op {
@@ -933,6 +939,42 @@ pub fn merge_and_intersect_inserts(
         log_status("joining polys 1 end...");
     });
     log_status("joining.... 2");
+
+    // subtract defined polys from aenderungen
+    let to_subtract_polys = insert_map.keys().filter_map(|k| {
+        let orig_nak = crate::search::get_nak_ranking(k);
+
+        let polys_higher_order = aenderungen_to_subtract.values().filter_map(|v| {
+            let nak = crate::search::get_nak_ranking(v.nutzung.as_deref()?);
+            if nak > orig_nak {
+                Some(v.poly.get_inner())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>();
+
+        if polys_higher_order.is_empty() {
+            None
+        } else {
+            Some((k.clone(), polys_higher_order))
+        }
+    }).collect::<BTreeMap<_, _>>();
+
+    insert_map
+    .iter_mut()
+    .for_each(|(k, polys)| {
+        if let Some(tosubtract) = to_subtract_polys.get(k) {
+            log_status("subtracting...");
+            let newpolys = polys.iter()
+            .flat_map(|s| {
+                subtract_from_poly(s, &tosubtract.iter().collect::<Vec<_>>(), true)
+            })
+            .filter_map(|p| if p.is_zero_area() { None } else { Some(p) })
+            .collect::<Vec<_>>();
+            log_status("subtracted!");
+            *polys = newpolys;
+        }
+    });
 
     // subtract higher-order polys
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
