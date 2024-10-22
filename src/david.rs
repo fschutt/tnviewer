@@ -1012,6 +1012,12 @@ pub fn merge_and_intersect_inserts(
         }
     });
     
+    for (kuerzel, poly) in aenderungen_to_subtract.values().filter_map(|q| q.nutzung.clone().map(|k| (k.clone(), q.poly.get_inner()))) {
+        let mut polys = insert_map.get(&kuerzel).cloned().unwrap_or_default();
+        polys.push(poly);
+        insert_map.insert(kuerzel, join_polys(&polys, true, true));
+    }
+
     deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
         let kuerz = kuerz.clone();
         polys.into_iter().filter_map(move |p| {
