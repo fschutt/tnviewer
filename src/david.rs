@@ -1015,8 +1015,17 @@ pub fn merge_and_intersect_inserts(
     for (kuerzel, poly) in aenderungen_to_subtract.values().filter_map(|q| q.nutzung.clone().map(|k| (k.clone(), q.poly.get_inner()))) {
         let mut polys = insert_map.get(&kuerzel).cloned().unwrap_or_default();
         polys.push(poly);
-        insert_map.insert(kuerzel, join_polys_fast(&polys, true, true));
     }
+
+    log_status("joining.... 3");
+    insert_map
+    .values_mut()
+    .for_each(|polys| {
+        log_status("joining polys 2 start...");
+        *polys = crate::ops::join_polys_fast(&polys, true, true);
+        log_status("joining polys 2 end...");
+    });
+    log_status("joining.... 4");
 
     deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
         let kuerz = kuerz.clone();
