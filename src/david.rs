@@ -881,7 +881,6 @@ pub fn merge_and_intersect_inserts(
     });
     log_status("joining.... 2");
 
-    /*
     // subtract higher-order polys
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
         
@@ -892,7 +891,7 @@ pub fn merge_and_intersect_inserts(
                 Some(s) => s,
                 None => return Vec::new(),
             };
-            if nak >= orig_nak {
+            if nak > orig_nak {
                 v.clone()
             } else {
                 Vec::new()
@@ -921,7 +920,6 @@ pub fn merge_and_intersect_inserts(
             *polys = newpolys;
         }
     });
-    */
     
     deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
         let kuerz = kuerz.clone();
