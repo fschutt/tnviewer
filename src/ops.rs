@@ -383,6 +383,10 @@ pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points
         let b = translate_to_geo_poly_special_shared(&[&i]);
         let join = a.union(&b);
         first = translate_from_geo_poly(&join);
+        first = merge_poly_lines(&
+            first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+        ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+        first = merge_poly_points(&first, &first);
     }
 
     first

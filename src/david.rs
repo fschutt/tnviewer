@@ -106,7 +106,9 @@ pub fn build_operations(
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
 
     log_status("merging inserts...");
-    // let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(&aenderungen_gesamt);
+    let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(
+        &aenderungen_gesamt
+    );
     log_status("inserts merged!");
 
     aenderungen_gesamt
