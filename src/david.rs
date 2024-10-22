@@ -2,7 +2,7 @@ use crate::{
     csv::CsvDataType, nas::{
         self, MemberObject, NasXMLFile, NasXmlObjects, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     }, ops::{
-        intersect_polys, join_polys, subtract_from_poly
+        intersect_polys, join_polys, join_polys_fast, subtract_from_poly
     }, ui::{Aenderungen, PolyNeu}, uuid_wasm::{
         log_status, log_status_clear, uuid
     }
@@ -1015,7 +1015,7 @@ pub fn merge_and_intersect_inserts(
     for (kuerzel, poly) in aenderungen_to_subtract.values().filter_map(|q| q.nutzung.clone().map(|k| (k.clone(), q.poly.get_inner()))) {
         let mut polys = insert_map.get(&kuerzel).cloned().unwrap_or_default();
         polys.push(poly);
-        insert_map.insert(kuerzel, join_polys(&polys, true, true));
+        insert_map.insert(kuerzel, join_polys_fast(&polys, true, true));
     }
 
     deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
