@@ -120,7 +120,7 @@ pub fn build_operations(
     );
     log_status("inserts merged!");
 
-    let aenderungen_gesamt = filter_identic_operations(&aenderungen_gesamt);
+    // let aenderungen_gesamt = filter_identic_operations(&aenderungen_gesamt);
 
     aenderungen_gesamt
 }
@@ -264,14 +264,14 @@ pub fn filter_identic_operations(
 ) -> Vec<Operation> {
 
     let deletes = input.iter().filter_map(|s| match &s {
-        Operation::Delete { kuerzel, poly_alt, .. } => Some((poly_alt.get_hash(), kuerzel.clone())),
+        Operation::Delete { kuerzel, poly_alt, .. } => Some(s.get_geom_kuerzel_pair()),
         Operation::Insert { .. } => None,
         Operation::Replace { .. } => None,
     }).collect::<BTreeSet<_>>();
 
     let inserts = input.iter().filter_map(|s| match &s {
         Operation::Delete { .. } => None,
-        Operation::Insert { kuerzel, poly_neu, .. } => Some((poly_neu.get_hash(), kuerzel.clone())),
+        Operation::Insert { kuerzel, poly_neu, .. } => Some(s.get_geom_kuerzel_pair()),
         Operation::Replace { .. } => None,
     }).collect::<BTreeSet<_>>();
 
