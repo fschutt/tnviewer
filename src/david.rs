@@ -79,6 +79,8 @@ pub fn build_operations(
     }
     log_status("Gemarkung joined!");
 
+    let fluren = subtract_bauraum_bodenordnung(&fluren, &nas_xml);
+
     let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
@@ -112,6 +114,28 @@ pub fn build_operations(
     log_status("inserts merged!");
 
     aenderungen_gesamt
+}
+
+pub fn subtract_bauraum_bodenordnung(
+    fluren: &Vec<SvgPolygonInner>,
+    nas_xml: &NasXMLFile
+) -> Vec<SvgPolygonInner> {
+
+    let d = Vec::new();
+    let bauraum_bodenordnung_flst = nas_xml.ebenen
+    .get("AX_BauRaumOderBodenordnungsrecht")
+    .unwrap_or(&d)
+    .iter()
+    .map(|q| &q.poly)
+    .collect::<Vec<_>>();
+
+    if bauraum_bodenordnung_flst.is_empty() {
+        return fluren.clone();
+    }
+
+    fluren.iter().flat_map(|s| {
+        subtract_from_poly(s, &bauraum_bodenordnung_flst, false)
+    }).collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
