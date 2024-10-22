@@ -725,9 +725,9 @@ impl Signatur {
 						</AA_Modellart>
 					</modellart>
 					<position>
-						<gml:MultiPoint gml:id="BD">
+						<gml:MultiPoint>
 							<gml:pointMember>
-								<gml:Point gml:id="BE">
+								<gml:Point>
 									<gml:pos>$$POS$$</gml:pos>
 								</gml:Point>
 							</gml:pointMember>
@@ -908,13 +908,10 @@ pub fn merge_and_intersect_inserts(
     // subtract higher-order polys
     let to_subtract_polys = insert_map.keys().filter_map(|k| {
         
-        let orig_nak = TaggedPolygon::get_nutzungsartenkennung(k)?;
+        let orig_nak = crate::search::get_nak_ranking(k);
 
         let polys_higher_order = insert_map.iter().flat_map(|(k, v)| {
-            let nak = match TaggedPolygon::get_nutzungsartenkennung(k) {
-                Some(s) => s,
-                None => return Vec::new(),
-            };
+            let nak = crate::search::get_nak_ranking(k);
             if nak > orig_nak {
                 v.clone()
             } else {

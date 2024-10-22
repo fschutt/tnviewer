@@ -3138,10 +3138,7 @@ impl Aenderungen {
                 Some(s) => s,
                 None => continue,
             };
-            let nak = match TaggedPolygon::get_nutzungsartenkennung(&p_nutzung) {
-                Some(s) => s,
-                None => continue,
-            };
+            let nak = crate::search::get_nak_ranking(&p_nutzung);
 
             let higher_order_polys = changed_mut
                 .na_polygone_neu
@@ -3151,7 +3148,7 @@ impl Aenderungen {
                     Some((nutzung, id.clone(), &v.poly))
                 })
                 .filter_map(|(k, id, s)| {
-                    if TaggedPolygon::get_nutzungsartenkennung(&k)? >= nak {
+                    if crate::search::get_nak_ranking(&k) >= nak {
                         Some((k, id, s))
                     } else {
                         None

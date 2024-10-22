@@ -995,6 +995,51 @@
               }
           }
         };
+        
+        // Ranking von Nutzungsarten-Kürzeln: wenn zwei Nutzungsarten überlappen,
+        // muss das Programm wissen, welches Kürzel "oben" und welches "unten" ist.
+        // Ranking ist von oben nach unten (WAF > GHÖ > A). Einstellen nach Gebrauch.
+        window.nutzungsarten_ranking = [
+          "WAS",
+          "WAF",
+          "BA",
+          "S",
+          "WEG",
+          "BP",
+          "BPR",
+          "BPV",
+          "BPÖ",
+          "BPO2",
+          "ESA",
+          "VSK",
+          "TG",
+          "VS",
+          "MI",
+          "WBF",
+          "IG",
+          "VSW",
+          "VSKWI",
+          "HDH",
+          "HAL",
+          "SF",
+          "PARK",
+          "GHÖ",
+          "F",
+          "UV",
+          "NF",
+          "G",
+          "OBBP",
+          "LNH",
+          "LH",
+          "SFS",
+          "SUM",
+          "BRA",
+          "GRÜ",
+          "WALD",
+          "GR",
+          "A",
+        ];
+
         // INJECT_NUTZUNGSARTEN_KATALOG
     </script>
 
@@ -2079,7 +2124,7 @@
           map.setView([53.2467, 13.6045], 10);
           reinitDOPLayers();
           L.control.zoom({ position: 'bottomright' }).addTo(map);
-          addProblemGeoJSON(map);
+          // addProblemGeoJSON(map);
           reinitMapDrawnStaticLayers();
         }
       }
@@ -2152,6 +2197,16 @@
     }
 
     window.get_nak = get_nak;
+
+    function get_nak_ranking() {
+      if (window.nutzungsarten) {
+        return JSON.stringify(window.nutzungsarten);
+      } else {
+        return "";
+      }
+    }
+
+    window.get_nak_raning = get_nak_ranking;
 
     function update_export_status(s) {
       if (!window.export_log) {

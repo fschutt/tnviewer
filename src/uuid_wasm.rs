@@ -24,6 +24,11 @@ extern "C" {
     fn update_export_status(s: String);
     fn export_status_clear();
     fn get_nak() -> String;
+    fn get_nak_ranking() -> String;
+}
+
+pub fn get_js_nak_ranking() -> String {
+    get_nak_ranking()
 }
 
 pub fn get_js_nak() -> String {
