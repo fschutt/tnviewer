@@ -1013,8 +1013,7 @@ pub fn merge_and_intersect_inserts(
     });
     
     for (kuerzel, poly) in aenderungen_to_subtract.values().filter_map(|q| q.nutzung.clone().map(|k| (k.clone(), q.poly.get_inner()))) {
-        let mut polys = insert_map.get(&kuerzel).cloned().unwrap_or_default();
-        polys.push(poly);
+        insert_map.entry(kuerzel).or_insert_with(|| Vec::new()).push(poly);
     }
 
     log_status("joining.... 3");
