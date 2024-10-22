@@ -609,15 +609,16 @@ export function lib_nutzungen_saeubern(id, aenderungen, split_nas_xml, nas_origi
 }
 
 /**
-* @param {string | undefined} [id]
-* @param {string | undefined} [aenderungen]
-* @param {string | undefined} [split_nas_xml]
-* @param {string | undefined} [nas_original]
-* @param {string | undefined} [konfiguration]
-* @param {string | undefined} [csv]
+* @param {string | undefined} id
+* @param {string | undefined} aenderungen
+* @param {string | undefined} split_nas_xml
+* @param {string | undefined} nas_original
+* @param {string | undefined} konfiguration
+* @param {string | undefined} csv
+* @param {boolean} force
 * @returns {string}
 */
-export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original, konfiguration, csv) {
+export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_original, konfiguration, csv, force) {
     let deferred7_0;
     let deferred7_1;
     try {
@@ -634,7 +635,7 @@ export function lib_get_aenderungen_clean(id, aenderungen, split_nas_xml, nas_or
         var len4 = WASM_VECTOR_LEN;
         var ptr5 = isLikeNone(csv) ? 0 : passStringToWasm0(csv, wasm.__wbindgen_export_1, wasm.__wbindgen_export_2);
         var len5 = WASM_VECTOR_LEN;
-        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
+        wasm.lib_get_aenderungen_clean(retptr, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5, force);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         deferred7_0 = r0;

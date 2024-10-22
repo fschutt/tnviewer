@@ -985,7 +985,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
         format!("
 
                 <div class='__application-ribbon-section-content __mini_content'>
-                <label onmouseup='cleanStage(1);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
+                <label onmouseup='cleanStage(1, event);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -994,7 +994,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     </div>
                 </label>
 
-                <label onmouseup='cleanStage(2);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(2, event);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1003,7 +1003,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     </div>
                 </label>
 
-                <label onmouseup='cleanStage(3);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(3, event);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1014,7 +1014,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content __mini_content'>
-                <label onmouseup='cleanStage(4);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
+                <label onmouseup='cleanStage(4, event);' class='__application-ribbon-action-vertical-large' style='margin-top:0px;'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1023,7 +1023,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                     </div>
                 </label>
 
-                <label onmouseup='cleanStage(25);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(25, event);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1033,7 +1033,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
                 </label>
                 
 
-                <label onmouseup='cleanStage(5);' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(5, event);' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1044,7 +1044,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(7)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(7, event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>
@@ -1056,7 +1056,7 @@ pub fn render_ribbon(rpc_data: &UiData, _data_loaded: bool) -> String {
             </div>
 
             <div class='__application-ribbon-section-content'>
-                <label onmouseup='cleanStage(8)' class='__application-ribbon-action-vertical-large'>
+                <label onmouseup='cleanStage(8, event)' class='__application-ribbon-action-vertical-large'>
                     <div class='icon-wrapper'>
                         <img class='icon {disabled}' src='data:image/png;base64,{icon_export_lefis}'>
                     </div>

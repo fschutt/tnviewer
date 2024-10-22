@@ -2835,9 +2835,13 @@
       }
     }
     
-    function cleanStage(id) {
+    function cleanStage(id, event) {
       var n = null;
       console.log("JS: CLEANING STAGE " + id);
+      var force = false;
+      if (event && event.shiftKey) {
+        force = true;
+      }
       var f = lib_get_aenderungen_clean(
         "" + id, 
         JSON.stringify(window.aenderungen), 
@@ -2845,6 +2849,7 @@
         JSON.stringify(window.nas_original),
         JSON.stringify(window.configuration),
         JSON.stringify(window.csv_data),
+        force,
       );
       try {
         n = JSON.parse(f);

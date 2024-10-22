@@ -574,12 +574,17 @@ pub fn lib_get_aenderungen_clean(
     nas_original: Option<String>,
     konfiguration: Option<String>,
     csv: Option<String>,
+    force: bool,
 ) -> String {
     let aenderungen = match serde_json::from_str::<Aenderungen>(&aenderungen.unwrap_or_default()) {
         Ok(o) => o,
         Err(e) => return e.to_string(),
     };
 
+    if force {
+        log_status("WARNING: ignoring locked status Aenderungen!");
+    }
+    
     let split_nas_xml =
         serde_json::from_str::<SplitNasXml>(&split_nas_xml.unwrap_or_default()).unwrap_or_default();
     let nas_original =
@@ -603,7 +608,6 @@ pub fn lib_get_aenderungen_clean(
         aenderungen.na_polygone_neu.len()
     ));
 
-    let force = false;
     let clean = match id.as_str() {
         "1" => aenderungen.clean_stage1(
             konfiguration.merge.stage1_maxdst_point,
