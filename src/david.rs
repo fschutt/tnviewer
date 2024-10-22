@@ -49,6 +49,13 @@ impl Operation {
             Operation::Insert { ebene, kuerzel, poly_neu } => format!("Insert:{ebene}::{kuerzel}::{}", poly_neu.get_hash()),
         }
     }
+    fn get_geom_kuerzel_pair(&self) -> (u64, String) {
+        match self {
+            Operation::Delete { kuerzel , poly_alt, .. } => (poly_alt.get_hash(), kuerzel.clone()),
+            Operation::Replace { kuerzel, poly_neu, .. } => (poly_neu.get_hash(), kuerzel.clone()),
+            Operation::Insert {kuerzel, poly_neu, .. } => (poly_neu.get_hash(), kuerzel.clone()),
+        }
+    }
 }
 
 pub fn aenderungen_zu_fa_xml(
@@ -106,12 +113,14 @@ pub fn build_operations(
     let mut aenderungen_gesamt = Vec::new();
     aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
-
+    
     log_status("merging inserts...");
     let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(
         &aenderungen_gesamt
     );
     log_status("inserts merged!");
+
+    let aenderungen_gesamt = filter_identic_operations(&aenderungen_gesamt);
 
     aenderungen_gesamt
 }
@@ -248,6 +257,26 @@ pub fn process_final_strings(
 
     let intersection = inserts.intersection(&deletes).cloned().collect::<BTreeSet<_>>();
     input.iter().filter_map(|s| if intersection.contains(&s.1.get_id()) { None } else { Some(s.clone() )}).collect()
+}
+
+pub fn filter_identic_operations(
+    input: &[Operation]
+) -> Vec<Operation> {
+
+    let deletes = input.iter().filter_map(|s| match &s {
+        Operation::Delete { kuerzel, poly_alt, .. } => Some((poly_alt.get_hash(), kuerzel.clone())),
+        Operation::Insert { .. } => None,
+        Operation::Replace { .. } => None,
+    }).collect::<BTreeSet<_>>();
+
+    let inserts = input.iter().filter_map(|s| match &s {
+        Operation::Delete { .. } => None,
+        Operation::Insert { kuerzel, poly_neu, .. } => Some((poly_neu.get_hash(), kuerzel.clone())),
+        Operation::Replace { .. } => None,
+    }).collect::<BTreeSet<_>>();
+
+    let intersection = inserts.intersection(&deletes).cloned().collect::<BTreeSet<_>>();
+    input.iter().filter_map(|s| if intersection.contains(&s.get_geom_kuerzel_pair()) { None } else { Some(s.clone() )}).collect()
 }
 
 pub fn operations_to_xml_file(
