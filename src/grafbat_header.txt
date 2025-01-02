@@ -1,0 +1,20 @@
+Typ: GRAFBAT V10
+*
+* GRAFBAT - D A T E I  GEOgraf
+*
+* erstellt mit grafout - Version 10.0c (6726)
+* Importdatei: F:\0_Auftragsdaten\Buch 3.0\2024\{prjname}-NL\Kivid Geograf\{prjname}-NL\{prjname}-NL
+* Erstellung: Datum 08.10.24, Uhrzeit 15:49
+System: hhk:utm33-d,proj=utm,zone=33,ellps=GRS80,units=m,towgs84=0;0;0;0;0;0;0,no_defs
+BBox: {bbox}
+BLATT: "","zvaut.art","zvaut.sym","plotter.pen","ALKIS-Werkzeuge.ggmakro+",3500,1,"","GEOGRAF.legende.db3",0,"g_color.col"
+ARTPLUS: "DES\ALKIS_DES_1000_C.art",1652
+ARTPLUS: "GST\ALKIS_GST_BR_1000_C.art",1650
+ARTPLUS: "VMA\ALKIS_VMA_1000_C.art",1651
+ARTPLUS: "ERG\ALKIS_BR_ERG_1000_C.art",1659
+ARTPLUS: "ASK\ALKIS_AUSKUNFT.art",1658
+ARTPLUS: "ALKIS\ALKIS_1000_C.art",1600
+ARTPLUS: "ARBR\RISS_BR_0500.art",1612
+ARTPLUS: "GKBER-Multiview\GKA3_color.catalog",2598
+AUFID: "{{{uuid}}}",0
+PRJ: "{prjname}"
