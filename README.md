@@ -95,7 +95,6 @@ Ebenso erhält man eine berechnete Excel-Liste, welche Flurstücke wie geändert
 Wirtschaftsarten programmtechnisch für jedes Kürzel hinterlegt sind - ebenso den Beleg, ob ein
 Flurstück veränderte Wirtschaftsarten hat:
 
-<img width="1239" alt="image" src="https://github.com/user-attachments/assets/3f811a3b-d61f-4360-96c5-1be49063963a" />
 
 Zusätzlich enthält jeder Riss-Ordner eine Vorschau, damit man Probleme schnell erkennt und nicht erst
 die Linien und Texte in GEOgraf importieren muss, um Platzierungsprobleme zu sehen. Hierbei ist zu
