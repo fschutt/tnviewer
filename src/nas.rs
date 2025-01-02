@@ -109,36 +109,8 @@ impl NasXMLFile {
     }
 
     pub fn fortfuehren(&self, aenderungen: &Aenderungen, split_nas: &SplitNasXml, csv: &CsvDataType) -> Self {
-
-        log_status("joining gemarkung...");
-        let fluren = self.get_fluren(csv);
-        log_status(&format!("fluren len {}", fluren.len()));
-        for f in fluren.iter() {
-            log_status(&format!("flur: {} m2", f.area_m2().round()));
-        }
-        log_status("Gemarkung joined!");
-
-        let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
-        let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &self);
-        let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-        let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
-        let fortgefuehrt_1 = self.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
-
-        log_status("NasXMLFile::fortfuehren");
-        log_aenderungen(&aenderungen_todo_1);
-        log_status("----");
-
-        let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
-        let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
-        let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
-        let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
-        let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
-
-        log_status("NasXMLFile::fortfuehren");
-        log_aenderungen(&aenderungen_todo_2);
-        log_status("----");
-
-        fortgefuehrt_2
+        let aenderungen_gesamt = crate::david::build_operations(aenderungen, self, split_nas, csv);
+        self.fortfuehren_internal(&aenderungen_gesamt)
     }
 
 

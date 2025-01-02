@@ -2,7 +2,7 @@ use crate::{
     csv::CsvDataType, nas::{
         self, MemberObject, NasXMLFile, NasXmlObjects, NasXmlQuadTree, SplitNasXml, SplitNasXmlQuadTree, SvgLine, SvgPoint, SvgPolygon, SvgPolygonInner, TaggedPolygon
     }, ops::{
-        intersect_polys, join_polys, subtract_from_poly
+        intersect_polys, join_polys, join_polys_fast, subtract_from_poly
     }, ui::{Aenderungen, PolyNeu}, uuid_wasm::{
         log_status, log_status_clear, uuid
     }
@@ -49,6 +49,13 @@ impl Operation {
             Operation::Insert { ebene, kuerzel, poly_neu } => format!("Insert:{ebene}::{kuerzel}::{}", poly_neu.get_hash()),
         }
     }
+    fn get_geom_kuerzel_pair(&self) -> (u64, String) {
+        match self {
+            Operation::Delete { kuerzel , poly_alt, .. } => (poly_alt.get_hash(), kuerzel.clone()),
+            Operation::Replace { kuerzel, poly_neu, .. } => (poly_neu.get_hash(), kuerzel.clone()),
+            Operation::Insert {kuerzel, poly_neu, .. } => (poly_neu.get_hash(), kuerzel.clone()),
+        }
+    }
 }
 
 pub fn aenderungen_zu_fa_xml(
@@ -59,8 +66,18 @@ pub fn aenderungen_zu_fa_xml(
     objects: &NasXmlObjects,
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>,
 ) -> String {
+    let aenderungen_gesamt = build_operations(aenderungen, nas_xml, split_nas, csv);
+    crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
+    operations_to_xml_file(&aenderungen_gesamt, objects, datum_jetzt)
+}
 
-    
+pub fn build_operations(
+    aenderungen: &Aenderungen,
+    nas_xml: &NasXMLFile,
+    split_nas: &SplitNasXml,
+    csv: &CsvDataType,
+) -> Vec<Operation> {
+
     log_status("joining gemarkung...");
     let fluren = nas_xml.get_fluren(csv);
     log_status(&format!("fluren len {}", fluren.len()));
@@ -69,33 +86,70 @@ pub fn aenderungen_zu_fa_xml(
     }
     log_status("Gemarkung joined!");
 
+    let fluren = subtract_bauraum_bodenordnung(&fluren, &nas_xml);
+
     let aenderungen_1 = crate::david::get_na_definiert_as_na_polyneu(aenderungen, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_1.na_polygone_neu, &nas_xml);
     let aenderungen_todo_1 = crate::david::reverse_map_to_aenderungen(&rm, false);
-    let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, &nas_xml, false);
+    // log_status("merge_and_intersect_inserts...");
+    // let aenderungen_todo_1 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_1, self, false);
+    log_status("fortfuehren_internal...");
     let fortgefuehrt_1 = nas_xml.fortfuehren_internal(&aenderungen_todo_1); // okay bis hier
 
-    log_status("aenderungen_zu_fa_xml (schritt 1)");
+    log_status("NasXMLFile::fortfuehren");
     log_aenderungen(&aenderungen_todo_1);
     log_status("----");
 
     let aenderungen_2 = crate::david::get_aenderungen_prepared(aenderungen, &fortgefuehrt_1, split_nas, &fluren);
     let rm = crate::david::napoly_to_reverse_map(&aenderungen_2.na_polygone_neu, &fortgefuehrt_1);
     let aenderungen_todo_2 = crate::david::reverse_map_to_aenderungen(&rm, true);
-    let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+    // let aenderungen_todo_2 = crate::david::merge_aenderungen_with_existing_nas(&aenderungen_todo_2, &fortgefuehrt_1, true);
+    // let fortgefuehrt_2 = fortgefuehrt_1.fortfuehren_internal(&aenderungen_todo_2);
 
-    log_status("aenderungen_zu_fa_xml (schritt 2)");
+    log_status("NasXMLFile::fortfuehren");
     log_aenderungen(&aenderungen_todo_2);
     log_status("----");
-    
 
     let mut aenderungen_gesamt = Vec::new();
     aenderungen_gesamt.extend(aenderungen_todo_1.iter().cloned());
     aenderungen_gesamt.extend(aenderungen_todo_2.iter().cloned());
-    crate::david::insert_gebaeude_delete(&aenderungen, &aenderungen_gesamt);
     
-    // build XML file
-    operations_to_xml_file(&aenderungen_gesamt, objects, datum_jetzt)
+    let mut aenderungen_3 = Aenderungen::default();
+    aenderungen_3.na_polygone_neu.append(&mut aenderungen_1.na_polygone_neu.clone());
+    aenderungen_3.na_polygone_neu.append(&mut aenderungen_2.na_polygone_neu.clone());
+
+    log_status("merging inserts...");
+    let aenderungen_gesamt = crate::david::merge_and_intersect_inserts(
+        &aenderungen_gesamt,
+        &aenderungen_3.na_polygone_neu,
+    );
+    log_status("inserts merged!");
+
+    // let aenderungen_gesamt = filter_identic_operations(&aenderungen_gesamt);
+
+    aenderungen_gesamt
+}
+
+pub fn subtract_bauraum_bodenordnung(
+    fluren: &Vec<SvgPolygonInner>,
+    nas_xml: &NasXMLFile
+) -> Vec<SvgPolygonInner> {
+
+    let d = Vec::new();
+    let bauraum_bodenordnung_flst = nas_xml.ebenen
+    .get("AX_BauRaumOderBodenordnungsrecht")
+    .unwrap_or(&d)
+    .iter()
+    .map(|q| &q.poly)
+    .collect::<Vec<_>>();
+
+    if bauraum_bodenordnung_flst.is_empty() {
+        return fluren.clone();
+    }
+
+    fluren.iter().flat_map(|s| {
+        subtract_from_poly(s, &bauraum_bodenordnung_flst, false)
+    }).collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -210,14 +264,34 @@ pub fn process_final_strings(
     input.iter().filter_map(|s| if intersection.contains(&s.1.get_id()) { None } else { Some(s.clone() )}).collect()
 }
 
+pub fn filter_identic_operations(
+    input: &[Operation]
+) -> Vec<Operation> {
+
+    let deletes = input.iter().filter_map(|s| match &s {
+        Operation::Delete { kuerzel, poly_alt, .. } => Some(s.get_geom_kuerzel_pair()),
+        Operation::Insert { .. } => None,
+        Operation::Replace { .. } => None,
+    }).collect::<BTreeSet<_>>();
+
+    let inserts = input.iter().filter_map(|s| match &s {
+        Operation::Delete { .. } => None,
+        Operation::Insert { kuerzel, poly_neu, .. } => Some(s.get_geom_kuerzel_pair()),
+        Operation::Replace { .. } => None,
+    }).collect::<BTreeSet<_>>();
+
+    let intersection = inserts.intersection(&deletes).cloned().collect::<BTreeSet<_>>();
+    input.iter().filter_map(|s| if intersection.contains(&s.get_geom_kuerzel_pair()) { None } else { Some(s.clone() )}).collect()
+}
+
 pub fn operations_to_xml_file(
     aenderungen_todo: &[Operation], 
     objects: &NasXmlObjects, 
     datum_jetzt: &chrono::DateTime<chrono::FixedOffset>
 ) -> String {
 
-    let mut final_strings = operations_to_xml_file_internal(aenderungen_todo, objects, datum_jetzt);
-    let mut final_strings = process_final_strings(&final_strings);
+    let final_strings = operations_to_xml_file_internal(aenderungen_todo, objects, datum_jetzt);
+    let final_strings = process_final_strings(&final_strings);
     let mut final_strings = final_strings.iter().map(|s| s.0.clone()).collect::<Vec<_>>();
     final_strings.sort();
 
@@ -362,15 +436,6 @@ pub fn get_aenderungen_prepared(
 ) -> Aenderungen {
 
     let force = true;
-    let aenderungen = aenderungen.clean_stage4(
-        nas_xml, 
-        &mut Vec::new(), 
-        0.2, 
-        2.0, 
-        10.0,
-        force,
-    );
-
     let mut aenderungen = aenderungen.deduplicate(force);
     for _ in 0..5 {
         aenderungen = aenderungen.clean_stage25(force);
@@ -565,7 +630,7 @@ pub fn reverse_map_to_aenderungen(
     aenderungen_todo.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_todo.dedup();
     log_status("JOIN INSERTS");
-    aenderungen_todo = join_inserts(&aenderungen_todo, insert_all_points);
+    // aenderungen_todo = join_inserts(&aenderungen_todo, insert_all_points);
     log_status("JOIN INSERTS DONE");
     aenderungen_todo
 }
@@ -694,9 +759,9 @@ impl Signatur {
 						</AA_Modellart>
 					</modellart>
 					<position>
-						<gml:MultiPoint gml:id="BD">
+						<gml:MultiPoint>
 							<gml:pointMember>
-								<gml:Point gml:id="BE">
+								<gml:Point>
 									<gml:pos>$$POS$$</gml:pos>
 								</gml:Point>
 							</gml:pointMember>
@@ -843,6 +908,136 @@ pub fn merge_aenderungen_with_existing_nas(
     aenderungen_clean.sort_by(|a, b| a.get_str_id().cmp(&b.get_str_id()));
     aenderungen_clean.dedup();
     aenderungen_clean
+}
+
+pub fn merge_and_intersect_inserts(
+    aenderungen_todo: &[Operation],
+    aenderungen_to_subtract: &BTreeMap<String, PolyNeu>,
+) -> Vec<Operation> {
+
+    let mut deletes = aenderungen_todo.iter().filter_map(|op| match op {
+        Operation::Delete { .. } => Some(op.clone()),
+        _ => None,
+    }).collect::<Vec<_>>();
+
+    let mut insert_map = BTreeMap::new();
+    for op in aenderungen_todo.iter() {
+        match op {
+            Operation::Insert { ebene, kuerzel, poly_neu  } => {
+                insert_map.entry(kuerzel.clone()).or_insert_with(|| Vec::new()).push(poly_neu.clone()); 
+            },
+            _ => { },
+        }
+    }
+
+    log_status("joining.... 1");
+    insert_map
+    .values_mut()
+    .for_each(|polys| {
+        log_status("joining polys 1 start...");
+        *polys = crate::ops::join_polys_fast(&polys, true, true);
+        log_status("joining polys 1 end...");
+    });
+    log_status("joining.... 2");
+
+    // subtract defined polys from aenderungen
+    let to_subtract_polys = insert_map.keys().filter_map(|k| {
+
+        let polys_higher_order = aenderungen_to_subtract.values().filter_map(|v| {
+            let kuerzel = v.nutzung.as_deref()?;
+            if kuerzel != k {
+                Some(v.poly.get_inner())
+            } else {
+                None
+            }
+        }).collect::<Vec<_>>();
+
+        if polys_higher_order.is_empty() {
+            None
+        } else {
+            Some((k.clone(), polys_higher_order))
+        }
+    }).collect::<BTreeMap<_, _>>();
+
+    insert_map
+    .iter_mut()
+    .for_each(|(k, polys)| {
+        if let Some(tosubtract) = to_subtract_polys.get(k) {
+            log_status("subtracting...");
+            let newpolys = polys.iter()
+            .flat_map(|s| {
+                subtract_from_poly(s, &tosubtract.iter().collect::<Vec<_>>(), true)
+            })
+            .filter_map(|p| if p.is_zero_area() { None } else { Some(p) })
+            .collect::<Vec<_>>();
+            log_status("subtracted!");
+            *polys = newpolys;
+        }
+    });
+
+    // subtract higher-order polys
+    let to_subtract_polys = insert_map.keys().filter_map(|k| {
+        
+        let orig_nak = crate::search::get_nak_ranking(k);
+
+        let polys_higher_order = insert_map.iter().flat_map(|(k, v)| {
+            let nak = crate::search::get_nak_ranking(k);
+            if nak > orig_nak {
+                v.clone()
+            } else {
+                Vec::new()
+            }
+        }).collect::<Vec<_>>();
+
+        if polys_higher_order.is_empty() {
+            None
+        } else {
+            Some((k.clone(), polys_higher_order))
+        }
+    }).collect::<BTreeMap<_, _>>();
+
+    insert_map
+    .iter_mut()
+    .for_each(|(k, polys)| {
+        if let Some(tosubtract) = to_subtract_polys.get(k) {
+            log_status("subtracting...");
+            let newpolys = polys.iter()
+            .flat_map(|s| {
+                subtract_from_poly(s, &tosubtract.iter().collect::<Vec<_>>(), true)
+            })
+            .filter_map(|p| if p.is_zero_area() { None } else { Some(p) })
+            .collect::<Vec<_>>();
+            log_status("subtracted!");
+            *polys = newpolys;
+        }
+    });
+    
+    for (kuerzel, poly) in aenderungen_to_subtract.values().filter_map(|q| q.nutzung.clone().map(|k| (k.clone(), q.poly.get_inner()))) {
+        insert_map.entry(kuerzel).or_insert_with(|| Vec::new()).push(poly);
+    }
+
+    log_status("joining.... 3");
+    insert_map
+    .values_mut()
+    .for_each(|polys| {
+        log_status("joining polys 2 start...");
+        *polys = crate::ops::join_polys_fast(&polys, true, true);
+        log_status("joining polys 2 end...");
+    });
+    log_status("joining.... 4");
+
+    deletes.extend(insert_map.into_iter().flat_map(|(kuerz, polys)| {
+        let kuerz = kuerz.clone();
+        polys.into_iter().filter_map(move |p| {
+            Some(Operation::Insert { 
+                ebene: TaggedPolygon::get_auto_ebene(&kuerz)?, 
+                kuerzel: kuerz.clone(), 
+                poly_neu: p 
+            })
+        })
+    }));
+
+    deletes
 }
 
 pub fn insert_gebaeude_delete(

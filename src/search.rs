@@ -24,6 +24,14 @@ pub fn get_nutzungsartenkatalog() -> NutzungsArtMap {
         .unwrap_or_else(|_| include!(concat!(env!("OUT_DIR"), "/nutzung.rs")))
 }
 
+pub fn get_nak_ranking(kuerzel: &str) -> usize {
+    let mut ranking = serde_json::from_str::<Vec<String>>(&&crate::uuid_wasm::get_js_nak_ranking()).unwrap_or_default();
+    ranking.reverse();
+    let s =ranking.iter().enumerate().find_map(|s| if s.1 == kuerzel { Some(s.0 + 1) } else { None }).unwrap_or(0);
+    crate::uuid_wasm::log_status(&format!("NAK ranking {kuerzel}: {s}"));
+    s
+}
+
 pub fn search_map(term: &str) -> Vec<(String, NutzungsArt)> {
     let map = crate::get_nutzungsartenkatalog();
     let mut target = BTreeMap::new();

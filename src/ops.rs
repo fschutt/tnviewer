@@ -62,27 +62,22 @@ pub fn subtract_from_poly(
 }
 
 
+/*
 fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner], insert_all_points: bool) -> Vec<SvgPolygonInner> {
-    let ap_quadtree = quadtree_f32::QuadTree::new(s.iter().enumerate().map(|(i, s)| {
-        (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(s.get_rect()))
-    }));
-
     const DST: f64 = 0.05;
     let mut snew = BTreeMap::new();
     for (qid, q) in s.iter().enumerate() {
+
         let mut q = q.clone();
         let q_rect = q.get_rect();
-        let near_polys = ap_quadtree.get_ids_that_overlap(&q_rect)
-        .iter()
-        .filter_map(|i| if i.0 == qid { 
-            None
-        } else { 
-            snew.get(&i.0)
-            .or_else(|| s.get(i.0))
-            .map(|z| (i.0, z)) 
-        })
-        .collect::<Vec<_>>();
-        for (id, n) in near_polys.iter() {
+        let near_polys = s
+            .iter()
+            .enumerate()
+            .filter(|(i, q)| *i != qid && q.get_rect().overlaps_rect(&q_rect))
+            .map(|(i, it)| snew.get(&i).unwrap_or_else(|| it))
+            .collect::<Vec<_>>();
+
+        for n in near_polys.iter() {
             q.insert_points_from(n, DST, insert_all_points);
         } 
 
@@ -90,17 +85,19 @@ fn insert_poly_points_from_near_polys(s: &[SvgPolygonInner], insert_all_points: 
     }
     snew.into_values().collect()
 }
+*/
 
 fn merge_poly_points(s: &[SvgPolygonInner], original_pts: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
     
     const DST: f64 = 0.1;
 
     let all_points_vec = original_pts.iter().flat_map(|s| s.get_all_points()).collect::<Vec<_>>();
-
-    let ap_quadtree = quadtree_f32::QuadTree::new(
+    let max_items = all_points_vec.len().saturating_div(20).max(500).min(100);
+    let ap_quadtree = quadtree_f32::QuadTree::new_with_max_items_per_quad(
         all_points_vec.iter().enumerate().map(|(i, s)| {
             (quadtree_f32::ItemId(i), quadtree_f32::Item::Rect(s.get_rect(DST)))
-        })
+        }),
+        max_items,
     );
 
     let mut s = s.to_vec();
@@ -146,9 +143,10 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
         })
     }).collect::<BTreeMap<_, _>>();
 
-    let ap_quadtree = quadtree_f32::QuadTree::new(all_points_btree.iter().map(|(i, s)| {
+    let maxitems = all_points_btree.len().saturating_div(20).min(100).max(500);
+    let ap_quadtree = quadtree_f32::QuadTree::new_with_max_items_per_quad(all_points_btree.iter().map(|(i, s)| {
         (quadtree_f32::ItemId(*i), quadtree_f32::Item::Rect(s.get_rect()))
-    }));
+    }), maxitems);
 
     const DST: f64 = 0.05;
 
@@ -169,6 +167,42 @@ fn merge_poly_lines(s: &[SvgPolygonInner]) -> Vec<SvgPolygonInner> {
 
     s
 }
+
+
+pub fn join_polys_special_2(polys_orig: &[SvgPolygonInner], i: &SvgPolygonInner, debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
+    use geo::BooleanOps;
+
+    let mut first = polys_orig.to_vec();
+
+        let mut i = i.clone();
+
+        for q in first.iter_mut() {
+            i.insert_points_from(q, 0.1, insert_all_points);
+            q.insert_points_from(&i, 0.1, insert_all_points);
+            if i.is_completely_inside_of(q) {
+                return first;
+            }
+        }
+
+        if debug {
+            log_status(&format!("joining first (insert_all_points: {insert_all_points:?}):"));
+            log_status(&serde_json::to_string(&first).unwrap_or_default());
+            log_status(&format!("joining second (insert_all_points: {insert_all_points:?}):"));
+            log_status(&serde_json::to_string(&i).unwrap_or_default());
+        }
+
+        if i.is_zero_area() {
+            return first;
+        }
+
+        let a = translate_to_geo_poly_special(&first);
+        let b = translate_to_geo_poly_special_shared(&[&i]);
+        let join = a.union(&b);
+        first = translate_from_geo_poly(&join).iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+
+    first
+}
+
 
 pub fn join_polys_special(polys_orig: &[SvgPolygonInner], last: &SvgPolygonInner, debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;
@@ -213,19 +247,57 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
         log_status(&serde_json::to_string(polys_orig).unwrap_or_default());
     }
 
+    let mut polys = polys_orig.to_vec();
+    polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
+
+
+    if debug {
+        log_status("2.5");
+    }
+
     let polys = polys_orig.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
-    let polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("3.5");
+    }
+    // let polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("4.5");
+    }
     let polys = merge_poly_points(&polys, &polys_orig);
+    if debug {
+        log_status("5.5");
+    }
     let polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    if debug {
+        log_status("6.5");
+    }
     let polys = merge_poly_lines(&
         polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
     ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
-    let polys = merge_poly_points(&polys, &polys);
-    let mut polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("7.5");
+    }
+    let mut polys = merge_poly_points(&polys, &polys);
+    if debug {
+        log_status("8.5");
+    }
+    // let mut polys = insert_poly_points_from_near_polys(&polys, insert_all_points);
+    if debug {
+        log_status("9.5");
+    }
+    if debug {
+        log_status("2");
+    }
 
     polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
     polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
     polys.reverse(); // largest polys first
+    polys.retain(|s| !s.is_zero_area());
+
+    if debug {
+        log_status("3");
+    }
 
     let mut first = match polys.get(0) {
         Some(s) => vec![s.clone()],
@@ -250,6 +322,10 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
             log_status(&serde_json::to_string(&i).unwrap_or_default());
         }
 
+        if i.is_zero_area() {
+            continue;
+        }
+
         let a = translate_to_geo_poly_special(&first);
         let b = translate_to_geo_poly_special_shared(&[&i]);
         let join = a.union(&b);
@@ -258,6 +334,74 @@ pub fn join_polys(polys_orig: &[SvgPolygonInner], debug: bool, insert_all_points
 
     first
 }
+
+
+pub fn join_polys_fast(polys: &[SvgPolygonInner], debug: bool, insert_all_points: bool) -> Vec<SvgPolygonInner> {
+    use geo::BooleanOps;
+
+    if debug {
+        log_status("join_polys");
+        log_status(&serde_json::to_string(polys).unwrap_or_default());
+    }
+
+    let mut polys = polys.iter().flat_map(crate::nas::cleanup_poly).collect::<Vec<_>>();
+    polys.sort_by(|a, b| a.area_m2().abs().total_cmp(&b.area_m2().abs()));
+    polys.dedup_by(|a, b| a.get_all_pointcoords_sorted() ==  b.get_all_pointcoords_sorted());
+    let polys = merge_poly_lines(&
+        polys.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+    ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+    let polys = merge_poly_points(&polys, &polys);
+    let mut polys = polys;
+    polys.reverse(); // largest polys first
+    polys.retain(|s| !s.is_zero_area());
+
+    if polys.len() < 2 {
+        return polys.to_vec();
+    }
+
+    let mut first = match polys.get(0) {
+        Some(s) => vec![s.clone()],
+        None => return Vec::new(),
+    };
+
+    for i in polys.iter().skip(1) {
+        let mut i = i.clone();
+        log_status(&serde_json::to_string(&i).unwrap_or_default());
+
+        log_status("1");
+        for q in first.iter_mut() {
+            i.insert_points_from(q, 0.1, insert_all_points);
+            q.insert_points_from(&i, 0.1, insert_all_points);
+            if i.is_completely_inside_of(q) {
+                continue;
+            }
+        }
+
+        log_status("2");
+
+        if i.is_zero_area() {
+            continue;
+        }
+
+        log_status("3");
+
+        let a = translate_to_geo_poly_special(&first);
+        let b = translate_to_geo_poly_special_shared(&[&i]);
+        let join = a.union(&b);
+        log_status("joined!");
+        first = translate_from_geo_poly(&join);
+        log_status("merging lines...");
+        first = merge_poly_lines(&
+            first.iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>()
+        ).into_iter().map(|s| s.round_to_3dec()).collect::<Vec<_>>();
+        log_status("merging points...");
+        first = merge_poly_points(&first, &first);
+        log_status("next poly!");
+    }
+    log_status("done!");
+    first
+}
+
 
 pub fn intersect_polys(a: &SvgPolygonInner, b: &SvgPolygonInner, debug: bool) -> Vec<SvgPolygonInner> {
     use geo::BooleanOps;

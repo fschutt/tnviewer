@@ -995,6 +995,52 @@
               }
           }
         };
+        
+        // Ranking von Nutzungsarten-Kürzeln: wenn zwei Nutzungsarten überlappen,
+        // muss das Programm wissen, welches Kürzel "oben" und welches "unten" ist.
+        // Ranking ist von oben nach unten (WAF > GHÖ > A). Einstellen nach Gebrauch.
+        window.nutzungsarten_ranking = [
+          "WAS",
+          "WAF",
+          "BA",
+          "S",
+          "WEG",
+          "BP",
+          "BPR",
+          "BPV",
+          "BPÖ",
+          "BPO2",
+          "ESA",
+          "VSK",
+          "TG",
+          "VS",
+          "MILB",
+          "MI",
+          "WBF",
+          "IG",
+          "VSW",
+          "VSKWI",
+          "HDH",
+          "HAL",
+          "SF",
+          "PARK",
+          "GHÖ",
+          "F",
+          "UV",
+          "NF",
+          "G",
+          "OBBP",
+          "LNH",
+          "LH",
+          "SFS",
+          "SUM",
+          "BRA",
+          "GRÜ",
+          "WALD",
+          "GR",
+          "A",
+        ];
+
         // INJECT_NUTZUNGSARTEN_KATALOG
     </script>
 
@@ -2153,6 +2199,16 @@
 
     window.get_nak = get_nak;
 
+    function get_nak_ranking() {
+      if (window.nutzungsarten_ranking) {
+        return JSON.stringify(window.nutzungsarten_ranking);
+      } else {
+        return "";
+      }
+    }
+
+    window.get_nak_ranking = get_nak_ranking;
+
     function update_export_status(s) {
       if (!window.export_log) {
         window.export_log = [];
@@ -2835,9 +2891,13 @@
       }
     }
     
-    function cleanStage(id) {
+    function cleanStage(id, event) {
       var n = null;
       console.log("JS: CLEANING STAGE " + id);
+      var force = false;
+      if (event && event.shiftKey) {
+        force = true;
+      }
       var f = lib_get_aenderungen_clean(
         "" + id, 
         JSON.stringify(window.aenderungen), 
@@ -2845,6 +2905,7 @@
         JSON.stringify(window.nas_original),
         JSON.stringify(window.configuration),
         JSON.stringify(window.csv_data),
+        force,
       );
       try {
         n = JSON.parse(f);
